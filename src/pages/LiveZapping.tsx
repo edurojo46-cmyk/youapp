@@ -13,8 +13,7 @@ import {
   VERIFIED_24_7_LIVE_CHANNELS 
 } from '../lib/youtube';
 import SleepTimer from '../components/SleepTimer';
-
-
+import SyncedTVPlayer from '../components/SyncedTVPlayer';
 import EPGGuide from '../components/EPGGuide';
 import AmbientMode from '../components/AmbientMode';
 import ProgramInfoModal from '../components/ProgramInfoModal';
@@ -391,26 +390,24 @@ export default function LiveZapping() {
 
   const syncOffset = getLiveSyncOffset(currentChannel);
 
+  const handleVideoEnded = () => {
+
+    setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
+    triggerOSD();
+  };
+
   return (
     <div className="live-zapping-viewport" onClick={triggerOSD}>
-      {/* Reproductor de Video Fullscreen Sincronizado 24/7 */}
-      {currentChannel.videoUrl ? (
-        <iframe
-          key={`${currentChannel.id || activeIndex}`}
-          src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&start=${syncOffset}&controls=1&fs=1&rel=0&playsinline=0&enablejsapi=1`}
-          title={currentChannel.name}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-          className="zapping-iframe"
-        />
-      ) : (
-        <div className="no-signal-screen">
-          <Radio size={48} className="text-accent" />
-          <h2>{currentChannel.name}</h2>
-          <p>Señal fuera de aire por el momento.</p>
-        </div>
-      )}
+      {/* Reproductor de TV Sincronizado 24/7 con Avance Automático de Video */}
+      <SyncedTVPlayer
+        url={currentChannel.videoUrl}
+        isMuted={isMuted}
+        onUnmute={() => setIsMuted(false)}
+        onVideoEnded={handleVideoEnded}
+        targetOffsetSeconds={syncOffset}
+        channelName={currentChannel.name}
+      />
+
 
 
 

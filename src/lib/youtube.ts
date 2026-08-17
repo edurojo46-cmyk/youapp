@@ -363,46 +363,65 @@ export const searchRealYouTubeChannels = async (query: string) => {
   }
 };
 
-// Genera una grilla televisiva completa (20 a 30 videos continuos) a partir de un Canal Real de YouTube
+// Genera una grilla televisiva completa (priorizando transmisiones en vivo y episodios completos)
 export const fetchChannelTVVideos = async (channelId: string, channelTitle: string) => {
   if (!YOUTUBE_API_KEY || !channelId) return [];
 
-  const cacheKey = `youapp_channel_videos_${channelId}`;
+  const cacheKey = `youapp_channel_videos_v4_${channelId}`;
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) return JSON.parse(cached);
   } catch (e) {}
 
   try {
+    // 1. Primero verificar si el canal está emitiendo EN VIVO en este instante
+    let liveItems: any[] = [];
+    try {
+      const liveResp = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`
+      );
+      const liveData = await liveResp.json();
+      if (liveData.items && liveData.items.length > 0) {
+        liveItems = liveData.items;
+      }
+    } catch (e) {}
+
+    // 2. Obtener videos de duración completa (excluyendo Shorts)
     const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=30&order=date&type=video&videoEmbeddable=true&key=${YOUTUBE_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=30&videoDuration=medium&order=date&type=video&videoEmbeddable=true&key=${YOUTUBE_API_KEY}`
     );
     const data = await response.json();
+    let regularItems = data.items || [];
 
-    if (!data.items || data.items.length === 0) {
-      // Fallback a los más vistos si por fecha está vacío
+    // Fallback si medium está vacío
+    if (regularItems.length === 0) {
       const fallbackResp = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=30&order=viewCount&type=video&videoEmbeddable=true&key=${YOUTUBE_API_KEY}`
       );
       const fallbackData = await fallbackResp.json();
-      if (!fallbackData.items) return [];
-      data.items = fallbackData.items;
+      regularItems = fallbackData.items || [];
     }
 
-    const formatted = data.items
+    const allItems = [...liveItems, ...regularItems];
+
+    const formatted = allItems
       .filter((item: any) => item.id?.videoId)
-      .map((item: any, idx: number) => ({
-        id: `yt-ch-${channelId}-${item.id.videoId}`,
-        name: `${channelTitle} TV`,
-        category: 'Creador Oficial',
-        viewerCount: Math.floor(Math.random() * 3000) + 500,
-        videoUrl: `https://www.youtube.com/embed/${item.id.videoId}`,
-        currentVideoTitle: item.snippet.title,
-        thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
-        author: channelTitle,
-        avatarUrl: item.snippet.thumbnails?.default?.url,
-        episodeIndex: idx + 1
-      }));
+      .map((item: any, idx: number) => {
+        const isLive = item.snippet?.liveBroadcastContent === 'live' || liveItems.some((l: any) => l.id?.videoId === item.id?.videoId);
+        return {
+          id: `yt-ch-${channelId}-${item.id.videoId}`,
+          name: `${channelTitle} TV`,
+          category: isLive ? '🔴 EN VIVO 24/7' : 'Programación Oficial',
+          viewerCount: Math.floor(Math.random() * 3000) + 500,
+          videoUrl: `https://www.youtube.com/embed/${item.id.videoId}`,
+          currentVideoTitle: item.snippet.title,
+          thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+          author: channelTitle,
+          avatarUrl: item.snippet.thumbnails?.default?.url,
+          episodeIndex: idx + 1,
+          isLive
+        };
+      });
 
     try {
       localStorage.setItem(cacheKey, JSON.stringify(formatted));
@@ -414,4 +433,5 @@ export const fetchChannelTVVideos = async (channelId: string, channelTitle: stri
     return [];
   }
 };
+
 

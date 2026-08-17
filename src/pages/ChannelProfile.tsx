@@ -212,13 +212,18 @@ export default function ChannelProfile() {
     fetchSubscribersCount(channel.id);
   };
 
+  const basePath = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`;
+
+  const baseAppUrl = `${window.location.origin}${basePath}#`;
+
   const publicUrl = activeChannel 
-    ? `${window.location.origin}/c/${activeChannel.slug || activeChannel.id}`
+    ? `${baseAppUrl}/c/${activeChannel.slug || activeChannel.id}`
     : '';
 
   const embedCode = activeChannel
-    ? `<iframe src="${window.location.origin}/embed/${activeChannel.slug || activeChannel.id}" width="100%" height="600" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`
+    ? `<iframe src="${baseAppUrl}/embed/${activeChannel.slug || activeChannel.id}" width="100%" height="600" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`
     : '';
+
 
   const handleCopyLink = async () => {
     if (!publicUrl) return;

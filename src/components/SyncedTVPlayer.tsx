@@ -226,19 +226,30 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
   return (
     <div className="synced-player-container">
-      {/* Reproductor Nativo HTML5 (Máximo Rendimiento & Sincronización Real) */}
+      {/* 1. Reproductor Nativo HTML5 para MP4 / HLS */}
       {isDirect ? (
         <video
           ref={videoRef}
           className="synced-native-video"
+          src={url}
           playsInline
           autoPlay
           muted={isMuted}
+          controls={false}
           onEnded={onVideoEnded}
           onClick={handleUserUnlock}
         />
       ) : (
-        <div id={containerId} className="synced-tv-iframe" />
+        /* 2. Reproductor YouTube Oficial y Fiable (Iframe directo que jamás queda negro) */
+        <iframe
+          key={`${ytId}_${isMuted ? 1 : 0}`}
+          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&playsinline=1`}
+          title={channelName}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+          allowFullScreen
+          className="synced-tv-iframe"
+        />
       )}
 
       {/* Indicador de Transmisión Sincronizada en Vivo 24/7 */}
@@ -252,7 +263,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       </button>
 
       {/* Overlay de Desbloqueo si el móvil bloqueó el autoplay */}
-      {needsUserTap && (
+      {needsUserTap && isDirect && (
         <div className="mobile-tap-unlock-overlay" onClick={handleUserUnlock}>
           <button className="unlock-play-btn">
             <Play size={32} fill="white" />
@@ -262,7 +273,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       )}
 
       {/* Botón de Sonido Flotante si está silenciado */}
-      {isMuted && !needsUserTap && (
+      {isMuted && (
         <button 
           onClick={(e) => { e.stopPropagation(); handleUserUnlock(); }} 
           className="zapping-unmute-btn"
@@ -271,6 +282,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           <span>Toca para Activar Sonido</span>
         </button>
       )}
+
 
       <style>{`
         .synced-player-container {

@@ -166,10 +166,40 @@ export default function PublicChannel() {
     setShowSchedule(false);
   };
 
+  const [lastTap, setLastTap] = useState(0);
+
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+      } else if ((elem as any).webkitRequestFullscreen) {
+        (elem as any).webkitRequestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  const handleTouchScreen = () => {
+    const now = Date.now();
+    if (now - lastTap < 320) {
+      toggleFullscreen();
+    }
+    setLastTap(now);
+  };
+
   return (
     <div className="public-channel-container">
       {/* Reproductor de Video en Vivo Sincronizado */}
-      <div className="tv-viewport">
+      <div 
+        className="tv-viewport"
+        onDoubleClick={toggleFullscreen}
+        onTouchStart={handleTouchScreen}
+      >
         <iframe
           key={`${rawVideoId}_${syncState.offsetSeconds}_${syncState.currentProgram.id}`}
           width="100%"
@@ -177,10 +207,11 @@ export default function PublicChannel() {
           src={`https://www.youtube.com/embed/${rawVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&start=${syncState.offsetSeconds}&controls=1`}
           title={currentVideo.title}
           frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
           className="tv-iframe"
         />
+
 
         {/* Botón de Sonido Flotante si está silenciado */}
         {isMuted && (

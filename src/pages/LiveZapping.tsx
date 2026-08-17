@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
-  Image, Info, EyeOff, Layers, Search
+  Image, Info, EyeOff, Layers, Search, Maximize, Minimize
 } from 'lucide-react';
+
 import { supabase } from '../lib/supabase';
 import { fetchTopViewedVideosByMood, fetchChannelTVVideos } from '../lib/youtube';
 import SleepTimer from '../components/SleepTimer';
@@ -54,6 +55,48 @@ export default function LiveZapping() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [isPhoneConnected, setIsPhoneConnected] = useState(false);
   const [flyingEmojis, setFlyingEmojis] = useState<Array<{ id: number; emoji: string; left: number }>>([]);
+
+  // Pantalla Completa & Doble Toque
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenFeedback, setShowFullscreenFeedback] = useState(false);
+  const lastTapRef = useRef<number>(0);
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+      } else if ((elem as any).webkitRequestFullscreen) {
+        (elem as any).webkitRequestFullscreen();
+      }
+      setIsFullscreen(true);
+      setShowFullscreenFeedback(true);
+      setTimeout(() => setShowFullscreenFeedback(false), 1500);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      }
+      setIsFullscreen(false);
+      setShowFullscreenFeedback(true);
+      setTimeout(() => setShowFullscreenFeedback(false), 1500);
+    }
+  }, []);
+
+  const handleScreenTouchOrClick = (e: React.MouseEvent | React.TouchEvent) => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 320; // 320ms
+
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+      // Doble toque detectado
+      toggleFullscreen();
+    } else {
+      triggerOSD();
+    }
+    lastTapRef.current = now;
+  };
+
 
 
   // Modales y Modos
@@ -348,7 +391,20 @@ export default function LiveZapping() {
   const isFav = favorites.includes(currentChannel?.id);
 
   return (
-    <div className="live-zapping-viewport" onClick={triggerOSD}>
+    <div 
+      className="live-zapping-viewport" 
+      onClick={handleScreenTouchOrClick}
+      onDoubleClick={toggleFullscreen}
+      onTouchStart={handleScreenTouchOrClick}
+    >
+      {/* Indicador Flotante de Pantalla Gigante */}
+      {showFullscreenFeedback && (
+        <div className="fullscreen-badge-popup glass-panel">
+          {isFullscreen ? <Maximize size={32} /> : <Minimize size={32} />}
+          <span>{isFullscreen ? 'PANTALLA GIGANTE' : 'PANTALLA NORMAL'}</span>
+        </div>
+      )}
+
       {/* Reproductor de Video Fullscreen */}
       {currentChannel.videoUrl ? (
         <iframe
@@ -356,9 +412,9 @@ export default function LiveZapping() {
           src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1`}
           title={currentChannel.name}
           frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
-          className="zapping-iframe"
+          className={`zapping-iframe ${isFullscreen ? 'giant-mode' : ''}`}
         />
       ) : (
         <div className="no-signal-screen">
@@ -367,6 +423,7 @@ export default function LiveZapping() {
           <p>Señal fuera de aire por el momento.</p>
         </div>
       )}
+
 
       {/* Botón de Sonido Flotante */}
       {isMuted && (
@@ -674,7 +731,61 @@ export default function LiveZapping() {
           height: 100vh;
           border: none;
           pointer-events: auto;
+          transition: transform 0.3s ease;
         }
+
+        .zapping-iframe.giant-mode {
+          width: 100vw;
+          height: 100vh;
+          object-fit: cover;
+          transform: scale(1.02);
+        }
+
+        .fullscreen-badge-popup {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          background: rgba(15, 17, 26, 0.85);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(99, 102, 241, 0.4);
+          color: white;
+          padding: 24px 36px;
+          border-radius: 24px;
+          font-weight: 800;
+          font-size: 1.1rem;
+          letter-spacing: 1px;
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+          animation: popFade 1.4s ease forwards;
+          pointer-events: none;
+        }
+
+        @keyframes popFade {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.7);
+          }
+          20% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.05);
+          }
+          30% {
+            transform: translate(-50%, -50%) scale(1);
+          }
+          80% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.9);
+          }
+        }
+
 
         .zapping-unmute-btn {
           position: absolute;

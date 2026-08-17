@@ -6,9 +6,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { calculateCurrentLiveProgram, type TVProgramItem, type SyncState } from '../utils/tvEngine';
+import SyncedTVPlayer from '../components/SyncedTVPlayer';
 import LiveChat from '../components/LiveChat';
 import EmojiReactions from '../components/EmojiReactions';
 import EmailGateModal from '../components/EmailGateModal';
+
 
 export default function PublicChannel() {
   const { idOrSlug } = useParams<{ idOrSlug: string }>();
@@ -59,7 +61,7 @@ export default function PublicChannel() {
           .from('programming')
           .select('*, videos(*)')
           .eq('channel_id', channelData.id)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: true });
 
         if (progErr || !progData || progData.length === 0) {
           setErrorMsg("Este canal aún no tiene videos programados.");
@@ -79,6 +81,21 @@ export default function PublicChannel() {
     fetchChannelData();
   }, [idOrSlug]);
 
+  const handleVideoEnded = () => {
+    if (programming.length > 0) {
+      const curIdx = programming.findIndex(p => p.id === syncState?.currentProgram?.id);
+      const nextIndex = curIdx !== -1 ? (curIdx + 1) % programming.length : 0;
+      const nextProg = programming[nextIndex];
+      const nextNextProg = programming[(nextIndex + 1) % programming.length];
+      setSyncState({
+        currentProgram: nextProg,
+        offsetSeconds: 0,
+        nextProgram: nextNextProg,
+        totalCycleSeconds: syncState?.totalCycleSeconds || 300
+      });
+    }
+  };
+
   // Recalcular sincronización y avanzar automáticamente cuando termina el video actual
   useEffect(() => {
     if (programming.length === 0 || !channel || !syncState) return;
@@ -93,8 +110,7 @@ export default function PublicChannel() {
     const remainingSec = Math.max(1, currentDurSec - syncState.offsetSeconds);
 
     const timer = setTimeout(() => {
-      const liveSync = calculateCurrentLiveProgram(programming, channel.is_24_7 !== false);
-      setSyncState(liveSync);
+      handleVideoEnded();
     }, remainingSec * 1000);
 
     return () => clearTimeout(timer);
@@ -111,9 +127,7 @@ export default function PublicChannel() {
       try {
         await navigator.share(shareData);
         return;
-      } catch (e) {
-        // Fallback a clipboard si el usuario cancela o falla
-      }
+      } catch (e) {}
     }
 
     navigator.clipboard.writeText(window.location.href);
@@ -151,7 +165,7 @@ export default function PublicChannel() {
   }
 
   const currentVideo = syncState.currentProgram.videos;
-  const rawVideoId = currentVideo.id.replace('yt-', '');
+  const rawVideoId = (currentVideo.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '');
 
   const handleSelectProgram = (selectedItem: TVProgramItem) => {
     const selectedIdx = programming.findIndex(p => p.id === selectedItem.id);
@@ -170,29 +184,16 @@ export default function PublicChannel() {
     <div className="public-channel-container">
       {/* Reproductor de Video en Vivo Sincronizado */}
       <div className="tv-viewport">
-        <iframe
-          key={`${rawVideoId}_${syncState.offsetSeconds}_${syncState.currentProgram.id}`}
-          width="100%"
-          height="100%"
-          src={`https://www.youtube.com/embed/${rawVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&start=${syncState.offsetSeconds}&controls=1`}
-          title={currentVideo.title}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          className="tv-iframe"
+        <SyncedTVPlayer
+          url={`https://www.youtube.com/embed/${rawVideoId}`}
+          isMuted={isMuted}
+          onUnmute={() => setIsMuted(false)}
+          onVideoEnded={handleVideoEnded}
+          targetOffsetSeconds={syncState.offsetSeconds}
+          channelName={channel.name}
         />
-
-        {/* Botón de Sonido Flotante si está silenciado */}
-        {isMuted && (
-          <button 
-            onClick={() => setIsMuted(false)} 
-            className="unmute-floating-btn"
-          >
-            <VolumeX size={20} />
-            <span>Toca para activar sonido</span>
-          </button>
-        )}
       </div>
+
 
       {/* Banner de Monetización / CTA del Creador */}
       {channel.banner_cta && (

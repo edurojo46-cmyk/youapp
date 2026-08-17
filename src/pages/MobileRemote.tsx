@@ -37,10 +37,11 @@ export default function MobileRemote() {
   useEffect(() => {
     if (!activeSessionId) return;
 
-    const bridge = new RemoteBridge(activeSessionId);
+    const bridge = new RemoteBridge(activeSessionId, 'remote');
     bridge.notifyConnected();
     setIsConnected(true);
     bridgeRef.current = bridge;
+
 
     return () => {
       bridge.destroy();

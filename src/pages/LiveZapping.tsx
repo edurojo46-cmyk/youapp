@@ -77,9 +77,10 @@ export default function LiveZapping() {
 
   // Escuchar órdenes del Control Remoto Móvil en Tiempo Real mediante RemoteBridge
   useEffect(() => {
-    const bridge = new RemoteBridge(sessionId);
+    const bridge = new RemoteBridge(sessionId, 'tv');
 
     bridge.onConnected(() => {
+
       setIsPhoneConnected(true);
       triggerFloatingEmoji('📱');
     });

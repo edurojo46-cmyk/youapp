@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ThumbsUp, ThumbsDown, Share2, Maximize2, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import SyncedTVPlayer from '../components/SyncedTVPlayer';
 
 export default function MyStream() {
   const navigate = useNavigate();
@@ -14,7 +15,6 @@ export default function MyStream() {
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [showUI, setShowUI] = useState(true);
   const uiTimeoutRef = useRef<any>(null);
@@ -56,7 +56,7 @@ export default function MyStream() {
             channels (*)
           `)
           .in('channel_id', channelIds)
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: true });
 
         if (!error && data && data.length > 0) {
           const formattedQueue = data.map((item: any) => ({
@@ -66,9 +66,8 @@ export default function MyStream() {
             title: item.videos?.title || 'Video Desconocido',
             source: item.channels?.name || 'Canal',
             author: item.videos?.author || '',
-            url: item.videos?.provider === 'youtube' 
-              ? `https://www.youtube.com/watch?v=${item.videos.id.replace('yt-', '')}`
-              : `https://www.youtube.com/watch?v=${item.videos?.id}`
+            videoId: (item.videos?.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', ''),
+            url: `https://www.youtube.com/embed/${(item.videos?.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '')}`
           }));
           setQueue(formattedQueue);
 
@@ -91,29 +90,10 @@ export default function MyStream() {
 
   const currentVideo = queue[currentIndex];
 
-  // Auto-avanzar al siguiente video cuando termina la duración
-  useEffect(() => {
-    if (!currentVideo) return;
-    
-    // Extraer duración o usar 5 minutos (300s) por defecto
-    let durSec = 300;
-    if (currentVideo.duration) {
-      const parts = currentVideo.duration.split(':').map(Number);
-      if (!parts.some(isNaN)) {
-        durSec = parts.length === 3 ? parts[0] * 3600 + parts[1] * 60 + parts[2] : (parts.length === 2 ? parts[0] * 60 + parts[1] : 300);
-      }
-    }
-
-    const timer = setTimeout(() => {
-      handleVideoEnd();
-    }, durSec * 1000);
-
-    return () => clearTimeout(timer);
-  }, [currentIndex, queue]);
-
   const handleVideoEnd = () => {
-    if (queue.length === 0) return;
-    setCurrentIndex(prev => (prev + 1) % queue.length);
+    if (queue.length > 0) {
+      setCurrentIndex(prev => (prev + 1) % queue.length);
+    }
   };
 
   const handleUserActivity = () => {
@@ -139,37 +119,16 @@ export default function MyStream() {
       onClick={handleUserActivity}
     >
         <div className="video-container" style={{ position: 'absolute', inset: 0, zIndex: 5 }}>
-          {currentVideo.provider === 'youtube' ? (
-            <iframe
-              key={currentVideo.id}
-              width="100%"
-              height="100%"
-              src={`https://www.youtube.com/embed/${currentVideo.url.split('v=')[1]}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1`}
-              title={currentVideo.title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-              style={{ pointerEvents: 'auto', width: '100vw', height: '100vh' }}
-            ></iframe>
-          ) : (
-            <div style={{color: 'white', padding: '20px', textAlign: 'center'}}>
-              Formato de video no soportado.
-            </div>
-          )}
-
-          {isMuted && (
-            <button 
-              onClick={() => setIsMuted(false)}
-              className="btn btn-primary"
-              style={{
-                position: 'absolute', top: '15%', left: '50%', transform: 'translate(-50%, -50%)',
-                zIndex: 100, fontSize: '1rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.6)'
-              }}>
-              <VolumeX size={20} /> Toca para activar sonido
-            </button>
-          )}
+          <SyncedTVPlayer
+            url={`https://www.youtube.com/embed/${currentVideo.videoId}`}
+            isMuted={isMuted}
+            onUnmute={() => setIsMuted(false)}
+            onVideoEnded={handleVideoEnd}
+            targetOffsetSeconds={0}
+            channelName={currentVideo.source}
+          />
         </div>
+
 
       {/* UI Overlay que simula nuestra TV */}
       <div className={`ui-overlay ${showUI ? 'visible' : 'hidden'}`} style={{ pointerEvents: showUI ? 'auto' : 'none' }}>

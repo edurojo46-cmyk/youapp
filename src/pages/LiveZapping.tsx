@@ -212,16 +212,34 @@ export default function LiveZapping() {
         `)
         .limit(20);
 
-      const userFormatted = (data || []).map((ch: any) => ({
-        ...ch,
-        viewerCount: Math.floor(Math.random() * 800) + 120,
-        videoUrl: ch.programming && ch.programming[0] && ch.programming[0].videos
-          ? (ch.programming[0].videos.provider === 'youtube'
-              ? `https://www.youtube.com/embed/${ch.programming[0].videos.id.replace('yt-', '')}`
-              : `https://www.youtube.com/embed/${ch.programming[0].videos.id}`)
-          : null,
-        currentVideoTitle: ch.programming?.[0]?.videos?.title || 'Transmisión en vivo 24/7'
-      })).filter((ch: any) => ch.videoUrl !== null);
+      const userFormatted = (data || []).map((ch: any) => {
+        const progs = ch.programming || [];
+        if (progs.length === 0) return null;
+
+        // Calcular qué video de la programación del canal está al aire en este segundo UTC
+        const nowSec = Math.floor(Date.now() / 1000);
+        const defaultDur = 300; // 5 minutos si no especifica
+        const totalDuration = progs.length * defaultDur;
+        const cycleSec = nowSec % totalDuration;
+        const activeProgIdx = Math.floor(cycleSec / defaultDur) % progs.length;
+        const offsetSec = cycleSec % defaultDur;
+
+        const currentProg = progs[activeProgIdx] || progs[0];
+        const video = currentProg?.videos;
+        if (!video) return null;
+
+        const rawId = (video.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '');
+
+        return {
+          ...ch,
+          viewerCount: Math.floor(Math.random() * 800) + 120,
+          videoUrl: `https://www.youtube.com/embed/${rawId}`,
+          currentVideoTitle: video.title || ch.name || 'Transmisión en vivo 24/7',
+          initialOffset: offsetSec,
+          programmingList: progs
+        };
+      }).filter((ch: any) => ch !== null && ch.videoUrl !== null);
+
 
       // Cargar también los canales 24/7 oficiales y los más vistos
       const real24Live = await fetchReal24_7LiveStreams('live 24/7 stream radio');

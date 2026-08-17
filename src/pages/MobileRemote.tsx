@@ -34,6 +34,8 @@ export default function MobileRemote() {
   const [lastAction, setLastAction] = useState<string>('Listo');
   const [chatMessage, setChatMessage] = useState('');
   const [selectedMood, setSelectedMood] = useState('all');
+  const [syncedChannel, setSyncedChannel] = useState<any>(null);
+  const [showMirrorPlayer, setShowMirrorPlayer] = useState(false);
 
   useEffect(() => {
     if (!activeSessionId) return;
@@ -43,11 +45,18 @@ export default function MobileRemote() {
     setIsConnected(true);
     bridgeRef.current = bridge;
 
+    bridge.onAction((action, payload) => {
+      if (action === 'SYNC_STATE' && payload?.channel) {
+        setSyncedChannel(payload.channel);
+        if (payload.moodId) setSelectedMood(payload.moodId);
+      }
+    });
 
     return () => {
       bridge.destroy();
     };
   }, [activeSessionId]);
+
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();

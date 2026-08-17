@@ -106,14 +106,24 @@ export default function LiveZapping() {
   }, [filteredChannels.length]);
 
 
+  const bridgeRef = useRef<RemoteBridge | null>(null);
+
   // Escuchar órdenes del Control Remoto Móvil en Tiempo Real mediante RemoteBridge
   useEffect(() => {
     const bridge = new RemoteBridge(sessionId, 'tv');
+    bridgeRef.current = bridge;
 
     bridge.onConnected(() => {
-
       setIsPhoneConnected(true);
       triggerFloatingEmoji('📱');
+      // Enviar estado actual al celular que se acaba de conectar
+      if (currentChannel) {
+        bridge.sendAction('SYNC_STATE', {
+          activeIndex,
+          channel: currentChannel,
+          moodId: selectedMood
+        });
+      }
     });
 
     bridge.onAction((action, payload) => {
@@ -149,13 +159,24 @@ export default function LiveZapping() {
       } else if (action === 'SEND_EMOJI') {
         triggerFloatingEmoji(payload?.emoji || '🔥');
       }
-
     });
 
     return () => {
       bridge.destroy();
     };
-  }, [sessionId, filteredChannels]);
+  }, [sessionId, filteredChannels, activeIndex, currentChannel, selectedMood]);
+
+  // Transmitir cambio de canal en milisegundos a todos los celulares conectados
+  useEffect(() => {
+    if (bridgeRef.current && isPhoneConnected && currentChannel) {
+      bridgeRef.current.sendAction('SYNC_STATE', {
+        activeIndex,
+        channel: currentChannel,
+        moodId: selectedMood
+      });
+    }
+  }, [activeIndex, currentChannel, selectedMood, isPhoneConnected]);
+
 
   const triggerFloatingEmoji = (emoji: string) => {
 

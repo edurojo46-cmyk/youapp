@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 import { 
   Power, Volume2, VolumeX, Tv, Moon, Grid, Image, 
-  Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check, Cast
+  Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check, Cast, ChevronLeft
 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
@@ -23,6 +23,7 @@ const MOODS = [
 ];
 
 export default function MobileRemote() {
+  const navigate = useNavigate();
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
   const [activeSessionId, setActiveSessionId] = useState<string | null>(routeSessionId || null);
   const [pinInput, setPinInput] = useState('');
@@ -72,6 +73,9 @@ export default function MobileRemote() {
       <div className="mobile-remote-viewport pin-login-screen">
         <header className="remote-header">
           <div className="brand">
+            <button className="remote-back-btn" onClick={() => navigate('/live')} title="Volver a la App">
+              <ChevronLeft size={22} />
+            </button>
             <Tv size={20} className="text-accent" />
             <span className="brand-name">YOUAPP REMOTE</span>
           </div>
@@ -111,9 +115,16 @@ export default function MobileRemote() {
 
   return (
     <div className="mobile-remote-viewport">
-      {/* Encabezado del Control */}
+      {/* Encabezado del Control con Flecha de Volver */}
       <header className="remote-header">
         <div className="brand">
+          <button 
+            className="remote-back-btn" 
+            onClick={() => setActiveSessionId(null)} 
+            title="Cambiar de TV / Desconectar"
+          >
+            <ChevronLeft size={22} />
+          </button>
           <Tv size={18} className="text-accent" />
           <span className="brand-name">YOUAPP REMOTE</span>
         </div>
@@ -310,6 +321,25 @@ export default function MobileRemote() {
           display: flex;
           justify-content: space-between;
           align-items: center;
+        }
+
+        .remote-back-btn {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: white;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s, transform 0.1s;
+        }
+
+        .remote-back-btn:active {
+          transform: scale(0.9);
+          background: rgba(99, 102, 241, 0.4);
         }
 
         .brand {

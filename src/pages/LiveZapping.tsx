@@ -61,8 +61,20 @@ export default function LiveZapping() {
   const [showFullscreenFeedback, setShowFullscreenFeedback] = useState(false);
   const lastTapRef = useRef<number>(0);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement) {
+    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
       const elem = document.documentElement;
       if (elem.requestFullscreen) {
         elem.requestFullscreen().catch(() => {});
@@ -86,16 +98,18 @@ export default function LiveZapping() {
 
   const handleScreenTouchOrClick = (e: React.MouseEvent | React.TouchEvent) => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 320; // 320ms
+    const DOUBLE_TAP_DELAY = 300; // 300ms
 
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
       // Doble toque detectado
       toggleFullscreen();
+      lastTapRef.current = 0;
     } else {
+      lastTapRef.current = now;
       triggerOSD();
     }
-    lastTapRef.current = now;
   };
+
 
 
 
@@ -407,15 +421,22 @@ export default function LiveZapping() {
 
       {/* Reproductor de Video Fullscreen */}
       {currentChannel.videoUrl ? (
-        <iframe
-          key={`${currentChannel.id}_${activeIndex}`}
-          src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1`}
-          title={currentChannel.name}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-          className={`zapping-iframe ${isFullscreen ? 'giant-mode' : ''}`}
-        />
+        <div className="video-player-wrapper">
+          <iframe
+            key={`${currentChannel.id}_${activeIndex}`}
+            src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1`}
+            title={currentChannel.name}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+            allowFullScreen
+            className={`zapping-iframe ${isFullscreen ? 'giant-mode' : ''}`}
+          />
+          {/* Capa táctil transparente para capturar doble toque sobre el video */}
+          <div 
+            className="video-touch-overlay" 
+            onClick={handleScreenTouchOrClick}
+          />
+        </div>
       ) : (
         <div className="no-signal-screen">
           <Radio size={48} className="text-accent" />
@@ -423,7 +444,6 @@ export default function LiveZapping() {
           <p>Señal fuera de aire por el momento.</p>
         </div>
       )}
-
 
       {/* Botón de Sonido Flotante */}
       {isMuted && (
@@ -457,6 +477,14 @@ export default function LiveZapping() {
 
           <div className="quick-actions">
             <button 
+              className="icon-action-btn fullscreen-btn-top" 
+              onClick={toggleFullscreen} 
+              title={isFullscreen ? "Salir de Pantalla Gigante" : "Pantalla Gigante (Doble Toque)"}
+              style={{ background: isFullscreen ? '#6366f1' : 'rgba(255, 255, 255, 0.1)', color: 'white' }}
+            >
+              {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+            </button>
+            <button 
               className="icon-action-btn" 
               onClick={() => setShowRemoteModal(true)} 
               title="Control Remoto por Celular (QR)"
@@ -481,13 +509,6 @@ export default function LiveZapping() {
             </button>
             <button 
               className="icon-action-btn" 
-              onClick={() => setShowRemoteModal(true)} 
-              title="Conectar Control Remoto Móvil (PIN / QR)"
-            >
-              <Smartphone size={18} color={isPhoneConnected ? '#4ade80' : 'white'} />
-            </button>
-            <button 
-              className="icon-action-btn" 
               onClick={() => setShowInfoModal(true)} 
               title="Ficha & Resumen IA (I)"
             >
@@ -507,6 +528,7 @@ export default function LiveZapping() {
             >
               <Layers size={18} />
             </button>
+
             <button 
               className="icon-action-btn" 
               onClick={() => setShowEPGModal(true)} 
@@ -726,6 +748,24 @@ export default function LiveZapping() {
           letter-spacing: 1px;
         }
 
+        .video-player-wrapper {
+          position: absolute;
+          inset: 0;
+          width: 100vw;
+          height: 100vh;
+          overflow: hidden;
+          background: #000;
+        }
+
+        .video-touch-overlay {
+          position: absolute;
+          inset: 0;
+          z-index: 15;
+          cursor: pointer;
+          background: transparent;
+          touch-action: manipulation;
+        }
+
         .zapping-iframe {
           width: 100vw;
           height: 100vh;
@@ -733,6 +773,7 @@ export default function LiveZapping() {
           pointer-events: auto;
           transition: transform 0.3s ease;
         }
+
 
         .zapping-iframe.giant-mode {
           width: 100vw;

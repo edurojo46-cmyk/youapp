@@ -134,7 +134,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   }, [isMuted]);
 
   // ==========================================
-  // MOTOR YOUTUBE (Fallback)
+  // MOTOR YOUTUBE (Bindeo correcto de API sobre Iframe)
   // ==========================================
   useEffect(() => {
     if (isDirect || !ytId) return;
@@ -148,22 +148,16 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       }
       if (!isSubscribed) return;
 
-      const liveSec = getExactUtcLiveSecond(600);
+      const liveSec = targetOffsetSeconds || getExactUtcLiveSecond(600);
 
       try {
         ytPlayerRef.current = new window.YT.Player(containerId, {
-          videoId: ytId,
-          playerVars: {
-            autoplay: 1,
-            mute: isMuted ? 1 : 0,
-            controls: 1,
-            start: liveSec,
-            playsinline: 1
-          },
           events: {
             onReady: (e: any) => {
               if (!isSubscribed) return;
-              e.target.seekTo(liveSec, true);
+              if (liveSec > 0) e.target.seekTo(liveSec, true);
+              if (isMuted) e.target.mute();
+              else e.target.unMute();
               e.target.playVideo();
             },
             onStateChange: (e: any) => {
@@ -171,7 +165,9 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
             }
           }
         });
-      } catch (err) {}
+      } catch (err) {
+        console.error("Error binding YT Player:", err);
+      }
     };
 
     if (!window.YT) {
@@ -185,7 +181,17 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     return () => {
       isSubscribed = false;
     };
-  }, [ytId, isDirect]);
+  }, [ytId, isDirect, targetOffsetSeconds]);
+
+  // Sincronizar Mute para YouTube programáticamente
+  useEffect(() => {
+    if (ytPlayerRef.current && typeof ytPlayerRef.current.mute === 'function') {
+      try {
+        if (isMuted) ytPlayerRef.current.mute();
+        else ytPlayerRef.current.unMute();
+      } catch (e) {}
+    }
+  }, [isMuted]);
 
   // Desbloqueo táctil de usuario (Mobile Gesture Unlock)
   const handleUserUnlock = () => {
@@ -202,7 +208,9 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     } else if (ytPlayerRef.current) {
       try {
         ytPlayerRef.current.unMute();
-        ytPlayerRef.current.seekTo(getExactUtcLiveSecond(600), true);
+        if (targetOffsetSeconds > 0) {
+          ytPlayerRef.current.seekTo(targetOffsetSeconds, true);
+        }
         ytPlayerRef.current.playVideo();
       } catch (e) {}
     }
@@ -240,10 +248,11 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           onClick={handleUserUnlock}
         />
       ) : (
-        /* 2. Reproductor YouTube Oficial y Fiable (Iframe directo que jamás queda negro) */
+        /* 2. Reproductor YouTube Oficial y Fiable (Iframe directo bindeado) */
         <iframe
-          key={`${ytId}_${isMuted ? 1 : 0}`}
-          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&playsinline=1`}
+          id={containerId}
+          key={`${ytId}_${targetOffsetSeconds}`}
+          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&playsinline=1${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`}
           title={channelName}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -251,6 +260,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           className="synced-tv-iframe"
         />
       )}
+
 
       {/* Indicador de Transmisión Sincronizada en Vivo 24/7 */}
       <button 

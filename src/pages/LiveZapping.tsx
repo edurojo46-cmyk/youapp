@@ -97,11 +97,13 @@ export default function LiveZapping() {
 
   // Sincronización Global 24/7 (Epoch UTC)
   const syncOffset = useMemo(() => {
+    if (currentChannel?.isLive) return 0; // Transmisiones en vivo van en directo natural
     const cycleDuration = currentChannel?.durationSeconds || 600;
     const epochSec = Math.floor(Date.now() / 1000);
     const hash = (currentChannel?.id || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
     return (epochSec + hash) % cycleDuration;
-  }, [currentChannel?.id, currentChannel?.durationSeconds]);
+  }, [currentChannel?.id, currentChannel?.durationSeconds, currentChannel?.isLive]);
+
 
   const handleVideoEnded = useCallback(() => {
     setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));

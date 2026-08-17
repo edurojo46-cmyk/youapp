@@ -169,37 +169,37 @@ export const fetchPlaylistVideos = async (playlistId: string) => {
   }
 };
 
-// Canales de Transmisión Sincronizada 24/7 Nativa (HTML5 Video & HLS sin restricciones de YouTube)
+// Canales de Transmisión Sincronizada 24/7 Nativa (HLS & MP4 de alta disponibilidad)
 export const VERIFIED_24_7_LIVE_CHANNELS = [
   {
     id: 'live-cinema-blender',
     name: 'Cine & Animación 4K 24/7',
     category: 'Cine & Animación',
     viewerCount: 28400,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    currentVideoTitle: 'Big Buck Bunny - Película 4K 60fps',
+    videoUrl: 'https://playertest.longtailvideo.com/adaptive/big_buck_bunny/big_buck_bunny.m3u8',
+    currentVideoTitle: 'Big Buck Bunny - Película 4K HLS',
     thumbnail: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&auto=format&fit=crop&q=60',
     author: 'Blender Foundation',
-    durationSeconds: 596
+    durationSeconds: 600
   },
   {
     id: 'live-nature-escape',
     name: 'Naturaleza & Paisajes 24/7',
     category: 'Relax & Naturaleza',
     viewerCount: 34100,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    currentVideoTitle: 'Escapes Naturales - Paisajes del Mundo en 4K',
+    videoUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+    currentVideoTitle: 'Escapes Naturales - Sintel HLS',
     thumbnail: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=60',
     author: 'Earth TV',
-    durationSeconds: 300
+    durationSeconds: 900
   },
   {
     id: 'live-scifi-cosmos',
     name: 'Cosmos & Sci-Fi 24/7',
     category: 'Ciencia & Futuro',
     viewerCount: 19800,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
-    currentVideoTitle: 'Tears of Steel - Ciencia Ficción & Cosmos 4K',
+    videoUrl: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
+    currentVideoTitle: 'Tears of Steel - Ciencia Ficción & Cosmos HLS',
     thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=60',
     author: 'Sci-Fi Cosmos',
     durationSeconds: 734
@@ -209,24 +209,25 @@ export const VERIFIED_24_7_LIVE_CHANNELS = [
     name: 'Acción Extrema & Deportes 24/7',
     category: 'Deportes Extremos',
     viewerCount: 16500,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    currentVideoTitle: 'Adrenalina Pura - Deportes Extremos del Mundo',
+    videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+    currentVideoTitle: 'Adrenalina Pura - Oceans MP4',
     thumbnail: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=800&auto=format&fit=crop&q=60',
     author: 'Action World',
-    durationSeconds: 300
+    durationSeconds: 46
   },
   {
     id: 'live-fantasy-adventure',
     name: 'Fantasía & Aventura 24/7',
     category: 'Cine & Aventura',
     viewerCount: 21900,
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
-    currentVideoTitle: 'Sintel - La Búsqueda del Dragón en 4K',
+    videoUrl: 'https://media.w3.org/2010/05/sintel/trailer_hd.mp4',
+    currentVideoTitle: 'Sintel - Trailer HD MP4',
     thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=60',
     author: 'Open Movies',
-    durationSeconds: 888
+    durationSeconds: 52
   }
 ];
+
 
 
 

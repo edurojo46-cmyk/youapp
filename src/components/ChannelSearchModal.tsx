@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { Search, X, Tv, Sparkles, Star, Play, Radio } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, X, Tv, Sparkles, Star, Play, Radio, Loader2, CheckCircle2 } from 'lucide-react';
+import { searchRealYouTubeChannels } from '../lib/youtube';
 
 interface Channel {
   id: string;
@@ -9,55 +10,77 @@ interface Channel {
   avatarUrl?: string;
 }
 
+interface RealYTChannel {
+  id: string;
+  channelId: string;
+  name: string;
+  description: string;
+  avatarUrl: string;
+  customUrl?: string;
+}
+
 interface ChannelSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
   channels: Channel[];
   onSelectChannel: (index: number) => void;
-  onSearchYouTube?: (query: string) => void;
+  onSelectRealYouTubeChannel?: (channelId: string, channelTitle: string) => void;
 }
 
-const QUICK_TAGS = ['🔥 En Vivo', '🧘 Relax', '☕ Lo-Fi', '🧠 Ciencia', '🎮 Gaming', '⚽ Deportes', '🍿 Películas', '🎙️ Podcasts', '🍳 Cocina'];
+const POPULAR_CHANNELS = [
+  'MrBeast', 'Ibai', 'Lofi Girl', 'Platzi', 'Red Bull', 
+  'ElRubius', 'AuronPlay', 'Luisito Comunica', 'TEDx', 'DW Español'
+];
 
 export default function ChannelSearchModal({
   isOpen,
   onClose,
   channels,
   onSelectChannel,
-  onSearchYouTube
+  onSelectRealYouTubeChannel
 }: ChannelSearchModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [ytChannels, setYtChannels] = useState<RealYTChannel[]>([]);
+  const [isSearchingYT, setIsSearchingYT] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'youtube' | 'grilla'>('all');
 
-  const filtered = useMemo(() => {
-    let result = channels;
-    if (selectedTag) {
-      const cleanTag = selectedTag.replace(/^[^\s]+\s/, '').toLowerCase();
-      result = result.filter(ch => 
-        (ch.category && ch.category.toLowerCase().includes(cleanTag)) ||
-        (ch.name && ch.name.toLowerCase().includes(cleanTag)) ||
-        (ch.currentVideoTitle && ch.currentVideoTitle.toLowerCase().includes(cleanTag))
-      );
+  // Búsqueda en tiempo real en YouTube con debounce
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setYtChannels([]);
+      setIsSearchingYT(false);
+      return;
     }
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(ch =>
-        ch.name.toLowerCase().includes(term) ||
-        (ch.category && ch.category.toLowerCase().includes(term)) ||
-        (ch.currentVideoTitle && ch.currentVideoTitle.toLowerCase().includes(term))
-      );
-    }
-    return result;
-  }, [channels, searchTerm, selectedTag]);
+
+    const timer = setTimeout(async () => {
+      setIsSearchingYT(true);
+      try {
+        const results = await searchRealYouTubeChannels(searchTerm.trim());
+        setYtChannels(results);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIsSearchingYT(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const localFiltered = useMemo(() => {
+    if (!searchTerm.trim()) return channels;
+    const term = searchTerm.toLowerCase();
+    return channels.filter(ch =>
+      ch.name.toLowerCase().includes(term) ||
+      (ch.category && ch.category.toLowerCase().includes(term)) ||
+      (ch.currentVideoTitle && ch.currentVideoTitle.toLowerCase().includes(term))
+    );
+  }, [channels, searchTerm]);
 
   if (!isOpen) return null;
 
-  const handleCustomYouTubeSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchTerm.trim() && onSearchYouTube) {
-      onSearchYouTube(searchTerm.trim());
-      onClose();
-    }
+  const handleQuickChannelClick = (channelName: string) => {
+    setSearchTerm(channelName);
   };
 
   return (
@@ -70,12 +93,9 @@ export default function ChannelSearchModal({
             <input
               type="text"
               className="search-input"
-              placeholder="Buscar canal, programa, tema o creador..."
+              placeholder="Buscar canal de YouTube real (ej. Ibai, MrBeast, Platzi, Lofi Girl)..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                if (selectedTag) setSelectedTag('');
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus
             />
             {searchTerm && (
@@ -89,86 +109,161 @@ export default function ChannelSearchModal({
           </button>
         </div>
 
-        {/* Chips de Búsqueda Rápida */}
+        {/* Canales Populares Sugeridos */}
         <div className="quick-tags-bar">
-          {QUICK_TAGS.map(tag => (
+          <span className="quick-tag-label">Popular:</span>
+          {POPULAR_CHANNELS.map(name => (
             <button
-              key={tag}
-              className={`tag-chip ${selectedTag === tag ? 'active' : ''}`}
-              onClick={() => {
-                if (selectedTag === tag) {
-                  setSelectedTag('');
-                } else {
-                  setSelectedTag(tag);
-                  setSearchTerm('');
-                }
-              }}
+              key={name}
+              className={`tag-chip ${searchTerm === name ? 'active' : ''}`}
+              onClick={() => handleQuickChannelClick(name)}
             >
-              {tag}
+              {name}
             </button>
           ))}
         </div>
 
-        {/* Lista de Canales Encontrados */}
+        {/* Pestañas si hay resultados */}
+        <div className="search-tabs-row">
+          <button 
+            className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            Todos los Resultados
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'youtube' ? 'active' : ''}`}
+            onClick={() => setActiveTab('youtube')}
+          >
+            Canales de YouTube {ytChannels.length > 0 && `(${ytChannels.length})`}
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'grilla' ? 'active' : ''}`}
+            onClick={() => setActiveTab('grilla')}
+          >
+            Grilla Actual ({localFiltered.length})
+          </button>
+        </div>
+
+        {/* Lista de Resultados */}
         <div className="search-results-list">
-          {filtered.length > 0 ? (
-            filtered.map((channel) => {
-              const originalIndex = channels.findIndex(c => c.id === channel.id);
-              return (
+          {/* Indicador de Carga */}
+          {isSearchingYT && (
+            <div className="search-loading-row">
+              <Loader2 size={20} className="animate-spin text-accent" />
+              <span>Buscando canales oficiales en YouTube...</span>
+            </div>
+          )}
+
+          {/* 1. SECCIÓN CANALES REALES DE YOUTUBE */}
+          {(activeTab === 'all' || activeTab === 'youtube') && ytChannels.length > 0 && (
+            <div className="results-group">
+              <div className="group-title">
+                <Radio size={16} className="text-accent" />
+                <span>CANALES OFICIALES DE YOUTUBE (TRANSMISIÓN 24/7)</span>
+              </div>
+
+              {ytChannels.map(yt => (
                 <div
-                  key={channel.id}
-                  className="search-channel-card"
+                  key={yt.id}
+                  className="search-channel-card yt-real-card"
                   onClick={() => {
-                    if (originalIndex !== -1) {
-                      onSelectChannel(originalIndex);
+                    if (onSelectRealYouTubeChannel) {
+                      onSelectRealYouTubeChannel(yt.channelId, yt.name);
                     }
                     onClose();
                   }}
                 >
-                  <div className="channel-ch-num">
-                    CH {String((originalIndex !== -1 ? originalIndex : 0) + 1).padStart(2, '0')}
-                  </div>
-
-                  <div className="channel-avatar-box">
-                    {channel.avatarUrl ? (
-                      <img src={channel.avatarUrl} alt={channel.name} className="channel-avatar" />
-                    ) : (
-                      <div className="channel-avatar-placeholder">
-                        <Tv size={18} />
-                      </div>
-                    )}
+                  <div className="channel-avatar-box yt-avatar">
+                    <img src={yt.avatarUrl} alt={yt.name} className="channel-avatar" />
                   </div>
 
                   <div className="channel-info">
                     <div className="channel-title-row">
-                      <h4>{channel.name}</h4>
-                      <span className="channel-badge">{channel.category || 'General'}</span>
+                      <h4>{yt.name}</h4>
+                      <CheckCircle2 size={14} className="verified-badge" />
+                      <span className="yt-badge">CANAL YOUTUBE</span>
                     </div>
-                    {channel.currentVideoTitle && (
-                      <p 
-                        className="channel-program-name"
-                        dangerouslySetInnerHTML={{ __html: channel.currentVideoTitle }}
-                      />
-                    )}
+                    <p className="channel-program-name">
+                      {yt.description ? yt.description.slice(0, 80) + '...' : 'Toca para sintonizar y ver sus videos de forma continua'}
+                    </p>
                   </div>
 
-                  <button className="zap-to-btn" title="Sintonizar canal">
+                  <button className="zap-to-btn" title={`Sintonizar ${yt.name}`}>
                     <Play size={16} fill="white" />
                   </button>
                 </div>
-              );
-            })
-          ) : (
+              ))}
+            </div>
+          )}
+
+          {/* 2. SECCIÓN CANALES DE LA GRILLA LOCAL */}
+          {(activeTab === 'all' || activeTab === 'grilla') && (
+            <div className="results-group">
+              <div className="group-title">
+                <Tv size={16} />
+                <span>CANALES DE LA GRILLA EN VIVO ({localFiltered.length})</span>
+              </div>
+
+              {localFiltered.length > 0 ? (
+                localFiltered.map(channel => {
+                  const originalIndex = channels.findIndex(c => c.id === channel.id);
+                  return (
+                    <div
+                      key={channel.id}
+                      className="search-channel-card"
+                      onClick={() => {
+                        if (originalIndex !== -1) {
+                          onSelectChannel(originalIndex);
+                        }
+                        onClose();
+                      }}
+                    >
+                      <div className="channel-ch-num">
+                        CH {String((originalIndex !== -1 ? originalIndex : 0) + 1).padStart(2, '0')}
+                      </div>
+
+                      <div className="channel-avatar-box">
+                        {channel.avatarUrl ? (
+                          <img src={channel.avatarUrl} alt={channel.name} className="channel-avatar" />
+                        ) : (
+                          <div className="channel-avatar-placeholder">
+                            <Tv size={18} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="channel-info">
+                        <div className="channel-title-row">
+                          <h4>{channel.name}</h4>
+                          <span className="channel-badge">{channel.category || 'General'}</span>
+                        </div>
+                        {channel.currentVideoTitle && (
+                          <p 
+                            className="channel-program-name"
+                            dangerouslySetInnerHTML={{ __html: channel.currentVideoTitle }}
+                          />
+                        )}
+                      </div>
+
+                      <button className="zap-to-btn" title="Sintonizar canal">
+                        <Play size={16} fill="white" />
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty-state-text">No hay canales de la grilla que coincidan.</div>
+              )}
+            </div>
+          )}
+
+          {/* Sin resultados */}
+          {!isSearchingYT && ytChannels.length === 0 && localFiltered.length === 0 && (
             <div className="no-results-box">
               <Sparkles size={40} className="no-results-icon" />
-              <h3>No se encontraron canales locales</h3>
-              <p>¿Quieres buscar transmisiones en vivo de "{searchTerm}" directamente en YouTube?</p>
-              {onSearchYouTube && (
-                <button className="btn btn-primary search-yt-btn" onClick={handleCustomYouTubeSearch}>
-                  <Radio size={16} />
-                  <span>Buscar en Vivo en YouTube</span>
-                </button>
-              )}
+              <h3>No se encontraron canales</h3>
+              <p>Prueba buscando con el nombre de un creador como "MrBeast", "Ibai", "Platzi" o "Red Bull".</p>
             </div>
           )}
         </div>
@@ -179,7 +274,7 @@ export default function ChannelSearchModal({
           position: fixed;
           inset: 0;
           z-index: 9999;
-          background: rgba(0, 0, 0, 0.8);
+          background: rgba(0, 0, 0, 0.85);
           backdrop-filter: blur(16px);
           display: flex;
           align-items: center;
@@ -190,14 +285,14 @@ export default function ChannelSearchModal({
 
         .search-modal-container {
           width: 100%;
-          max-width: 680px;
-          max-height: 85vh;
-          background: #0f111a;
+          max-width: 720px;
+          max-height: 88vh;
+          background: #0d1017;
           border: 1px solid rgba(255, 255, 255, 0.15);
           border-radius: 24px;
           display: flex;
           flex-direction: column;
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95);
           overflow: hidden;
         }
 
@@ -215,13 +310,13 @@ export default function ChannelSearchModal({
           align-items: center;
           gap: 10px;
           background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(99, 102, 241, 0.3);
           border-radius: 14px;
-          padding: 10px 16px;
+          padding: 12px 16px;
         }
 
         .search-icon {
-          color: #a5b4fc;
+          color: #818cf8;
           flex-shrink: 0;
         }
 
@@ -230,7 +325,8 @@ export default function ChannelSearchModal({
           background: transparent;
           border: none;
           color: white;
-          font-size: 1rem;
+          font-size: 1.05rem;
+          font-weight: 500;
           outline: none;
         }
 
@@ -258,24 +354,34 @@ export default function ChannelSearchModal({
 
         .quick-tags-bar {
           display: flex;
+          align-items: center;
           gap: 8px;
-          padding: 12px 20px;
+          padding: 10px 20px;
           overflow-x: auto;
           scrollbar-width: none;
           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.02);
         }
 
         .quick-tags-bar::-webkit-scrollbar {
           display: none;
         }
 
+        .quick-tag-label {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: rgba(255, 255, 255, 0.4);
+          text-transform: uppercase;
+          flex-shrink: 0;
+        }
+
         .tag-chip {
-          background: rgba(255, 255, 255, 0.05);
+          background: rgba(255, 255, 255, 0.06);
           border: 1px solid rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.8);
-          padding: 6px 14px;
-          border-radius: 20px;
-          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.85);
+          padding: 5px 12px;
+          border-radius: 16px;
+          font-size: 0.75rem;
           font-weight: 600;
           white-space: nowrap;
           cursor: pointer;
@@ -283,7 +389,8 @@ export default function ChannelSearchModal({
         }
 
         .tag-chip:hover {
-          background: rgba(255, 255, 255, 0.12);
+          background: rgba(99, 102, 241, 0.3);
+          border-color: #6366f1;
           color: white;
         }
 
@@ -291,17 +398,68 @@ export default function ChannelSearchModal({
           background: #6366f1;
           border-color: #6366f1;
           color: white;
-          box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+        }
+
+        .search-tabs-row {
+          display: flex;
+          gap: 12px;
+          padding: 8px 20px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tab-btn {
+          background: transparent;
+          border: none;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 0.8rem;
+          font-weight: 700;
+          padding: 6px 0;
+          cursor: pointer;
+          border-bottom: 2px solid transparent;
+          transition: color 0.2s, border-color 0.2s;
+        }
+
+        .tab-btn.active {
+          color: #a5b4fc;
+          border-bottom-color: #6366f1;
         }
 
         .search-results-list {
           flex: 1;
           overflow-y: auto;
-          padding: 14px 20px;
+          padding: 16px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          max-height: 60vh;
+        }
+
+        .search-loading-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #a5b4fc;
+          font-size: 0.85rem;
+          padding: 10px;
+          background: rgba(99, 102, 241, 0.1);
+          border-radius: 12px;
+        }
+
+        .results-group {
           display: flex;
           flex-direction: column;
           gap: 10px;
-          max-height: 55vh;
+        }
+
+        .group-title {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.75rem;
+          font-weight: 800;
+          color: rgba(255, 255, 255, 0.5);
+          letter-spacing: 0.5px;
+          margin-bottom: 2px;
         }
 
         .search-channel-card {
@@ -310,15 +468,20 @@ export default function ChannelSearchModal({
           gap: 14px;
           padding: 12px 16px;
           background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.07);
           border-radius: 16px;
           cursor: pointer;
           transition: transform 0.15s, background 0.15s, border-color 0.15s;
         }
 
+        .yt-real-card {
+          background: rgba(99, 102, 241, 0.06);
+          border-color: rgba(99, 102, 241, 0.2);
+        }
+
         .search-channel-card:hover {
-          background: rgba(99, 102, 241, 0.12);
-          border-color: rgba(99, 102, 241, 0.35);
+          background: rgba(99, 102, 241, 0.18);
+          border-color: rgba(99, 102, 241, 0.5);
           transform: translateY(-2px);
         }
 
@@ -334,8 +497,8 @@ export default function ChannelSearchModal({
         }
 
         .channel-avatar-box {
-          width: 44px;
-          height: 44px;
+          width: 48px;
+          height: 48px;
           border-radius: 50%;
           overflow: hidden;
           background: rgba(255, 255, 255, 0.08);
@@ -343,6 +506,7 @@ export default function ChannelSearchModal({
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .channel-avatar {
@@ -363,7 +527,7 @@ export default function ChannelSearchModal({
         .channel-title-row {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           margin-bottom: 3px;
         }
 
@@ -375,6 +539,21 @@ export default function ChannelSearchModal({
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+        }
+
+        .verified-badge {
+          color: #38bdf8;
+          flex-shrink: 0;
+        }
+
+        .yt-badge {
+          font-size: 0.65rem;
+          font-weight: 800;
+          background: #ef4444;
+          color: white;
+          padding: 2px 6px;
+          border-radius: 6px;
+          letter-spacing: 0.5px;
         }
 
         .channel-badge {
@@ -397,8 +576,8 @@ export default function ChannelSearchModal({
         }
 
         .zap-to-btn {
-          width: 36px;
-          height: 36px;
+          width: 38px;
+          height: 38px;
           border-radius: 50%;
           background: #6366f1;
           border: none;
@@ -407,18 +586,20 @@ export default function ChannelSearchModal({
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
-          opacity: 0.8;
+          opacity: 0.9;
           transition: opacity 0.2s, transform 0.15s;
+          box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
         }
 
         .search-channel-card:hover .zap-to-btn {
           opacity: 1;
           transform: scale(1.1);
+          background: #4f46e5;
         }
 
         .no-results-box {
           text-align: center;
-          padding: 30px 20px;
+          padding: 40px 20px;
           color: rgba(255, 255, 255, 0.6);
         }
 
@@ -428,19 +609,15 @@ export default function ChannelSearchModal({
           animation: pulse 2s infinite;
         }
 
-        .search-yt-btn {
-          margin-top: 15px;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 20px;
-          border-radius: 20px;
-          font-weight: 700;
+        .empty-state-text {
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.4);
+          padding: 10px;
         }
 
         @media (max-width: 600px) {
           .search-modal-container {
-            max-height: 92vh;
+            max-height: 94vh;
             border-radius: 20px;
           }
           .search-header {
@@ -453,8 +630,8 @@ export default function ChannelSearchModal({
             padding: 10px 12px;
           }
           .channel-avatar-box {
-            width: 38px;
-            height: 38px;
+            width: 42px;
+            height: 42px;
           }
         }
       `}</style>

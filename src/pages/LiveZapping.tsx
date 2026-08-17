@@ -6,8 +6,9 @@ import {
   Image, Info, EyeOff, Layers, Search
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { fetchTopViewedVideosByMood } from '../lib/youtube';
+import { fetchTopViewedVideosByMood, fetchChannelTVVideos } from '../lib/youtube';
 import SleepTimer from '../components/SleepTimer';
+
 import EPGGuide from '../components/EPGGuide';
 import AmbientMode from '../components/AmbientMode';
 import ProgramInfoModal from '../components/ProgramInfoModal';
@@ -280,6 +281,23 @@ export default function LiveZapping() {
     }
   };
 
+  const handleSelectRealYouTubeChannel = async (channelId: string, channelTitle: string) => {
+    setIsMoodLoading(true);
+    try {
+      const videos = await fetchChannelTVVideos(channelId, channelTitle);
+      if (videos.length > 0) {
+        setFilteredChannels(videos);
+        setActiveIndex(0);
+        triggerOSD();
+      }
+    } catch (err) {
+      console.error("Error loading real YouTube channel station:", err);
+    } finally {
+      setIsMoodLoading(false);
+    }
+  };
+
+
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -542,8 +560,9 @@ export default function LiveZapping() {
           setActiveIndex(idx);
           triggerOSD();
         }}
-        onSearchYouTube={handleCustomYouTubeSearch}
+        onSelectRealYouTubeChannel={handleSelectRealYouTubeChannel}
       />
+
 
       <RemoteConnectModal
         sessionId={sessionId}

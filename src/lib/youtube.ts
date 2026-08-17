@@ -170,6 +170,7 @@ export const fetchPlaylistVideos = async (playlistId: string) => {
 };
 
 // Obtiene los 30 videos más vistos y reproducibles de YouTube para un estado de ánimo o temática
+
 export const fetchTopViewedVideosByMood = async (query: string, maxResults = 30) => {
   if (!YOUTUBE_API_KEY) return [];
 
@@ -213,3 +214,95 @@ export const fetchTopViewedVideosByMood = async (query: string, maxResults = 30)
     return [];
   }
 };
+
+// Busca Canales Reales de YouTube por Nombre o Creador
+export const searchRealYouTubeChannels = async (query: string) => {
+
+  if (!YOUTUBE_API_KEY || !query.trim()) return [];
+
+  const cacheKey = `youapp_yt_channels_${query.trim().toLowerCase()}`;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {}
+
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&type=channel&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`
+    );
+    const data = await response.json();
+
+    if (!data.items) return [];
+
+    const channels = data.items.map((item: any) => ({
+      id: item.id?.channelId || item.snippet?.channelId,
+      channelId: item.id?.channelId || item.snippet?.channelId,
+      name: item.snippet.title,
+      description: item.snippet.description,
+      avatarUrl: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+      customUrl: item.snippet.customUrl || `@${item.snippet.title.replace(/\s+/g, '')}`
+    }));
+
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(channels));
+    } catch (e) {}
+
+    return channels;
+  } catch (err) {
+    console.error("Error searching YouTube channels:", err);
+    return [];
+  }
+};
+
+// Genera una grilla televisiva completa (20 a 30 videos continuos) a partir de un Canal Real de YouTube
+export const fetchChannelTVVideos = async (channelId: string, channelTitle: string) => {
+  if (!YOUTUBE_API_KEY || !channelId) return [];
+
+  const cacheKey = `youapp_channel_videos_${channelId}`;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {}
+
+  try {
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=30&order=date&type=video&videoEmbeddable=true&key=${YOUTUBE_API_KEY}`
+    );
+    const data = await response.json();
+
+    if (!data.items || data.items.length === 0) {
+      // Fallback a los más vistos si por fecha está vacío
+      const fallbackResp = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=30&order=viewCount&type=video&videoEmbeddable=true&key=${YOUTUBE_API_KEY}`
+      );
+      const fallbackData = await fallbackResp.json();
+      if (!fallbackData.items) return [];
+      data.items = fallbackData.items;
+    }
+
+    const formatted = data.items
+      .filter((item: any) => item.id?.videoId)
+      .map((item: any, idx: number) => ({
+        id: `yt-ch-${channelId}-${item.id.videoId}`,
+        name: `${channelTitle} TV`,
+        category: 'Creador Oficial',
+        viewerCount: Math.floor(Math.random() * 3000) + 500,
+        videoUrl: `https://www.youtube.com/embed/${item.id.videoId}`,
+        currentVideoTitle: item.snippet.title,
+        thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+        author: channelTitle,
+        avatarUrl: item.snippet.thumbnails?.default?.url,
+        episodeIndex: idx + 1
+      }));
+
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(formatted));
+    } catch (e) {}
+
+    return formatted;
+  } catch (err) {
+    console.error("Error fetching channel TV videos:", err);
+    return [];
+  }
+};
+

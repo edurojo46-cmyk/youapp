@@ -169,59 +169,60 @@ export const fetchPlaylistVideos = async (playlistId: string) => {
   }
 };
 
-// Canales 24/7 Oficiales en Vivo Verificados de YouTube (Transmisión Real Continua)
+// Canales 24/7 Oficiales Verificados de YouTube (Transmisión Continua Permanente)
 export const VERIFIED_24_7_LIVE_CHANNELS = [
   {
-    id: 'live-lofi-girl',
+    id: 'live-nature-costarica',
+    name: 'Naturaleza & Paisajes 4K 24/7',
+    category: 'Relax 4K',
+    viewerCount: 18400,
+    videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
+    currentVideoTitle: 'Costa Rica en 4K 60fps - Naturaleza & Sonidos Relajantes',
+    thumbnail: 'https://img.youtube.com/vi/LXb3EKWsInQ/hqdefault.jpg',
+    author: 'Nature Relaxation'
+  },
+  {
+    id: 'live-lofi-beats',
     name: 'Lofi Girl 24/7 Radio',
     category: 'Focus & Música',
-    viewerCount: 28400,
-    videoUrl: 'https://www.youtube.com/embed/jfKfPfyJRdk',
-    currentVideoTitle: 'lofi hip hop radio - beats to relax/study to 🔴 EN VIVO 24/7',
-    thumbnail: 'https://img.youtube.com/vi/jfKfPfyJRdk/hqdefault.jpg',
+    viewerCount: 34200,
+    videoUrl: 'https://www.youtube.com/embed/5qap5aO4i9A',
+    currentVideoTitle: 'Lofi Hip Hop Radio - Beats para Estudiar y Trabajar 24/7',
+    thumbnail: 'https://img.youtube.com/vi/5qap5aO4i9A/hqdefault.jpg',
     author: 'Lofi Girl'
   },
   {
-    id: 'live-chillhop',
-    name: 'Chillhop Radio 24/7',
-    category: 'Relax & Chill',
-    viewerCount: 9200,
-    videoUrl: 'https://www.youtube.com/embed/5yx6BWlEVcY',
-    currentVideoTitle: 'Chillhop Radio - jazzy & lofi hip hop beats 🔴 EN VIVO 24/7',
-    thumbnail: 'https://img.youtube.com/vi/5yx6BWlEVcY/hqdefault.jpg',
-    author: 'Chillhop Music'
+    id: 'live-piano-ocean',
+    name: 'Piano & Océano Relajante 24/7',
+    category: 'Meditación & Paz',
+    viewerCount: 11500,
+    videoUrl: 'https://www.youtube.com/embed/1ZYbU82GVz4',
+    currentVideoTitle: 'Música de Piano Relajante con Olas de Mar en 4K',
+    thumbnail: 'https://img.youtube.com/vi/1ZYbU82GVz4/hqdefault.jpg',
+    author: 'Relaxing Music'
   },
   {
-    id: 'live-nasa',
-    name: 'NASA Earth & Space 24/7',
-    category: 'Ciencia & Cosmos',
-    viewerCount: 14500,
-    videoUrl: 'https://www.youtube.com/embed/21X5lGlDOfg',
-    currentVideoTitle: 'NASA Live: Earth Views from the Space Station 🔴 EN VIVO 24/7',
-    thumbnail: 'https://img.youtube.com/vi/21X5lGlDOfg/hqdefault.jpg',
-    author: 'NASA'
+    id: 'live-cosmos-nasa',
+    name: 'Cosmos & Universo 4K',
+    category: 'Ciencia & Espacio',
+    viewerCount: 15800,
+    videoUrl: 'https://www.youtube.com/embed/libKVRa07NQ',
+    currentVideoTitle: 'Viaje por el Cosmos - Documental 4K del Universo',
+    thumbnail: 'https://img.youtube.com/vi/libKVRa07NQ/hqdefault.jpg',
+    author: 'Space & Science TV'
   },
   {
-    id: 'live-france24',
-    name: 'France 24 Español 24/7',
-    category: 'Noticias & Mundo',
-    viewerCount: 18300,
-    videoUrl: 'https://www.youtube.com/embed/aY_iWw3D1Z0',
-    currentVideoTitle: 'France 24 Español - En directo las 24 horas 🔴 EN VIVO',
-    thumbnail: 'https://img.youtube.com/vi/aY_iWw3D1Z0/hqdefault.jpg',
-    author: 'FRANCE 24 Español'
-  },
-  {
-    id: 'live-nature',
-    name: 'Animal & Nature Cam 24/7',
-    category: 'Naturaleza 4K',
-    viewerCount: 6700,
-    videoUrl: 'https://www.youtube.com/embed/4xDzrJKXOOY',
-    currentVideoTitle: 'Relaxing 4K Nature & Ocean Live Stream 🔴 EN VIVO 24/7',
-    thumbnail: 'https://img.youtube.com/vi/4xDzrJKXOOY/hqdefault.jpg',
-    author: 'Nature Relaxation'
+    id: 'live-cinema-shorts',
+    name: 'Cine & Cortometrajes Premiados',
+    category: 'Cine 24/7',
+    viewerCount: 9400,
+    videoUrl: 'https://www.youtube.com/embed/9bZkp7q19f0',
+    currentVideoTitle: 'Selección Oficial Cortometrajes de Animación Mundial',
+    thumbnail: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg',
+    author: 'Cinema Shorts'
   }
 ];
+
 
 // Busca Transmisiones Reales en Vivo 24/7 activas en YouTube (eventType=live)
 export const fetchReal24_7LiveStreams = async (query: string, maxResults = 15) => {

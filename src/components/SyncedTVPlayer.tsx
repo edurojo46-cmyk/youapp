@@ -30,6 +30,38 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoId = extractVideoId(url);
+  const [liveSeconds, setLiveSeconds] = useState(Math.floor(targetOffsetSeconds));
+
+  // Reloj de emisión en vivo 24/7 en tiempo real
+  useEffect(() => {
+    setLiveSeconds(Math.floor(targetOffsetSeconds));
+    const interval = setInterval(() => {
+      setLiveSeconds(prev => (prev + 1) % 600);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [targetOffsetSeconds]);
+
+  // Función para forzar sincronización imperativa por PostMessage
+  const forceSyncToLive = () => {
+    if (iframeRef.current?.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({
+            event: 'command',
+            func: 'seekTo',
+            args: [targetOffsetSeconds, true]
+          }),
+          '*'
+        );
+      } catch (e) {}
+    }
+  };
+
+  // Enviar comando seekTo al cargar el iframe
+  const handleIframeLoad = () => {
+    setTimeout(forceSyncToLive, 1000);
+    setTimeout(forceSyncToLive, 2500);
+  };
 
   // Escuchar eventos de la API de YouTube por PostMessage
   useEffect(() => {
@@ -62,7 +94,13 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   }
 
   const startParam = targetOffsetSeconds > 0 ? `&start=${Math.floor(targetOffsetSeconds)}` : '';
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1${startParam}`;
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&playsinline=0${startParam}`;
+
+  const formatMinSec = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="synced-player-container">
@@ -70,6 +108,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         key={`${videoId}_${isMuted ? 1 : 0}`}
         ref={iframeRef}
         src={embedUrl}
+        onLoad={handleIframeLoad}
         title={channelName}
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -77,7 +116,15 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         className="synced-tv-iframe"
       />
 
-
+      {/* Indicador de Transmisión Sincronizada en Vivo 24/7 */}
+      <button 
+        className="live-sync-badge-pill" 
+        onClick={forceSyncToLive}
+        title="Toca para forzar sincronización exacta con otros celulares"
+      >
+        <span className="live-red-dot" />
+        <span>EN VIVO {formatMinSec(liveSeconds)}</span>
+      </button>
 
       {/* Botón de Sonido Flotante si está silenciado */}
       {isMuted && (
@@ -122,7 +169,48 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           color: white;
           gap: 16px;
         }
+
+        .live-sync-badge-pill {
+          position: absolute;
+          top: 70px;
+          right: 20px;
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(15, 17, 26, 0.85);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(239, 68, 68, 0.5);
+          color: white;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-weight: 700;
+          font-size: 0.8rem;
+          cursor: pointer;
+          box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+          transition: transform 0.2s, background 0.2s;
+        }
+
+        .live-sync-badge-pill:active {
+          transform: scale(0.95);
+          background: rgba(239, 68, 68, 0.3);
+        }
+
+        .live-red-dot {
+          width: 8px;
+          height: 8px;
+          background: #ef4444;
+          border-radius: 50%;
+          animation: livePulse 1.5s infinite;
+        }
+
+        @keyframes livePulse {
+          0% { transform: scale(0.9); opacity: 1; }
+          50% { transform: scale(1.4); opacity: 0.5; }
+          100% { transform: scale(0.9); opacity: 1; }
+        }
       `}</style>
+
     </div>
   );
 };

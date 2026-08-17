@@ -353,10 +353,10 @@ export default function LiveZapping() {
       {currentChannel.videoUrl ? (
         <iframe
           key={`${currentChannel.id}_${activeIndex}`}
-          src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1`}
+          src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&fs=1&rel=0&playsinline=0&enablejsapi=1`}
           title={currentChannel.name}
           frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
           className="zapping-iframe"
         />
@@ -367,6 +367,7 @@ export default function LiveZapping() {
           <p>Señal fuera de aire por el momento.</p>
         </div>
       )}
+
 
       {/* Botón de Sonido Flotante */}
       {isMuted && (
@@ -622,16 +623,19 @@ export default function LiveZapping() {
 
       <style>{`
         .live-zapping-viewport {
-          position: relative;
+          position: fixed;
+          inset: 0;
           width: 100vw;
           height: 100vh;
+          height: 100dvh;
           overflow: hidden;
           background: #000;
           color: white;
         }
 
         .zapping-loading, .no-signal-screen {
-          height: 100vh;
+          height: 100%;
+          width: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
@@ -643,8 +647,8 @@ export default function LiveZapping() {
         }
 
         .sleep-screen {
-          height: 100vh;
-          width: 100vw;
+          height: 100%;
+          width: 100%;
           background: #05070c;
           display: flex;
           flex-direction: column;
@@ -670,11 +674,17 @@ export default function LiveZapping() {
         }
 
         .zapping-iframe {
-          width: 100vw;
-          height: 100vh;
-          border: none;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border: 0;
+          outline: none;
+          background: #000;
           pointer-events: auto;
         }
+
 
         .zapping-unmute-btn {
           position: absolute;

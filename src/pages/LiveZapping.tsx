@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
@@ -12,7 +13,9 @@ import {
   fetchReal24_7LiveStreams, 
   VERIFIED_24_7_LIVE_CHANNELS 
 } from '../lib/youtube';
+import { calculateGlobalChannelSync } from '../utils/tvEngine';
 import SleepTimer from '../components/SleepTimer';
+
 import SyncedTVPlayer from '../components/SyncedTVPlayer';
 import EPGGuide from '../components/EPGGuide';
 import AmbientMode from '../components/AmbientMode';
@@ -373,40 +376,40 @@ export default function LiveZapping() {
   const isFav = favorites.includes(currentChannel?.id);
 
   // Sincronización Global 24/7 (Epoch UTC)
-  // Cada canal tiene un ciclo de 10 minutos (600s). Todos los dispositivos del mundo arrancan en el mismo segundo exacto.
-  const getLiveSyncOffset = (channel: any) => {
-    if (!channel) return 0;
-    const cycleDuration = 600; // 10 minutos de ciclo
-    const epochSeconds = Math.floor(Date.now() / 1000);
-    // Hash determinístico por ID de canal para que cada canal tenga su punto horario propio
-    const str = channel.id || channel.name || 'ch';
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash + str.charCodeAt(i) * (i + 1)) % cycleDuration;
-    }
-    const offset = (epochSeconds + hash) % cycleDuration;
-    return offset;
-  };
+  const globalSync = useMemo(() => {
+    return calculateGlobalChannelSync(filteredChannels);
+  }, [filteredChannels]);
 
-  const syncOffset = getLiveSyncOffset(currentChannel);
+  // Timer automático para cambiar de video cuando concluye la duración programada
+  useEffect(() => {
+    if (!globalSync) return;
 
-  const handleVideoEnded = () => {
+    const timer = setTimeout(() => {
+      setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
+      triggerOSD();
+    }, globalSync.remainingSeconds * 1000);
 
+    return () => clearTimeout(timer);
+  }, [globalSync?.activeIndex, globalSync?.remainingSeconds, activeIndex]);
+
+  const handleVideoEnded = useCallback(() => {
     setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
     triggerOSD();
-  };
+  }, [filteredChannels.length]);
 
   return (
     <div className="live-zapping-viewport" onClick={triggerOSD}>
-      {/* Reproductor de TV Sincronizado 24/7 con Avance Automático de Video */}
+      {/* Reproductor de TV Sincronizado 24/7 con Doble Capa de Avance Automático */}
       <SyncedTVPlayer
         url={currentChannel.videoUrl}
         isMuted={isMuted}
         onUnmute={() => setIsMuted(false)}
         onVideoEnded={handleVideoEnded}
-        targetOffsetSeconds={syncOffset}
+        targetOffsetSeconds={globalSync?.offsetSeconds || 0}
+        playlistIds={globalSync?.playlistIds}
         channelName={currentChannel.name}
       />
+
 
 
 

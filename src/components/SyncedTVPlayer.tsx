@@ -8,13 +8,15 @@ interface SyncedTVPlayerProps {
   onVideoEnded: () => void;
   targetOffsetSeconds?: number;
   channelName?: string;
+  playlistIds?: string;
 }
 
 // Extrae el Video ID de cualquier URL de YouTube
 const extractVideoId = (url: string): string => {
   if (!url) return '';
   const match = url.match(/(?:embed\/|v=|vi\/|youtu\.be\/|\/v\/|\/e\/|watch\?v=)([^#&?]*).*/);
-  return match && match[1] ? match[1] : url.replace('https://www.youtube.com/embed/', '').replace('yt-', '');
+  if (match && match[1]) return match[1];
+  return url.replace('https://www.youtube.com/embed/', '').replace('yt-', '').replace('mood-', '').replace('live-', '');
 };
 
 export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
@@ -23,53 +25,31 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   onUnmute,
   onVideoEnded,
   targetOffsetSeconds = 0,
-  channelName = 'YouApp TV'
+  channelName = 'YouApp TV',
+  playlistIds
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [hasSeeked, setHasSeeked] = useState(false);
   const videoId = extractVideoId(url);
 
-  // Reset al cambiar de video
-  useEffect(() => {
-    setHasSeeked(false);
-  }, [videoId]);
-
-  // Escuchar eventos de la API de YouTube por PostMessage (100% compatible y sin dependencias)
+  // Escuchar eventos de la API de YouTube por PostMessage
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       try {
         if (!event.data) return;
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
-        // onReady: ejecutar seekTo sincronizado
-        if (data.event === 'onReady' || data.info?.playerState === 1) {
-          if (!hasSeeked && targetOffsetSeconds > 0 && iframeRef.current?.contentWindow) {
-            iframeRef.current.contentWindow.postMessage(
-              JSON.stringify({
-                event: 'command',
-                func: 'seekTo',
-                args: [targetOffsetSeconds, true]
-              }),
-              '*'
-            );
-            setHasSeeked(true);
-          }
-        }
-
-        // onStateChange: 0 = ENDED -> Pasar al siguiente video automáticamente!
-        if (data.event === 'onStateChange' && data.info === 0) {
+        // 0 = ENDED -> Pasar al siguiente video automáticamente
+        if ((data.event === 'onStateChange' && data.info === 0) || data.info?.playerState === 0) {
           onVideoEnded();
         }
-      } catch (e) {
-        // Ignorar mensajes no-JSON de otras extensiones
-      }
+      } catch (e) {}
     };
 
     window.addEventListener('message', handleMessage);
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [hasSeeked, targetOffsetSeconds, onVideoEnded]);
+  }, [onVideoEnded]);
 
   if (!url || !videoId) {
     return (
@@ -82,7 +62,9 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   }
 
   const startParam = targetOffsetSeconds > 0 ? `&start=${Math.floor(targetOffsetSeconds)}` : '';
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&rel=0&playsinline=0${startParam}`;
+  const playlistParam = playlistIds ? `&playlist=${playlistIds}&loop=1` : '';
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&rel=0&playsinline=0${playlistParam}${startParam}`;
+
 
   return (
     <div className="synced-player-container">

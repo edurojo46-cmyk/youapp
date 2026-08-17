@@ -86,24 +86,6 @@ export const calculateCurrentLiveProgram = (
     }
   }
 
-
-  // Si no es 24/7 en loop, buscamos por start_time y end_time
-  const nowIso = new Date().toISOString();
-  const activeIdx = programs.findIndex(p => p.start_time <= nowIso && p.end_time >= nowIso);
-  
-  if (activeIdx !== -1) {
-    const prog = programs[activeIdx];
-    const startMs = new Date(prog.start_time).getTime();
-    const offsetSeconds = Math.max(0, Math.floor((nowMs - startMs) / 1000));
-    return {
-      currentProgram: prog,
-      offsetSeconds,
-      nextProgram: programs[activeIdx + 1] || programs[0],
-      totalCycleSeconds
-    };
-  }
-
-  // Fallback al primer programa
   return {
     currentProgram: programs[0],
     offsetSeconds: 0,
@@ -111,3 +93,69 @@ export const calculateCurrentLiveProgram = (
     totalCycleSeconds
   };
 };
+
+// Sincronización Global Universal para cualquier lista de videos / canal de TV
+
+export interface GlobalSyncResult {
+  activeIndex: number;
+  offsetSeconds: number;
+  remainingSeconds: number;
+  currentVideo: any;
+  nextVideo: any;
+  playlistIds: string;
+}
+
+export const calculateGlobalChannelSync = (channels: any[]): GlobalSyncResult | null => {
+  if (!channels || channels.length === 0) return null;
+
+  // Extraer video IDs
+  const extractId = (ch: any): string => {
+    const url = ch.videoUrl || ch.id || '';
+    const match = url.match(/(?:embed\/|v=|vi\/|youtu\.be\/|\/v\/|\/e\/|watch\?v=)([^#&?]*).*/);
+    if (match && match[1]) return match[1];
+    return url.replace('https://www.youtube.com/embed/', '').replace('yt-', '').replace('mood-', '').replace('live-', '');
+  };
+
+  const videoIds = channels.map(ch => extractId(ch)).filter(id => id.length > 5);
+  const defaultDur = 300; // 5 min por video
+  const durations = channels.map(ch => ch.durationSeconds || defaultDur);
+  const totalCycleSeconds = durations.reduce((acc, curr) => acc + curr, 0);
+
+  if (totalCycleSeconds <= 0) return null;
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const cycleOffset = nowSec % totalCycleSeconds;
+
+  let accumulated = 0;
+  for (let i = 0; i < channels.length; i++) {
+    const dur = durations[i];
+    if (cycleOffset >= accumulated && cycleOffset < accumulated + dur) {
+      const offsetSeconds = cycleOffset - accumulated;
+      const remainingSeconds = Math.max(1, dur - offsetSeconds);
+      const nextIndex = (i + 1) % channels.length;
+      
+      // Ordenar playlist para que el siguiente video empiece inmediatamente después
+      const remainingIds = [...videoIds.slice(i), ...videoIds.slice(0, i)];
+
+      return {
+        activeIndex: i,
+        offsetSeconds,
+        remainingSeconds,
+        currentVideo: channels[i],
+        nextVideo: channels[nextIndex],
+        playlistIds: remainingIds.join(',')
+      };
+    }
+    accumulated += dur;
+  }
+
+  return {
+    activeIndex: 0,
+    offsetSeconds: 0,
+    remainingSeconds: defaultDur,
+    currentVideo: channels[0],
+    nextVideo: channels[1] || channels[0],
+    playlistIds: videoIds.join(',')
+  };
+};
+

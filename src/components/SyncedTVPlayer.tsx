@@ -40,16 +40,23 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   const hasSeekedRef = useRef(false);
   const videoId = extractVideoId(url);
 
-  const [liveSeconds, setLiveSeconds] = useState(Math.floor(targetOffsetSeconds));
+  // Calcula el segundo exacto mundial de emisión en este milisegundo (Matemática Determinística Global)
+  const getExactUtcLiveSecond = () => {
+    const cycleDuration = 600; // ciclo de 10 minutos
+    const epochSec = Math.floor(Date.now() / 1000);
+    const hash = (videoId || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    return (epochSec + hash) % cycleDuration;
+  };
 
-  // Reloj visual de emisión
+  const [liveSeconds, setLiveSeconds] = useState(getExactUtcLiveSecond);
+
+  // Reloj visual de emisión en tiempo real
   useEffect(() => {
-    setLiveSeconds(Math.floor(targetOffsetSeconds));
     const interval = setInterval(() => {
-      setLiveSeconds(prev => prev + 1);
+      setLiveSeconds(getExactUtcLiveSecond());
     }, 1000);
     return () => clearInterval(interval);
-  }, [videoId, targetOffsetSeconds]);
+  }, [videoId]);
 
   // Cargar SDK de YouTube una sola vez
   useEffect(() => {
@@ -77,12 +84,14 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
       if (!isSubscribed) return;
 
+      const currentLiveSec = getExactUtcLiveSecond();
+
       // Si el reproductor ya existe en memoria, cargar nuevo video
       if (playerRef.current && playerRef.current.loadVideoById) {
         try {
           playerRef.current.loadVideoById({
             videoId,
-            startSeconds: Math.floor(targetOffsetSeconds)
+            startSeconds: currentLiveSec
           });
           if (isMuted) playerRef.current.mute();
           else playerRef.current.unMute();
@@ -102,7 +111,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
             rel: 0,
             enablejsapi: 1,
             playsinline: 1,
-            start: Math.floor(targetOffsetSeconds)
+            start: currentLiveSec
           },
           events: {
             onReady: (event: any) => {
@@ -111,7 +120,8 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
               else event.target.unMute();
 
               try {
-                event.target.seekTo(targetOffsetSeconds, true);
+                const liveSec = getExactUtcLiveSecond();
+                event.target.seekTo(liveSec, true);
                 event.target.playVideo();
               } catch (e) {}
 
@@ -128,8 +138,9 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
                 setIsPlaying(true);
                 setNeedsUserTap(false);
                 // Forzar salto exacto en el primer fotograma
-                if (!hasSeekedRef.current && targetOffsetSeconds > 0) {
-                  event.target.seekTo(targetOffsetSeconds, true);
+                if (!hasSeekedRef.current) {
+                  const liveSec = getExactUtcLiveSecond();
+                  event.target.seekTo(liveSec, true);
                   hasSeekedRef.current = true;
                 }
               }
@@ -148,7 +159,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     return () => {
       isSubscribed = false;
     };
-  }, [videoId, targetOffsetSeconds]);
+  }, [videoId]);
 
   // Manejar Mute
   useEffect(() => {
@@ -166,8 +177,9 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     onUnmute();
     if (playerRef.current) {
       try {
+        const liveSec = getExactUtcLiveSecond();
         playerRef.current.unMute();
-        playerRef.current.seekTo(targetOffsetSeconds, true);
+        playerRef.current.seekTo(liveSec, true);
         playerRef.current.playVideo();
         hasSeekedRef.current = true;
       } catch (e) {}

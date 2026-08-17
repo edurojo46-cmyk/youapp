@@ -157,6 +157,12 @@ export default function LiveZapping() {
         setIsAsleep(prev => !prev);
       } else if (action === 'TOGGLE_MUTE') {
         setIsMuted(prev => !prev);
+      } else if (action === 'UNMUTE') {
+        setIsMuted(false);
+      } else if (action === 'SEARCH_QUERY') {
+        if (payload?.query) {
+          handleCustomYouTubeSearch(payload.query);
+        }
       } else if (action === 'TOGGLE_EPG') {
         setShowEPGModal(prev => !prev);
       } else if (action === 'TOGGLE_INFO') {
@@ -164,6 +170,7 @@ export default function LiveZapping() {
       } else if (action === 'SEND_EMOJI') {
         triggerFloatingEmoji(payload?.emoji || '🔥');
       }
+
     });
 
     return () => {

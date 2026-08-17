@@ -157,18 +157,49 @@ export default function MobileRemote() {
       </header>
 
 
-      {/* Pantalla OSD en el Control */}
+      {/* Pantalla OSD / Monitor de la TV en el Control */}
       <div className="remote-screen-display glass-panel">
         <div className="screen-top">
-          <span className="tv-label">CONTROL DE TELEVISOR</span>
+          <span className="tv-label">SINTONIZANDO EN TELEVISIÓN</span>
           <span className="action-pill">{lastAction}</span>
         </div>
         <div className="screen-info">
-          <h3>Sesión: #{activeSessionId?.slice(-4).toUpperCase()}</h3>
-          <p>Toca cualquier botón para enviar la orden en vivo</p>
+          {syncedChannel ? (
+            <>
+              <h3>{syncedChannel.name}</h3>
+              <p>{syncedChannel.currentVideoTitle || syncedChannel.category || 'Transmisión en Vivo'}</p>
+            </>
+          ) : (
+            <>
+              <h3>Sesión TV: #{activeSessionId?.slice(-4).toUpperCase()}</h3>
+              <p>Toca cualquier botón para controlar la TV en vivo</p>
+            </>
+          )}
         </div>
-
       </div>
+
+      {/* Buscador de Canales / En Vivo Directo desde el Celular */}
+      <form 
+        className="remote-tv-search-bar glass-panel" 
+        onSubmit={(e) => {
+          e.preventDefault();
+          const q = (e.currentTarget.elements.namedItem('tvQuery') as HTMLInputElement)?.value;
+          if (q && q.trim()) {
+            sendAction('SEARCH_QUERY', { query: q.trim() });
+          }
+        }}
+      >
+        <Search size={18} className="text-accent" />
+        <input 
+          type="text" 
+          name="tvQuery" 
+          placeholder="Escribir canal para la tele (ej: Carnaval Stream)..." 
+        />
+        <button type="submit" className="btn btn-primary btn-sm">
+          Sintonizar
+        </button>
+      </form>
+
 
       {/* Controles Principales de Navegación y Volumen */}
       <div className="main-controls-cluster">

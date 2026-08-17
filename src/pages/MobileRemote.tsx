@@ -26,7 +26,18 @@ const MOODS = [
 export default function MobileRemote() {
   const navigate = useNavigate();
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(routeSessionId || '5821');
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+    try {
+      const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+      const params = new URLSearchParams(window.location.search || hashQuery);
+      const room = params.get('room');
+      if (room) return room;
+      if (routeSessionId) return routeSessionId;
+      return localStorage.getItem('youapp_remote_last_pin') || '1234';
+    } catch {
+      return routeSessionId || '1234';
+    }
+  });
   const [pinInput, setPinInput] = useState('');
   const bridgeRef = useRef<RemoteBridge | null>(null);
   const [isConnected, setIsConnected] = useState(true);
@@ -38,6 +49,7 @@ export default function MobileRemote() {
   const [channelIdx, setChannelIdx] = useState(0);
   const [syncedChannel, setSyncedChannel] = useState<any>(VERIFIED_24_7_LIVE_CHANNELS[0]);
   const [isCastMuted, setIsCastMuted] = useState(false);
+  const [showPinChange, setShowPinChange] = useState(false);
 
   // Helper para enviar nuevo canal a Chromecast si está conectado
   const streamChannelToChromecast = (ch: any) => {
@@ -78,6 +90,7 @@ export default function MobileRemote() {
   useEffect(() => {
     if (!activeSessionId) return;
 
+    localStorage.setItem('youapp_remote_last_pin', activeSessionId);
     const bridge = new RemoteBridge(activeSessionId, 'remote');
     bridge.notifyConnected();
     setIsConnected(true);
@@ -99,9 +112,13 @@ export default function MobileRemote() {
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput.trim().length >= 4) {
-      setActiveSessionId(pinInput.trim());
+      const pin = pinInput.trim();
+      localStorage.setItem('youapp_remote_last_pin', pin);
+      setActiveSessionId(pin);
+      setShowPinChange(false);
     }
   };
+
 
   const sendAction = async (action: string, payload: any = {}) => {
     if (navigator.vibrate) {

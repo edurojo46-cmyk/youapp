@@ -6,8 +6,14 @@ import {
   Image, Info, EyeOff, Layers, Search
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { fetchTopViewedVideosByMood, fetchChannelTVVideos } from '../lib/youtube';
+import { 
+  fetchTopViewedVideosByMood, 
+  fetchChannelTVVideos, 
+  fetchReal24_7LiveStreams, 
+  VERIFIED_24_7_LIVE_CHANNELS 
+} from '../lib/youtube';
 import SleepTimer from '../components/SleepTimer';
+
 
 import EPGGuide from '../components/EPGGuide';
 import AmbientMode from '../components/AmbientMode';
@@ -29,24 +35,26 @@ const MOOD_SEARCH_QUERIES: Record<string, string> = {
 };
 
 const MOODS = [
-  { id: 'all', label: '📺 Todos los Canales' },
-  { id: 'relax', label: '🧘 Relax (30 Más Vistos)' },
-  { id: 'focus', label: '☕ Focus & Lo-Fi (30 Más Vistos)' },
-  { id: 'learn', label: '🧠 Aprender (30 Más Vistos)' },
-  { id: 'humor', label: '😂 Humor (30 Más Vistos)' },
-  { id: 'cinema', label: '🍿 Cine & Series (30 Más Vistos)' },
+  { id: 'all', label: '🔴 24/7 En Vivo (Oficiales)' },
+  { id: 'live24', label: '📡 Transmisiones 24hs YouTube' },
+  { id: 'relax', label: '🧘 Relax & Naturaleza' },
+  { id: 'focus', label: '☕ Focus & Lo-Fi' },
+  { id: 'learn', label: '🧠 Ciencia & Cosmos' },
+  { id: 'humor', label: '😂 Humor & Viral' },
+  { id: 'cinema', label: '🍿 Cine & Cortos' },
 ];
 
 export default function LiveZapping() {
   const navigate = useNavigate();
 
-  const [allChannels, setAllChannels] = useState<any[]>([]);
-  const [filteredChannels, setFilteredChannels] = useState<any[]>([]);
+  const [allChannels, setAllChannels] = useState<any[]>(VERIFIED_24_7_LIVE_CHANNELS);
+  const [filteredChannels, setFilteredChannels] = useState<any[]>(VERIFIED_24_7_LIVE_CHANNELS);
   const [selectedMood, setSelectedMood] = useState('all');
   const [activeIndex, setActiveIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isMoodLoading, setIsMoodLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+
 
   // Control Remoto Virtual por Código QR y PIN de 4 dígitos
   const [sessionId] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
@@ -175,15 +183,18 @@ export default function LiveZapping() {
         currentVideoTitle: ch.programming?.[0]?.videos?.title || 'Transmisión en vivo 24/7'
       })).filter((ch: any) => ch.videoUrl !== null);
 
-      // Cargar también los videos más vistos para la grilla general
+      // Cargar también los canales 24/7 oficiales y los más vistos
+      const real24Live = await fetchReal24_7LiveStreams('live 24/7 stream radio');
       const topRelax = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.relax, 15);
       const topFocus = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.focus, 15);
 
-      const combinedAll = [...userFormatted, ...topRelax, ...topFocus];
+      const combinedAll = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted, ...real24Live, ...topRelax, ...topFocus];
       setAllChannels(combinedAll);
       setFilteredChannels(combinedAll);
     } catch (e) {
       console.error(e);
+      setAllChannels(VERIFIED_24_7_LIVE_CHANNELS);
+      setFilteredChannels(VERIFIED_24_7_LIVE_CHANNELS);
     } finally {
       setLoading(false);
     }
@@ -195,8 +206,22 @@ export default function LiveZapping() {
     setActiveIndex(0);
 
     if (moodId === 'all') {
-      setFilteredChannels(allChannels);
+      setFilteredChannels(allChannels.length > 0 ? allChannels : VERIFIED_24_7_LIVE_CHANNELS);
       triggerOSD();
+      return;
+    }
+
+    if (moodId === 'live24') {
+      setIsMoodLoading(true);
+      try {
+        const liveStreams = await fetchReal24_7LiveStreams('live streaming 24/7');
+        setFilteredChannels([...VERIFIED_24_7_LIVE_CHANNELS, ...liveStreams]);
+      } catch (err) {
+        setFilteredChannels(VERIFIED_24_7_LIVE_CHANNELS);
+      } finally {
+        setIsMoodLoading(false);
+        triggerOSD();
+      }
       return;
     }
 
@@ -215,6 +240,7 @@ export default function LiveZapping() {
       triggerOSD();
     }
   };
+
 
   const triggerOSD = () => {
     setShowOSD(true);

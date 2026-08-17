@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouApp - Televisión Digital 24/7</title>
+    <script>
+      // Redirigir rutas de GitHub Pages al router SPA
+      var path = window.location.pathname;
+      var repo = '/youapp';
+      if (path.startsWith(repo)) {
+        var route = path.slice(repo.length);
+        if (route && route !== '/' && !route.startsWith('/#')) {
+          window.location.replace(repo + '/#' + route + window.location.search + window.location.hash);
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

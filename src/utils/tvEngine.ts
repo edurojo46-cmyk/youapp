@@ -65,9 +65,8 @@ export const calculateCurrentLiveProgram = (
   const nowMs = Date.now();
 
   if (is24_7) {
-    // Usamos el inicio del día o una época fija (ej. 2026-01-01 00:00:00 UTC) como ancla
-    const anchorMs = 1767225600000; // 2026-01-01 00:00:00 UTC
-    const elapsedSeconds = Math.floor(Math.max(0, nowMs - anchorMs) / 1000);
+    // Usamos el tiempo Epoch UTC global (segundos desde 1970) para sincronización matemática mundial
+    const elapsedSeconds = Math.floor(nowMs / 1000);
     const cycleOffset = elapsedSeconds % totalCycleSeconds;
 
     let accumulated = 0;
@@ -86,6 +85,7 @@ export const calculateCurrentLiveProgram = (
       accumulated += dur;
     }
   }
+
 
   // Si no es 24/7 en loop, buscamos por start_time y end_time
   const nowIso = new Date().toISOString();

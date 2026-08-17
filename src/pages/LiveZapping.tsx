@@ -347,13 +347,26 @@ export default function LiveZapping() {
   const currentChannel = filteredChannels[activeIndex];
   const isFav = favorites.includes(currentChannel?.id);
 
+  // Sincronización Global 24/7 (Epoch UTC)
+  // Todos los teléfonos, computadoras y televisores del mundo sintonizan el segundo exacto
+  const getLiveSyncOffset = (channel: any) => {
+    if (!channel) return 0;
+    const cycleDuration = channel.durationSeconds || 720; // 12 min ciclo
+    const epochSeconds = Math.floor(Date.now() / 1000);
+    const hash = (channel.id || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    const offset = (epochSeconds + hash) % cycleDuration;
+    return offset;
+  };
+
+  const syncOffset = getLiveSyncOffset(currentChannel);
+
   return (
     <div className="live-zapping-viewport" onClick={triggerOSD}>
-      {/* Reproductor de Video Fullscreen */}
+      {/* Reproductor de Video Fullscreen Sincronizado 24/7 */}
       {currentChannel.videoUrl ? (
         <iframe
-          key={`${currentChannel.id}_${activeIndex}`}
-          src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&fs=1&rel=0&playsinline=0&enablejsapi=1`}
+          key={`${currentChannel.id}_${activeIndex}_${syncOffset}`}
+          src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&start=${syncOffset}&controls=1&fs=1&rel=0&playsinline=0&enablejsapi=1`}
           title={currentChannel.name}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -367,6 +380,7 @@ export default function LiveZapping() {
           <p>Señal fuera de aire por el momento.</p>
         </div>
       )}
+
 
 
       {/* Botón de Sonido Flotante */}

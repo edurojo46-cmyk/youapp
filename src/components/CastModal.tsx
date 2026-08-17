@@ -31,9 +31,45 @@ export default function CastModal({
   const [castAvailable, setCastAvailable] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Enviar video al Chromecast cuando la sesión se inicia
+  const sendMediaToCast = (castSession: any) => {
+    if (!castSession || !window.chrome?.cast || !currentChannel?.videoUrl) return;
+
+    try {
+      const videoUrl = currentChannel.videoUrl;
+      let contentType = 'video/mp4';
+      if (videoUrl.includes('.m3u8')) {
+        contentType = 'application/x-mpegurl';
+      } else if (videoUrl.includes('.webm')) {
+        contentType = 'video/webm';
+      }
+
+      const mediaInfo = new window.chrome.cast.media.MediaInfo(videoUrl, contentType);
+      mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
+      mediaInfo.metadata.title = currentChannel.name || 'YouApp TV';
+      mediaInfo.metadata.subtitle = currentChannel.currentVideoTitle || 'Transmisión 24/7 en Vivo';
+      if (currentChannel.thumbnail) {
+        mediaInfo.metadata.images = [{ url: currentChannel.thumbnail }];
+      }
+
+      const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
+      request.autoplay = true;
+
+      castSession.loadMedia(request).then(
+        () => {
+          console.log("¡Transmisión enviada a la TV con éxito!");
+        },
+        (err: any) => {
+          console.error("Error al cargar stream en Chromecast:", err);
+        }
+      );
+    } catch (e) {
+      console.error("Error en sendMediaToCast:", e);
+    }
+  };
+
   // Inicializar Google Cast SDK
   useEffect(() => {
-    // Definir callback global requerido por Google Cast SDK
     window.__onGCastApiAvailable = (isAvailable: boolean) => {
       if (isAvailable && window.cast && window.cast.framework) {
         try {
@@ -42,6 +78,20 @@ export default function CastModal({
             receiverApplicationId: 'CC1AD845', // Default Media Receiver
             autoJoinPolicy: (window.chrome?.cast?.AutoJoinPolicy?.ORIGIN_SCOPED) || 'origin_scoped'
           });
+
+          context.addEventListener(
+            window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+            (event: any) => {
+              if (
+                event.sessionState === window.cast.framework.SessionState.SESSION_STARTED ||
+                event.sessionState === window.cast.framework.SessionState.SESSION_RESUMED
+              ) {
+                const session = context.getCurrentSession();
+                if (session) sendMediaToCast(session);
+              }
+            }
+          );
+
           setCastAvailable(true);
         } catch (e) {
           console.error("Error initializing Google Cast:", e);
@@ -49,14 +99,13 @@ export default function CastModal({
       }
     };
 
-    // Inyectar el SDK de Google Cast si no existe
     if (!document.getElementById('google-cast-sdk')) {
       const script = document.createElement('script');
       script.id = 'google-cast-sdk';
       script.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
       document.body.appendChild(script);
     }
-  }, []);
+  }, [currentChannel]);
 
   if (!isOpen) return null;
 
@@ -74,13 +123,13 @@ export default function CastModal({
   };
 
   const handleNativeCast = () => {
-    // Si Google Cast SDK está disponible, solicitar sesión de transmisión
     if (window.cast && window.cast.framework) {
       try {
         const context = window.cast.framework.CastContext.getInstance();
         context.requestSession().then(
           () => {
-            console.log("Sesión de Google Cast iniciada con éxito");
+            const session = context.getCurrentSession();
+            if (session) sendMediaToCast(session);
           },
           (err: any) => {
             console.log("Cast cancelado o no disponible:", err);
@@ -90,7 +139,6 @@ export default function CastModal({
       } catch (e) {}
     }
 
-    // Fallback a Presentation API (Wireless Display / Pantallas Smart)
     if ('presentation' in navigator && (navigator as any).presentation?.defaultRequest) {
       try {
         (navigator as any).presentation.defaultRequest.start();
@@ -98,9 +146,9 @@ export default function CastModal({
       } catch (e) {}
     }
 
-    // Si no está en Google Chrome, guiar al usuario
     alert("Para transmitir con Chromecast / Google Home:\n1. Abre YouApp en Google Chrome en tu celular o PC.\n2. Pulsa el botón Transmitir en el menú de Chrome o usa el botón de Google Cast que aparece abajo.");
   };
+
 
   const openOnYouTubeTV = () => {
     if (rawVideoId) {

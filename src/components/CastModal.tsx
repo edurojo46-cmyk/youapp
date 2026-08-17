@@ -31,12 +31,20 @@ export default function CastModal({
   const [castAvailable, setCastAvailable] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Enviar video al Chromecast cuando la sesión se inicia
+  // Enviar video al Chromecast según el tipo de medio (HLS/MP4 vs YouTube)
   const sendMediaToCast = (castSession: any) => {
     if (!castSession || !window.chrome?.cast || !currentChannel?.videoUrl) return;
 
+    const videoUrl = currentChannel.videoUrl;
+    const isYouTube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
+
+    // Si es un video de YouTube, abrir directamente en el receptor de YouTube o sugerir Smart TV
+    if (isYouTube && rawVideoId) {
+      window.open(`https://www.youtube.com/watch?v=${rawVideoId}`, '_blank');
+      return;
+    }
+
     try {
-      const videoUrl = currentChannel.videoUrl;
       let contentType = 'video/mp4';
       if (videoUrl.includes('.m3u8')) {
         contentType = 'application/x-mpegurl';
@@ -57,7 +65,7 @@ export default function CastModal({
 
       castSession.loadMedia(request).then(
         () => {
-          console.log("¡Transmisión enviada a la TV con éxito!");
+          console.log("¡Transmisión HLS/MP4 enviada a Chromecast con éxito!");
         },
         (err: any) => {
           console.error("Error al cargar stream en Chromecast:", err);
@@ -67,6 +75,7 @@ export default function CastModal({
       console.error("Error en sendMediaToCast:", e);
     }
   };
+
 
   // Inicializar Google Cast SDK
   useEffect(() => {

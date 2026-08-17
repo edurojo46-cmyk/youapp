@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   Power, Volume2, VolumeX, Tv, Moon, Grid, Image, 
-  Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check
+  Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check, Cast
 } from 'lucide-react';
+
 import { supabase } from '../lib/supabase';
+import CastScreenModal from '../components/CastScreenModal';
 
 const EMOJIS = ['🔥', '❤️', '👏', '🚀', '🤯', '🍿', '😂', '🎉'];
 
@@ -23,9 +25,11 @@ export default function MobileRemote() {
   const [pinInput, setPinInput] = useState('');
   const [channel, setChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [showCastModal, setShowCastModal] = useState(false);
   const [lastAction, setLastAction] = useState<string>('Listo');
   const [chatMessage, setChatMessage] = useState('');
   const [selectedMood, setSelectedMood] = useState('all');
+
 
   useEffect(() => {
     if (!activeSessionId) return;
@@ -134,11 +138,22 @@ export default function MobileRemote() {
           <Tv size={18} className="text-accent" />
           <span className="brand-name">YOUAPP REMOTE</span>
         </div>
-        <div className={`connection-status ${isConnected ? 'online' : 'offline'}`}>
-          <span className="dot">●</span>
-          <span>{isConnected ? 'TV CONECTADA' : 'CONECTANDO...'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button 
+            className="cast-header-btn" 
+            onClick={() => setShowCastModal(true)} 
+            title="Transmitir pantalla a la TV"
+          >
+            <Cast size={16} />
+            <span>Cast</span>
+          </button>
+          <div className={`connection-status ${isConnected ? 'online' : 'offline'}`}>
+            <span className="dot">●</span>
+            <span>{isConnected ? 'TV CONECTADA' : 'CONECTANDO...'}</span>
+          </div>
         </div>
       </header>
+
 
       {/* Pantalla OSD en el Control */}
       <div className="remote-screen-display glass-panel">
@@ -271,7 +286,32 @@ export default function MobileRemote() {
         </button>
       </form>
 
+      {/* Modal de Transmisión a la TV */}
+      <CastScreenModal
+        isOpen={showCastModal}
+        onClose={() => setShowCastModal(false)}
+      />
+
       <style>{`
+        .cast-header-btn {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(99, 102, 241, 0.2);
+          border: 1px solid rgba(99, 102, 241, 0.4);
+          color: #a5b4fc;
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .cast-header-btn:active {
+          background: #6366f1;
+          color: white;
+        }
+
         .mobile-remote-viewport {
           min-height: 100vh;
           max-width: 440px;

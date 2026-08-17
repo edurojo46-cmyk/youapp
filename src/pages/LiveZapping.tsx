@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
-  Image, Info, EyeOff, Layers, Search, Maximize, Minimize
+  Image, Info, EyeOff, Layers, Search
 } from 'lucide-react';
-
 import { supabase } from '../lib/supabase';
 import { fetchTopViewedVideosByMood, fetchChannelTVVideos } from '../lib/youtube';
 import SleepTimer from '../components/SleepTimer';
@@ -55,62 +54,6 @@ export default function LiveZapping() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [isPhoneConnected, setIsPhoneConnected] = useState(false);
   const [flyingEmojis, setFlyingEmojis] = useState<Array<{ id: number; emoji: string; left: number }>>([]);
-
-  // Pantalla Completa & Doble Toque
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showFullscreenFeedback, setShowFullscreenFeedback] = useState(false);
-  const lastTapRef = useRef<number>(0);
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
-    };
-  }, []);
-
-  const toggleFullscreen = useCallback(() => {
-    if (!document.fullscreenElement && !(document as any).webkitFullscreenElement) {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen().catch(() => {});
-      } else if ((elem as any).webkitRequestFullscreen) {
-        (elem as any).webkitRequestFullscreen();
-      }
-      setIsFullscreen(true);
-      setShowFullscreenFeedback(true);
-      setTimeout(() => setShowFullscreenFeedback(false), 1500);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
-      }
-      setIsFullscreen(false);
-      setShowFullscreenFeedback(true);
-      setTimeout(() => setShowFullscreenFeedback(false), 1500);
-    }
-  }, []);
-
-  const handleScreenTouchOrClick = (e: React.MouseEvent | React.TouchEvent) => {
-    const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300; // 300ms
-
-    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
-      // Doble toque detectado
-      toggleFullscreen();
-      lastTapRef.current = 0;
-    } else {
-      lastTapRef.current = now;
-      triggerOSD();
-    }
-  };
-
-
 
 
   // Modales y Modos
@@ -405,33 +348,18 @@ export default function LiveZapping() {
   const isFav = favorites.includes(currentChannel?.id);
 
   return (
-    <div 
-      className="live-zapping-viewport" 
-      onClick={handleScreenTouchOrClick}
-      onDoubleClick={toggleFullscreen}
-      onTouchStart={handleScreenTouchOrClick}
-    >
-      {/* Indicador Flotante de Pantalla Gigante */}
-      {showFullscreenFeedback && (
-        <div className="fullscreen-badge-popup glass-panel">
-          {isFullscreen ? <Maximize size={32} /> : <Minimize size={32} />}
-          <span>{isFullscreen ? 'PANTALLA GIGANTE' : 'PANTALLA NORMAL'}</span>
-        </div>
-      )}
-
-      {/* Reproductor de Video Fullscreen idéntico a YouTube */}
+    <div className="live-zapping-viewport" onClick={triggerOSD}>
+      {/* Reproductor de Video Fullscreen */}
       {currentChannel.videoUrl ? (
-        <div className="video-player-wrapper">
-          <iframe
-            key={`${currentChannel.id}_${activeIndex}`}
-            src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&fs=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`}
-            title={currentChannel.name}
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-            allowFullScreen
-            className="zapping-iframe"
-          />
-        </div>
+        <iframe
+          key={`${currentChannel.id}_${activeIndex}`}
+          src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1`}
+          title={currentChannel.name}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          className="zapping-iframe"
+        />
       ) : (
         <div className="no-signal-screen">
           <Radio size={48} className="text-accent" />
@@ -439,7 +367,6 @@ export default function LiveZapping() {
           <p>Señal fuera de aire por el momento.</p>
         </div>
       )}
-
 
       {/* Botón de Sonido Flotante */}
       {isMuted && (
@@ -473,14 +400,6 @@ export default function LiveZapping() {
 
           <div className="quick-actions">
             <button 
-              className="icon-action-btn fullscreen-btn-top" 
-              onClick={toggleFullscreen} 
-              title={isFullscreen ? "Salir de Pantalla Gigante" : "Pantalla Gigante (Doble Toque)"}
-              style={{ background: isFullscreen ? '#6366f1' : 'rgba(255, 255, 255, 0.1)', color: 'white' }}
-            >
-              {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
-            </button>
-            <button 
               className="icon-action-btn" 
               onClick={() => setShowRemoteModal(true)} 
               title="Control Remoto por Celular (QR)"
@@ -505,6 +424,13 @@ export default function LiveZapping() {
             </button>
             <button 
               className="icon-action-btn" 
+              onClick={() => setShowRemoteModal(true)} 
+              title="Conectar Control Remoto Móvil (PIN / QR)"
+            >
+              <Smartphone size={18} color={isPhoneConnected ? '#4ade80' : 'white'} />
+            </button>
+            <button 
+              className="icon-action-btn" 
               onClick={() => setShowInfoModal(true)} 
               title="Ficha & Resumen IA (I)"
             >
@@ -524,7 +450,6 @@ export default function LiveZapping() {
             >
               <Layers size={18} />
             </button>
-
             <button 
               className="icon-action-btn" 
               onClick={() => setShowEPGModal(true)} 
@@ -744,95 +669,12 @@ export default function LiveZapping() {
           letter-spacing: 1px;
         }
 
-        .video-player-wrapper {
-          position: absolute;
-          inset: 0;
-          width: 100vw;
-          height: 100vh;
-          overflow: hidden;
-          background: #000;
-        }
-
         .zapping-iframe {
           width: 100vw;
           height: 100vh;
           border: none;
           pointer-events: auto;
-          background: #000;
         }
-
-        /* Ajuste nativo perfecto cuando se agranda con el icono de YouTube */
-        .zapping-iframe:fullscreen,
-        .zapping-iframe:-webkit-full-screen,
-        .video-player-wrapper:fullscreen,
-        .video-player-wrapper:-webkit-full-screen {
-          width: 100vw !important;
-          height: 100vh !important;
-          max-width: 100vw !important;
-          max-height: 100vh !important;
-          border: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          background: #000 !important;
-          position: fixed !important;
-          inset: 0 !important;
-          z-index: 99999 !important;
-        }
-
-
-
-        .zapping-iframe.giant-mode {
-          width: 100vw;
-          height: 100vh;
-          object-fit: cover;
-          transform: scale(1.02);
-        }
-
-        .fullscreen-badge-popup {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          background: rgba(15, 17, 26, 0.85);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(99, 102, 241, 0.4);
-          color: white;
-          padding: 24px 36px;
-          border-radius: 24px;
-          font-weight: 800;
-          font-size: 1.1rem;
-          letter-spacing: 1px;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-          animation: popFade 1.4s ease forwards;
-          pointer-events: none;
-        }
-
-        @keyframes popFade {
-          0% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.7);
-          }
-          20% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.05);
-          }
-          30% {
-            transform: translate(-50%, -50%) scale(1);
-          }
-          80% {
-            opacity: 1;
-          }
-          100% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.9);
-          }
-        }
-
 
         .zapping-unmute-btn {
           position: absolute;

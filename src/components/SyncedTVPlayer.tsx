@@ -42,6 +42,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
   // Calcula el segundo exacto mundial de emisión en este milisegundo
   const getExactUtcLiveSecond = () => {
+    if (targetOffsetSeconds > 0) return targetOffsetSeconds;
     const cycleDuration = 600; // ciclo de 10 minutos
     const epochSec = Math.floor(Date.now() / 1000);
     const hash = (videoId || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
@@ -52,11 +53,12 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
   // Reloj de emisión en vivo 24/7 en tiempo real sincronizado por UTC
   useEffect(() => {
+    setLiveSeconds(getExactUtcLiveSecond());
     const interval = setInterval(() => {
-      setLiveSeconds(getExactUtcLiveSecond());
+      setLiveSeconds(prev => prev + 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [videoId]);
+  }, [videoId, targetOffsetSeconds]);
 
   // Cargar YouTube IFrame API script global si no existe
   useEffect(() => {
@@ -75,7 +77,8 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   useEffect(() => {
     initialStartSec.current = getExactUtcLiveSecond();
     hasSeekedRef.current = false;
-  }, [videoId]);
+  }, [videoId, targetOffsetSeconds]);
+
 
   // Función para forzar sincronización imperativa con el reloj mundial
   const forceSyncToLive = () => {

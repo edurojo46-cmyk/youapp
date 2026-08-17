@@ -899,16 +899,101 @@ export default function LiveZapping() {
             left: 10px;
             right: 10px;
             bottom: 10px;
-            padding: 10px 14px;
+            padding: 8px 12px;
           }
           .osd-ch-number {
-            font-size: 1.3rem;
+            font-size: 1.1rem;
+            padding-right: 10px;
           }
+          .channel-osd h2 {
+            font-size: 0.85rem;
+          }
+          .osd-program {
+            font-size: 0.7rem;
+            max-width: 65vw;
+          }
+        }
+
+        /* Modo Horizontal en Celulares (Landscape Mobile) */
+        @media (orientation: landscape) and (max-height: 550px) {
+          .mood-bar {
+            top: 6px;
+            left: 10px;
+            right: 10px;
+            padding: 3px 8px;
+            gap: 6px;
+            background: rgba(15, 17, 26, 0.75);
+          }
+
+          .mood-pill {
+            padding: 3px 10px;
+            font-size: 0.7rem;
+          }
+
+          .icon-action-btn, .back-circle-btn {
+            width: 26px;
+            height: 26px;
+          }
+
+          .icon-action-btn svg, .back-circle-btn svg {
+            width: 14px;
+            height: 14px;
+          }
+
           .touch-zapping-controls {
-            display: none;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            gap: 4px;
+            z-index: 999;
+          }
+
+          .zap-nav-btn {
+            padding: 6px 10px;
+            font-size: 0.7rem;
+            border-radius: 8px;
+          }
+
+          .zap-counter-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+          }
+
+          .channel-osd {
+            left: 8px;
+            right: 8px;
+            bottom: 6px;
+            padding: 5px 10px;
+          }
+
+          .osd-ch-number {
+            font-size: 1rem;
+            padding-right: 8px;
+          }
+
+          .channel-osd h2 {
+            font-size: 0.8rem;
+          }
+
+          .osd-program {
+            font-size: 0.65rem;
+            max-width: 60vw;
+          }
+
+          .fav-btn {
+            width: 30px;
+            height: 30px;
+          }
+
+          .exit-zen-btn {
+            top: 8px;
+            right: 8px;
+            padding: 4px 10px;
+            font-size: 0.7rem;
           }
         }
       `}</style>
     </div>
+
   );
 }

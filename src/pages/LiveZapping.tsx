@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
-  Image, Info, EyeOff, Layers, Search
+  Image, Info, EyeOff, Layers, Search, Cast, Smartphone
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { 
@@ -24,7 +24,8 @@ import MultiviewPiP from '../components/MultiviewPiP';
 import QuadMultiview from '../components/QuadMultiview';
 import RemoteConnectModal from '../components/RemoteConnectModal';
 import ChannelSearchModal from '../components/ChannelSearchModal';
-import { Smartphone } from 'lucide-react';
+import CastModal from '../components/CastModal';
+
 
 import { RemoteBridge } from '../utils/remoteBridge';
 
@@ -62,8 +63,10 @@ export default function LiveZapping() {
   const [sessionId] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
   const [showRemoteModal, setShowRemoteModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
+  const [showCastModal, setShowCastModal] = useState(false);
   const [isPhoneConnected, setIsPhoneConnected] = useState(false);
   const [flyingEmojis, setFlyingEmojis] = useState<Array<{ id: number; emoji: string; left: number }>>([]);
+
 
 
   // Modales y Modos
@@ -480,6 +483,14 @@ export default function LiveZapping() {
 
           <div className="quick-actions">
             <button 
+              className="icon-action-btn cast-action-btn" 
+              onClick={() => setShowCastModal(true)} 
+              title="Transmitir a la TV (Google Cast / Chromecast / Smart TV)"
+              style={{ background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(99, 102, 241, 0.35))', borderColor: '#60a5fa' }}
+            >
+              <Cast size={18} color="#93c5fd" />
+            </button>
+            <button 
               className="icon-action-btn" 
               onClick={() => setShowRemoteModal(true)} 
               title="Control Remoto por Celular (QR)"
@@ -504,18 +515,12 @@ export default function LiveZapping() {
             </button>
             <button 
               className="icon-action-btn" 
-              onClick={() => setShowRemoteModal(true)} 
-              title="Conectar Control Remoto Móvil (PIN / QR)"
-            >
-              <Smartphone size={18} color={isPhoneConnected ? '#4ade80' : 'white'} />
-            </button>
-            <button 
-              className="icon-action-btn" 
               onClick={() => setShowInfoModal(true)} 
               title="Ficha & Resumen IA (I)"
             >
               <Info size={18} />
             </button>
+
             <button 
               className="icon-action-btn" 
               onClick={() => setShowAmbientModal(true)} 
@@ -632,6 +637,13 @@ export default function LiveZapping() {
       )}
 
       {/* Modales y Modos Especiales */}
+      <CastModal
+        isOpen={showCastModal}
+        onClose={() => setShowCastModal(false)}
+        currentChannel={currentChannel}
+        pin={sessionId}
+      />
+
       <ChannelSearchModal
         isOpen={showSearchModal}
         onClose={() => setShowSearchModal(false)}
@@ -642,6 +654,7 @@ export default function LiveZapping() {
         }}
         onSelectRealYouTubeChannel={handleSelectRealYouTubeChannel}
       />
+
 
 
       <RemoteConnectModal

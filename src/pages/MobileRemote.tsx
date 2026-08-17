@@ -8,9 +8,10 @@ import {
 
 
 import { supabase } from '../lib/supabase';
-import CastScreenModal from '../components/CastScreenModal';
+import CastModal from '../components/CastModal';
 
 import { RemoteBridge } from '../utils/remoteBridge';
+
 
 const EMOJIS = ['🔥', '❤️', '👏', '🚀', '🤯', '🍿', '😂', '🎉'];
 
@@ -292,11 +293,14 @@ export default function MobileRemote() {
         </button>
       </form>
 
-      {/* Modal de Transmisión a la TV */}
-      <CastScreenModal
+      {/* Modal de Transmisión a la TV (Google Cast / Smart TV) */}
+      <CastModal
         isOpen={showCastModal}
         onClose={() => setShowCastModal(false)}
+        currentChannel={syncedChannel}
+        pin={activeSessionId || ''}
       />
+
 
       <style>{`
         .cast-header-btn {

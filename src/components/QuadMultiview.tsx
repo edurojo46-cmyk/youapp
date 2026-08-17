@@ -50,6 +50,10 @@ export default function QuadMultiview({
         {quadIndices.map((channelIdx, quadPos) => {
           const ch = channels[channelIdx % channels.length] || channels[0];
           const isAudioActive = activeAudioQuad === quadPos;
+          const isDirect = ch?.videoUrl && (ch.videoUrl.includes('.mp4') || ch.videoUrl.includes('.m3u8') || ch.videoUrl.includes('.webm'));
+          const ytId = !isDirect && ch?.videoUrl 
+            ? ch.videoUrl.replace('https://www.youtube.com/embed/', '').replace('yt-', '').split('?')[0] 
+            : '';
 
           return (
             <div
@@ -57,14 +61,26 @@ export default function QuadMultiview({
               className={`quad-cell ${isAudioActive ? 'audio-active' : ''}`}
               onClick={() => setActiveAudioQuad(quadPos)}
             >
-              {/* Iframe del Canal */}
-              <iframe
-                src={`${ch.videoUrl}?autoplay=1&mute=${isAudioActive ? 0 : 1}&controls=0`}
-                title={ch.name}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                className="quad-iframe"
-              />
+              {/* Reproductor de Video para el Cuadrante */}
+              {isDirect ? (
+                <video
+                  src={ch.videoUrl}
+                  playsInline
+                  autoPlay
+                  muted={!isAudioActive}
+                  loop
+                  className="quad-iframe"
+                  style={{ objectFit: 'cover', width: '100%', height: '100%' }}
+                />
+              ) : (
+                <iframe
+                  src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isAudioActive ? 0 : 1}&controls=0&playsinline=1`}
+                  title={ch.name}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  className="quad-iframe"
+                />
+              )}
 
               {/* Overlay de Control del Cuadrante */}
               <div className="quad-cell-overlay">
@@ -111,6 +127,7 @@ export default function QuadMultiview({
             </div>
           );
         })}
+
       </div>
 
       <style>{`

@@ -169,59 +169,70 @@ export const fetchPlaylistVideos = async (playlistId: string) => {
   }
 };
 
-// Canales 24/7 Oficiales Verificados de YouTube (Transmisión Continua Permanente)
+// Canales Oficiales de Transmisión EN VIVO Real 24/7 de YouTube (Señal en Directo Global)
 export const VERIFIED_24_7_LIVE_CHANNELS = [
   {
-    id: 'live-nature-costarica',
-    name: 'Naturaleza & Paisajes 4K 24/7',
-    category: 'Relax 4K',
-    viewerCount: 18400,
-    videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
-    currentVideoTitle: 'Costa Rica en 4K 60fps - Naturaleza & Sonidos Relajantes',
-    thumbnail: 'https://img.youtube.com/vi/LXb3EKWsInQ/hqdefault.jpg',
-    author: 'Nature Relaxation'
+    id: 'live-nasa-iss',
+    name: 'NASA Earth from Space 24/7',
+    category: 'Ciencia & Cosmos',
+    viewerCount: 24500,
+    videoUrl: 'https://www.youtube.com/embed/21X5lGlDOfg',
+    currentVideoTitle: 'NASA Live: Vista de la Tierra en Vivo desde la Estación Espacial',
+    thumbnail: 'https://img.youtube.com/vi/21X5lGlDOfg/hqdefault.jpg',
+    author: 'NASA'
+  },
+  {
+    id: 'live-france24-es',
+    name: 'France 24 Noticias 24/7',
+    category: 'Noticias & Mundo',
+    viewerCount: 19800,
+    videoUrl: 'https://www.youtube.com/embed/aY_iWw3D1Z0',
+    currentVideoTitle: 'France 24 en Español - Transmisión en Directo las 24 Horas',
+    thumbnail: 'https://img.youtube.com/vi/aY_iWw3D1Z0/hqdefault.jpg',
+    author: 'FRANCE 24 Español'
   },
   {
     id: 'live-lofi-beats',
     name: 'Lofi Girl 24/7 Radio',
     category: 'Focus & Música',
-    viewerCount: 34200,
+    viewerCount: 42000,
     videoUrl: 'https://www.youtube.com/embed/5qap5aO4i9A',
-    currentVideoTitle: 'Lofi Hip Hop Radio - Beats para Estudiar y Trabajar 24/7',
+    currentVideoTitle: 'Lofi Hip Hop Radio - Beats para Trabajar y Relajarse 24/7',
     thumbnail: 'https://img.youtube.com/vi/5qap5aO4i9A/hqdefault.jpg',
     author: 'Lofi Girl'
   },
   {
-    id: 'live-piano-ocean',
-    name: 'Piano & Océano Relajante 24/7',
-    category: 'Meditación & Paz',
-    viewerCount: 11500,
-    videoUrl: 'https://www.youtube.com/embed/1ZYbU82GVz4',
-    currentVideoTitle: 'Música de Piano Relajante con Olas de Mar en 4K',
-    thumbnail: 'https://img.youtube.com/vi/1ZYbU82GVz4/hqdefault.jpg',
-    author: 'Relaxing Music'
+    id: 'live-chillhop-radio',
+    name: 'Chillhop Music 24/7',
+    category: 'Relax & Chill',
+    viewerCount: 12400,
+    videoUrl: 'https://www.youtube.com/embed/5yx6BWlEVcY',
+    currentVideoTitle: 'Chillhop Radio - Jazzy & Lofi Hip Hop Beats 24/7 en Vivo',
+    thumbnail: 'https://img.youtube.com/vi/5yx6BWlEVcY/hqdefault.jpg',
+    author: 'Chillhop Music'
   },
   {
-    id: 'live-cosmos-nasa',
-    name: 'Cosmos & Universo 4K',
-    category: 'Ciencia & Espacio',
-    viewerCount: 15800,
-    videoUrl: 'https://www.youtube.com/embed/libKVRa07NQ',
-    currentVideoTitle: 'Viaje por el Cosmos - Documental 4K del Universo',
-    thumbnail: 'https://img.youtube.com/vi/libKVRa07NQ/hqdefault.jpg',
-    author: 'Space & Science TV'
+    id: 'live-euronews-es',
+    name: 'Euronews Internacional 24/7',
+    category: 'Noticias & Mundo',
+    viewerCount: 15200,
+    videoUrl: 'https://www.youtube.com/embed/pykdhuJWr1k',
+    currentVideoTitle: 'Euronews Español - Las Noticias Internacionales en Directo',
+    thumbnail: 'https://img.youtube.com/vi/pykdhuJWr1k/hqdefault.jpg',
+    author: 'Euronews'
   },
   {
-    id: 'live-cinema-shorts',
-    name: 'Cine & Cortometrajes Premiados',
-    category: 'Cine 24/7',
-    viewerCount: 9400,
-    videoUrl: 'https://www.youtube.com/embed/9bZkp7q19f0',
-    currentVideoTitle: 'Selección Oficial Cortometrajes de Animación Mundial',
-    thumbnail: 'https://img.youtube.com/vi/9bZkp7q19f0/hqdefault.jpg',
-    author: 'Cinema Shorts'
+    id: 'live-shinjuku-cam',
+    name: 'Tokyo Live Cam 24/7',
+    category: 'Cámaras del Mundo',
+    viewerCount: 8900,
+    videoUrl: 'https://www.youtube.com/embed/H-30UFOUq8o',
+    currentVideoTitle: 'Cámara en Vivo 24/7 desde Shinjuku, Tokio en 4K',
+    thumbnail: 'https://img.youtube.com/vi/H-30UFOUq8o/hqdefault.jpg',
+    author: 'Tokyo Live'
   }
 ];
+
 
 
 // Busca Transmisiones Reales en Vivo 24/7 activas en YouTube (eventType=live)

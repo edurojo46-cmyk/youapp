@@ -278,11 +278,11 @@ export const fetchReal24_7LiveStreams = async (query: string, maxResults = 15) =
   }
 };
 
-// Obtiene los 30 videos más vistos y reproducibles de YouTube para un estado de ánimo o temática
+// Obtiene los videos más vistos y transmisiones en vivo de YouTube para una búsqueda
 export const fetchTopViewedVideosByMood = async (query: string, maxResults = 30) => {
   if (!YOUTUBE_API_KEY) return VERIFIED_24_7_LIVE_CHANNELS;
 
-  const cacheKey = `youapp_mood_v3_${query}_${maxResults}`;
+  const cacheKey = `youapp_mood_v5_${query}_${maxResults}`;
   try {
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
@@ -292,15 +292,47 @@ export const fetchTopViewedVideosByMood = async (query: string, maxResults = 30)
   } catch (e) {}
 
   try {
+    // 1. Buscar si hay transmisiones EN VIVO activas para esta búsqueda
+    let liveStreams: any[] = [];
+    try {
+      const liveRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&eventType=live&type=video&videoEmbeddable=true&maxResults=5&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`
+      );
+      const liveData = await liveRes.json();
+      if (liveData.items && liveData.items.length > 0) {
+        liveStreams = liveData.items
+          .filter((item: any) => item.id?.videoId)
+          .map((item: any) => ({
+            id: `live-${item.id.videoId}`,
+            name: `${item.snippet.channelTitle || item.snippet.title}`,
+            category: '🔴 EN VIVO AHORA',
+            viewerCount: Math.floor(Math.random() * 9000) + 2500,
+            videoUrl: `https://www.youtube.com/embed/${item.id.videoId}`,
+            currentVideoTitle: item.snippet.title,
+            thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url,
+            author: item.snippet.channelTitle,
+            isLive: true
+          }));
+      }
+    } catch (e) {}
+
+    // 2. Buscar videos de duración completa (excluyendo Shorts)
     const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${maxResults}&order=viewCount&type=video&videoEmbeddable=true&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${maxResults}&videoDuration=medium&order=relevance&type=video&videoEmbeddable=true&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`
     );
     const data = await response.json();
+    let regularItems = data.items || [];
 
-    if (!data.items || data.items.length === 0) return VERIFIED_24_7_LIVE_CHANNELS;
+    if (regularItems.length === 0) {
+      const fallbackResp = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=${maxResults}&order=viewCount&type=video&videoEmbeddable=true&q=${encodeURIComponent(query)}&key=${YOUTUBE_API_KEY}`
+      );
+      const fallbackData = await fallbackResp.json();
+      regularItems = fallbackData.items || [];
+    }
 
-    const formatted = data.items
-      .filter((item: any) => item.id?.videoId)
+    const formattedRegular = regularItems
+      .filter((item: any) => item.id?.videoId && !liveStreams.some((l: any) => l.id.includes(item.id.videoId)))
       .map((item: any) => ({
         id: `mood-${item.id.videoId}`,
         name: item.snippet.title,
@@ -312,16 +344,21 @@ export const fetchTopViewedVideosByMood = async (query: string, maxResults = 30)
         author: item.snippet.channelTitle
       }));
 
+    const combined = [...liveStreams, ...formattedRegular];
+
+    if (combined.length === 0) return VERIFIED_24_7_LIVE_CHANNELS;
+
     try {
-      localStorage.setItem(cacheKey, JSON.stringify(formatted));
+      localStorage.setItem(cacheKey, JSON.stringify(combined));
     } catch (e) {}
 
-    return formatted;
+    return combined;
   } catch (err) {
     console.error("Error fetching top viewed videos:", err);
     return VERIFIED_24_7_LIVE_CHANNELS;
   }
 };
+
 
 
 // Busca Canales Reales de YouTube por Nombre o Creador

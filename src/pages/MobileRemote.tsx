@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+
 import { 
   Power, Volume2, VolumeX, Tv, Moon, Grid, Image, 
   Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check, Cast
@@ -23,7 +24,7 @@ export default function MobileRemote() {
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
   const [activeSessionId, setActiveSessionId] = useState<string | null>(routeSessionId || null);
   const [pinInput, setPinInput] = useState('');
-  const [channel, setChannel] = useState<any>(null);
+  const roomRef = useRef<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [showCastModal, setShowCastModal] = useState(false);
   const [lastAction, setLastAction] = useState<string>('Listo');
@@ -34,8 +35,8 @@ export default function MobileRemote() {
   useEffect(() => {
     if (!activeSessionId) return;
 
-    // Conectar al canal de Realtime de esta sesión de televisión
-    const room = supabase.channel(`remote_${activeSessionId}`, {
+    const channelName = `remote_${activeSessionId.trim()}`;
+    const room = supabase.channel(channelName, {
       config: { broadcast: { self: true } }
     });
 
@@ -46,7 +47,6 @@ export default function MobileRemote() {
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
-          // Avisar a la TV que el teléfono se conectó
           room.send({
             type: 'broadcast',
             event: 'REMOTE_CONNECTED',
@@ -55,7 +55,7 @@ export default function MobileRemote() {
         }
       });
 
-    setChannel(room);
+    roomRef.current = room;
 
     return () => {
       supabase.removeChannel(room);
@@ -67,6 +67,32 @@ export default function MobileRemote() {
     if (pinInput.trim().length >= 4) {
       setActiveSessionId(pinInput.trim());
     }
+  };
+
+  const sendAction = (action: string, payload: any = {}) => {
+    if (navigator.vibrate) {
+      try { navigator.vibrate(40); } catch {}
+    }
+
+    setLastAction(action);
+    setTimeout(() => setLastAction('Listo'), 1500);
+
+    const messagePayload = { action, ...payload };
+
+    if (roomRef.current) {
+      roomRef.current.send({
+        type: 'broadcast',
+        event: 'REMOTE_ACTION',
+        payload: messagePayload
+      });
+    }
+
+    // Local BroadcastChannel para pruebas en el mismo navegador
+    try {
+      const bc = new BroadcastChannel(`remote_${activeSessionId?.trim()}`);
+      bc.postMessage({ event: 'REMOTE_ACTION', payload: messagePayload });
+      setTimeout(() => bc.close(), 100);
+    } catch {}
   };
 
   // Pantalla de Ingreso de PIN
@@ -104,31 +130,13 @@ export default function MobileRemote() {
     );
   }
 
-
-  const sendAction = (action: string, payload: any = {}) => {
-    if (!channel) return;
-
-    // Vibración háptica en celulares
-    if (navigator.vibrate) {
-      navigator.vibrate(40);
-    }
-
-    setLastAction(action);
-    setTimeout(() => setLastAction('Listo'), 1500);
-
-    channel.send({
-      type: 'broadcast',
-      event: 'REMOTE_ACTION',
-      payload: { action, ...payload }
-    });
-  };
-
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatMessage.trim()) return;
     sendAction('SEND_CHAT', { text: chatMessage.trim() });
     setChatMessage('');
   };
+
 
   return (
     <div className="mobile-remote-viewport">

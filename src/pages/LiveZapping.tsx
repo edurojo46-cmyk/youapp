@@ -77,7 +77,46 @@ export default function LiveZapping() {
 
   // Escuchar órdenes del Control Remoto Móvil en Tiempo Real
   useEffect(() => {
-    const room = supabase.channel(`remote_${sessionId}`, {
+    const channelName = `remote_${sessionId.trim()}`;
+
+    const handleRemoteAction = (payload: any) => {
+      if (!payload) return;
+      const { action } = payload;
+
+      if (action === 'NEXT_CHANNEL') {
+        setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
+        triggerOSD();
+      } else if (action === 'PREV_CHANNEL') {
+        setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredChannels.length - 1));
+        triggerOSD();
+      } else if (action === 'SET_CHANNEL_INDEX') {
+        if (payload.index !== undefined && payload.index < filteredChannels.length) {
+          setActiveIndex(payload.index);
+          triggerOSD();
+        }
+      } else if (action === 'SET_MOOD') {
+        handleMoodSelect(payload.moodId);
+      } else if (action === 'TOGGLE_QUAD') {
+        setShowQuadView(prev => !prev);
+      } else if (action === 'TOGGLE_AMBIENT') {
+        setShowAmbientModal(prev => !prev);
+      } else if (action === 'TOGGLE_ZEN') {
+        setIsZenMode(prev => !prev);
+      } else if (action === 'TOGGLE_SLEEP') {
+        setIsAsleep(prev => !prev);
+      } else if (action === 'TOGGLE_MUTE') {
+        setIsMuted(prev => !prev);
+      } else if (action === 'TOGGLE_EPG') {
+        setShowEPGModal(prev => !prev);
+      } else if (action === 'TOGGLE_INFO') {
+        setShowInfoModal(prev => !prev);
+      } else if (action === 'SEND_EMOJI') {
+        triggerFloatingEmoji(payload.emoji);
+      }
+    };
+
+    // 1. Supabase WebSockets (Cross-device: Celular ➔ TV)
+    const room = supabase.channel(channelName, {
       config: { broadcast: { self: true } }
     });
 
@@ -87,46 +126,34 @@ export default function LiveZapping() {
         triggerFloatingEmoji('📱');
       })
       .on('broadcast', { event: 'REMOTE_ACTION' }, ({ payload }) => {
-        if (!payload) return;
-        const { action } = payload;
-
-        if (action === 'NEXT_CHANNEL') {
-          setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
-          triggerOSD();
-        } else if (action === 'PREV_CHANNEL') {
-          setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredChannels.length - 1));
-          triggerOSD();
-        } else if (action === 'SET_CHANNEL_INDEX') {
-          if (payload.index !== undefined && payload.index < filteredChannels.length) {
-            setActiveIndex(payload.index);
-            triggerOSD();
-          }
-        } else if (action === 'SET_MOOD') {
-          handleMoodSelect(payload.moodId);
-        } else if (action === 'TOGGLE_QUAD') {
-          setShowQuadView(prev => !prev);
-        } else if (action === 'TOGGLE_AMBIENT') {
-          setShowAmbientModal(prev => !prev);
-        } else if (action === 'TOGGLE_ZEN') {
-          setIsZenMode(prev => !prev);
-        } else if (action === 'TOGGLE_SLEEP') {
-          setIsAsleep(prev => !prev);
-        } else if (action === 'TOGGLE_MUTE') {
-          setIsMuted(prev => !prev);
-        } else if (action === 'TOGGLE_EPG') {
-          setShowEPGModal(prev => !prev);
-        } else if (action === 'TOGGLE_INFO') {
-          setShowInfoModal(prev => !prev);
-        } else if (action === 'SEND_EMOJI') {
-          triggerFloatingEmoji(payload.emoji);
-        }
+        handleRemoteAction(payload);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          room.send({ type: 'broadcast', event: 'TV_STATUS', payload: { online: true } });
+        }
+      });
+
+    // 2. BroadcastChannel nativo (Same-device / Multi-tab fallback)
+    let localBc: BroadcastChannel | null = null;
+    try {
+      localBc = new BroadcastChannel(channelName);
+      localBc.onmessage = (e) => {
+        if (e.data?.event === 'REMOTE_ACTION') {
+          handleRemoteAction(e.data.payload);
+        } else if (e.data?.type === 'REMOTE_CONNECTED') {
+          setIsPhoneConnected(true);
+          triggerFloatingEmoji('📱');
+        }
+      };
+    } catch {}
 
     return () => {
       supabase.removeChannel(room);
+      if (localBc) localBc.close();
     };
   }, [sessionId, filteredChannels]);
+
 
   const triggerFloatingEmoji = (emoji: string) => {
     const newEmoji = {

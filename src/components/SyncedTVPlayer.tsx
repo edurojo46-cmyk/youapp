@@ -25,31 +25,40 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   onUnmute,
   onVideoEnded,
   targetOffsetSeconds = 0,
-  channelName = 'YouApp TV',
-  playlistIds
+  channelName = 'YouApp TV'
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoId = extractVideoId(url);
-  const [liveSeconds, setLiveSeconds] = useState(Math.floor(targetOffsetSeconds));
 
-  // Reloj de emisión en vivo 24/7 en tiempo real
+  // Calcula el segundo exacto mundial de emisión en este milisegundo
+
+  const getExactUtcLiveSecond = () => {
+    const cycleDuration = 600; // ciclo de 10 minutos
+    const epochSec = Math.floor(Date.now() / 1000);
+    const hash = (videoId || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    return (epochSec + hash) % cycleDuration;
+  };
+
+  const [liveSeconds, setLiveSeconds] = useState(getExactUtcLiveSecond);
+
+  // Reloj de emisión en vivo 24/7 en tiempo real sincronizado por UTC
   useEffect(() => {
-    setLiveSeconds(Math.floor(targetOffsetSeconds));
     const interval = setInterval(() => {
-      setLiveSeconds(prev => (prev + 1) % 600);
+      setLiveSeconds(getExactUtcLiveSecond());
     }, 1000);
     return () => clearInterval(interval);
-  }, [targetOffsetSeconds]);
+  }, [videoId]);
 
-  // Función para forzar sincronización imperativa por PostMessage
+  // Función para forzar sincronización imperativa con el reloj mundial
   const forceSyncToLive = () => {
+    const currentExactSecond = getExactUtcLiveSecond();
     if (iframeRef.current?.contentWindow) {
       try {
         iframeRef.current.contentWindow.postMessage(
           JSON.stringify({
             event: 'command',
             func: 'seekTo',
-            args: [targetOffsetSeconds, true]
+            args: [currentExactSecond, true]
           }),
           '*'
         );
@@ -57,11 +66,13 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     }
   };
 
-  // Enviar comando seekTo al cargar el iframe
+  // Enviar comando seekTo al cargar el iframe y periódicamente
   const handleIframeLoad = () => {
-    setTimeout(forceSyncToLive, 1000);
-    setTimeout(forceSyncToLive, 2500);
+    setTimeout(forceSyncToLive, 800);
+    setTimeout(forceSyncToLive, 2000);
+    setTimeout(forceSyncToLive, 4000);
   };
+
 
   // Escuchar eventos de la API de YouTube por PostMessage
   useEffect(() => {

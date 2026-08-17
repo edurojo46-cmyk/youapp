@@ -62,14 +62,12 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   }
 
   const startParam = targetOffsetSeconds > 0 ? `&start=${Math.floor(targetOffsetSeconds)}` : '';
-  const playlistParam = playlistIds ? `&playlist=${playlistIds}&loop=1` : '';
-  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}&rel=0&playsinline=0${playlistParam}${startParam}`;
-
+  const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1${startParam}`;
 
   return (
     <div className="synced-player-container">
       <iframe
-        key={videoId}
+        key={`${videoId}_${isMuted ? 1 : 0}`}
         ref={iframeRef}
         src={embedUrl}
         title={channelName}
@@ -78,6 +76,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         allowFullScreen
         className="synced-tv-iframe"
       />
+
 
 
       {/* Botón de Sonido Flotante si está silenciado */}

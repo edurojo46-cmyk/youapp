@@ -68,11 +68,17 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     }
   }, []);
 
+  const initialStartSec = useRef(getExactUtcLiveSecond());
+
+  // Reset al cambiar de video
+  useEffect(() => {
+    initialStartSec.current = getExactUtcLiveSecond();
+  }, [videoId]);
+
   // Función para forzar sincronización imperativa con el reloj mundial
   const forceSyncToLive = () => {
     const currentExactSecond = getExactUtcLiveSecond();
 
-    // 1. Vía YT.Player API oficial
     if (ytPlayerRef.current && ytPlayerRef.current.seekTo) {
       try {
         ytPlayerRef.current.seekTo(currentExactSecond, true);
@@ -80,15 +86,12 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       } catch (e) {}
     }
 
-    // 2. Vía PostMessage con handshake
     if (iframeRef.current?.contentWindow) {
       try {
-        // Handshake
         iframeRef.current.contentWindow.postMessage(
           JSON.stringify({ event: 'listening', id: 1 }),
           '*'
         );
-        // SeekTo
         iframeRef.current.contentWindow.postMessage(
           JSON.stringify({
             event: 'command',
@@ -101,19 +104,12 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     }
   };
 
-  // Enviar comando seekTo al cargar el iframe y conectar YT.Player
+  // Conectar YT.Player cuando el iframe termine de cargar
   const handleIframeLoad = () => {
-    // Inicializar YT.Player en el iframe existente
     if (window.YT && window.YT.Player && iframeRef.current) {
       try {
         ytPlayerRef.current = new window.YT.Player(iframeRef.current, {
           events: {
-            onReady: (event: any) => {
-              const exactSec = getExactUtcLiveSecond();
-              event.target.seekTo(exactSec, true);
-              if (isMuted) event.target.mute();
-              else event.target.unMute();
-            },
             onStateChange: (event: any) => {
               if (event.data === 0) {
                 onVideoEnded();
@@ -123,10 +119,6 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         });
       } catch (e) {}
     }
-
-    setTimeout(forceSyncToLive, 500);
-    setTimeout(forceSyncToLive, 1500);
-    setTimeout(forceSyncToLive, 3000);
   };
 
   // Escuchar eventos de la API de YouTube por PostMessage
@@ -135,11 +127,6 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       try {
         if (!event.data) return;
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-
-        // onReady -> forzar seek inicial
-        if (data.event === 'onReady') {
-          forceSyncToLive();
-        }
 
         // 0 = ENDED -> Pasar al siguiente video automáticamente
         if ((data.event === 'onStateChange' && data.info === 0) || data.info?.playerState === 0) {
@@ -164,9 +151,10 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     );
   }
 
-  const startParam = `&start=${Math.floor(getExactUtcLiveSecond())}`;
+  const startParam = `&start=${Math.floor(initialStartSec.current)}`;
   const originParam = `&origin=${encodeURIComponent(window.location.origin)}`;
   const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&playsinline=0${originParam}${startParam}`;
+
 
 
   const formatMinSec = (sec: number) => {

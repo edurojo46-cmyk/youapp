@@ -9,9 +9,8 @@ import {
 
 import { supabase } from '../lib/supabase';
 import CastModal from '../components/CastModal';
-
 import { RemoteBridge } from '../utils/remoteBridge';
-
+import { VERIFIED_24_7_LIVE_CHANNELS, fetchTopViewedVideosByMood } from '../lib/youtube';
 
 const EMOJIS = ['🔥', '❤️', '👏', '🚀', '🤯', '🍿', '😂', '🎉'];
 
@@ -27,16 +26,54 @@ const MOODS = [
 export default function MobileRemote() {
   const navigate = useNavigate();
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(routeSessionId || null);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(routeSessionId || '5821');
   const [pinInput, setPinInput] = useState('');
   const bridgeRef = useRef<RemoteBridge | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const [showCastModal, setShowCastModal] = useState(false);
   const [lastAction, setLastAction] = useState<string>('Listo');
   const [chatMessage, setChatMessage] = useState('');
   const [selectedMood, setSelectedMood] = useState('all');
-  const [syncedChannel, setSyncedChannel] = useState<any>(null);
-  const [showMirrorPlayer, setShowMirrorPlayer] = useState(false);
+  const [channels, setChannels] = useState<any[]>(VERIFIED_24_7_LIVE_CHANNELS);
+  const [channelIdx, setChannelIdx] = useState(0);
+  const [syncedChannel, setSyncedChannel] = useState<any>(VERIFIED_24_7_LIVE_CHANNELS[0]);
+  const [isCastMuted, setIsCastMuted] = useState(false);
+
+  // Helper para enviar nuevo canal a Chromecast si está conectado
+  const streamChannelToChromecast = (ch: any) => {
+    if (!ch || !window.cast?.framework) return;
+    try {
+      const context = window.cast.framework.CastContext.getInstance();
+      const castSession = context.getCurrentSession();
+      if (!castSession || !window.chrome?.cast) return;
+
+      const videoUrl = ch.videoUrl;
+      const isYouTube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
+      const rawId = videoUrl.replace('https://www.youtube.com/embed/', '').replace('yt-', '').split('?')[0];
+
+      if (isYouTube && rawId) {
+        window.open(`https://www.youtube.com/watch?v=${rawId}`, '_blank');
+        return;
+      }
+
+      let contentType = 'video/mp4';
+      if (videoUrl.includes('.m3u8')) contentType = 'application/x-mpegurl';
+
+      const mediaInfo = new window.chrome.cast.media.MediaInfo(videoUrl, contentType);
+      mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
+      mediaInfo.metadata.title = ch.name || 'YouApp TV';
+      mediaInfo.metadata.subtitle = ch.currentVideoTitle || 'En Vivo';
+      if (ch.thumbnail) {
+        mediaInfo.metadata.images = [{ url: ch.thumbnail }];
+      }
+
+      const req = new window.chrome.cast.media.LoadRequest(mediaInfo);
+      req.autoplay = true;
+      castSession.loadMedia(req);
+    } catch (e) {
+      console.warn("Error cast to chromecast:", e);
+    }
+  };
 
   useEffect(() => {
     if (!activeSessionId) return;
@@ -49,6 +86,7 @@ export default function MobileRemote() {
     bridge.onAction((action, payload) => {
       if (action === 'SYNC_STATE' && payload?.channel) {
         setSyncedChannel(payload.channel);
+        if (payload.activeIndex !== undefined) setChannelIdx(payload.activeIndex);
         if (payload.moodId) setSelectedMood(payload.moodId);
       }
     });
@@ -58,7 +96,6 @@ export default function MobileRemote() {
     };
   }, [activeSessionId]);
 
-
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput.trim().length >= 4) {
@@ -66,7 +103,7 @@ export default function MobileRemote() {
     }
   };
 
-  const sendAction = (action: string, payload: any = {}) => {
+  const sendAction = async (action: string, payload: any = {}) => {
     if (navigator.vibrate) {
       try { navigator.vibrate(40); } catch {}
     }
@@ -74,10 +111,53 @@ export default function MobileRemote() {
     setLastAction(action);
     setTimeout(() => setLastAction('Listo'), 1500);
 
+    // 1. Enviar vía WebRTC / Supabase a la TV YouApp
     if (bridgeRef.current) {
       bridgeRef.current.sendAction(action, payload);
     }
+
+    // 2. Controlar Chromecast directamente si está activo
+    if (action === 'NEXT_CHANNEL') {
+      const nextIdx = (channelIdx + 1) % channels.length;
+      setChannelIdx(nextIdx);
+      const nextCh = channels[nextIdx];
+      setSyncedChannel(nextCh);
+      streamChannelToChromecast(nextCh);
+    } else if (action === 'PREV_CHANNEL') {
+      const prevIdx = (channelIdx - 1 + channels.length) % channels.length;
+      setChannelIdx(prevIdx);
+      const prevCh = channels[prevIdx];
+      setSyncedChannel(prevCh);
+      streamChannelToChromecast(prevCh);
+    } else if (action === 'SET_CHANNEL_INDEX') {
+      const idx = payload?.index || 0;
+      if (channels[idx]) {
+        setChannelIdx(idx);
+        setSyncedChannel(channels[idx]);
+        streamChannelToChromecast(channels[idx]);
+      }
+    } else if (action === 'TOGGLE_MUTE') {
+      setIsCastMuted(prev => {
+        const next = !prev;
+        try {
+          const castSession = window.cast?.framework?.CastContext?.getInstance()?.getCurrentSession();
+          if (castSession) castSession.setMute(next);
+        } catch {}
+        return next;
+      });
+    } else if (action === 'SEARCH_QUERY' && payload?.query) {
+      try {
+        const results = await fetchTopViewedVideosByMood(payload.query);
+        if (results && results.length > 0) {
+          setChannels(results);
+          setChannelIdx(0);
+          setSyncedChannel(results[0]);
+          streamChannelToChromecast(results[0]);
+        }
+      } catch {}
+    }
   };
+
 
   // Pantalla de Ingreso de PIN
   if (!activeSessionId) {

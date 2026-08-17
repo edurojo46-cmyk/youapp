@@ -419,22 +419,17 @@ export default function LiveZapping() {
         </div>
       )}
 
-      {/* Reproductor de Video Fullscreen */}
+      {/* Reproductor de Video Fullscreen idéntico a YouTube */}
       {currentChannel.videoUrl ? (
         <div className="video-player-wrapper">
           <iframe
             key={`${currentChannel.id}_${activeIndex}`}
-            src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1`}
+            src={`${currentChannel.videoUrl}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&fs=1&modestbranding=1&rel=0&playsinline=1&enablejsapi=1`}
             title={currentChannel.name}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowFullScreen
-            className={`zapping-iframe ${isFullscreen ? 'giant-mode' : ''}`}
-          />
-          {/* Capa táctil transparente para capturar doble toque sobre el video */}
-          <div 
-            className="video-touch-overlay" 
-            onClick={handleScreenTouchOrClick}
+            className="zapping-iframe"
           />
         </div>
       ) : (
@@ -444,6 +439,7 @@ export default function LiveZapping() {
           <p>Señal fuera de aire por el momento.</p>
         </div>
       )}
+
 
       {/* Botón de Sonido Flotante */}
       {isMuted && (
@@ -757,22 +753,32 @@ export default function LiveZapping() {
           background: #000;
         }
 
-        .video-touch-overlay {
-          position: absolute;
-          inset: 0;
-          z-index: 15;
-          cursor: pointer;
-          background: transparent;
-          touch-action: manipulation;
-        }
-
         .zapping-iframe {
           width: 100vw;
           height: 100vh;
           border: none;
           pointer-events: auto;
-          transition: transform 0.3s ease;
+          background: #000;
         }
+
+        /* Ajuste nativo perfecto cuando se agranda con el icono de YouTube */
+        .zapping-iframe:fullscreen,
+        .zapping-iframe:-webkit-full-screen,
+        .video-player-wrapper:fullscreen,
+        .video-player-wrapper:-webkit-full-screen {
+          width: 100vw !important;
+          height: 100vh !important;
+          max-width: 100vw !important;
+          max-height: 100vh !important;
+          border: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #000 !important;
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 99999 !important;
+        }
+
 
 
         .zapping-iframe.giant-mode {

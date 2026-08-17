@@ -9,6 +9,8 @@ import {
 import { supabase } from '../lib/supabase';
 import CastScreenModal from '../components/CastScreenModal';
 
+import { RemoteBridge } from '../utils/remoteBridge';
+
 const EMOJIS = ['🔥', '❤️', '👏', '🚀', '🤯', '🍿', '😂', '🎉'];
 
 const MOODS = [
@@ -24,41 +26,23 @@ export default function MobileRemote() {
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
   const [activeSessionId, setActiveSessionId] = useState<string | null>(routeSessionId || null);
   const [pinInput, setPinInput] = useState('');
-  const roomRef = useRef<any>(null);
+  const bridgeRef = useRef<RemoteBridge | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [showCastModal, setShowCastModal] = useState(false);
   const [lastAction, setLastAction] = useState<string>('Listo');
   const [chatMessage, setChatMessage] = useState('');
   const [selectedMood, setSelectedMood] = useState('all');
 
-
   useEffect(() => {
     if (!activeSessionId) return;
 
-    const channelName = `remote_${activeSessionId.trim()}`;
-    const room = supabase.channel(channelName, {
-      config: { broadcast: { self: true } }
-    });
-
-    room
-      .on('broadcast', { event: 'TV_STATUS' }, () => {
-        setIsConnected(true);
-      })
-      .subscribe((status: string) => {
-        if (status === 'SUBSCRIBED') {
-          setIsConnected(true);
-          room.send({
-            type: 'broadcast',
-            event: 'REMOTE_CONNECTED',
-            payload: { timestamp: Date.now() }
-          });
-        }
-      });
-
-    roomRef.current = room;
+    const bridge = new RemoteBridge(activeSessionId);
+    bridge.notifyConnected();
+    setIsConnected(true);
+    bridgeRef.current = bridge;
 
     return () => {
-      supabase.removeChannel(room);
+      bridge.destroy();
     };
   }, [activeSessionId]);
 
@@ -77,22 +61,9 @@ export default function MobileRemote() {
     setLastAction(action);
     setTimeout(() => setLastAction('Listo'), 1500);
 
-    const messagePayload = { action, ...payload };
-
-    if (roomRef.current) {
-      roomRef.current.send({
-        type: 'broadcast',
-        event: 'REMOTE_ACTION',
-        payload: messagePayload
-      });
+    if (bridgeRef.current) {
+      bridgeRef.current.sendAction(action, payload);
     }
-
-    // Local BroadcastChannel para pruebas en el mismo navegador
-    try {
-      const bc = new BroadcastChannel(`remote_${activeSessionId?.trim()}`);
-      bc.postMessage({ event: 'REMOTE_ACTION', payload: messagePayload });
-      setTimeout(() => bc.close(), 100);
-    } catch {}
   };
 
   // Pantalla de Ingreso de PIN

@@ -16,6 +16,8 @@ import QuadMultiview from '../components/QuadMultiview';
 import RemoteConnectModal from '../components/RemoteConnectModal';
 import { Smartphone } from 'lucide-react';
 
+import { RemoteBridge } from '../utils/remoteBridge';
+
 const MOOD_SEARCH_QUERIES: Record<string, string> = {
   focus: 'lofi hip hop radio beats study relaxation',
   relax: 'relaxing 4k nature scenery meditation ocean',
@@ -47,7 +49,6 @@ export default function LiveZapping() {
   // Control Remoto Virtual por Código QR y PIN de 4 dígitos
   const [sessionId] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
   const [showRemoteModal, setShowRemoteModal] = useState(false);
-
   const [isPhoneConnected, setIsPhoneConnected] = useState(false);
   const [flyingEmojis, setFlyingEmojis] = useState<Array<{ id: number; emoji: string; left: number }>>([]);
 
@@ -65,7 +66,6 @@ export default function LiveZapping() {
   const [showOSD, setShowOSD] = useState(true);
   const osdTimeoutRef = useRef<any>(null);
 
-
   // Favoritos
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
@@ -75,14 +75,16 @@ export default function LiveZapping() {
     }
   });
 
-  // Escuchar órdenes del Control Remoto Móvil en Tiempo Real
+  // Escuchar órdenes del Control Remoto Móvil en Tiempo Real mediante RemoteBridge
   useEffect(() => {
-    const channelName = `remote_${sessionId.trim()}`;
+    const bridge = new RemoteBridge(sessionId);
 
-    const handleRemoteAction = (payload: any) => {
-      if (!payload) return;
-      const { action } = payload;
+    bridge.onConnected(() => {
+      setIsPhoneConnected(true);
+      triggerFloatingEmoji('📱');
+    });
 
+    bridge.onAction((action, payload) => {
       if (action === 'NEXT_CHANNEL') {
         setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
         triggerOSD();
@@ -90,12 +92,12 @@ export default function LiveZapping() {
         setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredChannels.length - 1));
         triggerOSD();
       } else if (action === 'SET_CHANNEL_INDEX') {
-        if (payload.index !== undefined && payload.index < filteredChannels.length) {
+        if (payload?.index !== undefined && payload.index < filteredChannels.length) {
           setActiveIndex(payload.index);
           triggerOSD();
         }
       } else if (action === 'SET_MOOD') {
-        handleMoodSelect(payload.moodId);
+        if (payload?.moodId) handleMoodSelect(payload.moodId);
       } else if (action === 'TOGGLE_QUAD') {
         setShowQuadView(prev => !prev);
       } else if (action === 'TOGGLE_AMBIENT') {
@@ -111,51 +113,17 @@ export default function LiveZapping() {
       } else if (action === 'TOGGLE_INFO') {
         setShowInfoModal(prev => !prev);
       } else if (action === 'SEND_EMOJI') {
-        triggerFloatingEmoji(payload.emoji);
+        triggerFloatingEmoji(payload?.emoji || '🔥');
       }
-    };
-
-    // 1. Supabase WebSockets (Cross-device: Celular ➔ TV)
-    const room = supabase.channel(channelName, {
-      config: { broadcast: { self: true } }
     });
 
-    room
-      .on('broadcast', { event: 'REMOTE_CONNECTED' }, () => {
-        setIsPhoneConnected(true);
-        triggerFloatingEmoji('📱');
-      })
-      .on('broadcast', { event: 'REMOTE_ACTION' }, ({ payload }) => {
-        handleRemoteAction(payload);
-      })
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          room.send({ type: 'broadcast', event: 'TV_STATUS', payload: { online: true } });
-        }
-      });
-
-    // 2. BroadcastChannel nativo (Same-device / Multi-tab fallback)
-    let localBc: BroadcastChannel | null = null;
-    try {
-      localBc = new BroadcastChannel(channelName);
-      localBc.onmessage = (e) => {
-        if (e.data?.event === 'REMOTE_ACTION') {
-          handleRemoteAction(e.data.payload);
-        } else if (e.data?.type === 'REMOTE_CONNECTED') {
-          setIsPhoneConnected(true);
-          triggerFloatingEmoji('📱');
-        }
-      };
-    } catch {}
-
     return () => {
-      supabase.removeChannel(room);
-      if (localBc) localBc.close();
+      bridge.destroy();
     };
   }, [sessionId, filteredChannels]);
 
-
   const triggerFloatingEmoji = (emoji: string) => {
+
     const newEmoji = {
       id: Date.now() + Math.random(),
       emoji,

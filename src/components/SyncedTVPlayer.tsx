@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { VolumeX, Volume2, Radio, Play, Loader2 } from 'lucide-react';
+import Hls from 'hls.js';
 
 declare global {
   interface Window {
     YT: any;
-    onYouTubeIframeAPIReady?: () => void;
   }
 }
 
@@ -17,8 +17,24 @@ interface SyncedTVPlayerProps {
   channelName?: string;
 }
 
-// Extrae el Video ID de cualquier URL de YouTube
-const extractVideoId = (url: string): string => {
+// Determina si una URL es video directo (MP4, WebM, HLS m3u8) o YouTube
+const isDirectVideo = (url: string): boolean => {
+  if (!url) return false;
+  const clean = url.toLowerCase().split('?')[0];
+  return (
+    clean.endsWith('.mp4') ||
+    clean.endsWith('.m3u8') ||
+    clean.endsWith('.webm') ||
+    clean.includes('.mp4') ||
+    clean.includes('.m3u8') ||
+    clean.includes('commondatastorage.googleapis.com') ||
+    clean.includes('storage.googleapis.com') ||
+    clean.includes('supabase.co/storage')
+  );
+};
+
+// Extrae el Video ID de YouTube
+const extractYouTubeId = (url: string): string => {
   if (!url) return '';
   const match = url.match(/(?:embed\/|v=|vi\/|youtu\.be\/|\/v\/|\/e\/|watch\?v=)([^#&?]*).*/);
   if (match && match[1]) return match[1];
@@ -33,155 +49,161 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   targetOffsetSeconds = 0,
   channelName = 'YouApp TV'
 }) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const containerId = useRef(`yt-container-${Math.floor(Math.random() * 100000)}`).current;
-  const playerRef = useRef<any>(null);
+  const ytPlayerRef = useRef<any>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [needsUserTap, setNeedsUserTap] = useState(false);
-  const hasSeekedRef = useRef(false);
-  const videoId = extractVideoId(url);
 
-  // Calcula el segundo exacto mundial de emisión en este milisegundo (Matemática Determinística Global)
-  const getExactUtcLiveSecond = () => {
-    const cycleDuration = 600; // ciclo de 10 minutos
+  const isDirect = isDirectVideo(url);
+  const ytId = !isDirect ? extractYouTubeId(url) : '';
+
+  // Reloj Determinístico Global Universal (UTC Epoch Lock)
+  const getExactUtcLiveSecond = (duration: number = 600) => {
     const epochSec = Math.floor(Date.now() / 1000);
-    const hash = (videoId || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-    return (epochSec + hash) % cycleDuration;
+    const seed = (url || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    return (epochSec + seed) % Math.max(10, Math.floor(duration));
   };
 
-  const [liveSeconds, setLiveSeconds] = useState(getExactUtcLiveSecond);
+  const [liveSeconds, setLiveSeconds] = useState(() => getExactUtcLiveSecond(600));
 
-  // Reloj visual de emisión en tiempo real
+  // Ticker de emisión visual
   useEffect(() => {
     const interval = setInterval(() => {
-      setLiveSeconds(getExactUtcLiveSecond());
+      const currentDur = videoRef.current?.duration || 600;
+      setLiveSeconds(getExactUtcLiveSecond(currentDur));
     }, 1000);
     return () => clearInterval(interval);
-  }, [videoId]);
+  }, [url]);
 
-  // Cargar SDK de YouTube una sola vez
+  // ==========================================
+  // MOTOR NATIVO HTML5 / HLS (Control Total 100%)
+  // ==========================================
   useEffect(() => {
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+    if (!isDirect || !url || !videoRef.current) return;
+
+    const videoEl = videoRef.current;
+    let hlsInstance: Hls | null = null;
+
+    videoEl.muted = isMuted;
+
+    const applyLiveSync = () => {
+      if (videoEl.duration && !isNaN(videoEl.duration) && videoEl.duration > 0) {
+        const liveSec = getExactUtcLiveSecond(videoEl.duration);
+        videoEl.currentTime = liveSec;
+      }
+      videoEl.play().catch(() => {
+        setNeedsUserTap(true);
+      });
+    };
+
+    if (url.includes('.m3u8')) {
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls({ enableWorker: true });
+        hlsInstance.loadSource(url);
+        hlsInstance.attachMedia(videoEl);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+          applyLiveSync();
+        });
+      } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+        videoEl.src = url;
+        videoEl.addEventListener('loadedmetadata', applyLiveSync, { once: true });
+      }
+    } else {
+      // Archivo MP4 / WebM directo
+      videoEl.src = url;
+      videoEl.load();
+      videoEl.addEventListener('loadedmetadata', applyLiveSync, { once: true });
+      videoEl.addEventListener('canplay', applyLiveSync, { once: true });
     }
-  }, []);
 
-  // Inicializar reproductor de YouTube
+    return () => {
+      if (hlsInstance) {
+        hlsInstance.destroy();
+      }
+      videoEl.removeAttribute('src');
+      videoEl.load();
+    };
+  }, [url, isDirect]);
+
+  // Sincronizar Mute nativo
   useEffect(() => {
-    if (!videoId) return;
-    hasSeekedRef.current = false;
-    setIsPlaying(false);
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+    }
+  }, [isMuted]);
+
+  // ==========================================
+  // MOTOR YOUTUBE (Fallback)
+  // ==========================================
+  useEffect(() => {
+    if (isDirect || !ytId) return;
 
     let isSubscribed = true;
 
-    const initPlayer = () => {
+    const initYt = () => {
       if (!window.YT || !window.YT.Player) {
-        setTimeout(initPlayer, 150);
+        setTimeout(initYt, 150);
         return;
       }
-
       if (!isSubscribed) return;
 
-      const currentLiveSec = getExactUtcLiveSecond();
+      const liveSec = getExactUtcLiveSecond(600);
 
-      // Si el reproductor ya existe en memoria, cargar nuevo video
-      if (playerRef.current && playerRef.current.loadVideoById) {
-        try {
-          playerRef.current.loadVideoById({
-            videoId,
-            startSeconds: currentLiveSec
-          });
-          if (isMuted) playerRef.current.mute();
-          else playerRef.current.unMute();
-          return;
-        } catch (e) {}
-      }
-
-      // Crear nuevo reproductor oficial
       try {
-        playerRef.current = new window.YT.Player(containerId, {
-          videoId,
+        ytPlayerRef.current = new window.YT.Player(containerId, {
+          videoId: ytId,
           playerVars: {
             autoplay: 1,
             mute: isMuted ? 1 : 0,
             controls: 1,
-            modestbranding: 1,
-            rel: 0,
-            enablejsapi: 1,
-            playsinline: 1,
-            start: currentLiveSec
+            start: liveSec,
+            playsinline: 1
           },
           events: {
-            onReady: (event: any) => {
+            onReady: (e: any) => {
               if (!isSubscribed) return;
-              if (isMuted) event.target.mute();
-              else event.target.unMute();
-
-              try {
-                const liveSec = getExactUtcLiveSecond();
-                event.target.seekTo(liveSec, true);
-                event.target.playVideo();
-              } catch (e) {}
-
-              // Si en 1.5s no está reproduciendo, mostrar botón para toque de usuario
-              setTimeout(() => {
-                if (isSubscribed && event.target.getPlayerState && event.target.getPlayerState() !== 1) {
-                  setNeedsUserTap(true);
-                }
-              }, 1500);
+              e.target.seekTo(liveSec, true);
+              e.target.playVideo();
             },
-            onStateChange: (event: any) => {
-              // 1 = PLAYING
-              if (event.data === 1) {
-                setIsPlaying(true);
-                setNeedsUserTap(false);
-                // Forzar salto exacto en el primer fotograma
-                if (!hasSeekedRef.current) {
-                  const liveSec = getExactUtcLiveSecond();
-                  event.target.seekTo(liveSec, true);
-                  hasSeekedRef.current = true;
-                }
-              }
-              // 0 = ENDED -> Siguiente video automáticamente
-              if (event.data === 0) {
-                onVideoEnded();
-              }
+            onStateChange: (e: any) => {
+              if (e.data === 0) onVideoEnded();
             }
           }
         });
-      } catch (e) {}
+      } catch (err) {}
     };
 
-    initPlayer();
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.body.appendChild(tag);
+    }
+
+    initYt();
 
     return () => {
       isSubscribed = false;
     };
-  }, [videoId]);
+  }, [ytId, isDirect]);
 
-  // Manejar Mute
-  useEffect(() => {
-    if (playerRef.current) {
-      try {
-        if (isMuted) playerRef.current.mute();
-        else playerRef.current.unMute();
-      } catch (e) {}
-    }
-  }, [isMuted]);
-
-  // Toque de usuario para desbloquear y sincronizar en móviles
+  // Desbloqueo táctil de usuario (Mobile Gesture Unlock)
   const handleUserUnlock = () => {
     setNeedsUserTap(false);
     onUnmute();
-    if (playerRef.current) {
+
+    if (isDirect && videoRef.current) {
+      const videoEl = videoRef.current;
+      videoEl.muted = false;
+      if (videoEl.duration) {
+        videoEl.currentTime = getExactUtcLiveSecond(videoEl.duration);
+      }
+      videoEl.play();
+    } else if (ytPlayerRef.current) {
       try {
-        const liveSec = getExactUtcLiveSecond();
-        playerRef.current.unMute();
-        playerRef.current.seekTo(liveSec, true);
-        playerRef.current.playVideo();
-        hasSeekedRef.current = true;
+        ytPlayerRef.current.unMute();
+        ytPlayerRef.current.seekTo(getExactUtcLiveSecond(600), true);
+        ytPlayerRef.current.playVideo();
       } catch (e) {}
     }
   };
@@ -192,7 +214,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  if (!url || !videoId) {
+  if (!url) {
     return (
       <div className="synced-player-empty">
         <Radio size={48} className="text-accent" />
@@ -204,10 +226,22 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
   return (
     <div className="synced-player-container">
-      {/* Contenedor oficial de YouTube */}
-      <div id={containerId} className="synced-tv-iframe" />
+      {/* Reproductor Nativo HTML5 (Máximo Rendimiento & Sincronización Real) */}
+      {isDirect ? (
+        <video
+          ref={videoRef}
+          className="synced-native-video"
+          playsInline
+          autoPlay
+          muted={isMuted}
+          onEnded={onVideoEnded}
+          onClick={handleUserUnlock}
+        />
+      ) : (
+        <div id={containerId} className="synced-tv-iframe" />
+      )}
 
-      {/* Botón de Sincronización en Vivo */}
+      {/* Indicador de Transmisión Sincronizada en Vivo 24/7 */}
       <button 
         className="live-sync-badge-pill" 
         onClick={handleUserUnlock}
@@ -230,7 +264,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       {/* Botón de Sonido Flotante si está silenciado */}
       {isMuted && !needsUserTap && (
         <button 
-          onClick={(e) => { e.stopPropagation(); onUnmute(); if (playerRef.current) { try { playerRef.current.unMute(); } catch (e) {} } }} 
+          onClick={(e) => { e.stopPropagation(); handleUserUnlock(); }} 
           className="zapping-unmute-btn"
         >
           <VolumeX size={18} />
@@ -247,6 +281,16 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           height: 100dvh;
           background: #000;
           overflow: hidden;
+        }
+
+        .synced-native-video {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          background: #000;
         }
 
         .synced-tv-iframe {
@@ -351,3 +395,4 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 };
 
 export default SyncedTVPlayer;
+

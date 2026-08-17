@@ -169,69 +169,65 @@ export const fetchPlaylistVideos = async (playlistId: string) => {
   }
 };
 
-// Canales Oficiales de Transmisión EN VIVO Real 24/7 de YouTube (Señal en Directo Global)
+// Canales de Transmisión Sincronizada 24/7 Nativa (HTML5 Video & HLS sin restricciones de YouTube)
 export const VERIFIED_24_7_LIVE_CHANNELS = [
   {
-    id: 'live-nasa-iss',
-    name: 'NASA Earth from Space 24/7',
-    category: 'Ciencia & Cosmos',
-    viewerCount: 24500,
-    videoUrl: 'https://www.youtube.com/embed/21X5lGlDOfg',
-    currentVideoTitle: 'NASA Live: Vista de la Tierra en Vivo desde la Estación Espacial',
-    thumbnail: 'https://img.youtube.com/vi/21X5lGlDOfg/hqdefault.jpg',
-    author: 'NASA'
+    id: 'live-cinema-blender',
+    name: 'Cine & Animación 4K 24/7',
+    category: 'Cine & Animación',
+    viewerCount: 28400,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    currentVideoTitle: 'Big Buck Bunny - Película 4K 60fps',
+    thumbnail: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=800&auto=format&fit=crop&q=60',
+    author: 'Blender Foundation',
+    durationSeconds: 596
   },
   {
-    id: 'live-france24-es',
-    name: 'France 24 Noticias 24/7',
-    category: 'Noticias & Mundo',
+    id: 'live-nature-escape',
+    name: 'Naturaleza & Paisajes 24/7',
+    category: 'Relax & Naturaleza',
+    viewerCount: 34100,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    currentVideoTitle: 'Escapes Naturales - Paisajes del Mundo en 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=60',
+    author: 'Earth TV',
+    durationSeconds: 300
+  },
+  {
+    id: 'live-scifi-cosmos',
+    name: 'Cosmos & Sci-Fi 24/7',
+    category: 'Ciencia & Futuro',
     viewerCount: 19800,
-    videoUrl: 'https://www.youtube.com/embed/aY_iWw3D1Z0',
-    currentVideoTitle: 'France 24 en Español - Transmisión en Directo las 24 Horas',
-    thumbnail: 'https://img.youtube.com/vi/aY_iWw3D1Z0/hqdefault.jpg',
-    author: 'FRANCE 24 Español'
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+    currentVideoTitle: 'Tears of Steel - Ciencia Ficción & Cosmos 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=60',
+    author: 'Sci-Fi Cosmos',
+    durationSeconds: 734
   },
   {
-    id: 'live-lofi-beats',
-    name: 'Lofi Girl 24/7 Radio',
-    category: 'Focus & Música',
-    viewerCount: 42000,
-    videoUrl: 'https://www.youtube.com/embed/5qap5aO4i9A',
-    currentVideoTitle: 'Lofi Hip Hop Radio - Beats para Trabajar y Relajarse 24/7',
-    thumbnail: 'https://img.youtube.com/vi/5qap5aO4i9A/hqdefault.jpg',
-    author: 'Lofi Girl'
+    id: 'live-action-sports',
+    name: 'Acción Extrema & Deportes 24/7',
+    category: 'Deportes Extremos',
+    viewerCount: 16500,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    currentVideoTitle: 'Adrenalina Pura - Deportes Extremos del Mundo',
+    thumbnail: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=800&auto=format&fit=crop&q=60',
+    author: 'Action World',
+    durationSeconds: 300
   },
   {
-    id: 'live-chillhop-radio',
-    name: 'Chillhop Music 24/7',
-    category: 'Relax & Chill',
-    viewerCount: 12400,
-    videoUrl: 'https://www.youtube.com/embed/5yx6BWlEVcY',
-    currentVideoTitle: 'Chillhop Radio - Jazzy & Lofi Hip Hop Beats 24/7 en Vivo',
-    thumbnail: 'https://img.youtube.com/vi/5yx6BWlEVcY/hqdefault.jpg',
-    author: 'Chillhop Music'
-  },
-  {
-    id: 'live-euronews-es',
-    name: 'Euronews Internacional 24/7',
-    category: 'Noticias & Mundo',
-    viewerCount: 15200,
-    videoUrl: 'https://www.youtube.com/embed/pykdhuJWr1k',
-    currentVideoTitle: 'Euronews Español - Las Noticias Internacionales en Directo',
-    thumbnail: 'https://img.youtube.com/vi/pykdhuJWr1k/hqdefault.jpg',
-    author: 'Euronews'
-  },
-  {
-    id: 'live-shinjuku-cam',
-    name: 'Tokyo Live Cam 24/7',
-    category: 'Cámaras del Mundo',
-    viewerCount: 8900,
-    videoUrl: 'https://www.youtube.com/embed/H-30UFOUq8o',
-    currentVideoTitle: 'Cámara en Vivo 24/7 desde Shinjuku, Tokio en 4K',
-    thumbnail: 'https://img.youtube.com/vi/H-30UFOUq8o/hqdefault.jpg',
-    author: 'Tokyo Live'
+    id: 'live-fantasy-adventure',
+    name: 'Fantasía & Aventura 24/7',
+    category: 'Cine & Aventura',
+    viewerCount: 21900,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
+    currentVideoTitle: 'Sintel - La Búsqueda del Dragón en 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=60',
+    author: 'Open Movies',
+    durationSeconds: 888
   }
 ];
+
 
 
 

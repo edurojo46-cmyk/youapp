@@ -44,9 +44,10 @@ export default function LiveZapping() {
   const [isMoodLoading, setIsMoodLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
 
-  // Control Remoto Virtual por Código QR
-  const [sessionId] = useState(() => `tv-${Math.random().toString(36).substring(2, 8)}`);
+  // Control Remoto Virtual por Código QR y PIN de 4 dígitos
+  const [sessionId] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
   const [showRemoteModal, setShowRemoteModal] = useState(false);
+
   const [isPhoneConnected, setIsPhoneConnected] = useState(false);
   const [flyingEmojis, setFlyingEmojis] = useState<Array<{ id: number; emoji: string; left: number }>>([]);
 

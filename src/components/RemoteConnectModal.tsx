@@ -48,7 +48,13 @@ export default function RemoteConnectModal({
           {/* Indicador de Estado de Conexión */}
           <div className={`status-pill ${isPhoneConnected ? 'connected' : 'waiting'}`}>
             <span className="dot">●</span>
-            <span>{isPhoneConnected ? '¡Teléfono Conectado!' : 'Esperando escaneo del celular...'}</span>
+            <span>{isPhoneConnected ? '¡Teléfono Conectado!' : 'Esperando conexión...'}</span>
+          </div>
+
+          {/* Código PIN de 4 Dígitos */}
+          <div className="pin-display-box">
+            <span className="pin-label">CÓDIGO PIN PARA TU CELULAR:</span>
+            <div className="pin-number">{sessionId}</div>
           </div>
 
           {/* Código QR */}
@@ -60,11 +66,10 @@ export default function RemoteConnectModal({
             />
           </div>
 
-          <p className="qr-instructions">
-            1. Abre la cámara de tu celular (iPhone o Android).<br />
-            2. Apunta al código QR y toca el enlace que aparece.<br />
-            3. ¡Listo! Tu teléfono se convertirá en un control remoto táctil.
-          </p>
+          <div className="qr-instructions">
+            <p><strong>Opción 1 (Con PIN):</strong> En tu celular abre <u>youapp/#/remote</u> y escribe el PIN <strong>{sessionId}</strong>.</p>
+            <p><strong>Opción 2 (Con Cámara):</strong> Apunta la cámara de tu celular al código QR.</p>
+          </div>
 
           {/* Opciones alternativas */}
           <div className="modal-actions">
@@ -150,6 +155,31 @@ export default function RemoteConnectModal({
 
         .status-pill .dot {
           animation: pulse 1.5s infinite;
+        }
+
+        .pin-display-box {
+          background: rgba(99, 102, 241, 0.15);
+          border: 1px solid rgba(99, 102, 241, 0.4);
+          border-radius: 12px;
+          padding: 8px 16px;
+          margin-bottom: 14px;
+        }
+
+        .pin-label {
+          display: block;
+          font-size: 0.65rem;
+          font-weight: 800;
+          letter-spacing: 1px;
+          color: #a5b4fc;
+        }
+
+        .pin-number {
+          font-family: monospace;
+          font-size: 2.2rem;
+          font-weight: 900;
+          letter-spacing: 6px;
+          color: white;
+          text-shadow: 0 0 20px rgba(99, 102, 241, 0.8);
         }
 
         .qr-container {

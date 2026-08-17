@@ -18,7 +18,9 @@ const MOODS = [
 ];
 
 export default function MobileRemote() {
-  const { sessionId } = useParams<{ sessionId: string }>();
+  const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(routeSessionId || null);
+  const [pinInput, setPinInput] = useState('');
   const [channel, setChannel] = useState<any>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastAction, setLastAction] = useState<string>('Listo');
@@ -26,15 +28,15 @@ export default function MobileRemote() {
   const [selectedMood, setSelectedMood] = useState('all');
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!activeSessionId) return;
 
     // Conectar al canal de Realtime de esta sesión de televisión
-    const room = supabase.channel(`remote_${sessionId}`, {
+    const room = supabase.channel(`remote_${activeSessionId}`, {
       config: { broadcast: { self: true } }
     });
 
     room
-      .on('broadcast', { event: 'TV_STATUS' }, (payload: any) => {
+      .on('broadcast', { event: 'TV_STATUS' }, () => {
         setIsConnected(true);
       })
       .subscribe((status: string) => {
@@ -54,7 +56,50 @@ export default function MobileRemote() {
     return () => {
       supabase.removeChannel(room);
     };
-  }, [sessionId]);
+  }, [activeSessionId]);
+
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput.trim().length >= 4) {
+      setActiveSessionId(pinInput.trim());
+    }
+  };
+
+  // Pantalla de Ingreso de PIN
+  if (!activeSessionId) {
+    return (
+      <div className="mobile-remote-viewport pin-login-screen">
+        <header className="remote-header">
+          <div className="brand">
+            <Tv size={20} className="text-accent" />
+            <span className="brand-name">YOUAPP REMOTE</span>
+          </div>
+        </header>
+
+        <div className="pin-card glass-panel">
+          <h2>Conectar con tu Televisor</h2>
+          <p>Ingresa el código PIN de 4 dígitos que aparece en tu pantalla de TV:</p>
+
+          <form onSubmit={handlePinSubmit} className="pin-form">
+            <input
+              type="tel"
+              maxLength={4}
+              placeholder="0000"
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
+              className="pin-input"
+              autoFocus
+            />
+
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem', marginTop: '12px' }}>
+              Vincular Control Remoto
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
 
   const sendAction = (action: string, payload: any = {}) => {
     if (!channel) return;
@@ -102,9 +147,10 @@ export default function MobileRemote() {
           <span className="action-pill">{lastAction}</span>
         </div>
         <div className="screen-info">
-          <h3>Sesión: #{sessionId?.slice(-4).toUpperCase()}</h3>
+          <h3>Sesión: #{activeSessionId?.slice(-4).toUpperCase()}</h3>
           <p>Toca cualquier botón para enviar la orden en vivo</p>
         </div>
+
       </div>
 
       {/* Controles Principales de Navegación y Volumen */}
@@ -258,6 +304,48 @@ export default function MobileRemote() {
           font-size: 0.9rem;
           letter-spacing: 1px;
           color: #a5b4fc;
+        }
+
+        /* PIN Login Screen */
+        .pin-login-screen {
+          justify-content: center;
+          align-items: center;
+        }
+
+        .pin-card {
+          width: 100%;
+          padding: 24px;
+          border-radius: 20px;
+          text-align: center;
+          background: rgba(15, 17, 26, 0.95);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          box-shadow: 0 15px 40px rgba(0,0,0,0.7);
+        }
+
+        .pin-card h2 {
+          font-size: 1.25rem;
+          margin-bottom: 6px;
+        }
+
+        .pin-card p {
+          font-size: 0.8rem;
+          color: rgba(255, 255, 255, 0.6);
+          margin-bottom: 20px;
+        }
+
+        .pin-input {
+          width: 100%;
+          padding: 16px;
+          border-radius: 14px;
+          background: rgba(0, 0, 0, 0.6);
+          border: 2px solid #6366f1;
+          color: white;
+          font-family: monospace;
+          font-size: 2.4rem;
+          font-weight: 900;
+          text-align: center;
+          letter-spacing: 12px;
+          outline: none;
         }
 
         .connection-status {

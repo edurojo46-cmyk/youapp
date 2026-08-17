@@ -34,7 +34,9 @@ function App() {
         {/* Rutas públicas para espectadores, control remoto y sitios web incrustados */}
         <Route path="/c/:idOrSlug" element={<PublicChannel />} />
         <Route path="/embed/:idOrSlug" element={<EmbedChannel />} />
+        <Route path="/remote" element={<MobileRemote />} />
         <Route path="/remote/:sessionId" element={<MobileRemote />} />
+
         
         <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="/stream" element={<ProtectedRoute><MyStream /></ProtectedRoute>} />

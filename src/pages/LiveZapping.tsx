@@ -855,41 +855,44 @@ export default function LiveZapping() {
           right: 20px;
           top: 50%;
           transform: translateY(-50%);
-          z-index: 45;
+          z-index: 999;
+          pointer-events: auto;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
         }
 
         .zap-counter-badge {
           font-family: monospace;
-          font-size: 0.75rem;
+          font-size: 0.8rem;
           font-weight: 800;
           color: #a5b4fc;
-          background: rgba(15, 17, 26, 0.85);
-          padding: 3px 8px;
-          border-radius: 6px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(15, 17, 26, 0.9);
+          padding: 4px 10px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .zap-nav-btn {
-          background: rgba(15, 17, 26, 0.85);
+          background: rgba(15, 17, 26, 0.9);
           backdrop-filter: blur(14px);
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.25);
           color: white;
-          padding: 8px 12px;
-          border-radius: 10px;
-          font-size: 0.75rem;
-          font-weight: 700;
+          padding: 12px 16px;
+          border-radius: 12px;
+          font-size: 0.85rem;
+          font-weight: 800;
           cursor: pointer;
           transition: background 0.2s, transform 0.15s;
+          touch-action: manipulation;
         }
 
-        .zap-nav-btn:hover {
+        .zap-nav-btn:active, .zap-nav-btn:hover {
           background: #6366f1;
-          transform: scale(1.05);
+          transform: scale(1.08);
         }
+
 
         @media (max-width: 768px) {
           .channel-osd {

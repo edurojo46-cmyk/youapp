@@ -89,6 +89,23 @@ export default function LiveZapping() {
     }
   });
 
+  const currentChannel = filteredChannels[activeIndex] || filteredChannels[0];
+  const isFav = favorites.includes(currentChannel?.id);
+
+  // Sincronización Global 24/7 (Epoch UTC)
+  const syncOffset = useMemo(() => {
+    const cycleDuration = currentChannel?.durationSeconds || 600;
+    const epochSec = Math.floor(Date.now() / 1000);
+    const hash = (currentChannel?.id || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+    return (epochSec + hash) % cycleDuration;
+  }, [currentChannel?.id, currentChannel?.durationSeconds]);
+
+  const handleVideoEnded = useCallback(() => {
+    setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
+    setShowOSD(true);
+  }, [filteredChannels.length]);
+
+
   // Escuchar órdenes del Control Remoto Móvil en Tiempo Real mediante RemoteBridge
   useEffect(() => {
     const bridge = new RemoteBridge(sessionId, 'tv');
@@ -372,23 +389,8 @@ export default function LiveZapping() {
     );
   }
 
-  const currentChannel = filteredChannels[activeIndex];
-  const isFav = favorites.includes(currentChannel?.id);
-
-  // Sincronización Global 24/7 (Epoch UTC)
-  const syncOffset = useMemo(() => {
-    const cycleDuration = currentChannel?.durationSeconds || 600;
-    const epochSec = Math.floor(Date.now() / 1000);
-    const hash = (currentChannel?.id || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-    return (epochSec + hash) % cycleDuration;
-  }, [currentChannel?.id]);
-
-  const handleVideoEnded = useCallback(() => {
-    setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
-    triggerOSD();
-  }, [filteredChannels.length]);
-
   return (
+
     <div className="live-zapping-viewport" onClick={triggerOSD}>
       {/* Reproductor de TV Sincronizado 24/7 */}
       <SyncedTVPlayer
@@ -399,6 +401,7 @@ export default function LiveZapping() {
         targetOffsetSeconds={syncOffset}
         channelName={currentChannel.name}
       />
+
 
 
 

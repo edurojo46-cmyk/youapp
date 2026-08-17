@@ -17,7 +17,7 @@ export default function MyStream() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(true);
   const [showUI, setShowUI] = useState(true);
-  const uiTimeoutRef = useRef<NodeJS.Timeout>();
+  const uiTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     const fetchProgram = async () => {
@@ -59,7 +59,7 @@ export default function MyStream() {
           .order('created_at', { ascending: false });
 
         if (!error && data && data.length > 0) {
-          const formattedQueue = data.map(item => ({
+          const formattedQueue = data.map((item: any) => ({
             id: item.id,
             provider: item.videos?.provider || 'youtube',
             category: item.channels?.category || 'General',

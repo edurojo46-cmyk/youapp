@@ -62,7 +62,8 @@ export default function LiveZapping() {
 
   // OSD de televisión
   const [showOSD, setShowOSD] = useState(true);
-  const osdTimeoutRef = useRef<NodeJS.Timeout>();
+  const osdTimeoutRef = useRef<any>(null);
+
 
   // Favoritos
   const [favorites, setFavorites] = useState<string[]>(() => {

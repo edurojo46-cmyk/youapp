@@ -18,8 +18,9 @@ export default function RemoteConnectModal({
 
   if (!isOpen) return null;
 
-  const remoteUrl = `${window.location.origin}/remote/${sessionId}`;
+  const remoteUrl = `${window.location.origin}${window.location.pathname}#/remote/${sessionId}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(remoteUrl)}&color=6366f1&bgcolor=0b0d14`;
+
 
   const handleCopy = () => {
     navigator.clipboard.writeText(remoteUrl);

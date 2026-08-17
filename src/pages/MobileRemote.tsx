@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import { 
   Power, Volume2, VolumeX, Tv, Moon, Grid, Image, 
-  Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check, Cast, ChevronLeft
+  Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check, Cast, ChevronLeft, Search
 } from 'lucide-react';
+
 
 import { supabase } from '../lib/supabase';
 import CastScreenModal from '../components/CastScreenModal';
@@ -176,16 +177,21 @@ export default function MobileRemote() {
           </div>
         </div>
 
-        {/* Botón Central de Encendido y Mudo */}
+        {/* Botón Central de Encendido, Buscar y Mudo */}
         <div className="center-actions">
           <button className="power-btn" onClick={() => sendAction('TOGGLE_SLEEP')} title="Apagar / Encender TV">
-            <Power size={24} />
+            <Power size={22} />
+          </button>
+          <button className="search-remote-btn" onClick={() => sendAction('TOGGLE_SEARCH')} title="Buscar Canales en la TV">
+            <Search size={18} />
+            <span>BUSCAR</span>
           </button>
           <button className="mute-btn" onClick={() => sendAction('TOGGLE_MUTE')} title="Silenciar / Activar Sonido">
-            <Volume2 size={20} />
+            <Volume2 size={18} />
             <span>MUTE</span>
           </button>
         </div>
+
 
         {/* Columna Funciones Especiales */}
         <div className="rocker-col">
@@ -549,19 +555,41 @@ export default function MobileRemote() {
           color: white;
         }
 
+        .search-remote-btn {
+          width: 100%;
+          padding: 8px 4px;
+          border-radius: 12px;
+          background: rgba(99, 102, 241, 0.2);
+          border: 1px solid rgba(99, 102, 241, 0.4);
+          color: #a5b4fc;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 3px;
+          font-size: 0.65rem;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .search-remote-btn:active {
+          background: #6366f1;
+          color: white;
+          transform: scale(0.95);
+        }
+
         .mute-btn {
           width: 100%;
-          padding: 10px;
+          padding: 8px 4px;
           border-radius: 12px;
           background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: white;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.8);
           display: flex;
+          flex-direction: column;
           align-items: center;
-          justify-content: center;
-          gap: 6px;
-          font-size: 0.75rem;
-          font-weight: 700;
+          gap: 3px;
+          font-size: 0.65rem;
+          font-weight: 800;
           cursor: pointer;
         }
 

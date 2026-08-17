@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
-  Image, Info, EyeOff, Layers
+  Image, Info, EyeOff, Layers, Search
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { fetchTopViewedVideosByMood } from '../lib/youtube';
@@ -14,6 +14,7 @@ import ProgramInfoModal from '../components/ProgramInfoModal';
 import MultiviewPiP from '../components/MultiviewPiP';
 import QuadMultiview from '../components/QuadMultiview';
 import RemoteConnectModal from '../components/RemoteConnectModal';
+import ChannelSearchModal from '../components/ChannelSearchModal';
 import { Smartphone } from 'lucide-react';
 
 import { RemoteBridge } from '../utils/remoteBridge';
@@ -49,8 +50,10 @@ export default function LiveZapping() {
   // Control Remoto Virtual por Código QR y PIN de 4 dígitos
   const [sessionId] = useState(() => String(Math.floor(1000 + Math.random() * 9000)));
   const [showRemoteModal, setShowRemoteModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [isPhoneConnected, setIsPhoneConnected] = useState(false);
   const [flyingEmojis, setFlyingEmojis] = useState<Array<{ id: number; emoji: string; left: number }>>([]);
+
 
   // Modales y Modos
   const [showSleepModal, setShowSleepModal] = useState(false);
@@ -101,6 +104,8 @@ export default function LiveZapping() {
         if (payload?.moodId) handleMoodSelect(payload.moodId);
       } else if (action === 'TOGGLE_QUAD') {
         setShowQuadView(prev => !prev);
+      } else if (action === 'TOGGLE_SEARCH') {
+        setShowSearchModal(prev => !prev);
       } else if (action === 'TOGGLE_AMBIENT') {
         setShowAmbientModal(prev => !prev);
       } else if (action === 'TOGGLE_ZEN') {
@@ -116,6 +121,7 @@ export default function LiveZapping() {
       } else if (action === 'SEND_EMOJI') {
         triggerFloatingEmoji(payload?.emoji || '🔥');
       }
+
     });
 
     return () => {
@@ -232,6 +238,9 @@ export default function LiveZapping() {
       e.preventDefault();
       setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
       triggerOSD();
+    } else if (e.key === '/' || e.key === 'f' || e.key === 'F') {
+      e.preventDefault();
+      setShowSearchModal(prev => !prev);
     } else if (e.key === 'g' || e.key === 'G') {
       setShowEPGModal(prev => !prev);
     } else if (e.key === 'm' || e.key === 'M') {
@@ -254,6 +263,23 @@ export default function LiveZapping() {
       }
     }
   }, [filteredChannels, isAsleep]);
+
+  const handleCustomYouTubeSearch = async (query: string) => {
+    setIsMoodLoading(true);
+    try {
+      const videos = await fetchTopViewedVideosByMood(query, 15);
+      if (videos.length > 0) {
+        setFilteredChannels(videos);
+        setActiveIndex(0);
+        triggerOSD();
+      }
+    } catch (err) {
+      console.error("Error searching YouTube:", err);
+    } finally {
+      setIsMoodLoading(false);
+    }
+  };
+
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -370,6 +396,20 @@ export default function LiveZapping() {
               style={{ background: 'rgba(99, 102, 241, 0.25)', borderColor: '#6366f1' }}
             >
               <Compass size={18} color="#a5b4fc" />
+            </button>
+            <button 
+              className="icon-action-btn search-trigger-btn" 
+              onClick={() => setShowSearchModal(true)} 
+              title="Buscar Canales (F o /)"
+            >
+              <Search size={18} />
+            </button>
+            <button 
+              className="icon-action-btn" 
+              onClick={() => setShowRemoteModal(true)} 
+              title="Conectar Control Remoto Móvil (PIN / QR)"
+            >
+              <Smartphone size={18} color={isPhoneConnected ? '#4ade80' : 'white'} />
             </button>
             <button 
               className="icon-action-btn" 
@@ -494,12 +534,24 @@ export default function LiveZapping() {
       )}
 
       {/* Modales y Modos Especiales */}
+      <ChannelSearchModal
+        isOpen={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        channels={filteredChannels}
+        onSelectChannel={(idx) => {
+          setActiveIndex(idx);
+          triggerOSD();
+        }}
+        onSearchYouTube={handleCustomYouTubeSearch}
+      />
+
       <RemoteConnectModal
         sessionId={sessionId}
         isOpen={showRemoteModal}
         onClose={() => setShowRemoteModal(false)}
         isPhoneConnected={isPhoneConnected}
       />
+
 
       <QuadMultiview 
         channels={filteredChannels}

@@ -11,6 +11,7 @@ export class RemoteBridge {
   private conn: DataConnection | null = null;
   private supabaseRoom: any = null;
   private localBc: BroadcastChannel | null = null;
+  private processedMessageIds: Set<string> = new Set();
 
   constructor(sessionId: string, mode: 'tv' | 'remote' = 'tv') {
     this.sessionId = sessionId.trim().toLowerCase();
@@ -39,6 +40,18 @@ export class RemoteBridge {
 
           connection.on('data', (data: any) => {
             console.log('[TV WebRTC Data Received]:', data);
+            const msgId = data?.messageId;
+            if (msgId) {
+              if (this.processedMessageIds.has(msgId)) return;
+              this.processedMessageIds.add(msgId);
+              if (this.processedMessageIds.size > 50) {
+                const firstItem = this.processedMessageIds.values().next().value;
+                if (firstItem !== undefined) {
+                    this.processedMessageIds.delete(firstItem);
+                }
+              }
+            }
+            
             const action = data?.action;
             if (action && this.onActionCallback) {
               this.onActionCallback(action, data.payload || data);
@@ -73,6 +86,17 @@ export class RemoteBridge {
       this.supabaseRoom
         .on('broadcast', { event: 'REMOTE_ACTION' }, (e: any) => {
           const payload = e?.payload?.payload || e?.payload || e;
+          const msgId = payload?.messageId;
+          if (msgId) {
+            if (this.processedMessageIds.has(msgId)) return;
+            this.processedMessageIds.add(msgId);
+            if (this.processedMessageIds.size > 50) {
+              const firstItem = this.processedMessageIds.values().next().value;
+              if (firstItem !== undefined) {
+                  this.processedMessageIds.delete(firstItem);
+              }
+            }
+          }
           const action = payload?.action || e?.action;
           if (action && this.onActionCallback) {
             this.onActionCallback(action, payload);
@@ -100,6 +124,17 @@ export class RemoteBridge {
       this.localBc.onmessage = (e) => {
         if (e.data?.event === 'REMOTE_ACTION') {
           const payload = e.data.payload;
+          const msgId = payload?.messageId;
+          if (msgId) {
+            if (this.processedMessageIds.has(msgId)) return;
+            this.processedMessageIds.add(msgId);
+            if (this.processedMessageIds.size > 50) {
+              const firstItem = this.processedMessageIds.values().next().value;
+              if (firstItem !== undefined) {
+                  this.processedMessageIds.delete(firstItem);
+              }
+            }
+          }
           const action = payload?.action;
           if (action && this.onActionCallback) {
             this.onActionCallback(action, payload);
@@ -120,7 +155,8 @@ export class RemoteBridge {
   }
 
   public sendAction(action: string, payload: any = {}) {
-    const messagePayload = { action, payload, ...payload };
+    const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const messagePayload = { action, payload, messageId, ...payload };
 
     // 1. Enviar vía WebRTC Direct DataChannel (Instantáneo)
     if (this.conn && this.conn.open) {

@@ -148,7 +148,9 @@ export default function LiveZapping() {
         bridge.sendAction('SYNC_STATE', {
           activeIndex,
           channel: current,
-          moodId: selectedMood
+          moodId: selectedMood,
+          totalChannels: channelsRef.current.length,
+          isQuadOpen: showQuadView
         });
       }
     });
@@ -208,10 +210,12 @@ export default function LiveZapping() {
       bridgeRef.current.sendAction('SYNC_STATE', {
         activeIndex,
         channel: currentChannel,
-        moodId: selectedMood
+        moodId: selectedMood,
+        totalChannels: filteredChannels.length,
+        isQuadOpen: showQuadView
       });
     }
-  }, [activeIndex, currentChannel, selectedMood, isPhoneConnected]);
+  }, [activeIndex, currentChannel, selectedMood, isPhoneConnected, filteredChannels.length, showQuadView]);
 
 
   const triggerFloatingEmoji = (emoji: string) => {

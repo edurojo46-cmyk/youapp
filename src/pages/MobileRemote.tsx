@@ -46,10 +46,63 @@ export default function MobileRemote() {
   const [chatMessage, setChatMessage] = useState('');
   const [selectedMood, setSelectedMood] = useState('all');
   const [channels, setChannels] = useState<any[]>(VERIFIED_24_7_LIVE_CHANNELS);
+  const [totalChannelsCount, setTotalChannelsCount] = useState<number>(61);
   const [channelIdx, setChannelIdx] = useState(0);
   const [syncedChannel, setSyncedChannel] = useState<any>(VERIFIED_24_7_LIVE_CHANNELS[0]);
   const [isCastMuted, setIsCastMuted] = useState(false);
+  const [isQuadActive, setIsQuadActive] = useState(false);
   const [showPinChange, setShowPinChange] = useState(false);
+  const [showChannelListModal, setShowChannelListModal] = useState(false);
+
+  // Cargar todos los canales en el celular para que coincidan con la TV (60+ canales)
+  useEffect(() => {
+    fetchAllChannels();
+  }, []);
+
+  const fetchAllChannels = async () => {
+    try {
+      const { data } = await supabase
+        .from('channels')
+        .select(`
+          id,
+          name,
+          slug,
+          category,
+          programming (
+            id,
+            videos (*)
+          )
+        `)
+        .limit(20);
+
+      const userFormatted = (data || []).map((ch: any) => {
+        const progs = ch.programming || [];
+        if (progs.length === 0) return null;
+        const currentProg = progs[0];
+        const video = currentProg?.videos;
+        if (!video) return null;
+        const rawId = (video.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '');
+        return {
+          ...ch,
+          viewerCount: 450,
+          videoUrl: `https://www.youtube.com/embed/${rawId}`,
+          currentVideoTitle: video.title || ch.name,
+        };
+      }).filter(Boolean);
+
+      const real24Live = await fetchTopViewedVideosByMood('live streaming 24/7 radio', 15);
+      const topRelax = await fetchTopViewedVideosByMood('relaxing 4k nature scenery meditation', 15);
+      const topFocus = await fetchTopViewedVideosByMood('lofi hip hop radio beats study', 15);
+
+      const combinedAll = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted, ...real24Live, ...topRelax, ...topFocus];
+      if (combinedAll.length > 0) {
+        setChannels(combinedAll);
+        setTotalChannelsCount(combinedAll.length);
+      }
+    } catch (e) {
+      console.warn("Error fetching remote channels:", e);
+    }
+  };
 
   // Helper para enviar nuevo canal a Chromecast si está conectado
   const streamChannelToChromecast = (ch: any) => {
@@ -101,6 +154,8 @@ export default function MobileRemote() {
         setSyncedChannel(payload.channel);
         if (payload.activeIndex !== undefined) setChannelIdx(payload.activeIndex);
         if (payload.moodId) setSelectedMood(payload.moodId);
+        if (payload.totalChannels) setTotalChannelsCount(payload.totalChannels);
+        if (payload.isQuadOpen !== undefined) setIsQuadActive(payload.isQuadOpen);
       }
     });
 
@@ -145,25 +200,30 @@ export default function MobileRemote() {
     }
 
     // 2. Controlar Chromecast directamente si está activo
+    const totalCount = channels.length > 0 ? channels.length : totalChannelsCount;
     if (action === 'NEXT_CHANNEL') {
-      const nextIdx = (channelIdx + 1) % channels.length;
+      const nextIdx = (channelIdx + 1) % totalCount;
       setChannelIdx(nextIdx);
-      const nextCh = channels[nextIdx];
-      setSyncedChannel(nextCh);
-      streamChannelToChromecast(nextCh);
+      if (channels[nextIdx]) {
+        setSyncedChannel(channels[nextIdx]);
+        streamChannelToChromecast(channels[nextIdx]);
+      }
     } else if (action === 'PREV_CHANNEL') {
-      const prevIdx = (channelIdx - 1 + channels.length) % channels.length;
+      const prevIdx = (channelIdx - 1 + totalCount) % totalCount;
       setChannelIdx(prevIdx);
-      const prevCh = channels[prevIdx];
-      setSyncedChannel(prevCh);
-      streamChannelToChromecast(prevCh);
+      if (channels[prevIdx]) {
+        setSyncedChannel(channels[prevIdx]);
+        streamChannelToChromecast(channels[prevIdx]);
+      }
     } else if (action === 'SET_CHANNEL_INDEX') {
       const idx = payload?.index || 0;
+      setChannelIdx(idx);
       if (channels[idx]) {
-        setChannelIdx(idx);
         setSyncedChannel(channels[idx]);
         streamChannelToChromecast(channels[idx]);
       }
+    } else if (action === 'TOGGLE_QUAD') {
+      setIsQuadActive(prev => !prev);
     } else if (action === 'TOGGLE_MUTE') {
       setIsCastMuted(prev => {
         const next = !prev;
@@ -178,6 +238,7 @@ export default function MobileRemote() {
         const results = await fetchTopViewedVideosByMood(payload.query);
         if (results && results.length > 0) {
           setChannels(results);
+          setTotalChannelsCount(results.length);
           setChannelIdx(0);
           setSyncedChannel(results[0]);
           streamChannelToChromecast(results[0]);
@@ -274,8 +335,12 @@ export default function MobileRemote() {
         <div className="screen-info">
           {syncedChannel ? (
             <>
-              <h3>{syncedChannel.name}</h3>
+              <h3>CH {String(channelIdx + 1).padStart(2, '0')} • {syncedChannel.name}</h3>
               <p>{syncedChannel.currentVideoTitle || syncedChannel.category || 'Transmisión en Vivo'}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '0.7rem', color: '#a5b4fc' }}>
+                <span>Canal {channelIdx + 1} de {totalChannelsCount || channels.length}</span>
+                {isQuadActive && <span style={{ color: '#ec4899', fontWeight: 800, background: 'rgba(236,72,153,0.2)', padding: '2px 6px', border: '1px solid #ec4899', borderRadius: '4px' }}>● 4 EN 1 ACTIVO</span>}
+              </div>
             </>
           ) : (
             <>
@@ -301,7 +366,7 @@ export default function MobileRemote() {
         <input 
           type="text" 
           name="tvQuery" 
-          placeholder="Escribir canal para la tele (ej: Carnaval Stream)..." 
+          placeholder="Escribir canal para la tele (ej: Noticias, Lofi, Cosmos)..." 
         />
         <button type="submit" className="btn btn-primary btn-sm">
           Sintonizar
@@ -315,11 +380,11 @@ export default function MobileRemote() {
         <div className="rocker-col">
           <span className="col-label">CANAL</span>
           <div className="rocker-btn-group">
-            <button className="rocker-btn" onClick={() => sendAction('NEXT_CHANNEL')}>
+            <button className="rocker-btn" onClick={() => sendAction('NEXT_CHANNEL')} title="Canal Siguiente">
               <ChevronUp size={28} />
               <span>CH +</span>
             </button>
-            <button className="rocker-btn" onClick={() => sendAction('PREV_CHANNEL')}>
+            <button className="rocker-btn" onClick={() => sendAction('PREV_CHANNEL')} title="Canal Anterior">
               <ChevronDown size={28} />
               <span>CH -</span>
             </button>
@@ -346,11 +411,19 @@ export default function MobileRemote() {
         <div className="rocker-col">
           <span className="col-label">MODOS</span>
           <div className="rocker-btn-group">
-            <button className="mode-quad-btn" onClick={() => sendAction('TOGGLE_QUAD')}>
-              <Grid size={22} />
-              <span>4 EN 1</span>
+            <button 
+              className={`mode-quad-btn ${isQuadActive ? 'active' : ''}`} 
+              onClick={() => sendAction('TOGGLE_QUAD')}
+              title="Modo 4 Pantallas Simultáneas en TV"
+              style={{
+                background: isQuadActive ? 'rgba(236, 72, 153, 0.3)' : undefined,
+                borderColor: isQuadActive ? '#ec4899' : undefined
+              }}
+            >
+              <Grid size={22} color={isQuadActive ? '#ec4899' : 'white'} />
+              <span style={{ color: isQuadActive ? '#ec4899' : 'white', fontWeight: 800 }}>4 EN 1</span>
             </button>
-            <button className="mode-zen-btn" onClick={() => sendAction('TOGGLE_ZEN')}>
+            <button className="mode-zen-btn" onClick={() => sendAction('TOGGLE_ZEN')} title="Modo Zen / Cine">
               <EyeOff size={20} />
               <span>ZEN</span>
             </button>
@@ -366,8 +439,8 @@ export default function MobileRemote() {
               {num}
             </button>
           ))}
-          <button className="num-key special" onClick={() => sendAction('TOGGLE_EPG')}>
-            GUÍA
+          <button className="num-key special" onClick={() => setShowChannelListModal(true)} title="Ver todos los 60+ canales">
+            GUÍA (60+)
           </button>
           <button className="num-key" onClick={() => sendAction('SET_CHANNEL_INDEX', { index: 9 })}>
             0
@@ -431,6 +504,43 @@ export default function MobileRemote() {
           <Send size={16} />
         </button>
       </form>
+
+      {/* Modal Guía de Canales (Todos los 60+ Canales) */}
+      {showChannelListModal && (
+        <div className="channel-guide-modal-overlay" onClick={() => setShowChannelListModal(false)}>
+          <div className="channel-guide-sheet glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-top-bar">
+              <div>
+                <h3>📺 Guía de Canales ({channels.length} Disponibles)</h3>
+                <p>Toca cualquier canal para sintonizarlo en tu televisor</p>
+              </div>
+              <button className="close-guide-btn" onClick={() => setShowChannelListModal(false)}>
+                ✕
+              </button>
+            </div>
+
+            <div className="guide-channels-list">
+              {channels.map((ch, idx) => (
+                <div 
+                  key={ch.id || idx} 
+                  className={`guide-channel-row ${channelIdx === idx ? 'active' : ''}`}
+                  onClick={() => {
+                    sendAction('SET_CHANNEL_INDEX', { index: idx });
+                    setShowChannelListModal(false);
+                  }}
+                >
+                  <span className="ch-num-badge">CH {String(idx + 1).padStart(2, '0')}</span>
+                  <div className="ch-row-info">
+                    <h4>{ch.name}</h4>
+                    <p>{ch.currentVideoTitle || ch.category || 'Transmisión 24/7'}</p>
+                  </div>
+                  <span className="ch-zap-tag">{channelIdx === idx ? '● AL AIRE' : 'Sintonizar'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Transmisión a la TV (Google Cast / Smart TV) */}
       <CastModal
@@ -879,17 +989,125 @@ export default function MobileRemote() {
           outline: none;
         }
 
-        .send-chat-btn {
-          background: #6366f1;
+        .channel-guide-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(8px);
+          z-index: 9999;
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        .channel-guide-sheet {
+          width: 100%;
+          max-width: 440px;
+          background: #0d101a;
+          border-radius: 20px 20px 0 0;
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          padding: 16px;
+          max-height: 80vh;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          animation: slideUp 0.25s ease-out;
+        }
+
+        .sheet-top-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          padding-bottom: 10px;
+        }
+
+        .sheet-top-bar h3 {
+          font-size: 1rem;
+          margin: 0;
+          color: white;
+        }
+
+        .sheet-top-bar p {
+          font-size: 0.75rem;
+          color: #94a3b8;
+          margin: 2px 0 0 0;
+        }
+
+        .close-guide-btn {
+          background: rgba(255, 255, 255, 0.1);
           border: none;
           color: white;
-          width: 32px;
-          height: 32px;
-          border-radius: 8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          cursor: pointer;
+        }
+
+        .guide-channels-list {
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding-right: 4px;
+        }
+
+        .guide-channel-row {
           display: flex;
           align-items: center;
-          justify-content: center;
+          gap: 10px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
           cursor: pointer;
+          transition: background 0.15s, border-color 0.15s;
+        }
+
+        .guide-channel-row:hover, .guide-channel-row.active {
+          background: rgba(99, 102, 241, 0.2);
+          border-color: #6366f1;
+        }
+
+        .ch-num-badge {
+          background: rgba(99, 102, 241, 0.3);
+          color: #a5b4fc;
+          font-weight: 800;
+          font-size: 0.75rem;
+          padding: 4px 8px;
+          border-radius: 6px;
+          font-family: monospace;
+        }
+
+        .ch-row-info {
+          flex: 1;
+        }
+
+        .ch-row-info h4 {
+          font-size: 0.8rem;
+          margin: 0;
+          color: white;
+        }
+
+        .ch-row-info p {
+          font-size: 0.65rem;
+          color: #94a3b8;
+          margin: 2px 0 0 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 220px;
+        }
+
+        .ch-zap-tag {
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #a5b4fc;
+        }
+
+        .guide-channel-row.active .ch-zap-tag {
+          color: #4ade80;
         }
       `}</style>
     </div>

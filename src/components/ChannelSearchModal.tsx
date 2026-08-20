@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, X, Tv, Sparkles, Star, Play, Radio, Loader2, CheckCircle2 } from 'lucide-react';
-import { searchRealYouTubeChannels } from '../lib/youtube';
+import { Search, X, Tv, Sparkles, Star, Play, Radio, Loader2, CheckCircle2, Plus, PlusCircle, ExternalLink } from 'lucide-react';
+import { searchRealYouTubeChannels, CURATED_POPULAR_CHANNELS } from '../lib/youtube';
 
 interface Channel {
   id: string;
@@ -8,15 +8,8 @@ interface Channel {
   category?: string;
   currentVideoTitle?: string;
   avatarUrl?: string;
-}
-
-interface RealYTChannel {
-  id: string;
-  channelId: string;
-  name: string;
-  description: string;
-  avatarUrl: string;
-  customUrl?: string;
+  videoUrl?: string;
+  thumbnail?: string;
 }
 
 interface ChannelSearchModalProps {
@@ -24,6 +17,7 @@ interface ChannelSearchModalProps {
   onClose: () => void;
   channels: Channel[];
   onSelectChannel: (index: number) => void;
+  onAddChannel?: (channel: any) => void;
   onSelectRealYouTubeChannel?: (channelId: string, channelTitle: string) => void;
 }
 
@@ -37,17 +31,19 @@ export default function ChannelSearchModal({
   onClose,
   channels,
   onSelectChannel,
+  onAddChannel,
   onSelectRealYouTubeChannel
 }: ChannelSearchModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [ytChannels, setYtChannels] = useState<RealYTChannel[]>([]);
+  const [ytChannels, setYtChannels] = useState<any[]>(CURATED_POPULAR_CHANNELS.slice(0, 6));
   const [isSearchingYT, setIsSearchingYT] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'youtube' | 'grilla'>('all');
+  const [addedChannelFeedback, setAddedChannelFeedback] = useState<string | null>(null);
 
   // Búsqueda en tiempo real en YouTube con debounce
   useEffect(() => {
     if (!searchTerm.trim()) {
-      setYtChannels([]);
+      setYtChannels(CURATED_POPULAR_CHANNELS.slice(0, 8));
       setIsSearchingYT(false);
       return;
     }
@@ -62,7 +58,7 @@ export default function ChannelSearchModal({
       } finally {
         setIsSearchingYT(false);
       }
-    }, 350);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -83,38 +79,88 @@ export default function ChannelSearchModal({
     setSearchTerm(channelName);
   };
 
+  const handleAddAndPlay = (yt: any) => {
+    const newChannel = {
+      id: yt.id || `yt-${yt.channelId || yt.videoId || Math.random().toString(36).slice(2)}`,
+      name: yt.name,
+      category: yt.category || '🔴 Canal YouTube',
+      viewerCount: Math.floor(Math.random() * 5000) + 1200,
+      videoUrl: yt.videoUrl || `https://www.youtube.com/embed/${yt.videoId || 'jfKfPfyJRdk'}`,
+      currentVideoTitle: yt.currentVideoTitle || yt.name,
+      thumbnail: yt.thumbnail || yt.avatarUrl,
+      author: yt.name,
+      avatarUrl: yt.avatarUrl,
+      isLive: yt.isLive !== undefined ? yt.isLive : true
+    };
+
+    setAddedChannelFeedback(yt.name);
+    setTimeout(() => setAddedChannelFeedback(null), 2500);
+
+    if (onAddChannel) {
+      onAddChannel(newChannel);
+    } else if (onSelectRealYouTubeChannel) {
+      onSelectRealYouTubeChannel(yt.channelId, yt.name);
+    }
+    onClose();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) return;
+
+    // Si hay un resultado de YouTube directo, agregarlo
+    if (ytChannels.length > 0) {
+      handleAddAndPlay(ytChannels[0]);
+    } else {
+      // Forzar búsqueda o creación directa
+      const results = await searchRealYouTubeChannels(searchTerm.trim());
+      if (results.length > 0) {
+        handleAddAndPlay(results[0]);
+      }
+    }
+  };
+
   return (
     <div className="search-modal-backdrop" onClick={onClose}>
       <div className="search-modal-container glass-panel" onClick={(e) => e.stopPropagation()}>
         {/* Cabecera del Buscador */}
-        <div className="search-header">
+        <form onSubmit={handleSubmit} className="search-header">
           <div className="search-input-wrapper">
             <Search size={20} className="search-icon" />
             <input
               type="text"
               className="search-input"
-              placeholder="Buscar canal de YouTube real (ej. Ibai, MrBeast, Platzi, Lofi Girl)..."
+              placeholder="Buscar canal (ej: MrBeast, Ibai, Lofi, Rock, o pega un link de YouTube)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus
             />
             {searchTerm && (
-              <button className="clear-btn" onClick={() => setSearchTerm('')}>
+              <button type="button" className="clear-btn" onClick={() => setSearchTerm('')}>
                 <X size={16} />
               </button>
             )}
           </div>
-          <button className="close-modal-btn" onClick={onClose}>
+          <button type="button" className="close-modal-btn" onClick={onClose}>
             <X size={20} />
           </button>
-        </div>
+        </form>
+
+        {/* Notificación de canal agregado */}
+        {addedChannelFeedback && (
+          <div className="added-feedback-toast">
+            <CheckCircle2 size={18} color="#4ade80" />
+            <span>¡Canal <strong>"{addedChannelFeedback}"</strong> agregado a la grilla y sintonizado!</span>
+          </div>
+        )}
 
         {/* Canales Populares Sugeridos */}
         <div className="quick-tags-bar">
-          <span className="quick-tag-label">Popular:</span>
+          <span className="quick-tag-label">Sugeridos:</span>
           {POPULAR_CHANNELS.map(name => (
             <button
               key={name}
+              type="button"
               className={`tag-chip ${searchTerm === name ? 'active' : ''}`}
               onClick={() => handleQuickChannelClick(name)}
             >
@@ -123,25 +169,28 @@ export default function ChannelSearchModal({
           ))}
         </div>
 
-        {/* Pestañas si hay resultados */}
+        {/* Pestañas de Resultados */}
         <div className="search-tabs-row">
           <button 
+            type="button"
             className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            Todos los Resultados
+            Todos los Canales
           </button>
           <button 
+            type="button"
             className={`tab-btn ${activeTab === 'youtube' ? 'active' : ''}`}
             onClick={() => setActiveTab('youtube')}
           >
-            Canales de YouTube {ytChannels.length > 0 && `(${ytChannels.length})`}
+            YouTube (+ Agregar a Grilla) {ytChannels.length > 0 && `(${ytChannels.length})`}
           </button>
           <button 
+            type="button"
             className={`tab-btn ${activeTab === 'grilla' ? 'active' : ''}`}
             onClick={() => setActiveTab('grilla')}
           >
-            Grilla Actual ({localFiltered.length})
+            En Tu Grilla ({localFiltered.length})
           </button>
         </div>
 
@@ -155,43 +204,48 @@ export default function ChannelSearchModal({
             </div>
           )}
 
-          {/* 1. SECCIÓN CANALES REALES DE YOUTUBE */}
+          {/* 1. SECCIÓN CANALES REALES DE YOUTUBE (CON BOTÓN AGREGAR A GRILLA) */}
           {(activeTab === 'all' || activeTab === 'youtube') && ytChannels.length > 0 && (
             <div className="results-group">
               <div className="group-title">
                 <Radio size={16} className="text-accent" />
-                <span>CANALES OFICIALES DE YOUTUBE (TRANSMISIÓN 24/7)</span>
+                <span>CANALES DE YOUTUBE (TOCA PARA SINTONIZAR Y AGREGAR A LA GRILLA)</span>
               </div>
 
               {ytChannels.map(yt => (
                 <div
                   key={yt.id}
                   className="search-channel-card yt-real-card"
-                  onClick={() => {
-                    if (onSelectRealYouTubeChannel) {
-                      onSelectRealYouTubeChannel(yt.channelId, yt.name);
-                    }
-                    onClose();
-                  }}
+                  onClick={() => handleAddAndPlay(yt)}
                 >
                   <div className="channel-avatar-box yt-avatar">
-                    <img src={yt.avatarUrl} alt={yt.name} className="channel-avatar" />
+                    <img src={yt.avatarUrl || yt.thumbnail} alt={yt.name} className="channel-avatar" />
                   </div>
 
                   <div className="channel-info">
                     <div className="channel-title-row">
                       <h4>{yt.name}</h4>
                       <CheckCircle2 size={14} className="verified-badge" />
-                      <span className="yt-badge">CANAL YOUTUBE</span>
+                      <span className="yt-badge">{yt.isLive ? '🔴 EN VIVO' : 'YOUTUBE'}</span>
                     </div>
                     <p className="channel-program-name">
-                      {yt.description ? yt.description.slice(0, 80) + '...' : 'Toca para sintonizar y ver sus videos de forma continua'}
+                      {yt.currentVideoTitle || yt.description || 'Transmisión continua 24/7'}
                     </p>
                   </div>
 
-                  <button className="zap-to-btn" title={`Sintonizar ${yt.name}`}>
-                    <Play size={16} fill="white" />
-                  </button>
+                  <div className="card-actions-right">
+                    <button 
+                      className="add-to-grid-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddAndPlay(yt);
+                      }}
+                      title="Agregar este canal a mi grilla de televisión"
+                    >
+                      <Plus size={16} />
+                      <span>AGREGAR A GRILLA</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -202,7 +256,7 @@ export default function ChannelSearchModal({
             <div className="results-group">
               <div className="group-title">
                 <Tv size={16} />
-                <span>CANALES DE LA GRILLA EN VIVO ({localFiltered.length})</span>
+                <span>CANALES ACTIVOS EN TU GRILLA ({localFiltered.length})</span>
               </div>
 
               {localFiltered.length > 0 ? (
@@ -224,8 +278,8 @@ export default function ChannelSearchModal({
                       </div>
 
                       <div className="channel-avatar-box">
-                        {channel.avatarUrl ? (
-                          <img src={channel.avatarUrl} alt={channel.name} className="channel-avatar" />
+                        {channel.avatarUrl || channel.thumbnail ? (
+                          <img src={channel.avatarUrl || channel.thumbnail} alt={channel.name} className="channel-avatar" />
                         ) : (
                           <div className="channel-avatar-placeholder">
                             <Tv size={18} />
@@ -263,13 +317,59 @@ export default function ChannelSearchModal({
             <div className="no-results-box">
               <Sparkles size={40} className="no-results-icon" />
               <h3>No se encontraron canales</h3>
-              <p>Prueba buscando con el nombre de un creador como "MrBeast", "Ibai", "Platzi" o "Red Bull".</p>
+              <p>Prueba buscando con el nombre de un creador como "MrBeast", "Ibai", "Platzi" o "Lofi Girl".</p>
             </div>
           )}
         </div>
       </div>
 
       <style>{`
+        .added-feedback-toast {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(34, 197, 94, 0.2);
+          border: 1px solid rgba(74, 222, 128, 0.4);
+          color: #86efac;
+          padding: 8px 16px;
+          margin: 0 20px 8px 20px;
+          border-radius: 12px;
+          font-size: 0.85rem;
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        .card-actions-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .add-to-grid-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: #6366f1;
+          color: white;
+          border: none;
+          padding: 8px 14px;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 800;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.15s;
+          box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
+          white-space: nowrap;
+        }
+
+        .add-to-grid-btn:hover {
+          background: #4f46e5;
+          transform: scale(1.05);
+        }
+
+        .add-to-grid-btn:active {
+          transform: scale(0.95);
+        }
+
         .search-modal-backdrop {
           position: fixed;
           inset: 0;

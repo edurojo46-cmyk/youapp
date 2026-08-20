@@ -283,10 +283,10 @@ export default function LiveZapping() {
   };
 
   useEffect(() => {
-    // Limpiar caché de canales viejos para forzar URLs frescas
+    // Limpiar caché temporal vieja pero preservando canales guardados por el usuario y favoritos
     try {
       Object.keys(localStorage)
-        .filter(k => k.startsWith('youapp_'))
+        .filter(k => k.startsWith('youapp_live_') || k.startsWith('youapp_mood_') || k.startsWith('youapp_yt_search_'))
         .forEach(k => localStorage.removeItem(k));
     } catch {}
     fetchLiveChannels();
@@ -342,8 +342,17 @@ export default function LiveZapping() {
       const topRelax = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.relax, 15);
       const topFocus = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.focus, 15);
 
+      // Cargar canales personalizados guardados por el usuario
+      let userCustomChannels: any[] = [];
+      try {
+        const saved = JSON.parse(localStorage.getItem('youapp_saved_custom_channels') || '[]');
+        if (Array.isArray(saved) && saved.length > 0) {
+          userCustomChannels = saved;
+        }
+      } catch (e) {}
+
       // Deduplicar canales por videoUrl o ID para asegurar que cada canal sea 100% único
-      const rawChannels = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
+      const rawChannels = [...userCustomChannels, ...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
       if (Array.isArray(real24Live) && real24Live.length > 0 && real24Live !== VERIFIED_24_7_LIVE_CHANNELS) {
         rawChannels.push(...real24Live);
       }
@@ -470,14 +479,56 @@ export default function LiveZapping() {
     }
   }, [filteredChannels, isAsleep]);
 
+  // Agregar nuevo canal de YouTube a la grilla activa y sintonizarlo
+  const handleAddChannelToGrid = (newChannel: any) => {
+    if (!newChannel || !newChannel.videoUrl) return;
+
+    // Verificar si ya existe en la grilla
+    const existingIdx = allChannels.findIndex(
+      c => c.videoUrl === newChannel.videoUrl || c.id === newChannel.id || (c.name.toLowerCase() === newChannel.name.toLowerCase() && c.currentVideoTitle === newChannel.currentVideoTitle)
+    );
+
+    if (existingIdx !== -1) {
+      setActiveIndex(existingIdx);
+      triggerOSD();
+      return;
+    }
+
+    const formatted = {
+      ...newChannel,
+      id: newChannel.id || `custom-ch-${Date.now()}`,
+      viewerCount: newChannel.viewerCount || Math.floor(Math.random() * 4000) + 1200,
+      category: newChannel.category || '🔴 Canal YouTube',
+      isLive: newChannel.isLive !== undefined ? newChannel.isLive : true,
+      durationSeconds: newChannel.durationSeconds || 600
+    };
+
+    // Agregar al inicio de la lista de canales
+    const updatedAll = [formatted, ...allChannels];
+    const updatedFiltered = [formatted, ...filteredChannels];
+
+    setAllChannels(updatedAll);
+    setFilteredChannels(updatedFiltered);
+    setActiveIndex(0);
+    triggerOSD();
+
+    // Guardar en localStorage para persistencia permanente
+    try {
+      const saved = JSON.parse(localStorage.getItem('youapp_saved_custom_channels') || '[]');
+      const newSaved = [formatted, ...saved.filter((c: any) => c.videoUrl !== formatted.videoUrl)];
+      localStorage.setItem('youapp_saved_custom_channels', JSON.stringify(newSaved.slice(0, 50)));
+    } catch (e) {
+      console.warn("Error saving custom channel:", e);
+    }
+  };
+
   const handleCustomYouTubeSearch = async (query: string) => {
     setIsMoodLoading(true);
     try {
       const videos = await fetchTopViewedVideosByMood(query, 15);
       if (videos.length > 0) {
-        setFilteredChannels(videos);
-        setActiveIndex(0);
-        triggerOSD();
+        // En vez de reemplazar todos los canales, agregamos los encontrados
+        videos.forEach((v: any) => handleAddChannelToGrid(v));
       }
     } catch (err) {
       console.error("Error searching YouTube:", err);
@@ -491,9 +542,8 @@ export default function LiveZapping() {
     try {
       const videos = await fetchChannelTVVideos(channelId, channelTitle);
       if (videos.length > 0) {
-        setFilteredChannels(videos);
-        setActiveIndex(0);
-        triggerOSD();
+        // Agregar el canal a la grilla y sintonizar
+        handleAddChannelToGrid(videos[0]);
       }
     } catch (err) {
       console.error("Error loading real YouTube channel station:", err);
@@ -814,6 +864,7 @@ export default function LiveZapping() {
           setActiveIndex(idx);
           triggerOSD();
         }}
+        onAddChannel={handleAddChannelToGrid}
         onSelectRealYouTubeChannel={handleSelectRealYouTubeChannel}
       />
 

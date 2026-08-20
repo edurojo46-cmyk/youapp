@@ -266,11 +266,12 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         <iframe
           id={containerId}
           key={`${ytId}_${targetOffsetSeconds}`}
-          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&playsinline=1${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`}
+          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`}
           title={channelName}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
+          {...{ webkitAllowFullScreen: true, mozAllowFullScreen: true } as any}
           className="synced-tv-iframe"
         />
       )}
@@ -339,10 +340,29 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           background: #000;
         }
 
-        .synced-tv-iframe iframe {
-          width: 100% !important;
-          height: 100% !important;
-          border: 0 !important;
+        /* Fullscreen nativo en móvil - idéntico a YouTube */
+        .synced-tv-iframe:-webkit-full-screen {
+          width: 100vw !important;
+          height: 100vh !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          z-index: 99999 !important;
+        }
+
+        .synced-tv-iframe:-moz-full-screen {
+          width: 100vw !important;
+          height: 100vh !important;
+        }
+
+        .synced-tv-iframe:fullscreen {
+          width: 100vw !important;
+          height: 100vh !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          z-index: 99999 !important;
+          background: #000 !important;
         }
 
         .mobile-tap-unlock-overlay {

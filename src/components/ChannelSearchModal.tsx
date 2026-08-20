@@ -35,7 +35,7 @@ export default function ChannelSearchModal({
   onSelectRealYouTubeChannel
 }: ChannelSearchModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [ytChannels, setYtChannels] = useState<UniversalChannel[]>([]);
+  const [ytChannels, setYtChannels] = useState<UniversalChannel[]>(UNIVERSAL_CATALOG.slice(0, 12));
   const [isSearchingYT, setIsSearchingYT] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'youtube' | 'grilla'>('all');
   const [addedChannelFeedback, setAddedChannelFeedback] = useState<string | null>(null);
@@ -43,14 +43,14 @@ export default function ChannelSearchModal({
   // Búsqueda instantánea en el motor universal independiente
   useEffect(() => {
     if (!searchTerm.trim()) {
-      setYtChannels([]);
+      setYtChannels(UNIVERSAL_CATALOG.slice(0, 12));
       setIsSearchingYT(false);
       return;
     }
 
     const clean = searchTerm.trim();
     const isDirect = clean.startsWith('http') || clean.startsWith('@') || clean.includes('youtube.com') || clean.includes('twitch.tv');
-    const delay = isDirect ? 0 : 150;
+    const delay = isDirect ? 0 : 120;
 
     const timer = setTimeout(async () => {
       setIsSearchingYT(true);

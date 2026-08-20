@@ -264,11 +264,17 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           onClick={handleUserUnlock}
         />
       ) : (
-        /* 2. Reproductor YouTube Oficial y Fiable (Iframe directo bindeado) */
+        /* 2. Reproductor YouTube Oficial y Fiable (Iframe directo bindeado con bucle continuo 24/7) */
         <iframe
           id={containerId}
-          key={`${ytId}_${targetOffsetSeconds}`}
-          src={`https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`}
+          key={`${url}_${targetOffsetSeconds}`}
+          src={
+            url.includes('/embed/')
+              ? (url.includes('?') 
+                  ? `${url}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&loop=1&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`
+                  : `${url}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&loop=1&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`)
+              : `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&loop=1&playlist=${ytId}&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`
+          }
           title={channelName}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

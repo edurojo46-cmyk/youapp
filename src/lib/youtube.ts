@@ -1101,29 +1101,123 @@ export const CURATED_POPULAR_CHANNELS: Array<{
   }
 ];
 
+// Extrae información de Canal, Playlist o Video de YouTube desde cualquier enlace o handle
+export const extractChannelOrVideo = (input: string) => {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  // 1. Channel Handle (@name o youtube.com/@name)
+  const handleMatch = trimmed.match(/(?:youtube\.com\/)?@([a-zA-Z0-9_.-]+)/);
+  if (handleMatch) {
+    const handle = handleMatch[1];
+    const curated = CURATED_POPULAR_CHANNELS.find(c => 
+      c.name.toLowerCase().includes(handle.toLowerCase()) || 
+      (c.channelId && c.channelId.toLowerCase().includes(handle.toLowerCase()))
+    );
+
+    const displayName = curated ? curated.name : `@${handle}`;
+    return {
+      id: `yt-handle-${handle}`,
+      channelId: handle,
+      name: `${displayName} 24/7 TV`,
+      category: '🔴 Emisión Continua Canal',
+      description: `Transmisión 24/7 de todos los videos y novedades de @${handle}.`,
+      avatarUrl: curated?.avatarUrl || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60`,
+      thumbnail: curated?.thumbnail || `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60`,
+      videoId: curated?.videoId || 'jfKfPfyJRdk',
+      videoUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(handle)}`,
+      currentVideoTitle: `Programación Continua de @${handle}`,
+      isLive: true
+    };
+  }
+
+  // 2. Channel ID (youtube.com/channel/UC...) -> Se convierte a Playlist de Subidas Oficial UU...
+  const channelIdMatch = trimmed.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/);
+  if (channelIdMatch) {
+    const channelId = channelIdMatch[1];
+    const uploadsPlaylistId = 'UU' + channelId.substring(2);
+    return {
+      id: `yt-channel-id-${channelId}`,
+      channelId: channelId,
+      name: `Canal YouTube (${channelId.substring(0, 8)}...)`,
+      category: '🔴 Videoteca Completa 24/7',
+      description: 'Transmisión continua de toda la videoteca de subidas del canal.',
+      avatarUrl: `https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop&q=60`,
+      thumbnail: `https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=60`,
+      videoId: '',
+      videoUrl: `https://www.youtube.com/embed/videoseries?list=${uploadsPlaylistId}`,
+      currentVideoTitle: 'Videoteca Completa en Transmisión 24/7',
+      isLive: true
+    };
+  }
+
+  // 3. Custom / User URL (youtube.com/c/name o youtube.com/user/name)
+  const customUserMatch = trimmed.match(/youtube\.com\/(?:c|user)\/([a-zA-Z0-9_.-]+)/);
+  if (customUserMatch) {
+    const customName = customUserMatch[1];
+    return {
+      id: `yt-channel-custom-${customName}`,
+      channelId: customName,
+      name: `Canal ${customName} TV`,
+      category: '🔴 Emisión Continua Canal',
+      description: `Transmisión continua 24/7 de ${customName}.`,
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60`,
+      thumbnail: `https://images.unsplash.com/photo-1518173946687-a4c8a383392e?w=800&auto=format&fit=crop&q=60`,
+      videoId: '',
+      videoUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(customName)}`,
+      currentVideoTitle: `Programación 24/7 de ${customName}`,
+      isLive: true
+    };
+  }
+
+  // 4. Playlist URL (youtube.com/playlist?list=...)
+  const playlistId = extractPlaylistId(trimmed);
+  if (playlistId) {
+    return {
+      id: `yt-playlist-${playlistId}`,
+      channelId: playlistId,
+      name: `Playlist TV (${playlistId.substring(0, 8)}...)`,
+      category: '🔴 Playlist 24/7 Continua',
+      description: 'Transmisión continua de todos los videos de la playlist.',
+      avatarUrl: `https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=60`,
+      thumbnail: `https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=60`,
+      videoId: '',
+      videoUrl: `https://www.youtube.com/embed/videoseries?list=${playlistId}`,
+      currentVideoTitle: 'Emisión Continua de Playlist',
+      isLive: true
+    };
+  }
+
+  // 5. Video URL (watch?v= o youtu.be/ o shorts/)
+  const videoId = extractVideoId(trimmed);
+  if (videoId) {
+    return {
+      id: `yt-direct-${videoId}`,
+      channelId: `ch-direct-${videoId}`,
+      name: `Canal YouTube (${videoId})`,
+      category: '🔴 Video en Bucle 24/7',
+      description: 'Video de YouTube configurado en reproducción continua 24/7.',
+      avatarUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      videoId: videoId,
+      videoUrl: `https://www.youtube.com/embed/${videoId}?loop=1&playlist=${videoId}`,
+      currentVideoTitle: 'Video de YouTube en Emisión Continua',
+      isLive: true
+    };
+  }
+
+  return null;
+};
+
 // Busca Canales y Videos Reales de YouTube por Nombre, Creador o Enlace Directo
 export const searchRealYouTubeChannels = async (query: string) => {
   if (!query || !query.trim()) return [];
   const cleanQ = query.trim();
 
-  // 1. Detectar si el usuario pegó un enlace directo de YouTube
-  const directVidId = extractVideoId(cleanQ);
-  if (directVidId) {
-    return [
-      {
-        id: `yt-direct-${directVidId}`,
-        channelId: `ch-direct-${directVidId}`,
-        name: `Canal YouTube (${directVidId})`,
-        category: 'Personalizado',
-        description: 'Video de YouTube listo para sintonizar en vivo.',
-        avatarUrl: `https://img.youtube.com/vi/${directVidId}/hqdefault.jpg`,
-        thumbnail: `https://img.youtube.com/vi/${directVidId}/maxresdefault.jpg`,
-        videoId: directVidId,
-        videoUrl: `https://www.youtube.com/embed/${directVidId}`,
-        currentVideoTitle: 'Video Importado de YouTube',
-        isLive: true
-      }
-    ];
+  // 1. Detectar si el usuario pegó un enlace de Canal, Playlist o Video directo
+  const directResult = extractChannelOrVideo(cleanQ);
+  if (directResult) {
+    return [directResult];
   }
 
   // 2. Buscar primero coincidencias en el directorio curado offline (instantáneo)

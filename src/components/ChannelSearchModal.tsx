@@ -130,7 +130,7 @@ export default function ChannelSearchModal({
             <input
               type="text"
               className="search-input"
-              placeholder="Buscar canal (ej: MrBeast, Ibai, Lofi, Rock, o pega un link de YouTube)..."
+              placeholder="Pega link de Canal (@MrBeast, youtube.com/@ibai, playlist o video) o busca..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus

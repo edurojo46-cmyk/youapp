@@ -263,8 +263,20 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           controls={false}
           onClick={handleUserUnlock}
         />
+      ) : url.includes('player.twitch.tv') ? (
+        /* 2. Reproductor Oficial de Twitch */
+        <iframe
+          id={containerId}
+          key={url}
+          src={url.includes('muted=') ? url : `${url}&muted=${isMuted}`}
+          title={channelName}
+          frameBorder="0"
+          allow="autoplay; fullscreen"
+          allowFullScreen
+          className="synced-tv-iframe"
+        />
       ) : (
-        /* 2. Reproductor YouTube Oficial y Fiable (Iframe directo bindeado con bucle continuo 24/7) */
+        /* 3. Reproductor YouTube Oficial y Fiable (Iframe directo bindeado con bucle continuo 24/7) */
         <iframe
           id={containerId}
           key={`${url}_${targetOffsetSeconds}`}

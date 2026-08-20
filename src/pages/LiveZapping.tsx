@@ -13,6 +13,7 @@ import {
   fetchReal24_7LiveStreams, 
   VERIFIED_24_7_LIVE_CHANNELS 
 } from '../lib/youtube';
+import { UNIVERSAL_CATALOG } from '../lib/universalChannels';
 import { calculateGlobalChannelSync } from '../utils/tvEngine';
 import SleepTimer from '../components/SleepTimer';
 
@@ -352,7 +353,7 @@ export default function LiveZapping() {
       } catch (e) {}
 
       // Deduplicar canales por videoUrl o ID para asegurar que cada canal sea 100% único
-      const rawChannels = [...userCustomChannels, ...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
+      const rawChannels = [...userCustomChannels, ...UNIVERSAL_CATALOG, ...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
       if (Array.isArray(real24Live) && real24Live.length > 0 && real24Live !== VERIFIED_24_7_LIVE_CHANNELS) {
         rawChannels.push(...real24Live);
       }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, X, Tv, Sparkles, Star, Play, Radio, Loader2, CheckCircle2, Plus, PlusCircle, ExternalLink } from 'lucide-react';
-import { searchRealYouTubeChannels, CURATED_POPULAR_CHANNELS } from '../lib/youtube';
+import { Search, X, Tv, Sparkles, Star, Play, Radio, Loader2, CheckCircle2, Plus, PlusCircle, ExternalLink, Globe, Tv2 } from 'lucide-react';
+import { searchUniversalEngine, UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
 
 interface Channel {
   id: string;
@@ -22,8 +22,8 @@ interface ChannelSearchModalProps {
 }
 
 const POPULAR_CHANNELS = [
-  'Crónica TV', 'Carnaval Stream', 'TN En Vivo', 'MrBeast', 'Ibai', 
-  'Lofi Girl', 'Luzu TV', 'Olga', 'Platzi', 'Red Bull'
+  'Crónica TV', 'Carnaval Stream', 'TN En Vivo', 'C5N', 'LUZU TV', 
+  'OLGA', 'MrBeast', 'Ibai', 'Lofi Girl', 'Platzi', 'Red Bull TV'
 ];
 
 export default function ChannelSearchModal({
@@ -35,12 +35,12 @@ export default function ChannelSearchModal({
   onSelectRealYouTubeChannel
 }: ChannelSearchModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [ytChannels, setYtChannels] = useState<any[]>([]);
+  const [ytChannels, setYtChannels] = useState<UniversalChannel[]>([]);
   const [isSearchingYT, setIsSearchingYT] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'youtube' | 'grilla'>('all');
   const [addedChannelFeedback, setAddedChannelFeedback] = useState<string | null>(null);
 
-  // Búsqueda en tiempo real en YouTube con debounce rápido
+  // Búsqueda instantánea en el motor universal independiente
   useEffect(() => {
     if (!searchTerm.trim()) {
       setYtChannels([]);
@@ -49,14 +49,13 @@ export default function ChannelSearchModal({
     }
 
     const clean = searchTerm.trim();
-    // Si es URL o @handle, buscar de inmediato sin esperar debounce
-    const isDirect = clean.startsWith('http') || clean.startsWith('@') || clean.includes('youtube.com');
-    const delay = isDirect ? 0 : 200;
+    const isDirect = clean.startsWith('http') || clean.startsWith('@') || clean.includes('youtube.com') || clean.includes('twitch.tv');
+    const delay = isDirect ? 0 : 150;
 
     const timer = setTimeout(async () => {
       setIsSearchingYT(true);
       try {
-        const results = await searchRealYouTubeChannels(clean);
+        const results = await searchUniversalEngine(clean);
         setYtChannels(results);
       } catch (e) {
         console.error(e);
@@ -84,27 +83,27 @@ export default function ChannelSearchModal({
     setSearchTerm(channelName);
   };
 
-  const handleAddAndPlay = (yt: any) => {
+  const handleAddAndPlay = (channel: UniversalChannel | any) => {
     const newChannel = {
-      id: yt.id || `yt-${yt.channelId || yt.videoId || Math.random().toString(36).slice(2)}`,
-      name: yt.name,
-      category: yt.category || '🔴 Canal YouTube',
-      viewerCount: yt.viewerCount || Math.floor(Math.random() * 5000) + 1200,
-      videoUrl: yt.videoUrl || `https://www.youtube.com/embed/${yt.videoId || 'jfKfPfyJRdk'}`,
-      currentVideoTitle: yt.currentVideoTitle || yt.name,
-      thumbnail: yt.thumbnail || yt.avatarUrl,
-      author: yt.name,
-      avatarUrl: yt.avatarUrl,
-      isLive: yt.isLive !== undefined ? yt.isLive : true
+      id: channel.id || `custom-ch-${Date.now()}`,
+      name: channel.name,
+      category: channel.category || '🔴 Canal en Vivo',
+      viewerCount: channel.viewerCount || Math.floor(Math.random() * 5000) + 1200,
+      videoUrl: channel.videoUrl || `https://www.youtube.com/embed/${channel.videoId || 'jfKfPfyJRdk'}`,
+      currentVideoTitle: channel.currentVideoTitle || channel.name,
+      thumbnail: channel.thumbnail || channel.avatarUrl,
+      author: channel.name,
+      avatarUrl: channel.avatarUrl,
+      isLive: channel.isLive !== undefined ? channel.isLive : true
     };
 
-    setAddedChannelFeedback(yt.name);
+    setAddedChannelFeedback(channel.name);
     setTimeout(() => setAddedChannelFeedback(null), 2500);
 
     if (onAddChannel) {
       onAddChannel(newChannel);
     } else if (onSelectRealYouTubeChannel) {
-      onSelectRealYouTubeChannel(yt.channelId, yt.name);
+      onSelectRealYouTubeChannel(channel.channelId || channel.id, channel.name);
     }
     onClose();
   };
@@ -116,12 +115,12 @@ export default function ChannelSearchModal({
     const clean = searchTerm.trim();
     setIsSearchingYT(true);
     try {
-      const results = await searchRealYouTubeChannels(clean);
+      const results = await searchUniversalEngine(clean);
       if (results && results.length > 0) {
         handleAddAndPlay(results[0]);
       }
     } catch (err) {
-      console.error("Error on search submit:", err);
+      console.error("Error on universal search submit:", err);
     } finally {
       setIsSearchingYT(false);
     }
@@ -137,7 +136,7 @@ export default function ChannelSearchModal({
             <input
               type="text"
               className="search-input"
-              placeholder="Pega link de Canal (@MrBeast, youtube.com/@ibai, playlist o video) o busca..."
+              placeholder="Buscar canal, noticias, creador o pega cualquier link (YouTube, Twitch, TV)..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus

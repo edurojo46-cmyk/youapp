@@ -1,7 +1,7 @@
 import { Peer, type DataConnection } from 'peerjs';
 import { supabase } from '../lib/supabase';
 
-// Multi-transport WebRTC & WebSocket Bridge
+// Multi-transport WebRTC & WebSocket Bridge con STUN servers y fallback transparente
 export class RemoteBridge {
   private sessionId: string;
   private mode: 'tv' | 'remote';
@@ -12,6 +12,7 @@ export class RemoteBridge {
   private supabaseRoom: any = null;
   private localBc: BroadcastChannel | null = null;
   private processedMessageIds: Set<string> = new Set();
+  private pingInterval: any = null;
 
   constructor(sessionId: string, mode: 'tv' | 'remote' = 'tv') {
     this.sessionId = sessionId.trim().toLowerCase();
@@ -23,11 +24,23 @@ export class RemoteBridge {
     const peerId = `youapp-pin-${this.sessionId}`;
     const channelName = `remote_${this.sessionId}`;
 
+    const peerOptions = {
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ]
+      }
+    };
+
     // 1. PeerJS Direct WebRTC Connection
     try {
       if (this.mode === 'tv') {
         // En la TV creamos el Peer receptor con ese PIN
-        this.peer = new Peer(peerId);
+        this.peer = new Peer(peerId, peerOptions);
 
         this.peer.on('open', (id) => {
           console.log('[TV WebRTC] Ready on PIN:', id);
@@ -35,49 +48,37 @@ export class RemoteBridge {
 
         this.peer.on('connection', (connection) => {
           this.conn = connection;
-          console.log('[TV WebRTC] Phone connected!');
+          console.log('[TV WebRTC] Phone connected via WebRTC DataChannel!');
           if (this.onConnectedCallback) this.onConnectedCallback();
 
           connection.on('data', (data: any) => {
             console.log('[TV WebRTC Data Received]:', data);
-            const msgId = data?.messageId;
-            if (msgId) {
-              if (this.processedMessageIds.has(msgId)) return;
-              this.processedMessageIds.add(msgId);
-              if (this.processedMessageIds.size > 50) {
-                const firstItem = this.processedMessageIds.values().next().value;
-                if (firstItem !== undefined) {
-                    this.processedMessageIds.delete(firstItem);
-                }
-              }
-            }
-            
-            const action = data?.action;
-            if (action && this.onActionCallback) {
-              this.onActionCallback(action, data.payload || data);
-            }
+            this.handleIncomingRawMessage(data);
           });
+        });
+
+        this.peer.on('error', (err) => {
+          console.warn('[TV WebRTC] Peer error (falling back to Supabase Realtime):', err);
         });
       } else {
         // En el Celular nos conectamos al Peer de la TV
-        this.peer = new Peer();
+        this.peer = new Peer(peerOptions);
 
         this.peer.on('open', () => {
           if (!this.peer) return;
-          console.log('[Phone WebRTC] Connecting to TV:', peerId);
-          this.conn = this.peer.connect(peerId, { reliable: true });
+          console.log('[Phone WebRTC] Connecting to TV PIN:', peerId);
+          this.connectToPeer(peerId);
+        });
 
-          this.conn.on('open', () => {
-            console.log('[Phone WebRTC] Successfully connected to TV!');
-            if (this.onConnectedCallback) this.onConnectedCallback();
-          });
+        this.peer.on('error', (err) => {
+          console.warn('[Phone WebRTC] Peer error (using Supabase Realtime):', err);
         });
       }
     } catch (e) {
       console.warn('WebRTC Peer init error:', e);
     }
 
-    // 2. Supabase Realtime Channel
+    // 2. Supabase Realtime Channel (Garantiza conexión 100% en redes móviles / 4G / WiFi)
     try {
       this.supabaseRoom = supabase.channel(channelName, {
         config: { broadcast: { self: true, ack: false } }
@@ -85,33 +86,18 @@ export class RemoteBridge {
 
       this.supabaseRoom
         .on('broadcast', { event: 'REMOTE_ACTION' }, (e: any) => {
-          const payload = e?.payload?.payload || e?.payload || e;
-          const msgId = payload?.messageId;
-          if (msgId) {
-            if (this.processedMessageIds.has(msgId)) return;
-            this.processedMessageIds.add(msgId);
-            if (this.processedMessageIds.size > 50) {
-              const firstItem = this.processedMessageIds.values().next().value;
-              if (firstItem !== undefined) {
-                  this.processedMessageIds.delete(firstItem);
-              }
-            }
-          }
-          const action = payload?.action || e?.action;
-          if (action && this.onActionCallback) {
-            this.onActionCallback(action, payload);
-          }
+          console.log('[Supabase Realtime Received]:', e);
+          const raw = e?.payload ?? e;
+          this.handleIncomingRawMessage(raw);
         })
         .on('broadcast', { event: 'REMOTE_CONNECTED' }, () => {
+          console.log('[Supabase Realtime] Remote connected signal received');
           if (this.onConnectedCallback) this.onConnectedCallback();
         })
         .subscribe((status: string) => {
+          console.log('[Supabase Realtime] Room status:', status);
           if (status === 'SUBSCRIBED' && this.mode === 'remote') {
-            this.supabaseRoom.send({
-              type: 'broadcast',
-              event: 'REMOTE_CONNECTED',
-              payload: { timestamp: Date.now() }
-            });
+            this.notifyConnected();
           }
         });
     } catch (err) {
@@ -123,27 +109,77 @@ export class RemoteBridge {
       this.localBc = new BroadcastChannel(channelName);
       this.localBc.onmessage = (e) => {
         if (e.data?.event === 'REMOTE_ACTION') {
-          const payload = e.data.payload;
-          const msgId = payload?.messageId;
-          if (msgId) {
-            if (this.processedMessageIds.has(msgId)) return;
-            this.processedMessageIds.add(msgId);
-            if (this.processedMessageIds.size > 50) {
-              const firstItem = this.processedMessageIds.values().next().value;
-              if (firstItem !== undefined) {
-                  this.processedMessageIds.delete(firstItem);
-              }
-            }
-          }
-          const action = payload?.action;
-          if (action && this.onActionCallback) {
-            this.onActionCallback(action, payload);
-          }
+          this.handleIncomingRawMessage(e.data?.payload);
         } else if (e.data?.event === 'REMOTE_CONNECTED') {
           if (this.onConnectedCallback) this.onConnectedCallback();
         }
       };
     } catch {}
+
+    // Heartbeat ping para mantener activo el canal
+    if (this.mode === 'remote') {
+      this.pingInterval = setInterval(() => {
+        this.notifyConnected();
+      }, 10000);
+    }
+  }
+
+  private connectToPeer(peerId: string) {
+    if (!this.peer) return;
+    try {
+      const connection = this.peer.connect(peerId, { reliable: true });
+      this.conn = connection;
+
+      connection.on('open', () => {
+        console.log('[Phone WebRTC] DataChannel open to TV!');
+        if (this.onConnectedCallback) this.onConnectedCallback();
+      });
+
+      connection.on('data', (data: any) => {
+        this.handleIncomingRawMessage(data);
+      });
+    } catch (err) {
+      console.warn('[Phone WebRTC] Connect error:', err);
+    }
+  }
+
+  private handleIncomingRawMessage(raw: any) {
+    if (!raw) return;
+
+    // Normalizar acción y payload
+    let action: string | null = null;
+    let messageId: string | null = null;
+    let payload: any = {};
+
+    if (typeof raw === 'object') {
+      action = raw.action || raw.payload?.action || null;
+      messageId = raw.messageId || raw.payload?.messageId || null;
+      payload = raw.payload !== undefined && typeof raw.payload === 'object' && Object.keys(raw.payload).length > 0 
+        ? raw.payload 
+        : raw;
+    }
+
+    if (!action) return;
+
+    // Deduplicar mensajes repetidos (enviados por WebRTC + Supabase simultáneamente)
+    if (messageId) {
+      if (this.processedMessageIds.has(messageId)) {
+        console.log('[RemoteBridge] Deduplicating already processed message:', messageId, action);
+        return;
+      }
+      this.processedMessageIds.add(messageId);
+      if (this.processedMessageIds.size > 50) {
+        const firstItem = this.processedMessageIds.values().next().value;
+        if (firstItem !== undefined) {
+          this.processedMessageIds.delete(firstItem);
+        }
+      }
+    }
+
+    console.log('[RemoteBridge Dispatching Action]:', action, payload);
+    if (this.onActionCallback) {
+      this.onActionCallback(action, payload);
+    }
   }
 
   public onAction(callback: (action: string, payload: any) => void) {
@@ -156,42 +192,39 @@ export class RemoteBridge {
 
   public sendAction(action: string, payload: any = {}) {
     const messageId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const messagePayload = { action, payload, messageId, ...payload };
+    const messageData = { action, payload, messageId, ...payload };
 
-    // 1. Enviar vía WebRTC Direct DataChannel (Instantáneo)
+    console.log('[RemoteBridge Sending Action]:', action, messageData);
+
+    // 1. Enviar vía WebRTC Direct DataChannel (Instantáneo si está abierto)
     if (this.conn && this.conn.open) {
       try {
-        this.conn.send(messagePayload);
+        this.conn.send(messageData);
       } catch (err) {
         console.warn('WebRTC send error:', err);
       }
     } else if (this.peer && this.mode === 'remote') {
-      // Reintentar conectar si no estaba abierto
-      try {
-        const peerId = `youapp-pin-${this.sessionId}`;
-        const newConn = this.peer.connect(peerId, { reliable: true });
-        newConn.on('open', () => {
-          newConn.send(messagePayload);
-          this.conn = newConn;
-        });
-      } catch {}
+      const peerId = `youapp-pin-${this.sessionId}`;
+      this.connectToPeer(peerId);
     }
 
-    // 2. Enviar vía Supabase Broadcast
+    // 2. Enviar vía Supabase Broadcast (Respaldo en tiempo real 100% garantizado)
     if (this.supabaseRoom) {
       try {
         this.supabaseRoom.send({
           type: 'broadcast',
           event: 'REMOTE_ACTION',
-          payload: messagePayload
+          payload: messageData
         });
-      } catch {}
+      } catch (err) {
+        console.warn('Supabase broadcast send error:', err);
+      }
     }
 
-    // 3. Enviar vía BroadcastChannel local
+    // 3. Enviar vía BroadcastChannel local (si ambas pestañas están en el mismo navegador)
     if (this.localBc) {
       try {
-        this.localBc.postMessage({ event: 'REMOTE_ACTION', payload: messagePayload });
+        this.localBc.postMessage({ event: 'REMOTE_ACTION', payload: messageData });
       } catch {}
     }
   }
@@ -214,6 +247,9 @@ export class RemoteBridge {
   }
 
   public destroy() {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+    }
     if (this.conn) {
       this.conn.close();
     }

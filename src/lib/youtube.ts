@@ -169,10 +169,10 @@ export const fetchPlaylistVideos = async (playlistId: string) => {
   }
 };
 
-// Canales de Transmisión Sincronizada 24/7 Nativa (HLS & MP4 de alta disponibilidad)
+// Canales de Transmisión Sincronizada 24/7 Nativa (HLS & MP4 de alta disponibilidad para TV, Chromecast y Celular)
 export const VERIFIED_24_7_LIVE_CHANNELS = [
   {
-    id: 'live-cinema-blender',
+    id: 'ch-01-cinema-4k',
     name: 'Cine & Animación 4K 24/7',
     category: 'Cine & Animación',
     viewerCount: 28400,
@@ -183,48 +183,219 @@ export const VERIFIED_24_7_LIVE_CHANNELS = [
     durationSeconds: 600
   },
   {
-    id: 'live-nature-escape',
+    id: 'ch-02-nature-relax',
     name: 'Naturaleza & Paisajes 24/7',
     category: 'Relax & Naturaleza',
     viewerCount: 34100,
     videoUrl: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
-    currentVideoTitle: 'Escapes Naturales - Sintel HLS',
+    currentVideoTitle: 'Escapes Naturales - Sintel HLS Stream',
     thumbnail: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=60',
     author: 'Earth TV',
     durationSeconds: 900
   },
   {
-    id: 'live-scifi-cosmos',
+    id: 'ch-03-scifi-cosmos',
     name: 'Cosmos & Sci-Fi 24/7',
     category: 'Ciencia & Futuro',
     viewerCount: 19800,
     videoUrl: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8',
-    currentVideoTitle: 'Tears of Steel - Ciencia Ficción & Cosmos HLS',
+    currentVideoTitle: 'Tears of Steel - Ciencia Ficción & Futuro HLS',
     thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=60',
     author: 'Sci-Fi Cosmos',
     durationSeconds: 734
   },
   {
-    id: 'live-action-sports',
-    name: 'Acción Extrema & Deportes 24/7',
+    id: 'ch-04-dw-espanol',
+    name: 'DW Noticias Español 24/7',
+    category: 'Noticias & Actualidad',
+    viewerCount: 42300,
+    videoUrl: 'https://dwamdstream104.akamaized.net/hls/live/2015530/dwstream104/index.m3u8',
+    currentVideoTitle: 'DW Noticias en Vivo - Señal Internacional 24/7',
+    thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60',
+    author: 'Deutsche Welle',
+    durationSeconds: 1800,
+    isLive: true
+  },
+  {
+    id: 'ch-05-france24-es',
+    name: 'France 24 Español 24/7',
+    category: 'Noticias & Actualidad',
+    viewerCount: 38900,
+    videoUrl: 'https://static.france24.com/live/F24_ES_LO_HLS/live_tv.m3u8',
+    currentVideoTitle: 'France 24 en Vivo - Noticias del Mundo',
+    thumbnail: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&auto=format&fit=crop&q=60',
+    author: 'France Médias',
+    durationSeconds: 1800,
+    isLive: true
+  },
+  {
+    id: 'ch-06-nasa-tv',
+    name: 'NASA TV HD 24/7',
+    category: 'Ciencia & Cosmos',
+    viewerCount: 51200,
+    videoUrl: 'https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8',
+    currentVideoTitle: 'NASA TV - Estación Espacial Internacional en Directo',
+    thumbnail: 'https://images.unsplash.com/photo-1614728894747-a83421e2b9c9?w=800&auto=format&fit=crop&q=60',
+    author: 'NASA Media',
+    durationSeconds: 3600,
+    isLive: true
+  },
+  {
+    id: 'ch-07-redbull-tv',
+    name: 'Red Bull Deportes Extremos',
     category: 'Deportes Extremos',
+    viewerCount: 26700,
+    videoUrl: 'https://rbmn-live.akamaized.net/hls/live/590964/BoRB-AT/master.m3u8',
+    currentVideoTitle: 'Red Bull TV - Adrenalina, Surf, Skate & Downhill',
+    thumbnail: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=800&auto=format&fit=crop&q=60',
+    author: 'Red Bull Media',
+    durationSeconds: 2400,
+    isLive: true
+  },
+  {
+    id: 'ch-08-tech-future',
+    name: 'Tecnología & IA TV',
+    category: 'Tecnología & IA',
+    viewerCount: 18400,
+    videoUrl: 'https://cph-p2p-msl.akamaized.net/hls/live/2000341/test/master.m3u8',
+    currentVideoTitle: 'Transmisión HD Ultra Rápida - Tecnología & Futuro',
+    thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60',
+    author: 'Tech Stream',
+    durationSeconds: 900
+  },
+  {
+    id: 'ch-09-rtve-24h',
+    name: 'RTVE 24 Horas Noticias',
+    category: 'Noticias & Actualidad',
+    viewerCount: 31000,
+    videoUrl: 'https://rtvelivestream.akamaized.net/rtvesec/24h/24h_main_500.m3u8',
+    currentVideoTitle: 'Canal 24 Horas RTVE - Información en Continuo',
+    thumbnail: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&auto=format&fit=crop&q=60',
+    author: 'RTVE España',
+    durationSeconds: 1800,
+    isLive: true
+  },
+  {
+    id: 'ch-10-aljazeera-live',
+    name: 'Al Jazeera International 24/7',
+    category: 'Noticias Globales',
+    viewerCount: 47000,
+    videoUrl: 'https://live-hls-web-aje.getaj.net/AJE/01.m3u8',
+    currentVideoTitle: 'Al Jazeera Live HD - Cobertura Global',
+    thumbnail: 'https://images.unsplash.com/photo-1586339949916-3e9457bef6d3?w=800&auto=format&fit=crop&q=60',
+    author: 'Al Jazeera Media',
+    durationSeconds: 3600,
+    isLive: true
+  },
+  {
+    id: 'ch-11-action-sports',
+    name: 'Oceans & Acción Marina',
+    category: 'Naturaleza & Deportes',
     viewerCount: 16500,
     videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
-    currentVideoTitle: 'Adrenalina Pura - Oceans MP4',
-    thumbnail: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=800&auto=format&fit=crop&q=60',
-    author: 'Action World',
+    currentVideoTitle: 'Océanos Profundos 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=60',
+    author: 'Ocean World',
     durationSeconds: 46
   },
   {
-    id: 'live-fantasy-adventure',
-    name: 'Fantasía & Aventura 24/7',
-    category: 'Cine & Aventura',
+    id: 'ch-12-sintel-hd',
+    name: 'Sintel - Cine de Animación HD',
+    category: 'Cine & Cortos',
     viewerCount: 21900,
     videoUrl: 'https://media.w3.org/2010/05/sintel/trailer_hd.mp4',
-    currentVideoTitle: 'Sintel - Trailer HD MP4',
-    thumbnail: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800&auto=format&fit=crop&q=60',
+    currentVideoTitle: 'Sintel - Historia Épica',
+    thumbnail: 'https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=800&auto=format&fit=crop&q=60',
     author: 'Open Movies',
     durationSeconds: 52
+  },
+  {
+    id: 'ch-13-elephants-dream',
+    name: 'Elephants Dream 4K',
+    category: 'Cine & Animación',
+    viewerCount: 14200,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    currentVideoTitle: 'Elephants Dream - Obra Maestra Digital',
+    thumbnail: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=60',
+    author: 'Blender Cinema',
+    durationSeconds: 653
+  },
+  {
+    id: 'ch-14-big-buck-hd',
+    name: 'Big Buck Bunny Especial HD',
+    category: 'Animación & Familiar',
+    viewerCount: 22100,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    currentVideoTitle: 'Big Buck Bunny - Cortometraje Completo',
+    thumbnail: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=800&auto=format&fit=crop&q=60',
+    author: 'Animation Studio',
+    durationSeconds: 596
+  },
+  {
+    id: 'ch-15-tears-steel-hd',
+    name: 'Tears of Steel HD',
+    category: 'Ciencia Ficción',
+    viewerCount: 19500,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+    currentVideoTitle: 'Tears of Steel - Efectos Visuales 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800&auto=format&fit=crop&q=60',
+    author: 'VFX Cinema',
+    durationSeconds: 734
+  },
+  {
+    id: 'ch-16-escape-adventure',
+    name: 'Escapes & Aventura Global',
+    category: 'Viajes & Aventura',
+    viewerCount: 17800,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    currentVideoTitle: 'Aventuras Al Límite - Paisajes y Montañas',
+    thumbnail: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=60',
+    author: 'Adventure World',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-17-blazes-action',
+    name: 'Festivales & Música Electrónica',
+    category: 'Música & Festivales',
+    viewerCount: 25400,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    currentVideoTitle: 'Electrónica & Show de Luces 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=60',
+    author: 'Electro Stage',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-18-joy-celebration',
+    name: 'Espectáculos & Arte Visual',
+    category: 'Arte & Cultura',
+    viewerCount: 13900,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+    currentVideoTitle: 'Colores, Fuego y Arte en Alta Definición',
+    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=60',
+    author: 'Visual Arts',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-19-fun-comedy',
+    name: 'Humor & Entretenimiento',
+    category: 'Humor & Viral',
+    viewerCount: 28700,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    currentVideoTitle: 'Risas y Momentos Divertidos 24/7',
+    thumbnail: 'https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=800&auto=format&fit=crop&q=60',
+    author: 'Fun Network',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-20-bullrun-motors',
+    name: 'Motor & Supercars 24/7',
+    category: 'Velocidad & Autos',
+    viewerCount: 31200,
+    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+    currentVideoTitle: 'Superdeportivos en Carretera',
+    thumbnail: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&auto=format&fit=crop&q=60',
+    author: 'Supercars Live',
+    durationSeconds: 60
   }
 ];
 

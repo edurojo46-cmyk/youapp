@@ -60,6 +60,9 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
   // Reloj Determinístico Global Universal (UTC Epoch Lock)
   const getExactUtcLiveSecond = (duration: number = 600) => {
+    if (!duration || !isFinite(duration) || isNaN(duration) || duration <= 0) {
+      return 0; // Transmisiones en vivo continuas van en directo natural sin seek
+    }
     const epochSec = Math.floor(Date.now() / 1000);
     const seed = (url || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     return (epochSec + seed) % Math.max(10, Math.floor(duration));
@@ -70,8 +73,10 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   // Ticker de emisión visual
   useEffect(() => {
     const interval = setInterval(() => {
-      const currentDur = videoRef.current?.duration || 600;
-      setLiveSeconds(getExactUtcLiveSecond(currentDur));
+      const currentDur = videoRef.current?.duration;
+      if (currentDur && isFinite(currentDur) && currentDur > 0) {
+        setLiveSeconds(getExactUtcLiveSecond(currentDur));
+      }
     }, 1000);
     return () => clearInterval(interval);
   }, [url]);
@@ -88,10 +93,17 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     videoEl.muted = isMuted;
 
     const applyLiveSync = () => {
-      if (videoEl.duration && !isNaN(videoEl.duration) && videoEl.duration > 0) {
-        const liveSec = getExactUtcLiveSecond(videoEl.duration);
-        videoEl.currentTime = liveSec;
+      try {
+        if (videoEl.duration && isFinite(videoEl.duration) && !isNaN(videoEl.duration) && videoEl.duration > 0) {
+          const liveSec = getExactUtcLiveSecond(videoEl.duration);
+          if (isFinite(liveSec) && liveSec > 0 && liveSec < videoEl.duration) {
+            videoEl.currentTime = liveSec;
+          }
+        }
+      } catch (e) {
+        console.warn("Live sync seek skipped:", e);
       }
+
       videoEl.play().catch(() => {
         setNeedsUserTap(true);
       });
@@ -99,11 +111,33 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
     if (url.includes('.m3u8')) {
       if (Hls.isSupported()) {
-        hlsInstance = new Hls({ enableWorker: true });
+        hlsInstance = new Hls({ 
+          enableWorker: true,
+          lowLatencyMode: true,
+          backBufferLength: 90
+        });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(videoEl);
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
           applyLiveSync();
+        });
+
+        hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.warn('HLS Network error, recovering...');
+                hlsInstance?.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.warn('HLS Media error, recovering...');
+                hlsInstance?.recoverMediaError();
+                break;
+              default:
+                console.warn('HLS Fatal error:', data);
+                break;
+            }
+          }
         });
       } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
         videoEl.src = url;

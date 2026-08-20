@@ -103,8 +103,11 @@ export default function LiveZapping() {
 
   // Pantalla Completa Nativa (oculta barra URL del browser)
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // En fullscreen: mostrar UI brevemente al tocar, luego se oculta
+  const [showFullscreenUI, setShowFullscreenUI] = useState(false);
+  const fullscreenUITimeout = useRef<any>(null);
+
   const [showPWABanner, setShowPWABanner] = useState(() => {
-    // Mostrar banner solo en móvil y solo si no está instalada como PWA
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const dismissed = localStorage.getItem('youapp_pwa_dismissed');
@@ -116,11 +119,12 @@ export default function LiveZapping() {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
         setIsFullscreen(true);
-        // Bloquear orientación horizontal en pantalla completa para mejor experiencia
+        setShowFullscreenUI(false); // ocultar UI al entrar en fullscreen
         try { await (screen.orientation as any).lock('landscape'); } catch {}
       } else {
         await document.exitFullscreen();
         setIsFullscreen(false);
+        setShowFullscreenUI(false);
         try { (screen.orientation as any).unlock(); } catch {}
       }
     } catch (e) {
@@ -128,9 +132,21 @@ export default function LiveZapping() {
     }
   }, []);
 
+  // Mostrar UI brevemente en fullscreen al tocar pantalla
+  const triggerFullscreenUI = useCallback(() => {
+    if (!isFullscreen) return;
+    setShowFullscreenUI(true);
+    if (fullscreenUITimeout.current) clearTimeout(fullscreenUITimeout.current);
+    fullscreenUITimeout.current = setTimeout(() => {
+      setShowFullscreenUI(false);
+    }, 3000);
+  }, [isFullscreen]);
+
   useEffect(() => {
     const onFSChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      const inFS = !!document.fullscreenElement;
+      setIsFullscreen(inFS);
+      if (!inFS) setShowFullscreenUI(false);
     };
     document.addEventListener('fullscreenchange', onFSChange);
     return () => document.removeEventListener('fullscreenchange', onFSChange);
@@ -409,6 +425,8 @@ export default function LiveZapping() {
     osdTimeoutRef.current = setTimeout(() => {
       setShowOSD(false);
     }, 3500);
+    // En fullscreen: también mostrar barra de acciones brevemente
+    triggerFullscreenUI();
   };
 
   // Atajos de Teclado (Control Remoto)
@@ -543,6 +561,7 @@ export default function LiveZapping() {
         onVideoEnded={handleVideoEnded}
         targetOffsetSeconds={syncOffset}
         channelName={currentChannel.name}
+        hideLiveBadge={isFullscreen && !showFullscreenUI}
       />
 
 
@@ -589,8 +608,8 @@ export default function LiveZapping() {
         </div>
       )}
 
-      {/* Selector de Mood TV (Barra Superior de Estados de Ánimo) */}
-      {!isZenMode && (
+      {/* Selector de Mood TV (Barra Superior de Acciones) - se oculta en fullscreen */}
+      {!isZenMode && (!isFullscreen || showFullscreenUI) && (
         <div className="mood-bar glass-panel" onClick={(e) => e.stopPropagation()}>
           <button className="back-circle-btn" onClick={() => navigate('/')}>
             <ChevronLeft size={20} />

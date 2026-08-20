@@ -15,6 +15,7 @@ interface SyncedTVPlayerProps {
   onVideoEnded: () => void;
   targetOffsetSeconds?: number;
   channelName?: string;
+  hideLiveBadge?: boolean;
 }
 
 // Determina si una URL es video directo (MP4, WebM, HLS m3u8) o YouTube
@@ -47,7 +48,8 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   onUnmute,
   onVideoEnded,
   targetOffsetSeconds = 0,
-  channelName = 'YouApp TV'
+  channelName = 'YouApp TV',
+  hideLiveBadge = false
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerId = useRef(`yt-container-${Math.floor(Math.random() * 100000)}`).current;
@@ -278,14 +280,16 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
 
       {/* Indicador de Transmisión Sincronizada en Vivo 24/7 */}
-      <button 
-        className="live-sync-badge-pill" 
-        onClick={handleUserUnlock}
-        title="Toca para forzar sincronización"
-      >
-        <span className="live-red-dot" />
-        <span>EN VIVO {formatMinSec(liveSeconds)}</span>
-      </button>
+      {!hideLiveBadge && (
+        <button 
+          className="live-sync-badge-pill" 
+          onClick={handleUserUnlock}
+          title="Toca para forzar sincronización"
+        >
+          <span className="live-red-dot" />
+          <span>EN VIVO {formatMinSec(liveSeconds)}</span>
+        </button>
+      )}
 
       {/* Overlay de Desbloqueo si el móvil bloqueó el autoplay */}
       {needsUserTap && isDirect && (

@@ -26,6 +26,15 @@ const POPULAR_CHANNELS = [
   'El Trece', 'LUZU TV', 'OLGA', 'MrBeast', 'Ibai', 'Lofi Girl'
 ];
 
+const CATEGORY_FILTERS = [
+  { id: 'all', label: '✨ Todos los Canales' },
+  { id: 'noticias', label: '🔴 Noticias & TV' },
+  { id: 'streaming', label: '🎙️ Streaming & Charlas' },
+  { id: 'gaming', label: '🎮 Creadores & Gaming' },
+  { id: 'musica', label: '🎵 Música 24/7' },
+  { id: 'ciencia', label: '🚀 Ciencia & Deportes' }
+];
+
 export default function ChannelSearchModal({
   isOpen,
   onClose,
@@ -35,52 +44,86 @@ export default function ChannelSearchModal({
   onSelectRealYouTubeChannel
 }: ChannelSearchModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [ytChannels, setYtChannels] = useState<UniversalChannel[]>(UNIVERSAL_CATALOG.slice(0, 12));
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [ytChannels, setYtChannels] = useState<UniversalChannel[]>(UNIVERSAL_CATALOG);
   const [isSearchingYT, setIsSearchingYT] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'youtube' | 'grilla'>('all');
   const [addedChannelFeedback, setAddedChannelFeedback] = useState<string | null>(null);
 
-  // Búsqueda instantánea en el motor universal independiente
-  useEffect(() => {
-    if (!searchTerm.trim()) {
-      setYtChannels(UNIVERSAL_CATALOG.slice(0, 12));
-      setIsSearchingYT(false);
-      return;
+  // Normalización para búsqueda instantánea
+  const normalize = (str: string) =>
+    (str || '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ");
+
+  // Filtrado instantáneo a 0ms en cada tecla
+  const liveResults = useMemo(() => {
+    let base = UNIVERSAL_CATALOG;
+
+    // Filtrar por categoría si está seleccionada
+    if (selectedCategory !== 'all') {
+      base = base.filter(ch => {
+        const cat = normalize(ch.category + ' ' + (ch.tags || []).join(' '));
+        if (selectedCategory === 'noticias') return cat.includes('noticias') || cat.includes('tv') || cat.includes('television');
+        if (selectedCategory === 'streaming') return cat.includes('streaming') || cat.includes('charla') || cat.includes('humor');
+        if (selectedCategory === 'gaming') return cat.includes('gaming') || cat.includes('creador') || cat.includes('retos') || cat.includes('aventura');
+        if (selectedCategory === 'musica') return cat.includes('musica') || cat.includes('lofi') || cat.includes('trap') || cat.includes('rock');
+        if (selectedCategory === 'ciencia') return cat.includes('ciencia') || cat.includes('espacio') || cat.includes('deportes') || cat.includes('tech');
+        return true;
+      });
     }
 
-    const clean = searchTerm.trim();
-    const isDirect = clean.startsWith('http') || clean.startsWith('@') || clean.includes('youtube.com') || clean.includes('twitch.tv');
-    const delay = isDirect ? 0 : 120;
+    if (!searchTerm.trim()) {
+      return base;
+    }
 
-    const timer = setTimeout(async () => {
-      setIsSearchingYT(true);
-      try {
-        const results = await searchUniversalEngine(clean);
-        setYtChannels(results);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsSearchingYT(false);
-      }
-    }, delay);
+    const cleanNorm = normalize(searchTerm).trim();
+    const terms = cleanNorm.split(/\s+/).filter(Boolean);
 
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
+    const matches = base.filter(ch => {
+      const text = normalize([
+        ch.name,
+        ch.category,
+        ch.description,
+        ch.currentVideoTitle,
+        ...(ch.tags || [])
+      ].join(' '));
+
+      return text.includes(cleanNorm) || terms.some(t => text.includes(t));
+    });
+
+    // Ordenar por coincidencia exacta
+    matches.sort((a, b) => {
+      const aText = normalize(a.name + ' ' + (a.tags || []).join(' '));
+      const bText = normalize(b.name + ' ' + (b.tags || []).join(' '));
+      const aExact = aText.includes(cleanNorm) ? 10 : terms.filter(t => aText.includes(t)).length;
+      const bExact = bText.includes(cleanNorm) ? 10 : terms.filter(t => bText.includes(t)).length;
+      return bExact - aExact;
+    });
+
+    return matches;
+  }, [searchTerm, selectedCategory]);
+
+  useEffect(() => {
+    setYtChannels(liveResults);
+  }, [liveResults]);
 
   const localFiltered = useMemo(() => {
     if (!searchTerm.trim()) return channels;
-    const term = searchTerm.toLowerCase();
-    return channels.filter(ch =>
-      ch.name.toLowerCase().includes(term) ||
-      (ch.category && ch.category.toLowerCase().includes(term)) ||
-      (ch.currentVideoTitle && ch.currentVideoTitle.toLowerCase().includes(term))
-    );
+    const term = normalize(searchTerm);
+    return channels.filter(ch => {
+      const text = normalize(ch.name + ' ' + (ch.category || '') + ' ' + (ch.currentVideoTitle || ''));
+      return text.includes(term);
+    });
   }, [channels, searchTerm]);
 
   if (!isOpen) return null;
 
   const handleQuickChannelClick = (channelName: string) => {
     setSearchTerm(channelName);
+    setSelectedCategory('all');
   };
 
   const handleAddAndPlay = (channel: UniversalChannel | any) => {
@@ -112,6 +155,11 @@ export default function ChannelSearchModal({
     e.preventDefault();
     if (!searchTerm.trim()) return;
 
+    if (liveResults.length > 0) {
+      handleAddAndPlay(liveResults[0]);
+      return;
+    }
+
     const clean = searchTerm.trim();
     setIsSearchingYT(true);
     try {
@@ -136,7 +184,7 @@ export default function ChannelSearchModal({
             <input
               type="text"
               className="search-input"
-              placeholder="Buscar canal, noticias, creador o pega cualquier link (YouTube, Twitch, TV)..."
+              placeholder="Buscar canal, noticias, creador o pega cualquier link de YouTube/Twitch..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               autoFocus
@@ -160,9 +208,26 @@ export default function ChannelSearchModal({
           </div>
         )}
 
+        {/* Filtros de Categorías Rápidas */}
+        <div className="categories-filter-bar">
+          {CATEGORY_FILTERS.map(cat => (
+            <button
+              key={cat.id}
+              type="button"
+              className={`category-pill ${selectedCategory === cat.id ? 'active' : ''}`}
+              onClick={() => {
+                setSelectedCategory(cat.id);
+                setSearchTerm('');
+              }}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
         {/* Canales Populares Sugeridos */}
         <div className="quick-tags-bar">
-          <span className="quick-tag-label">Sugeridos:</span>
+          <span className="quick-tag-label">Tendencias:</span>
           {POPULAR_CHANNELS.map(name => (
             <button
               key={name}
@@ -182,14 +247,14 @@ export default function ChannelSearchModal({
             className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            Todos los Canales
+            Todos los Canales ({ytChannels.length + localFiltered.length})
           </button>
           <button 
             type="button"
             className={`tab-btn ${activeTab === 'youtube' ? 'active' : ''}`}
             onClick={() => setActiveTab('youtube')}
           >
-            YouTube (+ Agregar a Grilla) {ytChannels.length > 0 && `(${ytChannels.length})`}
+            Directorio YouTube ({ytChannels.length})
           </button>
           <button 
             type="button"
@@ -206,16 +271,16 @@ export default function ChannelSearchModal({
           {isSearchingYT && (
             <div className="search-loading-row">
               <Loader2 size={20} className="animate-spin text-accent" />
-              <span>Buscando canales oficiales en YouTube...</span>
+              <span>Buscando canales oficiales en tiempo real...</span>
             </div>
           )}
 
-          {/* 1. SECCIÓN CANALES REALES DE YOUTUBE (CON BOTÓN AGREGAR A GRILLA) */}
+          {/* 1. SECCIÓN CANALES REALES DE YOUTUBE */}
           {(activeTab === 'all' || activeTab === 'youtube') && ytChannels.length > 0 && (
             <div className="results-group">
               <div className="group-title">
                 <Radio size={16} className="text-accent" />
-                <span>CANALES DE YOUTUBE (TOCA PARA SINTONIZAR Y AGREGAR A LA GRILLA)</span>
+                <span>CANALES DE TELEVISIÓN Y STREAMING EN DIRECTO ({ytChannels.length})</span>
               </div>
 
               {ytChannels.map(yt => (
@@ -232,7 +297,7 @@ export default function ChannelSearchModal({
                     <div className="channel-title-row">
                       <h4>{yt.name}</h4>
                       <CheckCircle2 size={14} className="verified-badge" />
-                      <span className="yt-badge">{yt.isLive ? '🔴 EN VIVO' : 'YOUTUBE'}</span>
+                      <span className="yt-badge">{yt.isLive ? '🔴 EN VIVO' : 'OFICIAL'}</span>
                     </div>
                     <p className="channel-program-name">
                       {yt.currentVideoTitle || yt.description || 'Transmisión continua 24/7'}
@@ -250,6 +315,16 @@ export default function ChannelSearchModal({
                     >
                       <Plus size={16} />
                       <span>AGREGAR A GRILLA</span>
+                    </button>
+                    <button
+                      className="zap-to-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddAndPlay(yt);
+                      }}
+                      title="Sintonizar ahora"
+                    >
+                      <Play size={16} fill="white" />
                     </button>
                   </div>
                 </div>
@@ -323,7 +398,7 @@ export default function ChannelSearchModal({
             <div className="no-results-box">
               <Sparkles size={40} className="no-results-icon" />
               <h3>No se encontraron canales</h3>
-              <p>Prueba buscando con el nombre de un creador como "MrBeast", "Ibai", "Platzi" o "Lofi Girl".</p>
+              <p>Prueba buscando con "América TV", "Crónica", "MrBeast", "Ibai", "Lofi" o pega un link.</p>
             </div>
           )}
         </div>
@@ -458,15 +533,57 @@ export default function ChannelSearchModal({
           color: white;
         }
 
-        .quick-tags-bar {
+        .categories-filter-bar {
           display: flex;
           align-items: center;
           gap: 8px;
           padding: 10px 20px;
           overflow-x: auto;
           scrollbar-width: none;
+          background: rgba(255, 255, 255, 0.03);
           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-          background: rgba(255, 255, 255, 0.02);
+        }
+
+        .categories-filter-bar::-webkit-scrollbar {
+          display: none;
+        }
+
+        .category-pill {
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.85);
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          white-space: nowrap;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .category-pill:hover {
+          background: rgba(99, 102, 241, 0.25);
+          border-color: #6366f1;
+          color: white;
+          transform: translateY(-1px);
+        }
+
+        .category-pill.active {
+          background: linear-gradient(135deg, #6366f1, #4f46e5);
+          border-color: #818cf8;
+          color: white;
+          box-shadow: 0 2px 10px rgba(99, 102, 241, 0.5);
+        }
+
+        .quick-tags-bar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 20px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          background: rgba(0, 0, 0, 0.2);
         }
 
         .quick-tags-bar::-webkit-scrollbar {

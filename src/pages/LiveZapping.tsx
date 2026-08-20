@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
-  Image, Info, EyeOff, Layers, Search, Cast, Smartphone
+  Image, Info, EyeOff, Layers, Search, Cast, Smartphone, Grid
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { 
@@ -536,12 +536,21 @@ export default function LiveZapping() {
               <Smartphone size={18} color={isPhoneConnected ? '#4ade80' : '#a5b4fc'} />
             </button>
             <button 
-              className="icon-action-btn" 
-              onClick={() => setShowQuadView(true)} 
+              className={`icon-action-btn ${showQuadView ? 'active' : ''}`} 
+              onClick={() => setShowQuadView(prev => !prev)} 
               title="Modo 4 Pantallas Simultáneas (Tecla 4)"
-              style={{ background: 'rgba(99, 102, 241, 0.25)', borderColor: '#6366f1' }}
+              style={{ 
+                background: showQuadView ? 'linear-gradient(135deg, #ec4899, #8b5cf6)' : 'rgba(99, 102, 241, 0.25)', 
+                borderColor: showQuadView ? '#ec4899' : '#6366f1',
+                padding: '4px 10px',
+                width: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
             >
-              <Compass size={18} color="#a5b4fc" />
+              <Grid size={18} color="#ffffff" />
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'white' }}>4 EN 1</span>
             </button>
             <button 
               className="icon-action-btn search-trigger-btn" 
@@ -644,7 +653,7 @@ export default function LiveZapping() {
         </div>
       )}
 
-      {/* Controles de Zapping en Pantalla (para Celulares / Touch) */}
+      {/* Controles de Zapping en Pantalla (para Celulares / Touch / Smart View) */}
       {!isZenMode && (
         <div className="touch-zapping-controls" onClick={(e) => e.stopPropagation()}>
           <button 
@@ -655,11 +664,18 @@ export default function LiveZapping() {
             }}
             title="Canal Anterior (↑)"
           >
-            ▲ Anterior
+            ◀ Anterior
           </button>
-          <span className="zap-counter-badge">
-            {activeIndex + 1} / {filteredChannels.length}
-          </span>
+          
+          <button 
+            className="zap-counter-badge"
+            onClick={() => setShowEPGModal(true)}
+            title="Abrir Guía Completa de Canales"
+            style={{ cursor: 'pointer' }}
+          >
+            CH {activeIndex + 1} / {filteredChannels.length}
+          </button>
+
           <button 
             className="zap-nav-btn"
             onClick={() => {
@@ -668,7 +684,7 @@ export default function LiveZapping() {
             }}
             title="Canal Siguiente (↓)"
           >
-            ▼ Siguiente
+            Siguiente ▶
           </button>
         </div>
       )}

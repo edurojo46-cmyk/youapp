@@ -1084,8 +1084,73 @@ export const CURATED_POPULAR_CHANNELS: Array<{
     avatarUrl: 'https://yt3.googleusercontent.com/Iyl2pqHYrhTadZONr4EZ6AjwwxNS_w5idduTOqXxy0ZMPsMVruM5EuETa7seQRdLSNOCUP7r=s900-c-k-c0x00ffffff-no-rj',
     thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=60',
     videoId: 'cG8x_Vbl0_0',
-    videoUrl: 'https://www.youtube.com/embed/videoseries?list=UURtgbxUH456ox51IswIQgZQ',
-    currentVideoTitle: 'Carnaval Stream - Transmisión Continua 24/7',
+    videoUrl: 'https://www.youtube.com/embed/cG8x_Vbl0_0?loop=1&playlist=cG8x_Vbl0_0',
+    currentVideoTitle: 'Carnaval Stream - En Vivo 24/7',
+    isLive: true
+  },
+  {
+    id: 'yt-cronicatv',
+    channelId: 'UCT7KFGv6s2a-rh2Jq8ZdM1g',
+    name: 'Crónica TV',
+    category: '🔴 NOTICIAS EN VIVO',
+    description: 'Transmisión de Crónica TV en vivo las 24 horas del día.',
+    avatarUrl: 'https://yt3.googleusercontent.com/EGyrGJo_3mJxohmZxkP0Ksma9r1J1fU1ORZkGkwJkGJKRyeu6aHTD_Zi-4AodbD0hLRnTzoCWA=s900-c-k-c0x00ffffff-no-rj',
+    thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60',
+    videoId: 'hw4uHyct4vg',
+    videoUrl: 'https://www.youtube.com/embed/hw4uHyct4vg?loop=1&playlist=hw4uHyct4vg',
+    currentVideoTitle: 'Crónica TV - Transmisión en Vivo 24/7',
+    isLive: true
+  },
+  {
+    id: 'yt-tn-envivo',
+    channelId: 'UCj6PcyLvpnIRT_2W_EGly9g',
+    name: 'Todo Noticias (TN) En Vivo',
+    category: '🔴 NOTICIAS EN VIVO',
+    description: 'Noticias de Argentina y el mundo en vivo las 24 horas.',
+    avatarUrl: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60',
+    videoId: 'cb12KmMMDJA',
+    videoUrl: 'https://www.youtube.com/embed/cb12KmMMDJA?loop=1&playlist=cb12KmMMDJA',
+    currentVideoTitle: 'TN en Vivo - Noticias 24 Horas',
+    isLive: true
+  },
+  {
+    id: 'yt-c5n',
+    channelId: 'UCFgk2Q2mVO1BklRQhSv6p0w',
+    name: 'C5N En Vivo',
+    category: '🔴 NOTICIAS EN VIVO',
+    description: 'Canal 5 Noticias - Transmisión en vivo 24/7.',
+    avatarUrl: 'https://images.unsplash.com/photo-1495020689067-958852a7765e?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&auto=format&fit=crop&q=60',
+    videoId: 'c5n_live_stream',
+    videoUrl: 'https://www.youtube.com/embed/jfKfPfyJRdk?loop=1&playlist=jfKfPfyJRdk',
+    currentVideoTitle: 'C5N - En Vivo 24 Horas',
+    isLive: true
+  },
+  {
+    id: 'yt-luzutv',
+    channelId: 'UCnS75GvJ6160-5j75G1B2qA',
+    name: 'LUZU TV',
+    category: 'Streaming & Charla',
+    description: 'Nadie Dice Nada, Antes Que Nadie y toda la programación de Luzu TV.',
+    avatarUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=60',
+    videoId: '9B2k5X4d3kA',
+    videoUrl: 'https://www.youtube.com/embed/9B2k5X4d3kA?loop=1&playlist=9B2k5X4d3kA',
+    currentVideoTitle: 'Luzu TV - Programación Oficial',
+    isLive: true
+  },
+  {
+    id: 'yt-olga',
+    channelId: 'UC6eK8N8m6sF3R-7p8e9u0kA',
+    name: 'OLGA en Vivo',
+    category: 'Streaming & Humor',
+    description: 'Soñé Que Volaba y toda la programación de OLGA en vivo.',
+    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=60',
+    videoId: 'vA8e5_k0w1U',
+    videoUrl: 'https://www.youtube.com/embed/vA8e5_k0w1U?loop=1&playlist=vA8e5_k0w1U',
+    currentVideoTitle: 'OLGA - Transmisión en Vivo',
     isLive: true
   },
   {
@@ -1123,10 +1188,19 @@ export const extractChannelOrVideo = (input: string) => {
   const handleMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/)?@([a-zA-Z0-9_.-]+)/i);
   if (handleMatch) {
     const handle = handleMatch[1];
-    const curated = CURATED_POPULAR_CHANNELS.find(c => 
-      c.name.toLowerCase().replace(/\s+/g, '').includes(handle.toLowerCase()) || 
-      c.channelId.toLowerCase().includes(handle.toLowerCase())
-    );
+    const cleanHandle = handle.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const curated = CURATED_POPULAR_CHANNELS.find(c => {
+      const cNameClean = c.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cIdClean = c.channelId.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cSlugClean = c.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return (
+        cNameClean.includes(cleanHandle) ||
+        cleanHandle.includes(cNameClean) ||
+        cIdClean.includes(cleanHandle) ||
+        cSlugClean.includes(cleanHandle)
+      );
+    });
 
     if (curated) {
       return curated;
@@ -1140,8 +1214,8 @@ export const extractChannelOrVideo = (input: string) => {
       description: `Transmisión continua 24/7 de @${handle}.`,
       avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60`,
       thumbnail: `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60`,
-      videoId: 'jfKfPfyJRdk',
-      videoUrl: `https://www.youtube.com/embed/jfKfPfyJRdk?loop=1&playlist=jfKfPfyJRdk`,
+      videoId: 'cG8x_Vbl0_0',
+      videoUrl: `https://www.youtube.com/embed/cG8x_Vbl0_0?loop=1&playlist=cG8x_Vbl0_0`,
       currentVideoTitle: `Programación Continua de @${handle}`,
       isLive: true
     };

@@ -22,8 +22,8 @@ interface ChannelSearchModalProps {
 }
 
 const POPULAR_CHANNELS = [
-  'MrBeast', 'Ibai', 'Lofi Girl', 'Platzi', 'Red Bull', 
-  'ElRubius', 'AuronPlay', 'Luisito Comunica', 'TEDx', 'DW Español'
+  'Crónica TV', 'Carnaval Stream', 'TN En Vivo', 'MrBeast', 'Ibai', 
+  'Lofi Girl', 'Luzu TV', 'Olga', 'Platzi', 'Red Bull'
 ];
 
 export default function ChannelSearchModal({
@@ -35,30 +35,35 @@ export default function ChannelSearchModal({
   onSelectRealYouTubeChannel
 }: ChannelSearchModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [ytChannels, setYtChannels] = useState<any[]>(CURATED_POPULAR_CHANNELS.slice(0, 6));
+  const [ytChannels, setYtChannels] = useState<any[]>([]);
   const [isSearchingYT, setIsSearchingYT] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'youtube' | 'grilla'>('all');
   const [addedChannelFeedback, setAddedChannelFeedback] = useState<string | null>(null);
 
-  // Búsqueda en tiempo real en YouTube con debounce
+  // Búsqueda en tiempo real en YouTube con debounce rápido
   useEffect(() => {
     if (!searchTerm.trim()) {
-      setYtChannels(CURATED_POPULAR_CHANNELS.slice(0, 8));
+      setYtChannels([]);
       setIsSearchingYT(false);
       return;
     }
 
+    const clean = searchTerm.trim();
+    // Si es URL o @handle, buscar de inmediato sin esperar debounce
+    const isDirect = clean.startsWith('http') || clean.startsWith('@') || clean.includes('youtube.com');
+    const delay = isDirect ? 0 : 200;
+
     const timer = setTimeout(async () => {
       setIsSearchingYT(true);
       try {
-        const results = await searchRealYouTubeChannels(searchTerm.trim());
+        const results = await searchRealYouTubeChannels(clean);
         setYtChannels(results);
       } catch (e) {
         console.error(e);
       } finally {
         setIsSearchingYT(false);
       }
-    }, 250);
+    }, delay);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -84,7 +89,7 @@ export default function ChannelSearchModal({
       id: yt.id || `yt-${yt.channelId || yt.videoId || Math.random().toString(36).slice(2)}`,
       name: yt.name,
       category: yt.category || '🔴 Canal YouTube',
-      viewerCount: Math.floor(Math.random() * 5000) + 1200,
+      viewerCount: yt.viewerCount || Math.floor(Math.random() * 5000) + 1200,
       videoUrl: yt.videoUrl || `https://www.youtube.com/embed/${yt.videoId || 'jfKfPfyJRdk'}`,
       currentVideoTitle: yt.currentVideoTitle || yt.name,
       thumbnail: yt.thumbnail || yt.avatarUrl,
@@ -108,15 +113,17 @@ export default function ChannelSearchModal({
     e.preventDefault();
     if (!searchTerm.trim()) return;
 
-    // Si hay un resultado de YouTube directo, agregarlo
-    if (ytChannels.length > 0) {
-      handleAddAndPlay(ytChannels[0]);
-    } else {
-      // Forzar búsqueda o creación directa
-      const results = await searchRealYouTubeChannels(searchTerm.trim());
-      if (results.length > 0) {
+    const clean = searchTerm.trim();
+    setIsSearchingYT(true);
+    try {
+      const results = await searchRealYouTubeChannels(clean);
+      if (results && results.length > 0) {
         handleAddAndPlay(results[0]);
       }
+    } catch (err) {
+      console.error("Error on search submit:", err);
+    } finally {
+      setIsSearchingYT(false);
     }
   };
 

@@ -127,6 +127,10 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       videoEl.src = url;
       videoEl.load();
       videoEl.addEventListener('loadeddata', startPlaying, { once: true });
+      videoEl.addEventListener('error', () => {
+        console.warn('[SyncedTVPlayer] Video failed to load, skipping to next:', url);
+        onVideoEnded();
+      }, { once: true });
     }
 
     return () => {

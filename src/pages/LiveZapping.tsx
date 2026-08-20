@@ -232,6 +232,12 @@ export default function LiveZapping() {
   };
 
   useEffect(() => {
+    // Limpiar caché de canales viejos para forzar URLs frescas
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('youapp_'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch {}
     fetchLiveChannels();
   }, []);
 

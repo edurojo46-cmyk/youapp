@@ -1,4 +1,5 @@
 import { Tv, X, Play, Radio } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 interface EPGGuideProps {
   channels: any[];
@@ -15,6 +16,17 @@ export default function EPGGuide({
   isOpen,
   onClose,
 }: EPGGuideProps) {
+  const activeRowRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll al canal activo cuando abre el EPG
+  useEffect(() => {
+    if (isOpen && activeRowRef.current) {
+      setTimeout(() => {
+        activeRowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    }
+  }, [isOpen, currentChannelIndex]);
+
   if (!isOpen) return null;
 
   return (
@@ -41,6 +53,7 @@ export default function EPGGuide({
             return (
               <div
                 key={ch.id}
+                ref={isCurrent ? activeRowRef : null}
                 className={`epg-channel-row ${isCurrent ? 'is-active' : ''}`}
                 onClick={() => {
                   onSelectChannel(idx);
@@ -91,8 +104,9 @@ export default function EPGGuide({
 
         .epg-guide-container {
           width: 100%;
-          max-width: 680px;
-          max-height: 80vh;
+          max-width: 720px;
+          max-height: 88vh;
+          height: 88vh;
           display: flex;
           flex-direction: column;
           border-radius: 20px;
@@ -123,11 +137,31 @@ export default function EPGGuide({
 
         .epg-grid-list {
           flex: 1;
-          overflow-y: auto;
+          overflow-y: scroll;
           padding: 12px;
           display: flex;
           flex-direction: column;
           gap: 8px;
+          scrollbar-width: thin;
+          scrollbar-color: rgba(99, 102, 241, 0.6) rgba(255, 255, 255, 0.05);
+        }
+
+        .epg-grid-list::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .epg-grid-list::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.04);
+          border-radius: 3px;
+        }
+
+        .epg-grid-list::-webkit-scrollbar-thumb {
+          background: rgba(99, 102, 241, 0.5);
+          border-radius: 3px;
+        }
+
+        .epg-grid-list::-webkit-scrollbar-thumb:hover {
+          background: rgba(99, 102, 241, 0.8);
         }
 
         .epg-channel-row {

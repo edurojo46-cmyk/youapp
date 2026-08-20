@@ -104,7 +104,7 @@ export default function MobileRemote() {
     }
   };
 
-  // Helper para enviar nuevo canal a Chromecast si está conectado
+  // Helper para enviar nuevo canal a Chromecast si está conectado a un dispositivo Cast
   const streamChannelToChromecast = (ch: any) => {
     if (!ch || !window.cast?.framework) return;
     try {
@@ -113,14 +113,6 @@ export default function MobileRemote() {
       if (!castSession || !window.chrome?.cast) return;
 
       const videoUrl = ch.videoUrl;
-      const isYouTube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
-      const rawId = videoUrl.replace('https://www.youtube.com/embed/', '').replace('yt-', '').split('?')[0];
-
-      if (isYouTube && rawId) {
-        window.open(`https://www.youtube.com/watch?v=${rawId}`, '_blank');
-        return;
-      }
-
       let contentType = 'video/mp4';
       if (videoUrl.includes('.m3u8')) contentType = 'application/x-mpegurl';
 
@@ -193,46 +185,36 @@ export default function MobileRemote() {
     setLastAction(actionLabels[action] || action);
     setTimeout(() => setLastAction('Listo'), 1500);
 
-    // 1. Enviar vía WebRTC / Supabase a la TV YouApp
+    // 1. Enviar la orden a la TV YouApp (vía WebRTC / Supabase)
     if (bridgeRef.current) {
       console.log('[Remote] Sending action to TV:', action, payload);
       bridgeRef.current.sendAction(action, payload);
     }
 
-    // 2. Controlar Chromecast directamente si está activo
+    // 2. Actualizar estado local del control para feedback
     const totalCount = channels.length > 0 ? channels.length : totalChannelsCount;
     if (action === 'NEXT_CHANNEL') {
       const nextIdx = (channelIdx + 1) % totalCount;
       setChannelIdx(nextIdx);
       if (channels[nextIdx]) {
         setSyncedChannel(channels[nextIdx]);
-        streamChannelToChromecast(channels[nextIdx]);
       }
     } else if (action === 'PREV_CHANNEL') {
       const prevIdx = (channelIdx - 1 + totalCount) % totalCount;
       setChannelIdx(prevIdx);
       if (channels[prevIdx]) {
         setSyncedChannel(channels[prevIdx]);
-        streamChannelToChromecast(channels[prevIdx]);
       }
     } else if (action === 'SET_CHANNEL_INDEX') {
       const idx = payload?.index || 0;
       setChannelIdx(idx);
       if (channels[idx]) {
         setSyncedChannel(channels[idx]);
-        streamChannelToChromecast(channels[idx]);
       }
     } else if (action === 'TOGGLE_QUAD') {
       setIsQuadActive(prev => !prev);
     } else if (action === 'TOGGLE_MUTE') {
-      setIsCastMuted(prev => {
-        const next = !prev;
-        try {
-          const castSession = window.cast?.framework?.CastContext?.getInstance()?.getCurrentSession();
-          if (castSession) castSession.setMute(next);
-        } catch {}
-        return next;
-      });
+      setIsCastMuted(prev => !prev);
     } else if (action === 'SEARCH_QUERY' && payload?.query) {
       try {
         const results = await fetchTopViewedVideosByMood(payload.query);
@@ -241,7 +223,6 @@ export default function MobileRemote() {
           setTotalChannelsCount(results.length);
           setChannelIdx(0);
           setSyncedChannel(results[0]);
-          streamChannelToChromecast(results[0]);
         }
       } catch {}
     }

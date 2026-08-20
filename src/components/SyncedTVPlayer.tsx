@@ -92,71 +92,47 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 
     videoEl.muted = isMuted;
 
-    const applyLiveSync = () => {
-      try {
-        if (videoEl.duration && isFinite(videoEl.duration) && !isNaN(videoEl.duration) && videoEl.duration > 0) {
-          const liveSec = getExactUtcLiveSecond(videoEl.duration);
-          if (isFinite(liveSec) && liveSec > 0 && liveSec < videoEl.duration) {
-            videoEl.currentTime = liveSec;
-          }
-        }
-      } catch (e) {
-        console.warn("Live sync seek skipped:", e);
+    const startPlaying = () => {
+      const playPromise = videoEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn("Autoplay blocked or waiting for user tap:", err);
+          setNeedsUserTap(true);
+        });
       }
-
-      videoEl.play().catch(() => {
-        setNeedsUserTap(true);
-      });
     };
 
     if (url.includes('.m3u8')) {
-      if (Hls.isSupported()) {
-        hlsInstance = new Hls({ 
-          enableWorker: true,
-          lowLatencyMode: true,
-          backBufferLength: 90
-        });
+      if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+        videoEl.src = url;
+        videoEl.addEventListener('loadedmetadata', startPlaying, { once: true });
+      } else if (Hls.isSupported()) {
+        hlsInstance = new Hls({ enableWorker: true });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(videoEl);
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          applyLiveSync();
+          startPlaying();
         });
-
         hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                console.warn('HLS Network error, recovering...');
-                hlsInstance?.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                console.warn('HLS Media error, recovering...');
-                hlsInstance?.recoverMediaError();
-                break;
-              default:
-                console.warn('HLS Fatal error:', data);
-                break;
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+              hlsInstance?.startLoad();
+            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+              hlsInstance?.recoverMediaError();
             }
           }
         });
-      } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-        videoEl.src = url;
-        videoEl.addEventListener('loadedmetadata', applyLiveSync, { once: true });
       }
     } else {
-      // Archivo MP4 / WebM directo
       videoEl.src = url;
       videoEl.load();
-      videoEl.addEventListener('loadedmetadata', applyLiveSync, { once: true });
-      videoEl.addEventListener('canplay', applyLiveSync, { once: true });
+      videoEl.addEventListener('loadeddata', startPlaying, { once: true });
     }
 
     return () => {
       if (hlsInstance) {
         hlsInstance.destroy();
       }
-      videoEl.removeAttribute('src');
-      videoEl.load();
     };
   }, [url, isDirect]);
 
@@ -276,9 +252,9 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           src={url.includes('.m3u8') ? undefined : url}
           playsInline
           autoPlay
+          loop
           muted={isMuted}
           controls={false}
-          onEnded={onVideoEnded}
           onClick={handleUserUnlock}
         />
       ) : (

@@ -473,6 +473,7 @@ export default function LiveZapping() {
     <div className="live-zapping-viewport" onClick={triggerOSD}>
       {/* Reproductor de TV Sincronizado 24/7 */}
       <SyncedTVPlayer
+        key={currentChannel.id || currentChannel.videoUrl}
         url={currentChannel.videoUrl}
         isMuted={isMuted}
         onUnmute={() => setIsMuted(false)}

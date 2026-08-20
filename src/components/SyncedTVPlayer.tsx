@@ -273,7 +273,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         <video
           ref={videoRef}
           className="synced-native-video"
-          src={url}
+          src={url.includes('.m3u8') ? undefined : url}
           playsInline
           autoPlay
           muted={isMuted}

@@ -191,30 +191,40 @@ export default function MobileRemote() {
       bridgeRef.current.sendAction(action, payload);
     }
 
-    // 2. Actualizar estado local del control para feedback
+    // 2. Actualizar estado local del control y enviar a Chromecast si está conectado
     const totalCount = channels.length > 0 ? channels.length : totalChannelsCount;
     if (action === 'NEXT_CHANNEL') {
       const nextIdx = (channelIdx + 1) % totalCount;
       setChannelIdx(nextIdx);
       if (channels[nextIdx]) {
         setSyncedChannel(channels[nextIdx]);
+        streamChannelToChromecast(channels[nextIdx]);
       }
     } else if (action === 'PREV_CHANNEL') {
       const prevIdx = (channelIdx - 1 + totalCount) % totalCount;
       setChannelIdx(prevIdx);
       if (channels[prevIdx]) {
         setSyncedChannel(channels[prevIdx]);
+        streamChannelToChromecast(channels[prevIdx]);
       }
     } else if (action === 'SET_CHANNEL_INDEX') {
       const idx = payload?.index || 0;
       setChannelIdx(idx);
       if (channels[idx]) {
         setSyncedChannel(channels[idx]);
+        streamChannelToChromecast(channels[idx]);
       }
     } else if (action === 'TOGGLE_QUAD') {
       setIsQuadActive(prev => !prev);
     } else if (action === 'TOGGLE_MUTE') {
-      setIsCastMuted(prev => !prev);
+      setIsCastMuted(prev => {
+        const next = !prev;
+        try {
+          const castSession = window.cast?.framework?.CastContext?.getInstance()?.getCurrentSession();
+          if (castSession) castSession.setMute(next);
+        } catch {}
+        return next;
+      });
     } else if (action === 'SEARCH_QUERY' && payload?.query) {
       try {
         const results = await fetchTopViewedVideosByMood(payload.query);
@@ -223,6 +233,7 @@ export default function MobileRemote() {
           setTotalChannelsCount(results.length);
           setChannelIdx(0);
           setSyncedChannel(results[0]);
+          streamChannelToChromecast(results[0]);
         }
       } catch {}
     }

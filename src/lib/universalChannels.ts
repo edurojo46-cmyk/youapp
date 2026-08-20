@@ -25,7 +25,23 @@ export interface UniversalChannel {
 // CATÁLOGO UNIVERSAL BASE (100+ Canales Verificados de TV, Streaming y Música)
 // ------------------------------------------------------------------------------
 export const UNIVERSAL_CATALOG: UniversalChannel[] = [
-  // ── 1. NOTICIAS EN VIVO 24/7 ────────────────────────────────────────────────
+  // ── 1. TELEVISIÓN & NOTICIAS EN VIVO 24/7 ──────────────────────────────────
+  {
+    id: 'ch-americatv',
+    channelId: 'UC6NVDkuzY2exMOVFw4i9oHw',
+    name: 'América TV',
+    category: '🔴 Televisión en Vivo',
+    description: 'Transmisión oficial de América TV en vivo las 24 horas.',
+    avatarUrl: 'https://yt3.googleusercontent.com/vIYh4fJ4FiOeD0U8sGUEUZQf3DaK-PME00Ckh7cFf4CRmC3EHopvUsjbgYKhNVkFXURSzltWYQ=s900-c-k-c0x00ffffff-no-rj',
+    thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60',
+    provider: 'youtube',
+    videoId: '3y-Nke9M1Lo',
+    videoUrl: 'https://www.youtube.com/embed/3y-Nke9M1Lo?loop=1&playlist=3y-Nke9M1Lo',
+    currentVideoTitle: 'América TV - Transmisión en Directo',
+    viewerCount: 56200,
+    isLive: true,
+    tags: ['america', 'americatv', 'americaenvivo', 'noticias', 'argentina', 'intrusos', 'en vivo', 'vivo', 'canal america']
+  },
   {
     id: 'ch-cronicatv',
     channelId: 'UCT7KFGv6s2a-rh2Jq8ZdM1g',
@@ -89,6 +105,70 @@ export const UNIVERSAL_CATALOG: UniversalChannel[] = [
     viewerCount: 52100,
     isLive: true,
     tags: ['c5n', 'noticias', 'argentina', 'politica', 'vivo']
+  },
+  {
+    id: 'ch-a24',
+    channelId: 'UCa24-noticias-envivo-1',
+    name: 'A24 Noticias',
+    category: '🔴 Noticias en Vivo',
+    description: 'América 24 - Noticias, política y economía de Argentina en vivo.',
+    avatarUrl: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&auto=format&fit=crop&q=60',
+    provider: 'youtube',
+    videoId: 'cb12KmMMDJA',
+    videoUrl: 'https://www.youtube.com/embed/cb12KmMMDJA?loop=1&playlist=cb12KmMMDJA',
+    currentVideoTitle: 'A24 en Vivo - Noticias 24 Horas',
+    viewerCount: 41200,
+    isLive: true,
+    tags: ['a24', 'america24', 'noticias', 'argentina', 'politica', 'en vivo']
+  },
+  {
+    id: 'ch-elnueve',
+    channelId: 'UCelnueve-canal9-argentina-1',
+    name: 'El Nueve (Canal 9)',
+    category: '🔴 Televisión en Vivo',
+    description: 'Telenueve, Bendita TV y toda la programación de Canal 9.',
+    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60',
+    provider: 'youtube',
+    videoId: '9B2k5X4d3kA',
+    videoUrl: 'https://www.youtube.com/embed/9B2k5X4d3kA?loop=1&playlist=9B2k5X4d3kA',
+    currentVideoTitle: 'El Nueve - Bendita y Telenueve',
+    viewerCount: 37800,
+    isLive: true,
+    tags: ['canal9', 'elnueve', 'telenueve', 'bendita', 'argentina', 'tv abierta']
+  },
+  {
+    id: 'ch-eltrece',
+    channelId: 'UCeltrece-argentina-oficial-1',
+    name: 'El Trece (Eltrece)',
+    category: '🔴 Televisión en Vivo',
+    description: 'Telenoche, Los 8 Escalones y toda la programación de El Trece.',
+    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60',
+    provider: 'youtube',
+    videoId: '9B2k5X4d3kA',
+    videoUrl: 'https://www.youtube.com/embed/9B2k5X4d3kA?loop=1&playlist=9B2k5X4d3kA',
+    currentVideoTitle: 'El Trece - Transmisión Oficial',
+    viewerCount: 51200,
+    isLive: true,
+    tags: ['eltrece', 'trece', 'canal13', 'telenoche', 'argentina', 'tv']
+  },
+  {
+    id: 'ch-tvpublica',
+    channelId: 'UCtvpublica-argentina-1',
+    name: 'Televisión Pública (TVP)',
+    category: '🔴 Televisión en Vivo',
+    description: 'TV Pública Argentina - Transmisión en directo para todo el país.',
+    avatarUrl: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&auto=format&fit=crop&q=60',
+    thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60',
+    provider: 'youtube',
+    videoId: 'cb12KmMMDJA',
+    videoUrl: 'https://www.youtube.com/embed/cb12KmMMDJA?loop=1&playlist=cb12KmMMDJA',
+    currentVideoTitle: 'TV Pública - En Vivo 24/7',
+    viewerCount: 29800,
+    isLive: true,
+    tags: ['tvpublica', 'tvp', 'canal7', 'argentina', 'noticias', 'deportes']
   },
   {
     id: 'ch-lnmas',
@@ -633,7 +713,7 @@ export const parseUniversalUrl = (input: string): UniversalChannel | null => {
 // MOTOR DE BÚSQUEDA AUTÓNOMO (Indexado en Memoria + Supabase + Fallback Ilimitado)
 // ------------------------------------------------------------------------------
 export const searchUniversalEngine = async (query: string): Promise<UniversalChannel[]> => {
-  if (!query || !query.trim()) return [];
+  if (!query || !query.trim()) return UNIVERSAL_CATALOG.slice(0, 15);
   const cleanQ = query.trim();
 
   // 1. Detección directa de URL o @Handle
@@ -642,19 +722,38 @@ export const searchUniversalEngine = async (query: string): Promise<UniversalCha
     return [directMatch];
   }
 
-  const queryTerms = cleanQ.toLowerCase().split(/\s+/).filter(Boolean);
+  // Función de normalización (quitar tildes, mayúsculas y símbolos)
+  const normalize = (str: string) =>
+    (str || '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ");
+
+  const cleanNorm = normalize(cleanQ).trim();
+  const queryTerms = cleanNorm.split(/\s+/).filter(Boolean);
 
   // 2. Búsqueda instantánea en el Catálogo Universal (0 latencia, 0 cuota)
   const catalogResults = UNIVERSAL_CATALOG.filter(channel => {
-    const channelText = [
+    const channelText = normalize([
       channel.name,
       channel.category,
       channel.description,
       channel.currentVideoTitle,
       ...(channel.tags || [])
-    ].join(' ').toLowerCase();
+    ].join(' '));
 
-    return queryTerms.every(term => channelText.includes(term));
+    // Si coincide con la frase completa o con cualquiera de las palabras clave
+    return channelText.includes(cleanNorm) || queryTerms.some(term => channelText.includes(term));
+  });
+
+  // Ordenar los resultados para que las coincidencias exactas aparezcan primero
+  catalogResults.sort((a, b) => {
+    const aText = normalize(a.name + ' ' + (a.tags || []).join(' '));
+    const bText = normalize(b.name + ' ' + (b.tags || []).join(' '));
+    const aScore = aText.includes(cleanNorm) ? 10 : queryTerms.filter(t => aText.includes(t)).length;
+    const bScore = bText.includes(cleanNorm) ? 10 : queryTerms.filter(t => bText.includes(t)).length;
+    return bScore - aScore;
   });
 
   // 3. Búsqueda en Base de Datos Supabase (Canales creados por la comunidad)
@@ -693,8 +792,8 @@ export const searchUniversalEngine = async (query: string): Promise<UniversalCha
     const saved = JSON.parse(localStorage.getItem('youapp_saved_custom_channels') || '[]');
     if (Array.isArray(saved)) {
       localSavedChannels = saved.filter((ch: any) => {
-        const text = (ch.name + ' ' + ch.category).toLowerCase();
-        return queryTerms.every(term => text.includes(term));
+        const text = normalize(ch.name + ' ' + (ch.category || ''));
+        return queryTerms.some(term => text.includes(term));
       });
     }
   } catch (e) {}

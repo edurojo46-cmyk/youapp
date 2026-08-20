@@ -22,8 +22,8 @@ interface ChannelSearchModalProps {
 }
 
 const POPULAR_CHANNELS = [
-  'Crónica TV', 'Carnaval Stream', 'TN En Vivo', 'C5N', 'LUZU TV', 
-  'OLGA', 'MrBeast', 'Ibai', 'Lofi Girl', 'Platzi', 'Red Bull TV'
+  'América TV', 'Crónica TV', 'Carnaval Stream', 'TN En Vivo', 'C5N', 'A24',
+  'El Trece', 'LUZU TV', 'OLGA', 'MrBeast', 'Ibai', 'Lofi Girl'
 ];
 
 export default function ChannelSearchModal({

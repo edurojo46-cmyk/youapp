@@ -125,11 +125,22 @@ export default function MobileRemote() {
       try { navigator.vibrate(40); } catch {}
     }
 
-    setLastAction(action);
+    const actionLabels: Record<string, string> = {
+      'TOGGLE_QUAD': '4 EN 1',
+      'NEXT_CHANNEL': 'CH +',
+      'PREV_CHANNEL': 'CH -',
+      'TOGGLE_MUTE': 'MUTE',
+      'TOGGLE_ZEN': 'ZEN',
+      'TOGGLE_SEARCH': 'BUSCADOR',
+      'TOGGLE_AMBIENT': 'AMBIENTE'
+    };
+
+    setLastAction(actionLabels[action] || action);
     setTimeout(() => setLastAction('Listo'), 1500);
 
     // 1. Enviar vía WebRTC / Supabase a la TV YouApp
     if (bridgeRef.current) {
+      console.log('[Remote] Sending action to TV:', action, payload);
       bridgeRef.current.sendAction(action, payload);
     }
 

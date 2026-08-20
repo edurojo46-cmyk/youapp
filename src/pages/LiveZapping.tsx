@@ -131,39 +131,45 @@ export default function LiveZapping() {
 
   const bridgeRef = useRef<RemoteBridge | null>(null);
 
+  const channelsRef = useRef(filteredChannels);
+  channelsRef.current = filteredChannels;
+
   // Escuchar órdenes del Control Remoto Móvil en Tiempo Real mediante RemoteBridge
   useEffect(() => {
+    console.log('[TV LiveZapping] Initializing persistent RemoteBridge for PIN:', sessionId);
     const bridge = new RemoteBridge(sessionId, 'tv');
     bridgeRef.current = bridge;
 
     bridge.onConnected(() => {
       setIsPhoneConnected(true);
       triggerFloatingEmoji('📱');
-      // Enviar estado actual al celular que se acaba de conectar
-      if (currentChannel) {
+      const current = channelsRef.current[activeIndex] || channelsRef.current[0];
+      if (current) {
         bridge.sendAction('SYNC_STATE', {
           activeIndex,
-          channel: currentChannel,
+          channel: current,
           moodId: selectedMood
         });
       }
     });
 
     bridge.onAction((action, payload) => {
+      console.log('[TV LiveZapping] Action received from remote:', action, payload);
       if (action === 'NEXT_CHANNEL') {
-        setActiveIndex(prev => (prev < filteredChannels.length - 1 ? prev + 1 : 0));
+        setActiveIndex(prev => (prev < channelsRef.current.length - 1 ? prev + 1 : 0));
         triggerOSD();
       } else if (action === 'PREV_CHANNEL') {
-        setActiveIndex(prev => (prev > 0 ? prev - 1 : filteredChannels.length - 1));
+        setActiveIndex(prev => (prev > 0 ? prev - 1 : channelsRef.current.length - 1));
         triggerOSD();
       } else if (action === 'SET_CHANNEL_INDEX') {
-        if (payload?.index !== undefined && payload.index < filteredChannels.length) {
+        if (payload?.index !== undefined && payload.index < channelsRef.current.length) {
           setActiveIndex(payload.index);
           triggerOSD();
         }
       } else if (action === 'SET_MOOD') {
         if (payload?.moodId) handleMoodSelect(payload.moodId);
       } else if (action === 'TOGGLE_QUAD') {
+        console.log('[TV LiveZapping] TOGGLE_QUAD received! Toggling QuadMultiview mode.');
         setShowQuadView(prev => !prev);
       } else if (action === 'TOGGLE_SEARCH') {
         setShowSearchModal(prev => !prev);
@@ -188,13 +194,13 @@ export default function LiveZapping() {
       } else if (action === 'SEND_EMOJI') {
         triggerFloatingEmoji(payload?.emoji || '🔥');
       }
-
     });
 
     return () => {
+      console.log('[TV LiveZapping] Cleaning up RemoteBridge');
       bridge.destroy();
     };
-  }, [sessionId, filteredChannels, activeIndex, currentChannel, selectedMood]);
+  }, [sessionId]);
 
   // Transmitir cambio de canal en milisegundos a todos los celulares conectados
   useEffect(() => {

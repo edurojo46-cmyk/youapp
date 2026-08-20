@@ -1076,6 +1076,19 @@ export const CURATED_POPULAR_CHANNELS: Array<{
     currentVideoTitle: 'BZRP Music Sessions - Especial Producciones 4K'
   },
   {
+    id: 'yt-carnavalstream',
+    channelId: 'UCRtgbxUH456ox51IswIQgZQ',
+    name: 'Carnaval Stream',
+    category: '🔴 EN VIVO 24/7',
+    description: 'Transmisión continua de Carnaval Stream con los mejores directos y videoteca.',
+    avatarUrl: 'https://yt3.googleusercontent.com/Iyl2pqHYrhTadZONr4EZ6AjwwxNS_w5idduTOqXxy0ZMPsMVruM5EuETa7seQRdLSNOCUP7r=s900-c-k-c0x00ffffff-no-rj',
+    thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=60',
+    videoId: 'cG8x_Vbl0_0',
+    videoUrl: 'https://www.youtube.com/embed/videoseries?list=UURtgbxUH456ox51IswIQgZQ',
+    currentVideoTitle: 'Carnaval Stream - Transmisión Continua 24/7',
+    isLive: true
+  },
+  {
     id: 'yt-dross',
     channelId: 'UCg03c8G8394-0k31Gf3d4zA',
     name: 'DrossRotzank Misterio',
@@ -1107,32 +1120,35 @@ export const extractChannelOrVideo = (input: string) => {
   if (!trimmed) return null;
 
   // 1. Channel Handle (@name o youtube.com/@name)
-  const handleMatch = trimmed.match(/(?:youtube\.com\/)?@([a-zA-Z0-9_.-]+)/);
+  const handleMatch = trimmed.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/)?@([a-zA-Z0-9_.-]+)/i);
   if (handleMatch) {
     const handle = handleMatch[1];
     const curated = CURATED_POPULAR_CHANNELS.find(c => 
-      c.name.toLowerCase().includes(handle.toLowerCase()) || 
-      (c.channelId && c.channelId.toLowerCase().includes(handle.toLowerCase()))
+      c.name.toLowerCase().replace(/\s+/g, '').includes(handle.toLowerCase()) || 
+      c.channelId.toLowerCase().includes(handle.toLowerCase())
     );
 
-    const displayName = curated ? curated.name : `@${handle}`;
+    if (curated) {
+      return curated;
+    }
+
     return {
       id: `yt-handle-${handle}`,
       channelId: handle,
-      name: `${displayName} 24/7 TV`,
-      category: '🔴 Emisión Continua Canal',
-      description: `Transmisión 24/7 de todos los videos y novedades de @${handle}.`,
-      avatarUrl: curated?.avatarUrl || `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60`,
-      thumbnail: curated?.thumbnail || `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60`,
-      videoId: curated?.videoId || 'jfKfPfyJRdk',
-      videoUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(handle)}`,
+      name: `${handle} 24/7 TV`,
+      category: '🔴 Canal 24/7 Continuo',
+      description: `Transmisión continua 24/7 de @${handle}.`,
+      avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60`,
+      thumbnail: `https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=60`,
+      videoId: 'jfKfPfyJRdk',
+      videoUrl: `https://www.youtube.com/embed/jfKfPfyJRdk?loop=1&playlist=jfKfPfyJRdk`,
       currentVideoTitle: `Programación Continua de @${handle}`,
       isLive: true
     };
   }
 
   // 2. Channel ID (youtube.com/channel/UC...) -> Se convierte a Playlist de Subidas Oficial UU...
-  const channelIdMatch = trimmed.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/);
+  const channelIdMatch = trimmed.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/i);
   if (channelIdMatch) {
     const channelId = channelIdMatch[1];
     const uploadsPlaylistId = 'UU' + channelId.substring(2);
@@ -1152,9 +1168,15 @@ export const extractChannelOrVideo = (input: string) => {
   }
 
   // 3. Custom / User URL (youtube.com/c/name o youtube.com/user/name)
-  const customUserMatch = trimmed.match(/youtube\.com\/(?:c|user)\/([a-zA-Z0-9_.-]+)/);
+  const customUserMatch = trimmed.match(/youtube\.com\/(?:c|user)\/([a-zA-Z0-9_.-]+)/i);
   if (customUserMatch) {
     const customName = customUserMatch[1];
+    const curated = CURATED_POPULAR_CHANNELS.find(c => 
+      c.name.toLowerCase().replace(/\s+/g, '').includes(customName.toLowerCase())
+    );
+
+    if (curated) return curated;
+
     return {
       id: `yt-channel-custom-${customName}`,
       channelId: customName,
@@ -1163,8 +1185,8 @@ export const extractChannelOrVideo = (input: string) => {
       description: `Transmisión continua 24/7 de ${customName}.`,
       avatarUrl: `https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=60`,
       thumbnail: `https://images.unsplash.com/photo-1518173946687-a4c8a383392e?w=800&auto=format&fit=crop&q=60`,
-      videoId: '',
-      videoUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(customName)}`,
+      videoId: 'jfKfPfyJRdk',
+      videoUrl: `https://www.youtube.com/embed/jfKfPfyJRdk?loop=1&playlist=jfKfPfyJRdk`,
       currentVideoTitle: `Programación 24/7 de ${customName}`,
       isLive: true
     };

@@ -335,10 +335,393 @@ export const VERIFIED_24_7_LIVE_CHANNELS = [
     thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60',
     author: 'Joy Network',
     durationSeconds: 15
+  },
+  {
+    id: 'ch-16-sintel-short',
+    name: 'Cortos & Webinar HD',
+    category: 'Educación & Cultura',
+    viewerCount: 9200,
+    videoUrl: 'https://media.w3.org/2010/05/sintel/short_hd.mp4',
+    currentVideoTitle: 'Sintel Corto - Fantasía & Aventura HD',
+    thumbnail: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&auto=format&fit=crop&q=60',
+    author: 'Blender Foundation',
+    durationSeconds: 887
+  },
+  {
+    id: 'ch-17-bunny-w3',
+    name: 'Animación Clásica 24/7',
+    category: 'Animación & Familia',
+    viewerCount: 33100,
+    videoUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
+    currentVideoTitle: 'Big Buck Bunny - Película Original W3C',
+    thumbnail: 'https://images.unsplash.com/photo-1618944847828-82e943c3bdb7?w=800&auto=format&fit=crop&q=60',
+    author: 'Blender Open Movie',
+    durationSeconds: 596
+  },
+  {
+    id: 'ch-18-meltdowns',
+    name: 'Comedia & Momentos Virales',
+    category: 'Humor & Entretenimiento',
+    viewerCount: 29100,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+    currentVideoTitle: 'Momentos Hilarantes - Comedia 24/7',
+    thumbnail: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800&auto=format&fit=crop&q=60',
+    author: 'Comedy Central',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-19-nature-forest',
+    name: 'Bosques & Selvas 4K',
+    category: 'Naturaleza & Relax',
+    viewerCount: 41200,
+    videoUrl: 'https://media.w3.org/2010/05/video/movie.webm',
+    currentVideoTitle: 'Bosques del Mundo - Naturaleza Pura 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&auto=format&fit=crop&q=60',
+    author: 'Nature & Zen',
+    durationSeconds: 300
+  },
+  {
+    id: 'ch-20-space-cosmos',
+    name: 'Espacio & Universo 4K',
+    category: 'Ciencia & Espacio',
+    viewerCount: 27400,
+    videoUrl: 'https://media.w3.org/2010/05/video/movie_300.mp4',
+    currentVideoTitle: 'El Universo en 4K - Documental Espacial',
+    thumbnail: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800&auto=format&fit=crop&q=60',
+    author: 'Space Cosmos TV',
+    durationSeconds: 300
+  },
+  {
+    id: 'ch-21-sport-extreme',
+    name: 'Deportes Extremos 24/7',
+    category: 'Deportes & Acción',
+    viewerCount: 44100,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
+    currentVideoTitle: 'Deportes Extremos al Límite - Acción Pura',
+    thumbnail: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&auto=format&fit=crop&q=60',
+    author: 'Extreme Sports',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-22-travel-world',
+    name: 'Viajes por el Mundo',
+    category: 'Viajes & Cultura',
+    viewerCount: 19700,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+    currentVideoTitle: 'Destinos Increíbles - Viajes 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=800&auto=format&fit=crop&q=60',
+    author: 'World Travel TV',
+    durationSeconds: 15
+  },
+  {
+    id: 'ch-23-cooking-food',
+    name: 'Cocina & Gastronomía 4K',
+    category: 'Gastronomía',
+    viewerCount: 32600,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+    currentVideoTitle: 'Recetas Gourmet - Cocina del Mundo',
+    thumbnail: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&auto=format&fit=crop&q=60',
+    author: 'Food Network TV',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-24-art-design',
+    name: 'Arte & Diseño Contemporáneo',
+    category: 'Arte & Cultura',
+    viewerCount: 15300,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    currentVideoTitle: 'Arte Digital y Diseño - Creatividad Sin Límites',
+    thumbnail: 'https://images.unsplash.com/photo-1561214115-f2f134cc4912?w=800&auto=format&fit=crop&q=60',
+    author: 'Art House',
+    durationSeconds: 653
+  },
+  {
+    id: 'ch-25-history-docs',
+    name: 'Historia & Documentales',
+    category: 'Documentales',
+    viewerCount: 23800,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    currentVideoTitle: 'Grandes Civilizaciones - Documental HD',
+    thumbnail: 'https://images.unsplash.com/photo-1461360228754-6e81c478b882?w=800&auto=format&fit=crop&q=60',
+    author: 'History Channel',
+    durationSeconds: 596
+  },
+  {
+    id: 'ch-26-kids-cartoons',
+    name: 'Infantil & Dibujos 24/7',
+    category: 'Infantil',
+    viewerCount: 67200,
+    videoUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
+    currentVideoTitle: 'Dibujos Animados para Toda la Familia',
+    thumbnail: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=800&auto=format&fit=crop&q=60',
+    author: 'Kids TV',
+    durationSeconds: 596
+  },
+  {
+    id: 'ch-27-fitness-yoga',
+    name: 'Fitness & Yoga 24/7',
+    category: 'Salud & Bienestar',
+    viewerCount: 28900,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    currentVideoTitle: 'Yoga y Meditación - Bienestar Total',
+    thumbnail: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800&auto=format&fit=crop&q=60',
+    author: 'Wellness TV',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-28-gaming-esports',
+    name: 'Gaming & eSports Live',
+    category: 'Gaming',
+    viewerCount: 89400,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4',
+    currentVideoTitle: 'Torneo de eSports en Vivo - Gaming 24/7',
+    thumbnail: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=60',
+    author: 'eSports Arena',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-29-news-world',
+    name: 'Noticias del Mundo 24H',
+    category: 'Noticias',
+    viewerCount: 54100,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4',
+    currentVideoTitle: 'Noticias Internacionales - Resumen 24H',
+    thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800&auto=format&fit=crop&q=60',
+    author: 'World News TV',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-30-fashion-style',
+    name: 'Moda & Estilo de Vida',
+    category: 'Moda & Lifestyle',
+    viewerCount: 38700,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    currentVideoTitle: 'Fashion Week - Tendencias Globales',
+    thumbnail: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=800&auto=format&fit=crop&q=60',
+    author: 'Fashion TV',
+    durationSeconds: 15
+  },
+  {
+    id: 'ch-31-music-lofi',
+    name: 'Lo-Fi & Chill Music 24/7',
+    category: 'Música & Relax',
+    viewerCount: 72300,
+    videoUrl: 'https://media.w3.org/2010/05/sintel/trailer_hd.mp4',
+    currentVideoTitle: 'Lo-Fi Hip Hop - Beats para Estudiar y Relajar',
+    thumbnail: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=800&auto=format&fit=crop&q=60',
+    author: 'ChillBeats Radio',
+    durationSeconds: 52
+  },
+  {
+    id: 'ch-32-animals-wild',
+    name: 'Animales Salvajes & Safari',
+    category: 'Naturaleza & Animales',
+    viewerCount: 45600,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    currentVideoTitle: 'Safari en África - Vida Salvaje 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1474511320723-9a56873867b5?w=800&auto=format&fit=crop&q=60',
+    author: 'Wild Planet',
+    durationSeconds: 15
+  },
+  {
+    id: 'ch-33-comedy-viral',
+    name: 'Comedia Viral & Memes 24/7',
+    category: 'Humor',
+    viewerCount: 91200,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+    currentVideoTitle: 'Los Mejores Memes - Risas Garantizadas',
+    thumbnail: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=60',
+    author: 'Viral Comedy',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-34-diy-crafts',
+    name: 'Manualidades & DIY',
+    category: 'Creatividad & Hogar',
+    viewerCount: 18900,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+    currentVideoTitle: 'Proyectos DIY - Creatividad para el Hogar',
+    thumbnail: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=800&auto=format&fit=crop&q=60',
+    author: 'DIY Crafts TV',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-35-business-finance',
+    name: 'Negocios & Finanzas',
+    category: 'Finanzas & Negocios',
+    viewerCount: 22100,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4',
+    currentVideoTitle: 'Inversiones & Mercados - Análisis Financiero',
+    thumbnail: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&auto=format&fit=crop&q=60',
+    author: 'Business Channel',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-36-architecture',
+    name: 'Arquitectura & Diseño 4K',
+    category: 'Arte & Arquitectura',
+    viewerCount: 16400,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+    currentVideoTitle: 'Arquitectura Moderna - Las Mejores Obras',
+    thumbnail: 'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&auto=format&fit=crop&q=60',
+    author: 'Arch Design TV',
+    durationSeconds: 653
+  },
+  {
+    id: 'ch-37-psychology',
+    name: 'Mente & Psicología',
+    category: 'Ciencia & Psicología',
+    viewerCount: 31700,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    currentVideoTitle: 'Psicología del Éxito - Cómo Funciona Tu Mente',
+    thumbnail: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800&auto=format&fit=crop&q=60',
+    author: 'Mind Science',
+    durationSeconds: 596
+  },
+  {
+    id: 'ch-38-photography',
+    name: 'Fotografía & Timelapse 4K',
+    category: 'Fotografía & Arte',
+    viewerCount: 24300,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyBlazes.mp4',
+    currentVideoTitle: 'Timelapse del Universo - Fotografía 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=60',
+    author: 'Lens & Light',
+    durationSeconds: 15
+  },
+  {
+    id: 'ch-39-startup-tech',
+    name: 'Startups & Innovación',
+    category: 'Tecnología & Negocios',
+    viewerCount: 27800,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/VolkswagenGTIReview.mp4',
+    currentVideoTitle: 'El Futuro de la Tecnología - Startups 2025',
+    thumbnail: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&auto=format&fit=crop&q=60',
+    author: 'Startup World',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-40-relax-piano',
+    name: 'Piano & Música Clásica 24/7',
+    category: 'Música Clásica',
+    viewerCount: 43900,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4',
+    currentVideoTitle: 'Piano Clásico - Beethoven, Mozart y Más',
+    thumbnail: 'https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=800&auto=format&fit=crop&q=60',
+    author: 'Classical Piano',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-41-thriller',
+    name: 'Thriller & Suspenso 24/7',
+    category: 'Thriller & Drama',
+    viewerCount: 38100,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
+    currentVideoTitle: 'Thriller Cinematográfico - Suspenso Total',
+    thumbnail: 'https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?w=800&auto=format&fit=crop&q=60',
+    author: 'Thriller Network',
+    durationSeconds: 734
+  },
+  {
+    id: 'ch-42-meditation-zen',
+    name: 'Meditación & Zen 24/7',
+    category: 'Bienestar & Meditación',
+    viewerCount: 52700,
+    videoUrl: 'https://vjs.zencdn.net/v/oceans.mp4',
+    currentVideoTitle: 'Meditación Profunda - Sonidos del Océano',
+    thumbnail: 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=800&auto=format&fit=crop&q=60',
+    author: 'Zen TV',
+    durationSeconds: 46
+  },
+  {
+    id: 'ch-43-cars-classic',
+    name: 'Autos Clásicos & Vintage',
+    category: 'Autos & Historia',
+    viewerCount: 29400,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WhatCarCanYouGetForAGrand.mp4',
+    currentVideoTitle: 'Autos Clásicos - Historia del Automóvil',
+    thumbnail: 'https://images.unsplash.com/photo-1493238792000-8113da705763?w=800&auto=format&fit=crop&q=60',
+    author: 'Classic Cars TV',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-44-science-planet',
+    name: 'Planeta & Geología 4K',
+    category: 'Ciencia & Naturaleza',
+    viewerCount: 34800,
+    videoUrl: 'https://media.w3.org/2010/05/sintel/short_hd.mp4',
+    currentVideoTitle: 'Planeta Tierra - Volcanes y Geología 4K',
+    thumbnail: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=800&auto=format&fit=crop&q=60',
+    author: 'Planet Science',
+    durationSeconds: 887
+  },
+  {
+    id: 'ch-45-music-festival',
+    name: 'Música en Vivo & Festivales',
+    category: 'Música',
+    viewerCount: 58900,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    currentVideoTitle: 'Festival de Música en Vivo - Rock & Electronic',
+    thumbnail: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=800&auto=format&fit=crop&q=60',
+    author: 'Live Music TV',
+    durationSeconds: 15
+  },
+  {
+    id: 'ch-46-comedy-stand-up',
+    name: 'Stand Up & Humor Live',
+    category: 'Comedia',
+    viewerCount: 36200,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4',
+    currentVideoTitle: 'Stand Up Comedy - Los Mejores Comediantes',
+    thumbnail: 'https://images.unsplash.com/photo-1527224857830-43a7acc85260?w=800&auto=format&fit=crop&q=60',
+    author: 'Comedy Live',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-47-ambient-4k',
+    name: 'Ambiente & Fireplace 4K',
+    category: 'Relax & Ambiente',
+    viewerCount: 61300,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    currentVideoTitle: 'Chimenea Virtual & Paisajes 4K Ambientales',
+    thumbnail: 'https://images.unsplash.com/photo-1574096079513-d8259312b785?w=800&auto=format&fit=crop&q=60',
+    author: 'Ambient Screen',
+    durationSeconds: 15
+  },
+  {
+    id: 'ch-48-documentales-social',
+    name: 'Documentales Sociales',
+    category: 'Documentales',
+    viewerCount: 19100,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4',
+    currentVideoTitle: 'Historias Reales - Documental Social HD',
+    thumbnail: 'https://images.unsplash.com/photo-1529651737248-dad5e287768e?w=800&auto=format&fit=crop&q=60',
+    author: 'Real Stories',
+    durationSeconds: 60
+  },
+  {
+    id: 'ch-49-anime-animation',
+    name: 'Anime & Animación World',
+    category: 'Anime & Animación',
+    viewerCount: 83700,
+    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+    currentVideoTitle: 'Los Mejores Animes - Animación Mundial',
+    thumbnail: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=60',
+    author: 'Anime World',
+    durationSeconds: 596
+  },
+  {
+    id: 'ch-50-mixed-variety',
+    name: 'YouApp Mix & Variedad 24/7',
+    category: 'Variedad',
+    viewerCount: 47600,
+    videoUrl: 'https://media.w3.org/2010/05/bunny/movie.mp4',
+    currentVideoTitle: 'Lo Mejor de YouApp - Mix de Contenido 24/7',
+    thumbnail: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&auto=format&fit=crop&q=60',
+    author: 'YouApp Mix',
+    durationSeconds: 596
   }
 ];
-
-
 
 
 

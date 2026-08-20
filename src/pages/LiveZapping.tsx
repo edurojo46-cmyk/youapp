@@ -281,14 +281,36 @@ export default function LiveZapping() {
       }).filter((ch: any) => ch !== null && ch.videoUrl !== null);
 
 
-      // Cargar también los canales 24/7 oficiales y los más vistos
       const real24Live = await fetchReal24_7LiveStreams('live 24/7 stream radio');
       const topRelax = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.relax, 15);
       const topFocus = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.focus, 15);
 
-      const combinedAll = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted, ...real24Live, ...topRelax, ...topFocus];
-      setAllChannels(combinedAll);
-      setFilteredChannels(combinedAll);
+      // Deduplicar canales por videoUrl o ID para asegurar que cada canal sea 100% único
+      const rawChannels = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
+      if (Array.isArray(real24Live) && real24Live.length > 0 && real24Live !== VERIFIED_24_7_LIVE_CHANNELS) {
+        rawChannels.push(...real24Live);
+      }
+      if (Array.isArray(topRelax) && topRelax.length > 0 && topRelax !== VERIFIED_24_7_LIVE_CHANNELS) {
+        rawChannels.push(...topRelax);
+      }
+      if (Array.isArray(topFocus) && topFocus.length > 0 && topFocus !== VERIFIED_24_7_LIVE_CHANNELS) {
+        rawChannels.push(...topFocus);
+      }
+
+      const seenUrls = new Set<string>();
+      const uniqueChannels = rawChannels.filter(ch => {
+        if (!ch || !ch.videoUrl) return false;
+        if (seenUrls.has(ch.videoUrl)) return false;
+        seenUrls.add(ch.videoUrl);
+        return true;
+      }).map((ch, idx) => ({
+        ...ch,
+        id: ch.id || `channel-${idx + 1}`
+      }));
+
+      const finalChannels = uniqueChannels.length > 0 ? uniqueChannels : VERIFIED_24_7_LIVE_CHANNELS;
+      setAllChannels(finalChannels);
+      setFilteredChannels(finalChannels);
     } catch (e) {
       console.error(e);
       setAllChannels(VERIFIED_24_7_LIVE_CHANNELS);

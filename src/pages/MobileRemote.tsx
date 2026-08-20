@@ -94,13 +94,35 @@ export default function MobileRemote() {
       const topRelax = await fetchTopViewedVideosByMood('relaxing 4k nature scenery meditation', 15);
       const topFocus = await fetchTopViewedVideosByMood('lofi hip hop radio beats study', 15);
 
-      const combinedAll = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted, ...real24Live, ...topRelax, ...topFocus];
-      if (combinedAll.length > 0) {
-        setChannels(combinedAll);
-        setTotalChannelsCount(combinedAll.length);
+      const rawChannels = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
+      if (Array.isArray(real24Live) && real24Live.length > 0 && real24Live !== VERIFIED_24_7_LIVE_CHANNELS) {
+        rawChannels.push(...real24Live);
       }
+      if (Array.isArray(topRelax) && topRelax.length > 0 && topRelax !== VERIFIED_24_7_LIVE_CHANNELS) {
+        rawChannels.push(...topRelax);
+      }
+      if (Array.isArray(topFocus) && topFocus.length > 0 && topFocus !== VERIFIED_24_7_LIVE_CHANNELS) {
+        rawChannels.push(...topFocus);
+      }
+
+      const seenUrls = new Set<string>();
+      const uniqueChannels = rawChannels.filter(ch => {
+        if (!ch || !ch.videoUrl) return false;
+        if (seenUrls.has(ch.videoUrl)) return false;
+        seenUrls.add(ch.videoUrl);
+        return true;
+      }).map((ch, idx) => ({
+        ...ch,
+        id: ch.id || `channel-${idx + 1}`
+      }));
+
+      const finalChannels = uniqueChannels.length > 0 ? uniqueChannels : VERIFIED_24_7_LIVE_CHANNELS;
+      setChannels(finalChannels);
+      setTotalChannelsCount(finalChannels.length);
     } catch (e) {
       console.warn("Error fetching remote channels:", e);
+      setChannels(VERIFIED_24_7_LIVE_CHANNELS);
+      setTotalChannelsCount(VERIFIED_24_7_LIVE_CHANNELS.length);
     }
   };
 

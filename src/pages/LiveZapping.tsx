@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
-  Image, Info, EyeOff, Layers, Search, Cast, Smartphone, Grid
+  Image, Info, EyeOff, Layers, Search, Cast, Smartphone, Grid, Maximize, Minimize, Download
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { 
@@ -100,6 +100,41 @@ export default function LiveZapping() {
   // OSD de televisión
   const [showOSD, setShowOSD] = useState(true);
   const osdTimeoutRef = useRef<any>(null);
+
+  // Pantalla Completa Nativa (oculta barra URL del browser)
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showPWABanner, setShowPWABanner] = useState(() => {
+    // Mostrar banner solo en móvil y solo si no está instalada como PWA
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const dismissed = localStorage.getItem('youapp_pwa_dismissed');
+    return isMobile && !isStandalone && !dismissed;
+  });
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        setIsFullscreen(true);
+        // Bloquear orientación horizontal en pantalla completa para mejor experiencia
+        try { await (screen.orientation as any).lock('landscape'); } catch {}
+      } else {
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+        try { (screen.orientation as any).unlock(); } catch {}
+      }
+    } catch (e) {
+      console.warn('Fullscreen not supported:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFSChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', onFSChange);
+    return () => document.removeEventListener('fullscreenchange', onFSChange);
+  }, []);
 
   // Favoritos
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -528,6 +563,32 @@ export default function LiveZapping() {
         </button>
       )}
 
+      {/* Botón de Pantalla Completa Nativa (oculta barra URL en móvil) */}
+      {!isZenMode && (
+        <button
+          className="fullscreen-native-btn"
+          onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }}
+          title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa (oculta barra URL)'}
+        >
+          {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+        </button>
+      )}
+
+      {/* Banner PWA: Instalar app para experiencia sin barra URL */}
+      {showPWABanner && !isZenMode && (
+        <div className="pwa-install-banner" onClick={(e) => e.stopPropagation()}>
+          <Download size={16} />
+          <span>📱 <strong>Instalá YouApp</strong> en tu pantalla de inicio para verla sin barra de URL</span>
+          <button 
+            className="pwa-dismiss-btn"
+            onClick={() => {
+              setShowPWABanner(false);
+              localStorage.setItem('youapp_pwa_dismissed', '1');
+            }}
+          >✕</button>
+        </div>
+      )}
+
       {/* Selector de Mood TV (Barra Superior de Estados de Ánimo) */}
       {!isZenMode && (
         <div className="mood-bar glass-panel" onClick={(e) => e.stopPropagation()}>
@@ -806,6 +867,80 @@ export default function LiveZapping() {
           background: #000;
           color: white;
         }
+
+        /* Botón de Pantalla Completa Nativa */
+        .fullscreen-native-btn {
+          position: absolute;
+          top: 70px;
+          left: 20px;
+          z-index: 60;
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          background: rgba(15, 17, 26, 0.85);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.2s, transform 0.15s;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+        }
+
+        .fullscreen-native-btn:hover,
+        .fullscreen-native-btn:active {
+          background: #6366f1;
+          transform: scale(1.1);
+        }
+
+        /* Banner de instalación PWA */
+        .pwa-install-banner {
+          position: absolute;
+          bottom: 80px;
+          left: 12px;
+          right: 12px;
+          z-index: 70;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: rgba(99, 102, 241, 0.95);
+          backdrop-filter: blur(16px);
+          border: 1px solid rgba(165, 180, 252, 0.4);
+          border-radius: 14px;
+          padding: 10px 14px;
+          font-size: 0.82rem;
+          color: white;
+          box-shadow: 0 4px 24px rgba(99, 102, 241, 0.5);
+          animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .pwa-install-banner span {
+          flex: 1;
+          line-height: 1.3;
+        }
+
+        .pwa-dismiss-btn {
+          background: rgba(255,255,255,0.2);
+          border: none;
+          color: white;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 0.85rem;
+          flex-shrink: 0;
+        }
+
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+
 
         .zapping-loading, .no-signal-screen {
           height: 100%;

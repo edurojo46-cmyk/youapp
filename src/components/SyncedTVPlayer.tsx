@@ -32,17 +32,25 @@ const isDirectVideo = (url: string): boolean => {
 // Extrae el Video ID de YouTube
 const extractYouTubeId = (url: string): string => {
   if (!url) return '';
+  if (url.includes('listType=') || url.includes('listtype=')) return '';
   const match = url.match(/(?:embed\/|v=|vi\/|youtu\.be\/|\/v\/|\/e\/|watch\?v=)([^#&?]*).*/);
-  if (match && match[1]) return match[1];
-  return url.replace('https://www.youtube.com/embed/', '').replace('yt-', '').replace('mood-', '').replace('live-', '');
+  if (match && match[1] && match[1].length === 11) return match[1];
+  return url.replace('https://www.youtube.com/embed/', '').replace('yt-', '').replace('mood-', '').replace('live-', '').split('?')[0];
 };
 
 // Construye la URL oficial y válida para iframes de YouTube
 const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds = 0): string => {
   if (!inputUrl) return '';
 
-  // 1. Si es una lista de reproducción / series
-  if (inputUrl.includes('videoseries') || inputUrl.includes('list=')) {
+  // 1. Si es búsqueda nativa de YouTube embebida (listType=search)
+  if (inputUrl.includes('listType=search') || inputUrl.includes('listtype=search')) {
+    const listMatch = inputUrl.match(/list=([^&#?]+)/);
+    const queryTerm = listMatch ? listMatch[1] : '';
+    return `https://www.youtube.com/embed?listType=search&list=${queryTerm}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+  }
+
+  // 2. Si es una lista de reproducción / series (videoseries)
+  if (inputUrl.includes('videoseries') || inputUrl.includes('list=PL') || inputUrl.includes('list=UU')) {
     const listMatch = inputUrl.match(/list=([^&#?]+)/);
     const listId = listMatch ? listMatch[1] : '';
     return `https://www.youtube.com/embed/videoseries?list=${listId}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&loop=1&playsinline=1`;

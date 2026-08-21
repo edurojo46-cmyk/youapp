@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Play, Radio, Tv, Sparkles, Search, Bell, Cpu, Landmark, 
@@ -7,6 +7,7 @@ import {
   ThumbsUp, HelpCircle, Clock, Dices, Eye, UserPlus, Star
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -35,53 +36,135 @@ export default function Home() {
     { name: 'Descubrimiento', pct: 10, color: '#10b981' }
   ]);
 
-  // Creadores en Vivo
-  const liveCreators = [
-    {
-      id: 'juan-tec',
-      name: 'Juan Tecnología',
-      tag: 'Tecnología',
-      topic: 'IA & Novedades',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
-      viewers: '14.2k',
-      tvsAdded: '186.430',
-      isVip: true,
-      currentShow: 'Revolución de Modelos IA 2026'
-    },
-    {
-      id: 'maria-ia',
-      name: 'María IA',
-      tag: 'IA y Futuro',
-      topic: 'Agentes Autónomos',
-      avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=300',
-      viewers: '28.9k',
-      tvsAdded: '312.800',
-      isVip: true,
-      currentShow: 'Construyendo el Futuro en Vivo'
-    },
-    {
-      id: 'leo-fin',
-      name: 'Leo Finanzas',
-      tag: 'Economía',
-      topic: 'Mercados & Inversión',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=300',
-      viewers: '9.4k',
-      tvsAdded: '94.200',
-      isVip: false,
-      currentShow: 'Análisis Macroeconómico Semanal'
-    },
-    {
-      id: 'sofi-crea',
-      name: 'Sofi Creativa',
-      tag: 'Creatividad',
-      topic: 'Diseño & Storytelling',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=300',
-      viewers: '18.1k',
-      tvsAdded: '142.500',
-      isVip: true,
-      currentShow: 'El Arte de Narrar con IA'
-    }
-  ];
+  // Canales en Vivo Reales para la Home
+  const liveCreators = useMemo(() => {
+    // 1. Canales guardados por el usuario
+    let userChannels: UniversalChannel[] = [];
+    try {
+      userChannels = JSON.parse(localStorage.getItem('youapp_saved_custom_channels') || '[]');
+    } catch {}
+
+    // 2. Canales destacados en vivo reales
+    const featuredRealChannels: UniversalChannel[] = [
+      {
+        id: 'custom-yt-UCRtgbxUH456ox51IswIQgZQ',
+        channelId: 'UCRtgbxUH456ox51IswIQgZQ',
+        name: 'Carnaval Stream',
+        category: '🎉 Streaming & Entretenimiento',
+        description: 'Emisión oficial de Carnaval Stream en vivo',
+        avatarUrl: 'https://yt3.ggpht.com/Iyl2pqHYrhTadZONr4EZ6AjwwxNS_w5idduTOqXxy0ZMPsMVruM5EuETa7seQRdLSNOCUP7r=s800-c-k-c0x00ffffff-no-rj',
+        thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
+        provider: 'youtube',
+        videoId: 'IUrWKJbOyJs',
+        videoUrl: 'https://www.youtube.com/embed/IUrWKJbOyJs',
+        currentVideoTitle: 'VISITANTES EN VIVO',
+        viewerCount: 38400,
+        isLive: true,
+        tags: ['carnaval', 'stream', 'duka', 'visitas']
+      },
+      {
+        id: 'custom-yt-UCiPqb8qbvCBjAFHc-KMujBw',
+        channelId: 'UCiPqb8qbvCBjAFHc-KMujBw',
+        name: 'CANAL 22 / Cúneo',
+        category: '🔴 Política & Noticias',
+        description: 'Transmisión oficial de CANAL 22 y Santiago Cúneo en vivo',
+        avatarUrl: 'https://yt3.ggpht.com/jHzVg6dtilEqyvBN8U67hbnJCAH6F7V1AvXq_WjV7TnP7NiLVn4oyFVtTRK4rUeH6i_AA_67ew=s800-c-k-c0x00ffffff-no-rj',
+        thumbnail: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800',
+        provider: 'youtube',
+        videoId: 'BpGiFNV1iSY',
+        videoUrl: 'https://www.youtube.com/embed/BpGiFNV1iSY',
+        currentVideoTitle: 'CANAL 22 - EN VIVO!',
+        viewerCount: 54100,
+        isLive: true,
+        tags: ['cuneo', 'canal22', 'politica', 'argentina']
+      },
+      {
+        id: 'ch-americatv',
+        channelId: 'UC6NVDkuzY2exMOVFw4i9oHw',
+        name: 'América TV',
+        category: '🔴 Televisión en Vivo',
+        description: 'Transmisión oficial de América TV en directo las 24 horas',
+        avatarUrl: 'https://yt3.googleusercontent.com/vIYh4fJ4FiOeD0U8sGUEUZQf3DaK-PME00Ckh7cFf4CRmC3EHopvUsjbgYKhNVkFXURSzltWYQ=s900-c-k-c0x00ffffff-no-rj',
+        thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800',
+        provider: 'youtube',
+        videoId: '3y-Nke9M1Lo',
+        videoUrl: 'https://www.youtube.com/embed/3y-Nke9M1Lo',
+        currentVideoTitle: 'América TV - Transmisión en Directo',
+        viewerCount: 62300,
+        isLive: true,
+        tags: ['america', 'noticias', 'intrusos']
+      },
+      {
+        id: 'ch-cronicatv',
+        channelId: 'UCT7KFGv6s2a-rh2Jq8ZdM1g',
+        name: 'Crónica TV',
+        category: '🔴 Noticias en Vivo 24/7',
+        description: 'Transmisión oficial de Crónica TV en vivo',
+        avatarUrl: 'https://yt3.googleusercontent.com/EGyrGJo_3mJxohmZxkP0Ksma9r1J1fU1ORZkGkwJkGJKRyeu6aHTD_Zi-4AodbD0hLRnTzoCWA=s900-c-k-c0x00ffffff-no-rj',
+        thumbnail: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=800',
+        provider: 'youtube',
+        videoId: 'hw4uHyct4vg',
+        videoUrl: 'https://www.youtube.com/embed/hw4uHyct4vg',
+        currentVideoTitle: 'Crónica TV - En Vivo 24 Horas',
+        viewerCount: 47800,
+        isLive: true,
+        tags: ['cronica', 'noticias', 'argentina']
+      },
+      {
+        id: 'ch-luzutv',
+        channelId: 'UCH1qC2yP51B-7a4zN_Lrqpg',
+        name: 'LUZU TV',
+        category: '⚡ Streaming en Vivo',
+        description: 'Nadie Dice Nada, Antes Que Nadie y programación completa',
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+        thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
+        provider: 'youtube',
+        videoId: 'b94k6v3aZ4c',
+        videoUrl: 'https://www.youtube.com/embed/b94k6v3aZ4c',
+        currentVideoTitle: 'LUZU TV - EN VIVO',
+        viewerCount: 92400,
+        isLive: true,
+        tags: ['luzu', 'nadie dice nada', 'nico occhiato']
+      },
+      {
+        id: 'ch-olga',
+        channelId: 'UCgB6b4xU3jR7g0xG5Q-7a9A',
+        name: 'Olga en Vivo',
+        category: '⚡ Streaming & Humor',
+        description: 'Soñé que Volaba con Migue Granados',
+        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300',
+        thumbnail: 'https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?w=800',
+        provider: 'youtube',
+        videoId: 'f94k6v3aZ4c',
+        videoUrl: 'https://www.youtube.com/embed/f94k6v3aZ4c',
+        currentVideoTitle: 'OLGA - Transmisión en Directo',
+        viewerCount: 88100,
+        isLive: true,
+        tags: ['olga', 'migue granados', 'streaming']
+      }
+    ];
+
+    // Combinar los canales del usuario primero, luego los destacados del catálogo
+    const catalogLive = UNIVERSAL_CATALOG.filter(c => c.isLive);
+    const all = [...userChannels, ...featuredRealChannels, ...catalogLive];
+    const seen = new Set<string>();
+
+    return all.filter(c => {
+      if (!c.id || seen.has(c.id)) return false;
+      seen.add(c.id);
+      return true;
+    }).slice(0, 10).map(c => ({
+      id: c.id,
+      name: c.name,
+      tag: c.category.replace(/[🔴⚡🎉★🌟]/g, '').trim(),
+      topic: c.currentVideoTitle || c.description,
+      avatar: c.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300',
+      viewers: `${(c.viewerCount || 24500).toLocaleString('es-AR')}`,
+      tvsAdded: `${Math.floor((c.viewerCount || 24500) * 3.4).toLocaleString('es-AR')}`,
+      currentShow: c.currentVideoTitle || `Transmisión oficial de ${c.name}`,
+      channelData: c
+    }));
+  }, []);
 
   // Canales Temáticos
   const channelsList = [
@@ -102,18 +185,23 @@ export default function Home() {
       title: `Tu canal para ahora: "${query}"`,
       totalMinutes: 38,
       items: [
-        { num: '01', title: 'Introducción & Contexto', duration: '8 min', creator: 'Juan Tecnología' },
-        { num: '02', title: 'Perspectiva Empresarial y Económica', duration: '11 min', creator: 'Leo Finanzas' },
-        { num: '03', title: 'Perspectiva Académica y Futuro', duration: '9 min', creator: 'María IA' },
-        { num: '04', title: 'Debate y Conclusiones en Vivo', duration: '10 min', creator: 'Sofi Creativa' }
+        { num: '01', title: 'Introducción & Contexto', duration: '8 min', creator: liveCreators[0]?.name || 'YouApp TV' },
+        { num: '02', title: 'Perspectiva Empresarial y Económica', duration: '11 min', creator: liveCreators[1]?.name || 'Noticias' },
+        { num: '03', title: 'Perspectiva Académica y Futuro', duration: '9 min', creator: liveCreators[2]?.name || 'Streaming' },
+        { num: '04', title: 'Debate y Conclusiones en Vivo', duration: '10 min', creator: liveCreators[3]?.name || 'Canal 22' }
       ]
     });
     setShowAiProgramModal(true);
   };
 
   const handleCreatorClick = (creator: any) => {
-    setSelectedCreator(creator);
-    setShowCreatorModal(true);
+    if (creator.id) {
+      localStorage.setItem('youapp_active_channel_id', creator.id);
+      navigate('/live');
+    } else {
+      setSelectedCreator(creator);
+      setShowCreatorModal(true);
+    }
   };
 
   return (
@@ -185,7 +273,12 @@ export default function Home() {
 
         {/* 3. Hero Card: "Continuar Mi TV" */}
         <section className="main-hero-card-section">
-          <div className="hero-play-card" onClick={() => navigate('/live')}>
+          <div className="hero-play-card" onClick={() => {
+            if (liveCreators[0]?.id) {
+              localStorage.setItem('youapp_active_channel_id', liveCreators[0].id);
+            }
+            navigate('/live');
+          }}>
             <div className="hero-card-glow-bg" />
             
             {/* Botón 3D Play de Neón */}
@@ -196,16 +289,16 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Info de Programación */}
+            {/* Info de Programación Real */}
             <div className="hero-channel-info">
               <span className="continue-label">Continuar</span>
-              <h2 className="channel-main-name">Mi TV</h2>
+              <h2 className="channel-main-name">{liveCreators[0]?.name || 'YouApp TV'}</h2>
               <div className="now-next-row">
                 <p className="now-playing">
-                  <span className="bullet bullet-purple">●</span> Ahora: <strong>Juan Tecnología</strong>
+                  <span className="bullet bullet-purple">●</span> Ahora: <strong>{liveCreators[0]?.currentShow?.slice(0, 34) || 'En Directo 24/7'}</strong>
                 </p>
                 <p className="next-playing">
-                  <span className="bullet bullet-pink">●</span> Sigue: <strong>María IA</strong>
+                  <span className="bullet bullet-pink">●</span> Sigue: <strong>{liveCreators[1]?.name || 'Próximo Canal'}</strong>
                 </p>
               </div>
             </div>
@@ -260,7 +353,7 @@ export default function Home() {
         {/* 5. Sección: En Vivo Ahora > */}
         <section className="live-now-section">
           <div className="section-header" onClick={() => navigate('/live')}>
-            <h3>En vivo ahora</h3>
+            <h3>En vivo ahora ({liveCreators.length})</h3>
             <ChevronRight size={18} className="chevron" />
           </div>
 
@@ -270,15 +363,19 @@ export default function Home() {
                 key={creator.id} 
                 className="creator-card"
                 onClick={() => handleCreatorClick(creator)}
+                title={`Ver ${creator.name} en vivo`}
               >
                 <div className="creator-avatar-wrap">
                   <img src={creator.avatar} alt={creator.name} className="creator-img" />
                   <div className="live-badge-pill">
-                    <span>EN VIVO</span>
+                    <span>🔴 EN VIVO</span>
                   </div>
                 </div>
                 <h4 className="creator-name">{creator.name}</h4>
                 <p className="creator-tag">{creator.tag}</p>
+                <span className="creator-viewers-tag">
+                  <Eye size={10} /> {creator.viewers}
+                </span>
               </div>
             ))}
           </div>
@@ -1058,44 +1155,56 @@ export default function Home() {
         }
 
         .creators-horizontal-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 8px;
+          display: flex;
+          gap: 12px;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 8px;
+          scrollbar-width: thin;
+        }
+        .creators-horizontal-grid::-webkit-scrollbar {
+          height: 4px;
+        }
+        .creators-horizontal-grid::-webkit-scrollbar-thumb {
+          background: rgba(236, 72, 153, 0.4);
+          border-radius: 4px;
         }
 
         .creator-card {
+          flex: 0 0 102px;
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
           cursor: pointer;
-          padding: 8px 4px;
-          border-radius: 14px;
+          padding: 10px 6px;
+          border-radius: 16px;
           background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          transition: transform 0.2s, background 0.2s;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          transition: transform 0.2s, background 0.2s, border-color 0.2s;
         }
 
         .creator-card:hover {
-          transform: translateY(-3px);
-          background: rgba(236, 72, 153, 0.08);
-          border-color: rgba(236, 72, 153, 0.3);
+          transform: translateY(-4px);
+          background: rgba(236, 72, 153, 0.12);
+          border-color: rgba(236, 72, 153, 0.5);
+          box-shadow: 0 8px 20px rgba(236, 72, 153, 0.25);
         }
 
         .creator-avatar-wrap {
           position: relative;
-          width: 58px;
-          height: 58px;
+          width: 62px;
+          height: 62px;
           margin-bottom: 8px;
         }
 
         .creator-img {
           width: 100%;
           height: 100%;
-          border-radius: 14px;
+          border-radius: 50%;
           object-fit: cover;
-          border: 1.5px solid #ec4899;
-          box-shadow: 0 0 10px rgba(236, 72, 153, 0.4);
+          border: 2px solid #ef4444;
+          box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
         }
 
         .live-badge-pill {
@@ -1107,14 +1216,15 @@ export default function Home() {
           color: white;
           font-size: 0.55rem;
           font-weight: 900;
-          padding: 1px 5px;
-          border-radius: 4px;
+          padding: 1px 6px;
+          border-radius: 6px;
           letter-spacing: 0.5px;
-          box-shadow: 0 2px 6px rgba(239, 68, 68, 0.6);
+          box-shadow: 0 2px 8px rgba(239, 68, 68, 0.8);
+          white-space: nowrap;
         }
 
         .creator-name {
-          font-size: 0.7rem;
+          font-size: 0.72rem;
           font-weight: 700;
           color: #ffffff;
           margin: 0;
@@ -1125,13 +1235,26 @@ export default function Home() {
         }
 
         .creator-tag {
-          font-size: 0.6rem;
+          font-size: 0.62rem;
           color: #8f94a6;
           margin: 2px 0 0 0;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
           width: 100%;
+        }
+
+        .creator-viewers-tag {
+          font-size: 0.62rem;
+          color: #ef4444;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          margin-top: 4px;
+          background: rgba(239, 68, 68, 0.12);
+          padding: 2px 6px;
+          border-radius: 8px;
         }
 
         /* 6. Sección: Tus Canales */

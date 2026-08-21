@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Mic, MicOff, ArrowLeft,
   Clock, TrendingUp, Trash2, ArrowUpLeft, Loader2,
-  CheckCircle2, ExternalLink, Tv, Radio, Plus, Check, Play, Sparkles
+  CheckCircle2, ExternalLink, Tv, Radio, Plus, Check, Play, Sparkles, ArrowDown
 } from 'lucide-react';
 import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
 import { fetchYouTubeLiveSuggestions } from '../lib/youtube';
@@ -500,12 +500,21 @@ export default function ChannelSearch() {
                 <strong>{results.length}</strong> canales encontrados para "<strong>{committed}</strong>"
               </span>
             </div>
-            {isLiveSearch && (
-              <div className="live-source-badge">
-                <Radio size={12} />
-                <span>Base oficial YouTube</span>
-              </div>
-            )}
+            <div className="banner-right">
+              <span className="scroll-hint-pill" onClick={() => {
+                const el = document.querySelector('.youapp-search-page');
+                if (el) el.scrollBy({ top: 350, behavior: 'smooth' });
+              }}>
+                <span>Desliza para ver todos</span>
+                <ArrowDown size={14} className="bounce-arrow" />
+              </span>
+              {isLiveSearch && (
+                <div className="live-source-badge">
+                  <Radio size={12} />
+                  <span>Base oficial YouTube</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -661,6 +670,21 @@ export default function ChannelSearch() {
             <div className="status-line" />
           </div>
         )}
+
+        {/* Botón flotante para deslizar hacia abajo */}
+        {results.length > 2 && (
+          <button
+            className="floating-scroll-down-btn"
+            onClick={() => {
+              const el = document.querySelector('.youapp-search-page');
+              if (el) el.scrollBy({ top: 400, behavior: 'smooth' });
+            }}
+            title="Deslizar hacia abajo"
+          >
+            <ArrowDown size={18} />
+            <span>Ver más ({results.length})</span>
+          </button>
+        )}
       </main>
 
       {/* ════════════════════ TOAST DE NOTIFICACIÓN ══════════════════════════ */}
@@ -678,9 +702,10 @@ export default function ChannelSearch() {
 
       {/* ════════════════════ ESTILOS YOUAPP DARK NEON ════════════════════════ */}
       <style>{`
-        /* Reset y Contenedor Principal con Scroll Fluido Natural */
+        /* Contenedor Principal con Scroll Fluido y Scrollbar Súper Visible */
         .youapp-search-page {
-          min-height: 100vh;
+          height: 100vh;
+          height: 100dvh;
           width: 100%;
           background: radial-gradient(circle at 50% 0%, #151329 0%, #090814 55%, #040308 100%);
           color: #f1f1fa;
@@ -688,24 +713,29 @@ export default function ChannelSearch() {
           display: flex;
           flex-direction: column;
           overflow-x: hidden;
-          overflow-y: visible;
+          overflow-y: auto;
           -webkit-overflow-scrolling: touch;
           scroll-behavior: smooth;
         }
 
-        /* Scrollbar Personalizado */
+        /* Scrollbar Neon-Cyan Súper Visible en Desktop y Móviles */
         .youapp-search-page::-webkit-scrollbar {
-          width: 9px;
+          width: 12px;
+          display: block;
         }
         .youapp-search-page::-webkit-scrollbar-track {
           background: #07060d;
+          border-left: 1px solid rgba(0, 240, 255, 0.15);
         }
         .youapp-search-page::-webkit-scrollbar-thumb {
-          background: rgba(0, 240, 255, 0.25);
-          border-radius: 6px;
+          background: linear-gradient(180deg, #00f0ff 0%, #7928ca 100%);
+          border-radius: 8px;
+          border: 2px solid #07060d;
+          box-shadow: 0 0 12px rgba(0, 240, 255, 0.7);
         }
         .youapp-search-page::-webkit-scrollbar-thumb:hover {
-          background: rgba(0, 240, 255, 0.55);
+          background: #00f0ff;
+          box-shadow: 0 0 18px #00f0ff;
         }
 
         /* ── HEADER & BARRA DE BÚSQUEDA ───────────────────────────────────────── */
@@ -1117,6 +1147,38 @@ export default function ChannelSearch() {
         .text-neon-cyan {
           color: #00f0ff;
         }
+        .banner-right {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .scroll-hint-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(0, 240, 255, 0.12);
+          border: 1px solid rgba(0, 240, 255, 0.35);
+          color: #00f0ff;
+          padding: 5px 12px;
+          border-radius: 16px;
+          font-size: 0.76rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+        .scroll-hint-pill:hover {
+          background: rgba(0, 240, 255, 0.25);
+          transform: translateY(1px);
+        }
+        .bounce-arrow {
+          animation: bounceY 1.4s infinite ease-in-out;
+        }
+        @keyframes bounceY {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(3px); }
+        }
+
         .live-source-badge {
           display: flex;
           align-items: center;
@@ -1128,6 +1190,36 @@ export default function ChannelSearch() {
           border-radius: 12px;
           font-size: 0.75rem;
           font-weight: 600;
+        }
+
+        /* Botón Flotante para deslizar hacia abajo */
+        .floating-scroll-down-btn {
+          position: fixed;
+          bottom: 28px;
+          right: 28px;
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: linear-gradient(135deg, #00f0ff 0%, #7928ca 100%);
+          border: none;
+          color: #ffffff;
+          padding: 12px 20px;
+          border-radius: 30px;
+          font-size: 0.88rem;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.7), 0 0 16px rgba(0, 240, 255, 0.4);
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: floatBtnIn 0.35s ease-out;
+        }
+        .floating-scroll-down-btn:hover {
+          transform: translateY(-3px) scale(1.04);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 240, 255, 0.7);
+        }
+        @keyframes floatBtnIn {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
         /* Sin Resultados */

@@ -14,8 +14,8 @@ import {
   CheckCircle2, ExternalLink, Tv, Radio, Plus, Check, Play, Sparkles, ArrowDown, RotateCw
 } from 'lucide-react';
 import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
-import { fetchYouTubeLiveSuggestions } from '../lib/youtube';
-import { searchYouTubeChannels, searchYouTubeVideos, resolveChannelPlayable, type YTChannelResult, type YTVideoResult } from '../lib/youtubeChannelSearch';
+import { executeYouTubeSearch, fetchYouTubeAutocomplete, type YouTubeSearchResult } from '../lib/youtubeSearchEngine';
+import { resolveChannelPlayable, type YTChannelResult, type YTVideoResult } from '../lib/youtubeChannelSearch';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import { forceHardUpdate } from '../lib/forceUpdate';
@@ -94,7 +94,7 @@ export default function ChannelSearch() {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
-  // ── Autocompletado dinámico ────────────────────────────────────────────────
+  // ── Autocompletado oficial de YouTube en tiempo real ───────────────────────
   useEffect(() => {
     if (!query.trim() || query.length < 2) {
       setHints([]);
@@ -102,23 +102,21 @@ export default function ChannelSearch() {
     }
     let active = true;
     const timer = setTimeout(async () => {
-      const suffix = searchTab === 'channels' ? ' canal' : '';
-      const yt = await fetchYouTubeLiveSuggestions(query + suffix);
+      const suggestions = await fetchYouTubeAutocomplete(query);
       if (!active) return;
-      setHints(yt.filter(s => s.length < 50).slice(0, 6));
-    }, 160);
+      setHints(suggestions.slice(0, 7));
+    }, 120);
     return () => {
       active = false;
       clearTimeout(timer);
     };
-  }, [query, searchTab]);
+  }, [query]);
 
-  // ── Búsqueda Dual de Canales y Videos ──────────────────────────────────────
+  // ── Búsqueda Dual de Canales y Videos (Motor YouTube sin API) ─────────────
   const doSearch = useCallback(async (q: string, tabOverride?: 'channels' | 'videos') => {
     const trimmed = q.trim();
     if (!trimmed) return;
 
-    const currentTab = tabOverride || searchTab;
     setCommitted(trimmed);
     setStatus('loading');
     setShowDrop(false);
@@ -126,46 +124,46 @@ export default function ChannelSearch() {
     setHistory(getHist());
     inputRef.current?.blur();
 
-    // Scroll to top of list
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     try {
-      const [chResults, vidResults] = await Promise.all([
-        searchYouTubeChannels(trimmed, 30).catch(() => []),
-        searchYouTubeVideos(trimmed, 30).catch(() => [])
-      ]);
+      const searchData = await executeYouTubeSearch(trimmed);
 
-      if (chResults && chResults.length > 0) {
-        setResults(chResults);
-        setIsLiveSearch(true);
-      } else {
-        const qLower = trimmed.toLowerCase();
-        const local = UNIVERSAL_CATALOG
-          .filter(ch =>
-            ch.name.toLowerCase().includes(qLower) ||
-            (ch.category && ch.category.toLowerCase().includes(qLower)) ||
-            (ch.description && ch.description.toLowerCase().includes(qLower))
-          )
-          .map((ch): YTChannelResult => ({
-            channelId: ch.channelId || ch.id,
-            name: ch.name,
-            handle: `@${ch.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}`,
-            subscribers: `${Math.round(ch.viewerCount * 6 / 1000)}K suscriptores`,
-            videoCount: 'Canal Oficial',
-            description: ch.description,
-            avatarUrl: ch.avatarUrl,
-            isVerified: true,
-            channelUrl: ch.videoId ? `https://youtube.com/watch?v=${ch.videoId}` : `https://youtube.com/`
-          }));
-        setResults(local);
-        setIsLiveSearch(false);
-      }
+      // 1. Mapear Canales encontrados
+      const mappedChannels: YTChannelResult[] = searchData.channels.map(c => ({
+        channelId: c.channelId || c.id,
+        name: c.title,
+        handle: c.handle || `@${c.title.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}`,
+        subscribers: c.subscribersText || 'Canal Oficial',
+        videoCount: c.videoCountText || 'Videos',
+        description: c.description || '',
+        avatarUrl: c.thumbnail || c.channelAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.title)}&background=151329&color=00f0ff`,
+        isVerified: c.isVerified,
+        channelUrl: `https://www.youtube.com/channel/${c.channelId || c.id}`,
+        isLiveNow: c.isLive
+      }));
 
-      if (vidResults && vidResults.length > 0) {
-        setVideoResults(vidResults);
-      }
+      // 2. Mapear Videos encontrados
+      const mappedVideos: YTVideoResult[] = searchData.videos.map(v => ({
+        videoId: v.id,
+        title: v.title,
+        description: v.description,
+        thumbnail: v.thumbnail,
+        channelTitle: v.channelTitle,
+        channelId: v.channelId,
+        publishedAt: v.publishedText || '',
+        videoUrl: v.videoUrl,
+        isLive: v.isLive,
+        durationText: v.durationText,
+        viewsText: v.viewsText,
+        isVerified: v.isVerified
+      }));
+
+      setResults(mappedChannels);
+      setVideoResults(mappedVideos);
+      setIsLiveSearch(true);
     } catch (err) {
       console.warn('[doSearch] Error:', err);
     } finally {
@@ -824,12 +822,17 @@ export default function ChannelSearch() {
                       <Play size={20} fill="#000" />
                     </div>
                   </div>
-                  {vid.isLive && (
+                  {/* Badge de Duración / EN VIVO estilo YouTube */}
+                  {vid.durationText ? (
+                    <span className={`video-duration-pill ${vid.isLive || vid.durationText.includes('VIVO') ? 'is-live' : ''}`}>
+                      {vid.durationText}
+                    </span>
+                  ) : vid.isLive ? (
                     <span className="video-live-badge">
                       <span className="tag-live-pulse-dot" />
                       <span>EN VIVO</span>
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Info del Video */}
@@ -840,6 +843,15 @@ export default function ChannelSearch() {
 
                   <div className="video-channel-row">
                     <span className="video-channel-name">{vid.channelTitle}</span>
+                    {vid.isVerified && (
+                      <CheckCircle2 size={13} className="verified-check-icon" />
+                    )}
+                    {vid.viewsText && (
+                      <span className="video-views-bullet">• {vid.viewsText}</span>
+                    )}
+                    {vid.publishedAt && (
+                      <span className="video-date-bullet">• {vid.publishedAt}</span>
+                    )}
                   </div>
 
                   {vid.description && (
@@ -2350,9 +2362,31 @@ export default function ChannelSearch() {
           text-decoration: none;
           transition: all 0.2s;
         }
-        .btn-modal-open-yt:hover {
-          background: rgba(255, 0, 85, 0.25);
+        .video-duration-pill {
+          position: absolute;
+          bottom: 8px;
+          right: 8px;
+          background: rgba(0, 0, 0, 0.85);
           color: #ffffff;
+          font-size: 0.72rem;
+          font-weight: 800;
+          padding: 2px 6px;
+          border-radius: 6px;
+          letter-spacing: 0.5px;
+          backdrop-filter: blur(4px);
+        }
+        .video-duration-pill.is-live {
+          background: #ef4444;
+          color: #ffffff;
+          box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+        }
+        .verified-check-icon {
+          color: #00f0ff;
+          flex-shrink: 0;
+        }
+        .video-views-bullet, .video-date-bullet {
+          font-size: 0.76rem;
+          color: rgba(255, 255, 255, 0.55);
         }
       `}</style>
     </div>

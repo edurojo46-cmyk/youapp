@@ -37,6 +37,9 @@ export interface YTVideoResult {
   publishedAt: string;
   videoUrl: string;
   isLive?: boolean;
+  durationText?: string;
+  viewsText?: string;
+  isVerified?: boolean;
 }
 
 export interface ChannelPlayableInfo {

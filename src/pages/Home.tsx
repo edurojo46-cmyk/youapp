@@ -195,13 +195,25 @@ export default function Home() {
   };
 
   const handleCreatorClick = (creator: any) => {
-    if (creator.id) {
-      localStorage.setItem('youapp_active_channel_id', creator.id);
-      navigate('/live');
-    } else {
-      setSelectedCreator(creator);
-      setShowCreatorModal(true);
-    }
+    const channelToTune = creator.channelData || {
+      id: creator.id,
+      channelId: creator.channelId || (creator.id?.startsWith('custom-yt-') ? creator.id.replace('custom-yt-', '') : undefined),
+      name: creator.name,
+      category: creator.tag || '🔴 En Vivo',
+      description: creator.topic || creator.currentShow || '',
+      avatarUrl: creator.avatar,
+      thumbnail: creator.avatar,
+      provider: 'youtube',
+      videoId: creator.videoId || (creator.id?.startsWith('custom-yt-') ? creator.id.replace('custom-yt-', '') : ''),
+      videoUrl: creator.videoUrl || `https://www.youtube.com/embed/videoseries?list=UU${(creator.id || '').replace(/^custom-yt-UC|^UC/, '')}`,
+      currentVideoTitle: creator.currentShow || creator.name,
+      viewerCount: parseInt((creator.viewers || '24000').replace(/[^0-9]/g, ''), 10) || 24000,
+      isLive: true
+    };
+
+    localStorage.setItem('youapp_active_channel_id', creator.id);
+    localStorage.setItem('youapp_tune_channel_payload', JSON.stringify(channelToTune));
+    navigate('/live');
   };
 
   return (

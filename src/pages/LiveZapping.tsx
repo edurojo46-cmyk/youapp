@@ -51,8 +51,23 @@ const MOODS = [
 export default function LiveZapping() {
   const navigate = useNavigate();
 
-  const [allChannels, setAllChannels] = useState<any[]>(VERIFIED_24_7_LIVE_CHANNELS);
-  const [filteredChannels, setFilteredChannels] = useState<any[]>(VERIFIED_24_7_LIVE_CHANNELS);
+  const [allChannels, setAllChannels] = useState<any[]>(() => {
+    try {
+      const rawPayload = localStorage.getItem('youapp_tune_channel_payload');
+      if (rawPayload) {
+        const payload = JSON.parse(rawPayload);
+        if (payload && payload.videoUrl) {
+          return [payload, ...VERIFIED_24_7_LIVE_CHANNELS];
+        }
+      }
+      const saved = JSON.parse(localStorage.getItem('youapp_saved_custom_channels') || '[]');
+      if (Array.isArray(saved) && saved.length > 0) {
+        return [...saved, ...VERIFIED_24_7_LIVE_CHANNELS];
+      }
+    } catch {}
+    return VERIFIED_24_7_LIVE_CHANNELS;
+  });
+  const [filteredChannels, setFilteredChannels] = useState<any[]>(allChannels);
   const [selectedMood, setSelectedMood] = useState('all');
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -379,10 +394,33 @@ export default function LiveZapping() {
       setAllChannels(finalChannels);
       setFilteredChannels(finalChannels);
 
-      // Sintonizar automáticamente el canal seleccionado si venimos de la búsqueda
+      // Sintonizar automáticamente el canal seleccionado si venimos de la búsqueda o de la Home
+      let targetPayload: any = null;
+      try {
+        const rawP = localStorage.getItem('youapp_tune_channel_payload');
+        if (rawP) targetPayload = JSON.parse(rawP);
+      } catch {}
       const targetChannelId = localStorage.getItem('youapp_active_channel_id');
-      if (targetChannelId) {
-        const foundIdx = finalChannels.findIndex(
+
+      let channelsWithTarget = finalChannels;
+
+      if (targetPayload && targetPayload.videoUrl) {
+        const foundIdx = channelsWithTarget.findIndex(
+          c => c.id === targetPayload.id || c.channelId === targetPayload.channelId || c.videoUrl === targetPayload.videoUrl || (targetPayload.name && c.name && c.name.toLowerCase() === targetPayload.name.toLowerCase())
+        );
+
+        if (foundIdx !== -1) {
+          setActiveIndex(foundIdx);
+        } else {
+          channelsWithTarget = [targetPayload, ...channelsWithTarget];
+          setAllChannels(channelsWithTarget);
+          setFilteredChannels(channelsWithTarget);
+          setActiveIndex(0);
+        }
+        localStorage.removeItem('youapp_tune_channel_payload');
+        localStorage.removeItem('youapp_active_channel_id');
+      } else if (targetChannelId) {
+        const foundIdx = channelsWithTarget.findIndex(
           c => c.id === targetChannelId || c.channelId === targetChannelId || c.id === `custom-yt-${targetChannelId}`
         );
         if (foundIdx !== -1) {

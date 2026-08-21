@@ -228,20 +228,33 @@ export default function Home() {
   };
 
   const handleCreatorClick = (creator: any) => {
-    const channelToTune = creator.channelData || {
+    const rawData = creator.channelData || {};
+    const cid = rawData.channelId || (creator.id?.startsWith('custom-yt-') ? creator.id.replace('custom-yt-', '') : undefined) || (creator.id?.startsWith('UC') ? creator.id : undefined);
+
+    let finalVideoUrl = rawData.videoUrl;
+    if (!finalVideoUrl || (!finalVideoUrl.includes('hw4uHyct4vg') && !finalVideoUrl.includes('jfKfPfyJRdk') && !finalVideoUrl.includes('21X5lGlDOfg') && !finalVideoUrl.includes('4xDzrJKXOOY') && !finalVideoUrl.includes('videoseries'))) {
+      if (cid) {
+        finalVideoUrl = `https://www.youtube.com/embed/videoseries?list=UU${cid.replace(/^UC/, '')}`;
+      } else if (creator.name?.toLowerCase().includes('cronica')) {
+        finalVideoUrl = 'https://www.youtube.com/embed/hw4uHyct4vg';
+      }
+    }
+
+    const channelToTune = {
+      ...rawData,
       id: creator.id,
-      channelId: creator.channelId || (creator.id?.startsWith('custom-yt-') ? creator.id.replace('custom-yt-', '') : undefined),
+      channelId: cid,
       name: creator.name,
       category: creator.tag || '🔴 En Vivo',
       description: creator.topic || creator.currentShow || '',
       avatarUrl: creator.avatar,
       thumbnail: creator.avatar,
       provider: 'youtube',
-      videoId: creator.videoId || (creator.id?.startsWith('custom-yt-') ? creator.id.replace('custom-yt-', '') : ''),
-      videoUrl: creator.videoUrl || `https://www.youtube.com/embed/videoseries?list=UU${(creator.id || '').replace(/^custom-yt-UC|^UC/, '')}`,
+      videoUrl: finalVideoUrl || 'https://www.youtube.com/embed/hw4uHyct4vg',
       currentVideoTitle: creator.currentShow || creator.name,
       viewerCount: parseInt((creator.viewers || '24000').replace(/[^0-9]/g, ''), 10) || 24000,
-      isLive: true
+      isLive: true,
+      durationSeconds: 0
     };
 
     localStorage.setItem('youapp_active_channel_id', creator.id);

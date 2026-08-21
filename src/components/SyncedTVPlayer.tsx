@@ -34,17 +34,20 @@ const extractYouTubeId = (url: string): string => {
   if (url.includes('listType=') || url.includes('listtype=')) return '';
   const match = url.match(/(?:embed\/|v=|vi\/|youtu\.be\/|\/v\/|\/e\/|watch\?v=)([^#&?]*).*/);
   if (match && match[1] && match[1].length === 11) return match[1];
-  return url.replace('https://www.youtube.com/embed/', '').replace('yt-', '').replace('mood-', '').replace('live-', '').split('?')[0];
+  const clean = url.replace('https://www.youtube.com/embed/', '').replace('yt-', '').replace('mood-', '').replace('live-', '').split('?')[0];
+  return clean.length === 11 ? clean : '';
 };
 
 // Construye la URL oficial y válida para iframes de YouTube
-const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds = 0): string => {
-  if (!inputUrl) return '';
+const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds = 0, channelName = 'YouApp TV'): string => {
+  if (!inputUrl) {
+    return `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(channelName)}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+  }
 
   // 1. Si es búsqueda nativa de YouTube embebida (listType=search)
   if (inputUrl.includes('listType=search') || inputUrl.includes('listtype=search')) {
     const listMatch = inputUrl.match(/list=([^&#?]+)/);
-    const queryTerm = listMatch ? listMatch[1] : '';
+    const queryTerm = listMatch ? listMatch[1] : encodeURIComponent(channelName);
     return `https://www.youtube.com/embed?listType=search&list=${queryTerm}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
@@ -52,12 +55,17 @@ const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds 
   if (inputUrl.includes('videoseries') || inputUrl.includes('list=PL') || inputUrl.includes('list=UU')) {
     const listMatch = inputUrl.match(/list=([^&#?]+)/);
     const listId = listMatch ? listMatch[1] : '';
-    return `https://www.youtube.com/embed/videoseries?list=${listId}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&loop=1&playsinline=1`;
+    if (listId) {
+      return `https://www.youtube.com/embed/videoseries?list=${listId}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&loop=1&playsinline=1`;
+    }
   }
 
-  // 2. Si es un video individual o con cola de videos 24/7
+  // 3. Si es un video individual o con cola de videos 24/7
   const vid = extractYouTubeId(inputUrl);
-  if (!vid) return inputUrl;
+  if (!vid || vid.length !== 11) {
+    const queryFallback = encodeURIComponent(channelName || 'musica argentina');
+    return `https://www.youtube.com/embed?listType=search&list=${queryFallback}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+  }
 
   const baseUrl = `https://www.youtube.com/embed/${vid}`;
   const params = new URLSearchParams({
@@ -303,7 +311,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         <iframe
           id={containerId}
           key={`${url}_${targetOffsetSeconds}`}
-          src={buildYouTubeEmbedSrc(url, isMuted, targetOffsetSeconds)}
+          src={buildYouTubeEmbedSrc(url, isMuted, targetOffsetSeconds, channelName)}
           title={channelName}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

@@ -319,7 +319,7 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       console.log('[TV LiveZapping] Cleaning up RemoteBridge');
       bridge.destroy();
     };
-  }, [sessionId]);
+  }, []);
 
   // Transmitir cambio de canal en milisegundos a todos los celulares conectados
   useEffect(() => {

@@ -183,12 +183,21 @@ export default function LiveZapping() {
 
   // Sincronización Global 24/7 (Epoch UTC)
   const syncOffset = useMemo(() => {
-    if (currentChannel?.isLive) return 0; // Transmisiones en vivo van en directo natural
+    // Si es una transmisión en vivo O es un video On-Demand seleccionado por el usuario, iniciar desde segundo 0
+    if (
+      currentChannel?.isLive ||
+      currentChannel?.id?.startsWith('video-') ||
+      currentChannel?.category?.includes('Video') ||
+      currentChannel?.category?.includes('Demand') ||
+      currentChannel?.tags?.includes('ondemand')
+    ) {
+      return 0;
+    }
     const cycleDuration = currentChannel?.durationSeconds || 600;
     const epochSec = Math.floor(Date.now() / 1000);
     const hash = (currentChannel?.id || '').split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
     return (epochSec + hash) % cycleDuration;
-  }, [currentChannel?.id, currentChannel?.durationSeconds, currentChannel?.isLive]);
+  }, [currentChannel?.id, currentChannel?.durationSeconds, currentChannel?.isLive, currentChannel?.category, currentChannel?.tags]);
 
 
   const handleVideoEnded = useCallback(() => {

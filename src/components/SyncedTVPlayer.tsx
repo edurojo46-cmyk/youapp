@@ -73,13 +73,6 @@ const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds 
     }
   }
 
-  try {
-    if (typeof window !== 'undefined' && window.location.origin) {
-      params.set('origin', window.location.origin);
-      params.set('widget_referrer', window.location.href);
-    }
-  } catch {}
-
   if (offsetSeconds > 0) {
     params.set('start', Math.floor(offsetSeconds).toString());
   }

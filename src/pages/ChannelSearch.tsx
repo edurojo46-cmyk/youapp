@@ -71,6 +71,7 @@ export default function ChannelSearch() {
   const [searchTab, setSearchTab] = useState<'channels' | 'videos'>('channels');
   const [results, setResults] = useState<YTChannelResult[]>([]);
   const [videoResults, setVideoResults] = useState<YTVideoResult[]>([]);
+  const [activeModalVideo, setActiveModalVideo] = useState<YTVideoResult | null>(null);
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [isLiveSearch, setIsLiveSearch] = useState(true);
 
@@ -194,14 +195,15 @@ export default function ChannelSearch() {
       name: vid.channelTitle || 'Video a la Carta',
       category: '🎬 Video On-Demand',
       description: vid.title,
-      avatarUrl: vid.thumbnail,
-      thumbnail: vid.thumbnail,
+      avatarUrl: vid.thumbnail || `https://i.ytimg.com/vi/${vid.videoId}/hqdefault.jpg`,
+      thumbnail: vid.thumbnail || `https://i.ytimg.com/vi/${vid.videoId}/hqdefault.jpg`,
       provider: 'youtube',
       videoId: vid.videoId,
       videoUrl: `https://www.youtube.com/embed/${vid.videoId}`,
       currentVideoTitle: vid.title,
       viewerCount: Math.floor(Math.random() * 25000) + 5000,
       isLive: vid.isLive || false,
+      durationSeconds: 0,
       tags: ['video', 'ondemand', 'youtube']
     };
 
@@ -808,7 +810,7 @@ export default function ChannelSearch() {
                 style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
               >
                 {/* Thumbnail con Botón Play y Live */}
-                <div className="video-thumb-wrap" onClick={() => handlePlayVideo(vid)}>
+                <div className="video-thumb-wrap" onClick={() => setActiveModalVideo(vid)}>
                   <img
                     src={vid.thumbnail || `https://i.ytimg.com/vi/${vid.videoId}/hqdefault.jpg`}
                     alt={vid.title}
@@ -832,7 +834,7 @@ export default function ChannelSearch() {
 
                 {/* Info del Video */}
                 <div className="video-info-content">
-                  <h4 className="video-title-heading" title={vid.title} onClick={() => handlePlayVideo(vid)}>
+                  <h4 className="video-title-heading" title={vid.title} onClick={() => setActiveModalVideo(vid)}>
                     {vid.title}
                   </h4>
 
@@ -848,11 +850,20 @@ export default function ChannelSearch() {
                   <div className="video-card-actions">
                     <button
                       className="btn-play-video-direct"
-                      onClick={() => handlePlayVideo(vid)}
-                      title="Reproducir este video ahora"
+                      onClick={() => setActiveModalVideo(vid)}
+                      title="Reproducir este video aquí"
                     >
                       <Play size={14} fill="currentColor" />
-                      <span>Reproducir</span>
+                      <span>Ver Aquí</span>
+                    </button>
+
+                    <button
+                      className="btn-tune-in"
+                      onClick={() => handlePlayVideo(vid)}
+                      title="Sintonizar en Modo TV Pantalla Completa"
+                    >
+                      <Tv size={14} />
+                      <span>Ver en TV</span>
                     </button>
 
                     <button
@@ -863,16 +874,6 @@ export default function ChannelSearch() {
                       <Plus size={14} />
                       <span>Guardar</span>
                     </button>
-
-                    <a
-                      href={vid.videoUrl ? `https://youtube.com/watch?v=${vid.videoId}` : '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-open-yt-small"
-                      title="Ver en YouTube"
-                    >
-                      <ExternalLink size={14} />
-                    </a>
                   </div>
                 </div>
               </article>
@@ -906,6 +907,76 @@ export default function ChannelSearch() {
           </button>
         )}
       </main>
+
+      {/* ════════════════════ MODAL REPRODUCTOR DE VIDEO DIRECTO ══════════════ */}
+      {activeModalVideo && (
+        <div className="video-player-modal-backdrop" onClick={() => setActiveModalVideo(null)}>
+          <div className="video-player-modal-dialog" onClick={e => e.stopPropagation()}>
+            <div className="video-player-modal-topbar">
+              <div className="video-modal-tag">
+                <span className="modal-live-dot" />
+                <span>REPRODUCIENDO ON-DEMAND</span>
+              </div>
+              <button className="video-modal-close" onClick={() => setActiveModalVideo(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="video-modal-iframe-container">
+              <iframe
+                src={`https://www.youtube.com/embed/${activeModalVideo.videoId}?autoplay=1&controls=1&rel=0&playsinline=1`}
+                title={activeModalVideo.title}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowFullScreen
+                className="video-modal-iframe"
+              />
+            </div>
+
+            <div className="video-modal-info-panel">
+              <h3 className="video-modal-title">{activeModalVideo.title}</h3>
+              <p className="video-modal-author">Canal: {activeModalVideo.channelTitle}</p>
+              {activeModalVideo.description && (
+                <p className="video-modal-desc">{activeModalVideo.description}</p>
+              )}
+
+              <div className="video-modal-footer-btns">
+                <button
+                  className="btn-modal-tune-tv"
+                  onClick={() => {
+                    const vid = activeModalVideo;
+                    setActiveModalVideo(null);
+                    handlePlayVideo(vid);
+                  }}
+                >
+                  <Tv size={16} />
+                  <span>Sintonizar en Pantalla Completa (TV)</span>
+                </button>
+
+                <button
+                  className="btn-modal-add-signal"
+                  onClick={() => {
+                    handleAddVideoToSignal(activeModalVideo);
+                  }}
+                >
+                  <Plus size={16} />
+                  <span>Guardar en Mi Señal</span>
+                </button>
+
+                <a
+                  href={`https://www.youtube.com/watch?v=${activeModalVideo.videoId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-modal-open-yt"
+                >
+                  <ExternalLink size={16} />
+                  <span>Abrir en YouTube</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ════════════════════ TOAST DE NOTIFICACIÓN ══════════════════════════ */}
       {toastMessage && (
@@ -2090,6 +2161,198 @@ export default function ChannelSearch() {
           .search-submit-btn {
             padding: 0 14px;
           }
+        }
+
+        /* ── MODAL REPRODUCTOR DE VIDEO DIRECTO ───────────────────────────────── */
+        .video-player-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 999;
+          background: rgba(4, 3, 10, 0.88);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes modalFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .video-player-modal-dialog {
+          position: relative;
+          width: 100%;
+          max-width: 820px;
+          max-height: 90vh;
+          background: #0d0b1a;
+          border: 1px solid rgba(0, 240, 255, 0.35);
+          border-radius: 24px;
+          overflow: hidden;
+          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(0, 240, 255, 0.2);
+          display: flex;
+          flex-direction: column;
+          animation: dialogPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes dialogPop {
+          from { opacity: 0; transform: scale(0.92) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .video-player-modal-topbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 20px;
+          background: rgba(14, 12, 28, 0.9);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .video-modal-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #00f0ff;
+          font-size: 0.78rem;
+          font-weight: 800;
+          letter-spacing: 0.8px;
+        }
+        .modal-live-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #00f0ff;
+          box-shadow: 0 0 10px #00f0ff;
+          animation: pulseDot 1.5s infinite;
+        }
+        .video-modal-close {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: #ffffff;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .video-modal-close:hover {
+          background: rgba(239, 68, 68, 0.3);
+          border-color: #ef4444;
+          color: #ef4444;
+          transform: rotate(90deg);
+        }
+
+        .video-modal-iframe-container {
+          position: relative;
+          width: 100%;
+          padding-top: 56.25%; /* 16:9 Aspect Ratio */
+          background: #000;
+        }
+        .video-modal-iframe {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+
+        .video-modal-info-panel {
+          padding: 18px 22px 22px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          background: #0d0b1a;
+        }
+        .video-modal-title {
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: #ffffff;
+          line-height: 1.4;
+          margin: 0;
+        }
+        .video-modal-author {
+          font-size: 0.88rem;
+          color: #00f0ff;
+          font-weight: 600;
+          margin: 0;
+        }
+        .video-modal-desc {
+          font-size: 0.82rem;
+          color: rgba(255, 255, 255, 0.65);
+          line-height: 1.5;
+          margin: 0;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .video-modal-footer-btns {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 6px;
+          flex-wrap: wrap;
+        }
+        .btn-modal-tune-tv {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: linear-gradient(135deg, #00f0ff 0%, #7928ca 100%);
+          border: none;
+          color: #ffffff;
+          font-size: 0.88rem;
+          font-weight: 700;
+          padding: 10px 18px;
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 4px 18px rgba(0, 240, 255, 0.35);
+        }
+        .btn-modal-tune-tv:hover {
+          filter: brightness(1.15);
+          transform: translateY(-1px);
+        }
+        .btn-modal-add-signal {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          color: #ffffff;
+          font-size: 0.88rem;
+          font-weight: 600;
+          padding: 10px 16px;
+          border-radius: 14px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-modal-add-signal:hover {
+          background: rgba(0, 240, 255, 0.15);
+          border-color: #00f0ff;
+          color: #00f0ff;
+        }
+        .btn-modal-open-yt {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 0, 85, 0.12);
+          border: 1px solid rgba(255, 0, 85, 0.3);
+          color: #ff3366;
+          font-size: 0.85rem;
+          font-weight: 600;
+          padding: 10px 14px;
+          border-radius: 14px;
+          text-decoration: none;
+          transition: all 0.2s;
+        }
+        .btn-modal-open-yt:hover {
+          background: rgba(255, 0, 85, 0.25);
+          color: #ffffff;
         }
       `}</style>
     </div>

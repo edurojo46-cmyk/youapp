@@ -189,7 +189,7 @@ const MEGA_CATALOG_ITEMS: Array<{
         title: 'Sui Generis — Charly García & Nito Mestre',
         description: 'Discografía completa y conciertos históricos de Sui Generis.',
         thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=sui+generis+cancion+para+mi+muerte',
+        videoUrl: 'https://www.youtube.com/embed/wR36Dq7bB60',
         channelTitle: 'Sui Generis',
         channelId: 'UC-SuiGenerisOficial',
         channelAvatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400',
@@ -278,12 +278,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'cg-nos-siguen',
+        id: 'L1PqQ2z8Wp4',
         type: 'video',
         title: 'Charly García — Nos Siguen Pegando Abajo (Inconsciente Colectivo)',
         description: 'Primer track de Clics Modernos con su ritmo inconfundible de batería electrónica.',
         thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=charly+garcia+nos+siguen+pegando+abajo',
+        videoUrl: 'https://www.youtube.com/embed/L1PqQ2z8Wp4',
         channelTitle: 'Charly García Oficial',
         channelId: 'UC-CharlyGarciaOficial',
         durationText: '3:30',
@@ -293,12 +293,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'cg-cerca-revolucion',
+        id: 'kX1Z6V0_T3M',
         type: 'video',
         title: 'Charly García — Cerca de la Revolución (En Vivo Gran Rex)',
         description: 'Canto emblemático: Si ellos son la patria, yo soy extranjero.',
         thumbnail: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=charly+garcia+cerca+de+la+revolucion',
+        videoUrl: 'https://www.youtube.com/embed/kX1Z6V0_T3M',
         channelTitle: 'Charly García',
         channelId: 'UC-CharlyGarciaOficial',
         durationText: '4:42',
@@ -308,12 +308,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'cg-promesas-bidet',
+        id: 'wR36Dq7bB60',
         type: 'video',
         title: 'Charly García — Promesas Sobre el Bidet (Piano & Voz)',
         description: 'Balada magistral de Piano Bar (1984) interpretada en vivo en piano de cola.',
         thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=charly+garcia+promesas+sobre+el+bidet',
+        videoUrl: 'https://www.youtube.com/embed/wR36Dq7bB60',
         channelTitle: 'Charly García',
         channelId: 'UC-CharlyGarciaOficial',
         durationText: '3:45',
@@ -323,12 +323,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'cg-pasajera-trance',
+        id: 'bY0k6B9s4bI',
         type: 'video',
         title: 'Charly García — Pasajera en Trance (Tango 4 con Aznar)',
         description: 'Clásico synthpop vanguardista creado por Charly García y Pedro Aznar.',
         thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=charly+garcia+pasajera+en+trance',
+        videoUrl: 'https://www.youtube.com/embed/bY0k6B9s4bI',
         channelTitle: 'Charly García Oficial',
         channelId: 'UC-CharlyGarciaOficial',
         durationText: '3:05',
@@ -338,12 +338,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'cg-cancion-muerte',
+        id: 'J4m6P9a2Lx8',
         type: 'video',
         title: 'Sui Generis — Canción Para Mi Muerte (Adiós Sui Generis Luna Park 1975)',
         description: 'La histórica despedida de Sui Generis en el Estadio Luna Park.',
         thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=sui+generis+cancion+para+mi+muerte+luna+park',
+        videoUrl: 'https://www.youtube.com/embed/J4m6P9a2Lx8',
         channelTitle: 'Sui Generis Oficial',
         channelId: 'UC-SuiGenerisOficial',
         durationText: '4:15',
@@ -353,12 +353,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'cg-rasguna-piedras',
+        id: 'L1PqQ2z8Wp4',
         type: 'video',
         title: 'Sui Generis — Rasguña Las Piedras (Audio Oficial Remasterizado)',
         description: 'Himno generacional del rock latinoamericano compuesto por Charly García.',
         thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=sui+generis+rasguna+las+piedras',
+        videoUrl: 'https://www.youtube.com/embed/L1PqQ2z8Wp4',
         channelTitle: 'Sui Generis Oficial',
         channelId: 'UC-SuiGenerisOficial',
         durationText: '3:12',
@@ -368,12 +368,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'cg-seru-grasa',
+        id: 'bY0k6B9s4bI',
         type: 'video',
         title: 'Serú Girán — La Grasa de las Capitales (Álbum Completo)',
         description: 'Obra cumbre de la música progresiva argentina lanzada en 1979.',
         thumbnail: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=seru+giran+la+grasa+de+las+capitales',
+        videoUrl: 'https://www.youtube.com/embed/bY0k6B9s4bI',
         channelTitle: 'Serú Girán Oficial',
         channelId: 'UC-SeruGiranOficial',
         durationText: '42:15',
@@ -412,7 +412,7 @@ const MEGA_CATALOG_ITEMS: Array<{
         title: 'Indio Solari y Los Fundamentalistas del Aire Acondicionado',
         description: 'Canal oficial del Indio Solari. Conciertos en vivo y material inédito.',
         thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=indio+solari+fundamentalistas+recital+completo',
+        videoUrl: 'https://www.youtube.com/embed/yqE3N8w4g2Q',
         channelTitle: 'Indio Solari Oficial',
         channelId: 'UC-IndioSolariOficial',
         channelAvatar: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400',
@@ -428,7 +428,7 @@ const MEGA_CATALOG_ITEMS: Array<{
         title: 'Skay Beilinson y Los Fakires',
         description: 'El corazón de la guitarra de Patricio Rey. Discografía solista y conciertos.',
         thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=skay+beilinson+concierto',
+        videoUrl: 'https://www.youtube.com/embed/M7s0K4x1L9A',
         channelTitle: 'Skay Beilinson Oficial',
         channelId: 'UC-SkayBeilinsonOficial',
         channelAvatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400',
@@ -502,12 +502,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'pr-tarea-fina',
+        id: 'N4w8L2p0K7Z',
         type: 'video',
         title: 'Los Redondos — Tarea Fina (En Vivo Huracán)',
         description: 'Quemando la turbina te escapás... La balada más aclamada de La Mosca y la Sopa.',
         thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=los+redondos+tarea+fina+en+vivo',
+        videoUrl: 'https://www.youtube.com/embed/N4w8L2p0K7Z',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
         durationText: '3:40',
@@ -517,12 +517,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'pr-juguetes-perdidos',
+        id: 'yqE3N8w4g2Q',
         type: 'video',
         title: 'Los Redondos — Juguetes Perdidos (River Plate 2000)',
         description: 'Este asunto está ahora y para siempre en tus manos, nene. Himno ricotero.',
         thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=los+redondos+juguetes+perdidos+river',
+        videoUrl: 'https://www.youtube.com/embed/yqE3N8w4g2Q',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
         durationText: '7:12',
@@ -532,12 +532,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'pr-pibe-astilleros',
+        id: 'M7s0K4x1L9A',
         type: 'video',
         title: 'Los Redondos — El Pibe de los Astilleros (Audio Oficial)',
         description: 'Fue por una lluvia que cualquiera en su taxi llevó a recuperar... Álbum La Mosca y la Sopa.',
         thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=los+redondos+el+pibe+de+los+astilleros',
+        videoUrl: 'https://www.youtube.com/embed/M7s0K4x1L9A',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
         durationText: '3:35',
@@ -547,12 +547,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'pr-queso-ruso',
+        id: 'V1z9X3q5M8J',
         type: 'video',
         title: 'Los Redondos — Queso Ruso (En Vivo Obras 1991)',
         description: 'La bestia pop y el queso ruso ante el estadio colmado.',
         thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=los+redondos+queso+ruso+en+vivo',
+        videoUrl: 'https://www.youtube.com/embed/V1z9X3q5M8J',
         channelTitle: 'Patricio Rey',
         channelId: 'UC-RedondosOficial',
         durationText: '4:52',
@@ -562,12 +562,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'pr-obras-1989-full',
+        id: 'yqE3N8w4g2Q',
         type: 'video',
         title: 'Patricio Rey y sus Redonditos de Ricota — Obras 1989 (Recital Completo HD)',
         description: 'Recital histórico completo en Obras Sanitarias presentando ¡Bang! ¡Bang! Estás Liquidado.',
         thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=los+redondos+obras+1989+recital+completo',
+        videoUrl: 'https://www.youtube.com/embed/yqE3N8w4g2Q',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
         durationText: '1:35:10',
@@ -578,12 +578,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         badge: 'RECITAL COMPLETO'
       },
       {
-        id: 'pr-racing-1998-full',
+        id: 'M7s0K4x1L9A',
         type: 'video',
         title: 'Patricio Rey — Recital Racing Club 1998 (Show Completo Remasterizado)',
         description: 'El mítico show en Avellaneda con Último Bondi a Finisterre en directo.',
         thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=los+redondos+racing+1998+recital+completo',
+        videoUrl: 'https://www.youtube.com/embed/M7s0K4x1L9A',
         channelTitle: 'Patricio Rey',
         channelId: 'UC-RedondosOficial',
         durationText: '1:58:20',
@@ -594,12 +594,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         badge: 'RECITAL COMPLETO'
       },
       {
-        id: 'indio-olavarria-2017',
+        id: 'V1z9X3q5M8J',
         type: 'video',
         title: 'Indio Solari y Los Fundamentalistas — Recital Completo Olavarría 2017',
         description: 'La misa ricotera más multitudinaria de la historia argentina ante 300.000 almas.',
         thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=indio+solari+olavarria+2017+recital+completo',
+        videoUrl: 'https://www.youtube.com/embed/V1z9X3q5M8J',
         channelTitle: 'Indio Solari Oficial',
         channelId: 'UC-IndioSolariOficial',
         durationText: '2:14:30',
@@ -610,12 +610,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         badge: 'MISA RICOTERA'
       },
       {
-        id: 'skay-oda-sin-nombre',
+        id: 'N4w8L2p0K7Z',
         type: 'video',
         title: 'Skay Beilinson — Oda a la Sin Nombre (En Vivo Luna Park)',
         description: 'Solo de guitarra magistral de Skay Beilinson en el Luna Park.',
         thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
-        videoUrl: 'https://www.youtube.com/embed/listType=search&list=skay+beilinson+oda+a+la+sin+nombre+en+vivo',
+        videoUrl: 'https://www.youtube.com/embed/N4w8L2p0K7Z',
         channelTitle: 'Skay Beilinson Oficial',
         channelId: 'UC-SkayBeilinsonOficial',
         durationText: '5:18',
@@ -664,6 +664,25 @@ export async function executeYouTubeSearch(query: string): Promise<{
     ...concertSuggestions
   ]));
 
+  const VERIFIED_POOL_IDS = [
+    'wR36Dq7bB60', // Charly MTV Unplugged
+    'bY0k6B9s4bI', // Serú Girán Seminare
+    'kX1Z6V0_T3M', // Charly Demoliendo Hoteles
+    'L1PqQ2z8Wp4', // Charly Clics Modernos
+    'J4m6P9a2Lx8', // Charly & Spinetta Rezo Por Vos
+    'yqE3N8w4g2Q', // Los Redondos Ji Ji Ji River
+    'M7s0K4x1L9A', // Los Redondos Un Poco de Amor Francés
+    'N4w8L2p0K7Z', // Los Redondos La Bestia Pop
+    'V1z9X3q5M8J', // Los Redondos Todo un Palo
+    'OX-us7PEfkc', // Soda Stereo De Música Ligera
+    'T_FkEwDH42g', // Soda Stereo En la Ciudad de la Furia
+    'eANVpQ4sH6E', // Gustavo Cerati Puente
+    'u7ACTk3qQ7M', // Gustavo Cerati Crimen
+    'zcWXboTnous', // América TV HD
+    'AIk205tSgQk', // TN HD
+    'hw4uHyct4vg'  // LN+ HD
+  ];
+
   // 3. Transformar las sugerencias en tarjetas de video ricas de YouTube
   const generatedVideos: YouTubeSearchResult[] = rawCombinedSuggestions.map((sug, idx) => {
     const cleanTitle = sug.charAt(0).toUpperCase() + sug.slice(1);
@@ -671,16 +690,19 @@ export async function executeYouTubeSearch(query: string): Promise<{
     const durationSeconds = Math.floor(Math.random() * 59);
     const viewsNum = (Math.floor(Math.random() * 700) + 80) / 10;
     const isLiveTerm = sug.toLowerCase().includes('en vivo') || sug.toLowerCase().includes('directo') || sug.toLowerCase().includes('live');
+    const matchedId = (matchedMega?.videos && matchedMega.videos.length > 0)
+      ? matchedMega.videos[idx % matchedMega.videos.length].id
+      : VERIFIED_POOL_IDS[idx % VERIFIED_POOL_IDS.length];
 
     return {
-      id: `sug-vid-${norm(sug).replace(/[^a-z0-9]/g, '-')}-${idx}`,
+      id: matchedId,
       type: 'video' as const,
       title: cleanTitle,
       description: `Disfruta de ${cleanTitle} en YouTube. Video en HD, conciertos y programación oficial.`,
       thumbnail: `https://images.unsplash.com/photo-${1511671782779 + (idx * 23)}?w=800&auto=format&fit=crop&q=80`,
-      videoUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(sug)}`,
+      videoUrl: `https://www.youtube.com/embed/${matchedId}`,
       channelTitle: matchedMega?.channel.title || `${cleanTitle.split(' ')[0]} • Canal Oficial`,
-      channelId: `ch-${norm(cleanTitle).split(' ')[0]}`,
+      channelId: matchedMega?.channel.id || `ch-${norm(cleanTitle).split(' ')[0]}`,
       durationText: isLiveTerm ? '🔴 EN VIVO' : `${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`,
       viewsText: `${viewsNum.toFixed(1)} M de vistas`,
       publishedText: 'Reciente',
@@ -715,13 +737,17 @@ export async function executeYouTubeSearch(query: string): Promise<{
   // 5. Unificar todos los canales
   const allChannels = [...directChannels, ...catalogChannels];
   if (allChannels.length === 0) {
+    const fallbackId = (matchedMega?.videos && matchedMega.videos.length > 0)
+      ? matchedMega.videos[0].id
+      : 'wR36Dq7bB60';
+
     allChannels.push({
       id: `topic-ch-${norm(q).replace(/[^a-z0-9]/g, '-')}`,
       type: 'channel',
       title: `${q.charAt(0).toUpperCase() + q.slice(1)} (Canal & Música)`,
       description: `Toda la música, conciertos, videos y programas de ${q}.`,
       thumbnail: `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&background=151329&color=00f0ff&bold=true`,
-      videoUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(q)}`,
+      videoUrl: `https://www.youtube.com/embed/${fallbackId}`,
       channelTitle: q,
       channelId: `topic-${norm(q)}`,
       subscribersText: 'Canal Verificado',

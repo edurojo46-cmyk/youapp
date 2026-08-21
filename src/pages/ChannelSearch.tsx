@@ -652,6 +652,15 @@ export default function ChannelSearch() {
             );
           })}
         </div>
+
+        {/* Indicador de fin de lista completa */}
+        {results.length > 0 && (
+          <div className="results-bottom-status">
+            <div className="status-line" />
+            <span>✓ Mostrando los {results.length} canales encontrados</span>
+            <div className="status-line" />
+          </div>
+        )}
       </main>
 
       {/* ════════════════════ TOAST DE NOTIFICACIÓN ══════════════════════════ */}
@@ -669,7 +678,7 @@ export default function ChannelSearch() {
 
       {/* ════════════════════ ESTILOS YOUAPP DARK NEON ════════════════════════ */}
       <style>{`
-        /* Reset y Contenedor Principal con Scroll Fluido */
+        /* Reset y Contenedor Principal con Scroll Fluido Natural */
         .youapp-search-page {
           min-height: 100vh;
           width: 100%;
@@ -679,7 +688,8 @@ export default function ChannelSearch() {
           display: flex;
           flex-direction: column;
           overflow-x: hidden;
-          overflow-y: auto;
+          overflow-y: visible;
+          -webkit-overflow-scrolling: touch;
           scroll-behavior: smooth;
         }
 
@@ -1426,35 +1436,83 @@ export default function ChannelSearch() {
           filter: brightness(1.2);
         }
 
-        /* ── RESPONSIVE DESIGN ────────────────────────────────────────────────── */
+        /* Indicador de Fin de Resultados */
+        .results-bottom-status {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          margin-top: 36px;
+          padding: 16px;
+          color: rgba(0, 240, 255, 0.7);
+          font-size: 0.88rem;
+          font-weight: 600;
+        }
+        .status-line {
+          flex: 1;
+          height: 1px;
+          background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.25), transparent);
+        }
+
+        /* ── RESPONSIVE DESIGN (MOBILE & TABLET) ──────────────────────────────── */
         @media (max-width: 820px) {
+          .youapp-search-main {
+            padding: 16px 12px 140px;
+          }
           .channel-card-item {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 16px;
-            padding: 18px;
+            display: grid;
+            grid-template-columns: 56px 1fr;
+            gap: 12px;
+            padding: 14px;
+            border-radius: 14px;
           }
           .channel-avatar-column {
-            display: flex;
-            align-items: center;
-            gap: 14px;
+            grid-column: 1;
+            grid-row: 1;
           }
           .avatar-frame {
-            width: 64px;
-            height: 64px;
+            width: 54px;
+            height: 54px;
+            padding: 2px;
+          }
+          .channel-details-column {
+            grid-column: 2;
+            grid-row: 1;
+          }
+          .channel-name-heading {
+            font-size: 1rem;
+          }
+          .channel-description-text {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-size: 0.82rem;
           }
           .channel-actions-column {
+            grid-column: 1 / -1;
+            grid-row: 2;
             width: 100%;
-            justify-content: flex-start;
-            flex-wrap: wrap;
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
           }
           .btn-add-to-signal {
             flex: 1;
+            padding: 8px 12px;
+            font-size: 0.78rem;
             justify-content: center;
           }
           .btn-tune-in {
             flex: 1;
+            padding: 8px 12px;
+            font-size: 0.78rem;
             justify-content: center;
+          }
+          .btn-open-youtube {
+            width: 36px;
+            height: 36px;
+            flex-shrink: 0;
           }
           .search-submit-btn span {
             display: none;

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
 import { fetchYouTubeLiveSuggestions } from '../lib/youtube';
-import { searchYouTubeChannels, resolveChannelPlayable, type YTChannelResult } from '../lib/youtubeChannelSearch';
+import { searchYouTubeChannels, searchYouTubeVideos, resolveChannelPlayable, type YTChannelResult, type YTVideoResult } from '../lib/youtubeChannelSearch';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 
@@ -68,7 +68,9 @@ export default function ChannelSearch() {
   const [hints, setHints] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
 
+  const [searchTab, setSearchTab] = useState<'channels' | 'videos'>('channels');
   const [results, setResults] = useState<YTChannelResult[]>([]);
+  const [videoResults, setVideoResults] = useState<YTVideoResult[]>([]);
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [isLiveSearch, setIsLiveSearch] = useState(true);
 
@@ -98,8 +100,8 @@ export default function ChannelSearch() {
     }
     let active = true;
     const timer = setTimeout(async () => {
-      // Sugerencias de YouTube
-      const yt = await fetchYouTubeLiveSuggestions(query + ' canal');
+      const suffix = searchTab === 'channels' ? ' canal' : '';
+      const yt = await fetchYouTubeLiveSuggestions(query + suffix);
       if (!active) return;
       setHints(yt.filter(s => s.length < 50).slice(0, 6));
     }, 160);
@@ -107,16 +109,16 @@ export default function ChannelSearch() {
       active = false;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, searchTab]);
 
-  // ── Búsqueda de Canales con InnerTube ───────────────────────────────────────
-  const doSearch = useCallback(async (q: string) => {
+  // ── Búsqueda Dual de Canales y Videos ──────────────────────────────────────
+  const doSearch = useCallback(async (q: string, tabOverride?: 'channels' | 'videos') => {
     const trimmed = q.trim();
     if (!trimmed) return;
 
+    const currentTab = tabOverride || searchTab;
     setCommitted(trimmed);
     setStatus('loading');
-    setResults([]);
     setShowDrop(false);
     saveHist(trimmed);
     setHistory(getHist());
@@ -127,42 +129,110 @@ export default function ChannelSearch() {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    try {
-      const ytResults = await searchYouTubeChannels(trimmed, 30);
-      if (ytResults && ytResults.length > 0) {
-        setResults(ytResults);
-        setIsLiveSearch(true);
-        setStatus('done');
-        return;
-      }
-    } catch {
-      // Intento con catálogo local si no hubo conexión
+    if (currentTab === 'channels') {
+      setResults([]);
+      try {
+        const ytResults = await searchYouTubeChannels(trimmed, 30);
+        if (ytResults && ytResults.length > 0) {
+          setResults(ytResults);
+          setIsLiveSearch(true);
+          setStatus('done');
+          return;
+        }
+      } catch {}
+
+      // Fallback local
+      const qLower = trimmed.toLowerCase();
+      const local = UNIVERSAL_CATALOG
+        .filter(ch =>
+          ch.name.toLowerCase().includes(qLower) ||
+          (ch.category && ch.category.toLowerCase().includes(qLower)) ||
+          (ch.description && ch.description.toLowerCase().includes(qLower))
+        )
+        .map((ch): YTChannelResult => ({
+          channelId: ch.channelId || ch.id,
+          name: ch.name,
+          handle: `@${ch.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}`,
+          subscribers: `${Math.round(ch.viewerCount * 6 / 1000)}K suscriptores`,
+          videoCount: 'Canal Oficial',
+          description: ch.description,
+          avatarUrl: ch.avatarUrl,
+          isVerified: true,
+          channelUrl: ch.videoId ? `https://youtube.com/watch?v=${ch.videoId}` : `https://youtube.com/`
+        }));
+
+      setResults(local);
+      setIsLiveSearch(false);
+      setStatus('done');
+    } else {
+      // 🎬 Búsqueda de Videos
+      setVideoResults([]);
+      try {
+        const vResults = await searchYouTubeVideos(trimmed, 30);
+        if (vResults && vResults.length > 0) {
+          setVideoResults(vResults);
+          setStatus('done');
+          return;
+        }
+      } catch {}
+
+      setStatus('done');
     }
+  }, [searchTab]);
 
-    // Fallback local
-    const qLower = trimmed.toLowerCase();
-    const local = UNIVERSAL_CATALOG
-      .filter(ch =>
-        ch.name.toLowerCase().includes(qLower) ||
-        (ch.category && ch.category.toLowerCase().includes(qLower)) ||
-        (ch.description && ch.description.toLowerCase().includes(qLower))
-      )
-      .map((ch): YTChannelResult => ({
-        channelId: ch.channelId || ch.id,
-        name: ch.name,
-        handle: `@${ch.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}`,
-        subscribers: `${Math.round(ch.viewerCount * 6 / 1000)}K suscriptores`,
-        videoCount: 'Canal Oficial',
-        description: ch.description,
-        avatarUrl: ch.avatarUrl,
-        isVerified: true,
-        channelUrl: ch.videoId ? `https://youtube.com/watch?v=${ch.videoId}` : `https://youtube.com/`
-      }));
+  const handleTabChange = (newTab: 'channels' | 'videos') => {
+    setSearchTab(newTab);
+    const targetQ = query.trim() || committed.trim();
+    if (targetQ) {
+      doSearch(targetQ, newTab);
+    }
+  };
 
-    setResults(local);
-    setIsLiveSearch(false);
-    setStatus('done');
-  }, []);
+  const handlePlayVideo = (vid: YTVideoResult) => {
+    const videoChannelPayload: UniversalChannel = {
+      id: `video-${vid.videoId}`,
+      name: vid.channelTitle || 'Video a la Carta',
+      category: '🎬 Video On-Demand',
+      description: vid.title,
+      avatarUrl: vid.thumbnail,
+      thumbnail: vid.thumbnail,
+      provider: 'youtube',
+      videoId: vid.videoId,
+      videoUrl: `https://www.youtube.com/embed/${vid.videoId}`,
+      currentVideoTitle: vid.title,
+      viewerCount: Math.floor(Math.random() * 25000) + 5000,
+      isLive: vid.isLive || false,
+      tags: ['video', 'ondemand', 'youtube']
+    };
+
+    localStorage.setItem('youapp_active_channel_id', videoChannelPayload.id);
+    localStorage.setItem('youapp_tune_channel_payload', JSON.stringify(videoChannelPayload));
+    navigate('/live');
+  };
+
+  const handleAddVideoToSignal = (vid: YTVideoResult) => {
+    const newChannel: UniversalChannel = {
+      id: `video-${vid.videoId}`,
+      name: `${vid.channelTitle || 'Video'}: ${vid.title.slice(0, 30)}...`,
+      category: '🎬 Video Guardado',
+      description: vid.title,
+      avatarUrl: vid.thumbnail,
+      thumbnail: vid.thumbnail,
+      provider: 'youtube',
+      videoId: vid.videoId,
+      videoUrl: `https://www.youtube.com/embed/${vid.videoId}`,
+      currentVideoTitle: vid.title,
+      viewerCount: Math.floor(Math.random() * 25000) + 5000,
+      isLive: vid.isLive || false,
+      tags: ['video', 'guardado', 'youtube']
+    };
+
+    const updated = [newChannel, ...savedChannels];
+    setSavedChannels(updated);
+    localStorage.setItem(SAVED_CHANNELS_KEY, JSON.stringify(updated));
+    setToastMessage(`¡Video "${vid.title.slice(0, 25)}..." guardado en tu señal! 📺`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
 
   // ── Búsqueda por Voz ───────────────────────────────────────────────────────
   const startVoiceSearch = () => {
@@ -283,6 +353,7 @@ export default function ChannelSearch() {
 
     // 2. Establecer como canal activo
     localStorage.setItem('youapp_active_channel_id', targetId);
+    localStorage.setItem('youapp_tune_channel_payload', JSON.stringify(newChannel));
 
     // 3. Navegar a TV en vivo
     navigate('/live');
@@ -307,7 +378,11 @@ export default function ChannelSearch() {
                 ref={inputRef}
                 className="search-main-input"
                 type="text"
-                placeholder="Buscar canales de YouTube (ej. América TV, Prensa Solidaria...)"
+                placeholder={
+                  searchTab === 'channels'
+                    ? 'Buscar canales de YouTube (ej. América TV, Cúneo, Crónica...)'
+                    : 'Buscar videos y programas (ej. Entrevistas, Noticias, Música...)'
+                }
                 value={query}
                 autoComplete="off"
                 onChange={e => {
@@ -339,7 +414,7 @@ export default function ChannelSearch() {
             <button
               className="search-submit-btn"
               onClick={() => doSearch(query)}
-              title="Buscar canales"
+              title={searchTab === 'channels' ? 'Buscar canales' : 'Buscar videos'}
             >
               <Search size={20} />
               <span>Buscar</span>
@@ -444,6 +519,33 @@ export default function ChannelSearch() {
             )}
           </div>
         </div>
+
+        {/* ── SELECTOR DUAL DE PESTAÑAS (CANALES / VIDEOS) ── */}
+        <div className="search-tabs-row">
+          <div className="search-tabs-pill">
+            <button
+              className={`search-tab-btn ${searchTab === 'channels' ? 'active-tab' : ''}`}
+              onClick={() => handleTabChange('channels')}
+            >
+              <Tv size={16} />
+              <span>📺 Canales en Vivo</span>
+              {hasCommitted && status === 'done' && searchTab === 'channels' && (
+                <span className="tab-count-badge">{results.length}</span>
+              )}
+            </button>
+
+            <button
+              className={`search-tab-btn ${searchTab === 'videos' ? 'active-tab' : ''}`}
+              onClick={() => handleTabChange('videos')}
+            >
+              <Play size={15} fill={searchTab === 'videos' ? 'currentColor' : 'none'} />
+              <span>🎬 Videos & Programas</span>
+              {hasCommitted && status === 'done' && searchTab === 'videos' && (
+                <span className="tab-count-badge">{videoResults.length}</span>
+              )}
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* ══════════════════════════ CUERPO PRINCIPAL ═══════════════════════════ */}
@@ -453,11 +555,17 @@ export default function ChannelSearch() {
         {!hasCommitted && status === 'idle' && (
           <div className="search-welcome-state">
             <div className="welcome-glow-icon">
-              <Tv size={48} />
+              {searchTab === 'channels' ? <Tv size={48} /> : <Play size={48} fill="currentColor" />}
             </div>
-            <h2>Buscador de Canales de YouTube</h2>
+            <h2>
+              {searchTab === 'channels'
+                ? 'Buscador de Canales de YouTube'
+                : 'Buscador de Videos & Programas'}
+            </h2>
             <p>
-              Explora cualquier canal de YouTube, agrégalo a tu señal personalizada de YouApp TV y transmítelo en vivo las 24 horas.
+              {searchTab === 'channels'
+                ? 'Explora cualquier canal de YouTube, agrégalo a tu señal personalizada de YouApp TV y transmítelo en vivo las 24 horas.'
+                : 'Busca cualquier video, programa, documental, entrevista o música en YouTube y reprodúcelo al instante en pantalla completa.'}
             </p>
 
             <div className="welcome-quick-pills">
@@ -486,13 +594,17 @@ export default function ChannelSearch() {
             <div className="loading-spinner-wrap">
               <Loader2 size={42} className="spin-animation" />
             </div>
-            <h3>Buscando canales en YouTube...</h3>
+            <h3>
+              {searchTab === 'channels'
+                ? 'Buscando canales en YouTube...'
+                : 'Buscando videos y programas en YouTube...'}
+            </h3>
             <p className="loading-term">"{committed}"</p>
           </div>
         )}
 
-        {/* Barra de Estado de Resultados */}
-        {status === 'done' && results.length > 0 && (
+        {/* ── BARRA DE ESTADO: CANALES ── */}
+        {searchTab === 'channels' && status === 'done' && results.length > 0 && (
           <div className="results-status-banner">
             <div className="banner-left">
               <CheckCircle2 size={16} className="text-neon-cyan" />
@@ -518,12 +630,37 @@ export default function ChannelSearch() {
           </div>
         )}
 
+        {/* ── BARRA DE ESTADO: VIDEOS ── */}
+        {searchTab === 'videos' && status === 'done' && videoResults.length > 0 && (
+          <div className="results-status-banner videos-banner">
+            <div className="banner-left">
+              <CheckCircle2 size={16} className="text-neon-purple" />
+              <span>
+                <strong>{videoResults.length}</strong> videos y programas encontrados para "<strong>{committed}</strong>"
+              </span>
+            </div>
+            <div className="banner-right">
+              <span className="scroll-hint-pill purple" onClick={() => {
+                const el = document.querySelector('.youapp-search-page');
+                if (el) el.scrollBy({ top: 350, behavior: 'smooth' });
+              }}>
+                <span>Desliza para ver todos</span>
+                <ArrowDown size={14} className="bounce-arrow" />
+              </span>
+              <div className="live-source-badge purple-badge">
+                <Play size={12} fill="currentColor" />
+                <span>On-Demand HD</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Sin Resultados */}
-        {status === 'done' && results.length === 0 && (
+        {status === 'done' && ((searchTab === 'channels' && results.length === 0) || (searchTab === 'videos' && videoResults.length === 0)) && (
           <div className="search-empty-state">
             <Search size={54} className="empty-icon" />
-            <h3>No encontramos canales para "{committed}"</h3>
-            <p>Intenta con otro nombre, handle (@...) o categoría.</p>
+            <h3>No encontramos {searchTab === 'channels' ? 'canales' : 'videos'} para "{committed}"</h3>
+            <p>Intenta con otro nombre, palabra clave o tema.</p>
             <div className="pills-flex" style={{ marginTop: '1rem' }}>
               {TRENDING_SUGGESTIONS.slice(0, 5).map(tag => (
                 <button
@@ -541,138 +678,221 @@ export default function ChannelSearch() {
           </div>
         )}
 
-        {/* ════════════════════ LISTA DE CANALES CON SCROLL FLUIDO ═════════════ */}
-        <div className="channels-results-list">
-          {results.map((ch, idx) => {
-            const isAdded = savedChannelIds.has(ch.channelId);
+        {/* ════════════════════ LISTA DE CANALES EN VIVO ═══════════════════════ */}
+        {searchTab === 'channels' && (
+          <div className="channels-results-list">
+            {results.map((ch, idx) => {
+              const isAdded = savedChannelIds.has(ch.channelId);
 
-            return (
+              return (
+                <article
+                  key={`${ch.channelId}-${idx}`}
+                  className={`channel-card-item ${isAdded ? 'is-in-signal' : ''}`}
+                  style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
+                >
+                  {/* Avatar del Canal */}
+                  <div className="channel-avatar-column">
+                    <div className="avatar-frame">
+                      <img
+                        src={
+                          ch.avatarUrl ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(ch.name)}&background=18152e&color=00f0ff&size=120&bold=true`
+                        }
+                        alt={ch.name}
+                        className="channel-avatar-img"
+                        onError={e => {
+                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ch.name)}&background=18152e&color=00f0ff&size=120&bold=true`;
+                        }}
+                      />
+                      <span className="avatar-live-glow" />
+                    </div>
+                  </div>
+
+                  {/* Info Principal */}
+                  <div className="channel-details-column">
+                    <div className="channel-title-row">
+                      <h3 className="channel-name-heading">{ch.name}</h3>
+                      {ch.isVerified && (
+                        <span className="verified-badge-wrap" title="Canal Verificado por YouTube">
+                          <svg viewBox="0 0 24 24" width="16" height="16" className="verified-svg">
+                            <path
+                              fill="currentColor"
+                              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-4-4 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z"
+                            />
+                          </svg>
+                        </span>
+                      )}
+                      {ch.isLiveNow && (
+                        <span className="channel-live-now-tag" title="Emitiendo en Vivo en este momento">
+                          <span className="tag-live-pulse-dot" />
+                          <span>EN DIRECTO</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Metadatos (Handle, Suscriptores, Videos) */}
+                    <div className="channel-stats-row">
+                      <span className="stat-handle">{ch.handle}</span>
+                      {ch.subscribers && (
+                        <>
+                          <span className="stat-separator">•</span>
+                          <span className="stat-subscribers">{ch.subscribers}</span>
+                        </>
+                      )}
+                      {ch.videoCount && (
+                        <>
+                          <span className="stat-separator">•</span>
+                          <span className="stat-videos">{ch.videoCount}</span>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Descripción */}
+                    {ch.description && (
+                      <p className="channel-description-text">{ch.description}</p>
+                    )}
+                  </div>
+
+                  {/* Columna de Acciones */}
+                  <div className="channel-actions-column">
+                    <button
+                      className={`btn-add-to-signal ${isAdded ? 'added' : ''}`}
+                      onClick={() => toggleAddToSignal(ch)}
+                      title={isAdded ? 'Quitar de mi señal' : 'Agregar a mi señal de YouApp TV'}
+                    >
+                      {isAdded ? (
+                        <>
+                          <Check size={16} className="btn-icon-pulse" />
+                          <span>En tu Señal</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus size={16} />
+                          <span>Agregar a la señal</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      className="btn-tune-in"
+                      onClick={() => tuneInDirect(ch)}
+                      title="Ver canal en YouApp TV"
+                    >
+                      <Play size={15} fill="currentColor" />
+                      <span>Ver en Vivo</span>
+                    </button>
+
+                    <a
+                      href={ch.channelUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-open-youtube"
+                      title="Abrir canal en YouTube"
+                    >
+                      <ExternalLink size={16} />
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ════════════════════ LISTA DE VIDEOS & PROGRAMAS ═════════════════════ */}
+        {searchTab === 'videos' && (
+          <div className="videos-results-grid">
+            {videoResults.map((vid, idx) => (
               <article
-                key={`${ch.channelId}-${idx}`}
-                className={`channel-card-item ${isAdded ? 'is-in-signal' : ''}`}
+                key={`${vid.videoId}-${idx}`}
+                className="video-card-item"
                 style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
               >
-                {/* Avatar del Canal */}
-                <div className="channel-avatar-column">
-                  <div className="avatar-frame">
-                    <img
-                      src={
-                        ch.avatarUrl ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(ch.name)}&background=18152e&color=00f0ff&size=120&bold=true`
-                      }
-                      alt={ch.name}
-                      className="channel-avatar-img"
-                      onError={e => {
-                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ch.name)}&background=18152e&color=00f0ff&size=120&bold=true`;
-                      }}
-                    />
-                    <span className="avatar-live-glow" />
+                {/* Thumbnail con Botón Play y Live */}
+                <div className="video-thumb-wrap" onClick={() => handlePlayVideo(vid)}>
+                  <img
+                    src={vid.thumbnail || `https://i.ytimg.com/vi/${vid.videoId}/hqdefault.jpg`}
+                    alt={vid.title}
+                    className="video-thumb-img"
+                    onError={e => {
+                      (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1518770660439-4636190af475?w=600`;
+                    }}
+                  />
+                  <div className="thumb-hover-overlay">
+                    <div className="play-circle-btn">
+                      <Play size={20} fill="#000" />
+                    </div>
                   </div>
-                </div>
-
-                {/* Info Principal */}
-                <div className="channel-details-column">
-                  <div className="channel-title-row">
-                    <h3 className="channel-name-heading">{ch.name}</h3>
-                    {ch.isVerified && (
-                      <span className="verified-badge-wrap" title="Canal Verificado por YouTube">
-                        <svg viewBox="0 0 24 24" width="16" height="16" className="verified-svg">
-                          <path
-                            fill="currentColor"
-                            d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-4-4 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z"
-                          />
-                        </svg>
-                      </span>
-                    )}
-                    {ch.isLiveNow && (
-                      <span className="channel-live-now-tag" title="Emitiendo en Vivo en este momento">
-                        <span className="tag-live-pulse-dot" />
-                        <span>EN DIRECTO</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Metadatos (Handle, Suscriptores, Videos) */}
-                  <div className="channel-stats-row">
-                    <span className="stat-handle">{ch.handle}</span>
-                    {ch.subscribers && (
-                      <>
-                        <span className="stat-separator">•</span>
-                        <span className="stat-subscribers">{ch.subscribers}</span>
-                      </>
-                    )}
-                    {ch.videoCount && (
-                      <>
-                        <span className="stat-separator">•</span>
-                        <span className="stat-videos">{ch.videoCount}</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Descripción */}
-                  {ch.description && (
-                    <p className="channel-description-text">{ch.description}</p>
+                  {vid.isLive && (
+                    <span className="video-live-badge">
+                      <span className="tag-live-pulse-dot" />
+                      <span>EN VIVO</span>
+                    </span>
                   )}
                 </div>
 
-                {/* Columna de Acciones */}
-                <div className="channel-actions-column">
-                  {/* Botón Principal: Agregar a la Señal */}
-                  <button
-                    className={`btn-add-to-signal ${isAdded ? 'added' : ''}`}
-                    onClick={() => toggleAddToSignal(ch)}
-                    title={isAdded ? 'Quitar de mi señal' : 'Agregar a mi señal de YouApp TV'}
-                  >
-                    {isAdded ? (
-                      <>
-                        <Check size={16} className="btn-icon-pulse" />
-                        <span>En tu Señal</span>
-                      </>
-                    ) : (
-                      <>
-                        <Plus size={16} />
-                        <span>Agregar a la señal</span>
-                      </>
-                    )}
-                  </button>
+                {/* Info del Video */}
+                <div className="video-info-content">
+                  <h4 className="video-title-heading" title={vid.title} onClick={() => handlePlayVideo(vid)}>
+                    {vid.title}
+                  </h4>
 
-                  {/* Botón Sintonizar en Vivo */}
-                  <button
-                    className="btn-tune-in"
-                    onClick={() => tuneInDirect(ch)}
-                    title="Ver canal en YouApp TV"
-                  >
-                    <Play size={15} fill="currentColor" />
-                    <span>Ver en Vivo</span>
-                  </button>
+                  <div className="video-channel-row">
+                    <span className="video-channel-name">{vid.channelTitle}</span>
+                  </div>
 
-                  {/* Enlace a YouTube */}
-                  <a
-                    href={ch.channelUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-open-youtube"
-                    title="Abrir canal en YouTube"
-                  >
-                    <ExternalLink size={16} />
-                  </a>
+                  {vid.description && (
+                    <p className="video-desc-snippet">{vid.description}</p>
+                  )}
+
+                  {/* Acciones Rápidas */}
+                  <div className="video-card-actions">
+                    <button
+                      className="btn-play-video-direct"
+                      onClick={() => handlePlayVideo(vid)}
+                      title="Reproducir este video ahora"
+                    >
+                      <Play size={14} fill="currentColor" />
+                      <span>Reproducir</span>
+                    </button>
+
+                    <button
+                      className="btn-save-video-signal"
+                      onClick={() => handleAddVideoToSignal(vid)}
+                      title="Agregar a mi señal personalizada"
+                    >
+                      <Plus size={14} />
+                      <span>Guardar</span>
+                    </button>
+
+                    <a
+                      href={vid.videoUrl ? `https://youtube.com/watch?v=${vid.videoId}` : '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-open-yt-small"
+                      title="Ver en YouTube"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
                 </div>
               </article>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Indicador de fin de lista completa */}
-        {results.length > 0 && (
+        {((searchTab === 'channels' && results.length > 0) || (searchTab === 'videos' && videoResults.length > 0)) && (
           <div className="results-bottom-status">
             <div className="status-line" />
-            <span>✓ Mostrando los {results.length} canales encontrados</span>
+            <span>
+              ✓ Mostrando los {searchTab === 'channels' ? results.length : videoResults.length} resultados encontrados
+            </span>
             <div className="status-line" />
           </div>
         )}
 
         {/* Botón flotante para deslizar hacia abajo */}
-        {results.length > 2 && (
+        {((searchTab === 'channels' && results.length > 2) || (searchTab === 'videos' && videoResults.length > 2)) && (
           <button
             className="floating-scroll-down-btn"
             onClick={() => {
@@ -682,7 +902,7 @@ export default function ChannelSearch() {
             title="Deslizar hacia abajo"
           >
             <ArrowDown size={18} />
-            <span>Ver más ({results.length})</span>
+            <span>Ver más ({searchTab === 'channels' ? results.length : videoResults.length})</span>
           </button>
         )}
       </main>
@@ -718,7 +938,7 @@ export default function ChannelSearch() {
           scroll-behavior: smooth;
         }
 
-        /* Scrollbar Neon-Cyan Súper Visible en Desktop y Móviles */
+        /* Scrollbar Neon-Cyan Súper Visible */
         .youapp-search-page::-webkit-scrollbar {
           width: 12px;
           display: block;
@@ -743,10 +963,10 @@ export default function ChannelSearch() {
           position: sticky;
           top: 0;
           z-index: 300;
-          background: rgba(9, 8, 20, 0.88);
+          background: rgba(9, 8, 20, 0.92);
           backdrop-filter: blur(24px);
           -webkit-backdrop-filter: blur(24px);
-          border-bottom: 1px solid rgba(0, 240, 255, 0.12);
+          border-bottom: 1px solid rgba(0, 240, 255, 0.15);
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
           padding: 12px 20px;
         }
@@ -1017,6 +1237,56 @@ export default function ChannelSearch() {
           color: #00f0ff;
         }
 
+        /* ── SELECTOR DUAL DE PESTAÑAS (CANALES / VIDEOS) ── */
+        .search-tabs-row {
+          max-width: 1060px;
+          margin: 12px auto 0;
+          display: flex;
+          justify-content: center;
+        }
+        .search-tabs-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(14, 12, 28, 0.9);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 24px;
+          padding: 4px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+        .search-tab-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: transparent;
+          border: none;
+          color: rgba(255, 255, 255, 0.6);
+          font-size: 0.88rem;
+          font-weight: 600;
+          padding: 8px 18px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          white-space: nowrap;
+        }
+        .search-tab-btn:hover {
+          color: #ffffff;
+          background: rgba(255, 255, 255, 0.06);
+        }
+        .search-tab-btn.active-tab {
+          background: linear-gradient(135deg, #00f0ff 0%, #7928ca 100%);
+          color: #ffffff;
+          box-shadow: 0 4px 16px rgba(0, 240, 255, 0.35);
+        }
+        .tab-count-badge {
+          background: rgba(0, 0, 0, 0.4);
+          color: #ffffff;
+          font-size: 0.72rem;
+          padding: 2px 7px;
+          border-radius: 10px;
+          font-weight: 700;
+        }
+
         /* ── CUERPO Y RESULTADOS ──────────────────────────────────────────────── */
         .youapp-search-main {
           flex: 1;
@@ -1147,6 +1417,9 @@ export default function ChannelSearch() {
         .text-neon-cyan {
           color: #00f0ff;
         }
+        .text-neon-purple {
+          color: #b829ea;
+        }
         .banner-right {
           display: flex;
           align-items: center;
@@ -1171,6 +1444,11 @@ export default function ChannelSearch() {
           background: rgba(0, 240, 255, 0.25);
           transform: translateY(1px);
         }
+        .scroll-hint-pill.purple {
+          background: rgba(184, 41, 234, 0.15);
+          border-color: rgba(184, 41, 234, 0.4);
+          color: #d15eff;
+        }
         .bounce-arrow {
           animation: bounceY 1.4s infinite ease-in-out;
         }
@@ -1190,6 +1468,11 @@ export default function ChannelSearch() {
           border-radius: 12px;
           font-size: 0.75rem;
           font-weight: 600;
+        }
+        .purple-badge {
+          background: rgba(184, 41, 234, 0.15);
+          border-color: rgba(184, 41, 234, 0.35);
+          color: #d15eff;
         }
 
         /* Botón Flotante para deslizar hacia abajo */
@@ -1475,6 +1758,197 @@ export default function ChannelSearch() {
           transform: translateY(-1px);
         }
 
+        /* ── GRID DE VIDEOS ON-DEMAND ── */
+        .videos-results-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 20px;
+        }
+        .video-card-item {
+          background: rgba(15, 13, 30, 0.75);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 18px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+          animation: cardSlideIn 0.35s ease-out both;
+        }
+        .video-card-item:hover {
+          background: rgba(22, 19, 44, 0.95);
+          border-color: rgba(121, 40, 202, 0.4);
+          transform: translateY(-3px);
+          box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 20px rgba(121, 40, 202, 0.2);
+        }
+        .video-thumb-wrap {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          background: #090814;
+          cursor: pointer;
+          overflow: hidden;
+        }
+        .video-thumb-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transition: transform 0.3s ease;
+        }
+        .video-card-item:hover .video-thumb-img {
+          transform: scale(1.05);
+        }
+        .thumb-hover-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.2s ease;
+        }
+        .video-card-item:hover .thumb-hover-overlay {
+          opacity: 1;
+        }
+        .play-circle-btn {
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          background: #00f0ff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 20px #00f0ff;
+          transform: scale(0.9);
+          transition: transform 0.2s ease;
+        }
+        .video-card-item:hover .play-circle-btn {
+          transform: scale(1);
+        }
+        .video-live-badge {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(255, 0, 85, 0.85);
+          backdrop-filter: blur(8px);
+          color: #ffffff;
+          font-size: 0.68rem;
+          font-weight: 800;
+          letter-spacing: 0.6px;
+          padding: 3px 8px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+        .video-info-content {
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+        }
+        .video-title-heading {
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: #ffffff;
+          line-height: 1.4;
+          margin-bottom: 8px;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          cursor: pointer;
+          transition: color 0.15s;
+        }
+        .video-title-heading:hover {
+          color: #00f0ff;
+        }
+        .video-channel-row {
+          display: flex;
+          align-items: center;
+          margin-bottom: 8px;
+        }
+        .video-channel-name {
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: rgba(0, 240, 255, 0.9);
+        }
+        .video-desc-snippet {
+          font-size: 0.78rem;
+          color: rgba(255, 255, 255, 0.55);
+          line-height: 1.4;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          margin-bottom: 14px;
+        }
+        .video-card-actions {
+          margin-top: auto;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding-top: 10px;
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .btn-play-video-direct {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          background: linear-gradient(135deg, #7928ca 0%, #ff0080 100%);
+          border: none;
+          color: #ffffff;
+          font-size: 0.82rem;
+          font-weight: 700;
+          padding: 8px 14px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 4px 14px rgba(121, 40, 202, 0.3);
+        }
+        .btn-play-video-direct:hover {
+          filter: brightness(1.15);
+          transform: translateY(-1px);
+        }
+        .btn-save-video-signal {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #e2e8f0;
+          font-size: 0.78rem;
+          font-weight: 600;
+          padding: 8px 12px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-save-video-signal:hover {
+          background: rgba(0, 240, 255, 0.12);
+          border-color: #00f0ff;
+          color: #00f0ff;
+        }
+        .btn-open-yt-small {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.06);
+          color: rgba(255, 255, 255, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          transition: all 0.15s;
+        }
+        .btn-open-yt-small:hover {
+          background: rgba(255, 0, 0, 0.2);
+          color: #ff3333;
+        }
+
         /* ── TOAST NOTIFICATION ───────────────────────────────────────────────── */
         .youapp-toast-alert {
           position: fixed;
@@ -1550,6 +2024,10 @@ export default function ChannelSearch() {
         @media (max-width: 820px) {
           .youapp-search-main {
             padding: 16px 12px 140px;
+          }
+          .videos-results-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
           }
           .channel-card-item {
             display: grid;

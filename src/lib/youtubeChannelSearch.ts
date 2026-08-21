@@ -23,6 +23,18 @@ export interface YTChannelResult {
   isLiveNow?: boolean;
 }
 
+export interface YTVideoResult {
+  videoId: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  channelTitle: string;
+  channelId: string;
+  publishedAt: string;
+  videoUrl: string;
+  isLive?: boolean;
+}
+
 export interface ChannelPlayableInfo {
   videoId: string;
   videoUrl: string;
@@ -321,4 +333,93 @@ function parseChannelRenderer(r: any): YTChannelResult | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Busca videos y programas de YouTube con soporte garantizado
+ */
+export async function searchYouTubeVideos(
+  query: string,
+  limit = 20
+): Promise<YTVideoResult[]> {
+  if (!query || !query.trim()) return [];
+  const q = query.trim();
+
+  // 1. Google YouTube Data API v3
+  try {
+    const apiKey = getApiKey();
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(q)}&maxResults=${limit}&key=${apiKey}`;
+    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(5000) });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.items && data.items.length > 0) {
+        return data.items.map((item: any) => ({
+          videoId: item.id?.videoId || '',
+          title: item.snippet?.title || 'Video',
+          description: item.snippet?.description || '',
+          thumbnail: item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.default?.url || '',
+          channelTitle: item.snippet?.channelTitle || 'Canal',
+          channelId: item.snippet?.channelId || '',
+          publishedAt: item.snippet?.publishedAt || '',
+          videoUrl: `https://www.youtube.com/embed/${item.id?.videoId}`,
+          isLive: item.snippet?.liveBroadcastContent === 'live'
+        })).filter((v: YTVideoResult) => Boolean(v.videoId));
+      }
+    }
+  } catch (err) {
+    console.warn('[searchYouTubeVideos] Google API fallback:', err);
+  }
+
+  // 2. Intento Secundario (Proxy Local Vite para desarrollo)
+  try {
+    const rawData = await fetch('/api/youtubei/v1/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context: { client: { clientName: 'WEB', clientVersion: '2.20231201.00.00', hl: 'es', gl: 'AR' } },
+        query: q,
+        params: 'EgIQAQ%3D%3D'
+      }),
+      signal: AbortSignal.timeout(4000)
+    }).then(r => r.json());
+
+    const videoRenderers = findVideoRenderers(rawData);
+    if (videoRenderers.length > 0) {
+      return videoRenderers.slice(0, limit).map((vr: any) => ({
+        videoId: vr.videoId,
+        title: vr.title?.runs?.[0]?.text || vr.title?.simpleText || 'Video',
+        description: vr.detailedMetadataSnippets?.[0]?.snippetText?.runs?.[0]?.text || '',
+        thumbnail: vr.thumbnail?.thumbnails?.slice(-1)[0]?.url || '',
+        channelTitle: vr.ownerText?.runs?.[0]?.text || vr.shortBylineText?.runs?.[0]?.text || '',
+        channelId: vr.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId || '',
+        publishedAt: vr.publishedTimeText?.simpleText || '',
+        videoUrl: `https://www.youtube.com/embed/${vr.videoId}`,
+        isLive: Boolean(vr.badges?.some((b: any) => b.metadataBadgeRenderer?.label?.toLowerCase().includes('live') || b.metadataBadgeRenderer?.label?.toLowerCase().includes('vivo')))
+      })).filter((v: YTVideoResult) => Boolean(v.videoId));
+    }
+  } catch {}
+
+  return [];
+}
+
+/**
+ * Busca recursivamente todos los videoRenderer en InnerTube
+ */
+function findVideoRenderers(obj: any, results: any[] = []): any[] {
+  if (!obj || typeof obj !== 'object') return results;
+  if (obj.videoRenderer) {
+    results.push(obj.videoRenderer);
+  }
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (Array.isArray(val)) {
+      for (let i = 0; i < val.length; i++) {
+        findVideoRenderers(val[i], results);
+      }
+    } else if (val && typeof val === 'object') {
+      findVideoRenderers(val, results);
+    }
+  }
+  return results;
 }

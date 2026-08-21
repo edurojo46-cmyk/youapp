@@ -51,26 +51,26 @@ const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds 
   const vid = extractYouTubeId(inputUrl);
   if (!vid) return inputUrl;
 
-  // Extraer cola de videos existente si la tiene (ej. playlist=id1,id2,id3)
-  const playlistMatch = inputUrl.match(/playlist=([^&#?]+)/);
-  let playlistValue = vid;
-  if (playlistMatch && playlistMatch[1]) {
-    const rawList = decodeURIComponent(playlistMatch[1]).split(',').filter(Boolean);
-    const otherIds = rawList.filter(id => id !== vid);
-    playlistValue = otherIds.length > 0 ? otherIds.join(',') : vid;
-  }
-
   const baseUrl = `https://www.youtube.com/embed/${vid}`;
   const params = new URLSearchParams({
     autoplay: '1',
     mute: isMuted ? '1' : '0',
     controls: '1',
     rel: '0',
-    loop: '1',
-    playlist: playlistValue,
     playsinline: '1',
     enablejsapi: '1'
   });
+
+  // Solo adjuntar cola de playlist si hay videos adicionales diferentes al principal
+  const playlistMatch = inputUrl.match(/playlist=([^&#?]+)/);
+  if (playlistMatch && playlistMatch[1]) {
+    const rawList = decodeURIComponent(playlistMatch[1]).split(',').filter(Boolean);
+    const otherIds = rawList.filter(id => id !== vid);
+    if (otherIds.length > 0) {
+      params.set('playlist', otherIds.join(','));
+      params.set('loop', '1');
+    }
+  }
 
   try {
     if (typeof window !== 'undefined' && window.location.origin) {

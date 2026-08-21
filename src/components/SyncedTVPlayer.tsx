@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { VolumeX, Volume2, Radio, Play } from 'lucide-react';
 import Hls from 'hls.js';
+import OfflineTVChannel from './OfflineTVChannel';
 
 interface SyncedTVPlayerProps {
   url: string;
@@ -99,6 +100,21 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerId = useRef(`yt-container-${Math.floor(Math.random() * 100000)}`).current;
   const [needsUserTap, setNeedsUserTap] = useState(false);
+  const [isOffline, setIsOffline] = useState(() => (typeof navigator !== 'undefined' ? !navigator.onLine : false));
+
+  // Escuchar estado de red en tiempo real
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const isOfflineSignal = isOffline || url === 'youapp-offline-signal' || url === 'offline' || url.includes('offline-signal');
 
   const isDirect = isDirectVideo(url);
 
@@ -259,6 +275,18 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     const s = sec % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
+
+  if (isOfflineSignal) {
+    return (
+      <div className="synced-player-container">
+        <OfflineTVChannel
+          channelName={channelName}
+          onReconnect={() => setIsOffline(false)}
+          isMuted={isMuted}
+        />
+      </div>
+    );
+  }
 
   if (!url) {
     return (

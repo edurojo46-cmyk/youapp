@@ -25,6 +25,21 @@ export interface UniversalChannel {
 // CATÁLOGO UNIVERSAL BASE (100+ Canales Verificados de TV, Streaming y Música)
 // ------------------------------------------------------------------------------
 export const UNIVERSAL_CATALOG: UniversalChannel[] = [
+  // ── 0. CANAL OFFLINE / MODO SIN DATOS (0 KB / 100% DISPONIBLE) ─────────────
+  {
+    id: 'ch-offline-mode',
+    name: 'YouApp Offline (Sin Datos)',
+    category: '📡 Modo Sin Conexión',
+    description: 'Visuales generativas Synthwave 60 FPS, sintetizador Lo-Fi relajante y minijuegos 100% offline sin consumir datos móviles.',
+    avatarUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
+    thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
+    provider: 'direct',
+    videoUrl: 'youapp-offline-signal',
+    currentVideoTitle: '📡 Señal YouApp Offline 24/7 — Visuales & Relax',
+    viewerCount: 15400,
+    isLive: true,
+    tags: ['offline', 'sindatos', 'lofi', 'relax', 'arcade', 'juego', 'synthwave', 'sin conexion']
+  },
   // ── 1. TELEVISIÓN & NOTICIAS EN VIVO 24/7 ──────────────────────────────────
   {
     id: 'ch-americatv',

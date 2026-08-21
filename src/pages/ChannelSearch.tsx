@@ -180,19 +180,21 @@ export default function ChannelSearch() {
   };
 
   const handlePlayVideo = (vid: YTVideoResult) => {
-    const effectiveUrl = vid.videoUrl || (vid.videoId && vid.videoId.length === 11
-      ? `https://www.youtube.com/embed/${vid.videoId}`
-      : `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(vid.title)}`);
+    const rawId = (vid.videoId && vid.videoId.length === 11)
+      ? vid.videoId
+      : (vid.videoUrl?.match(/embed\/([^?&#]+)/)?.[1] || 'wR36Dq7bB60');
+
+    const effectiveUrl = `https://www.youtube.com/embed/${rawId}`;
 
     const videoChannelPayload: UniversalChannel = {
-      id: `video-${vid.videoId || Date.now()}`,
+      id: `video-${rawId}-${Date.now()}`,
       name: vid.channelTitle || 'Video a la Carta',
       category: '🎬 Video On-Demand',
       description: vid.title,
       avatarUrl: vid.thumbnail || `https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400`,
       thumbnail: vid.thumbnail || `https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800`,
       provider: 'youtube',
-      videoId: (vid.videoId && vid.videoId.length === 11) ? vid.videoId : undefined,
+      videoId: rawId,
       videoUrl: effectiveUrl,
       currentVideoTitle: vid.title,
       viewerCount: Math.floor(Math.random() * 25000) + 5000,
@@ -944,13 +946,7 @@ export default function ChannelSearch() {
 
             <div className="video-modal-iframe-container">
               <iframe
-                src={
-                  activeModalVideo.videoUrl
-                    ? (activeModalVideo.videoUrl.includes('?') ? `${activeModalVideo.videoUrl}&autoplay=1&playsinline=1` : `${activeModalVideo.videoUrl}?autoplay=1&playsinline=1`)
-                    : (activeModalVideo.videoId && activeModalVideo.videoId.length === 11
-                        ? `https://www.youtube.com/embed/${activeModalVideo.videoId}?autoplay=1&controls=1&rel=0&playsinline=1`
-                        : `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(activeModalVideo.title)}&autoplay=1&controls=1&rel=0&playsinline=1`)
-                }
+                src={`https://www.youtube.com/embed/${(activeModalVideo.videoId && activeModalVideo.videoId.length === 11) ? activeModalVideo.videoId : (activeModalVideo.videoUrl?.match(/embed\/([^?&#]+)/)?.[1] || 'wR36Dq7bB60')}?autoplay=1&controls=1&rel=0&playsinline=1`}
                 title={activeModalVideo.title}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

@@ -3,7 +3,7 @@
  * Limpiador y Forzador de Actualizaciones Inmediatas para YouApp TV (Móviles & Desktop).
  */
 
-export const CURRENT_BUILD_VERSION = 'v6.4.0-20260821-1330';
+export const CURRENT_BUILD_VERSION = 'v6.5.0-20260821-1400';
 const VERSION_STORAGE_KEY = 'youapp_app_installed_version';
 
 /**

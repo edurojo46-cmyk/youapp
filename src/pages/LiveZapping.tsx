@@ -427,9 +427,7 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
         id: ch.id || `channel-${idx + 1}`
       }));
 
-      const finalChannels = uniqueChannels.length > 0 ? uniqueChannels : VERIFIED_24_7_LIVE_CHANNELS;
-      setAllChannels(finalChannels);
-      setFilteredChannels(finalChannels);
+      const finalChannels: any[] = uniqueChannels.length > 0 ? uniqueChannels : VERIFIED_24_7_LIVE_CHANNELS;
 
       // Sintonizar automáticamente el canal seleccionado si venimos de la búsqueda o de la Home
       let targetPayload: any = null;
@@ -439,31 +437,28 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       } catch {}
       const targetChannelId = localStorage.getItem('youapp_active_channel_id');
 
-      let channelsWithTarget = finalChannels;
+      let channelsWithTarget: any[] = finalChannels;
 
       if (targetPayload && targetPayload.videoUrl) {
-        const foundIdx = channelsWithTarget.findIndex(
-          c => c.id === targetPayload.id || c.channelId === targetPayload.channelId || c.videoUrl === targetPayload.videoUrl || (targetPayload.name && c.name && c.name.toLowerCase() === targetPayload.name.toLowerCase())
-        );
-
-        if (foundIdx !== -1) {
-          setActiveIndex(foundIdx);
-        } else {
-          channelsWithTarget = [targetPayload, ...channelsWithTarget];
-          setAllChannels(channelsWithTarget);
-          setFilteredChannels(channelsWithTarget);
-          setActiveIndex(0);
-        }
+        channelsWithTarget = [targetPayload, ...finalChannels.filter((c: any) => c.id !== targetPayload.id && c.videoUrl !== targetPayload.videoUrl)];
+        setAllChannels(channelsWithTarget);
+        setFilteredChannels(channelsWithTarget);
+        setActiveIndex(0);
         localStorage.removeItem('youapp_tune_channel_payload');
         localStorage.removeItem('youapp_active_channel_id');
       } else if (targetChannelId) {
         const foundIdx = channelsWithTarget.findIndex(
-          c => c.id === targetChannelId || c.channelId === targetChannelId || c.id === `custom-yt-${targetChannelId}`
+          (c: any) => c.id === targetChannelId || c.channelId === targetChannelId || c.id === `custom-yt-${targetChannelId}`
         );
+        setAllChannels(channelsWithTarget);
+        setFilteredChannels(channelsWithTarget);
         if (foundIdx !== -1) {
           setActiveIndex(foundIdx);
         }
         localStorage.removeItem('youapp_active_channel_id');
+      } else {
+        setAllChannels(finalChannels);
+        setFilteredChannels(finalChannels);
       }
     } catch (e) {
       console.error(e);

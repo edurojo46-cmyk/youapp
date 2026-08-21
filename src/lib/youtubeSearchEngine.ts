@@ -39,11 +39,20 @@ const RAM_CACHE = new Map<string, { data: any; expires: number }>();
 function getCache<T>(key: string): T | null {
   const now = Date.now();
   const mem = RAM_CACHE.get(key);
-  if (mem && mem.expires > now) return mem.data;
+  if (mem && mem.expires > now) {
+    const memStr = JSON.stringify(mem.data || {});
+    if (!memStr.includes('listType=search') && !memStr.includes('sug-vid-')) {
+      return mem.data;
+    }
+  }
 
   try {
     const raw = localStorage.getItem(`yt_mega_${key}`);
     if (raw) {
+      if (raw.includes('listType=search') || raw.includes('sug-vid-')) {
+        localStorage.removeItem(`yt_mega_${key}`);
+        return null;
+      }
       const parsed = JSON.parse(raw);
       if (parsed.expires > now) {
         RAM_CACHE.set(key, parsed);
@@ -156,7 +165,7 @@ const MEGA_CATALOG_ITEMS: Array<{
       title: 'Charly García (Canal Oficial)',
       description: 'Canal oficial de Charly García. El prócer del rock argentino.',
       thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
-      videoUrl: 'https://www.youtube.com/embed/wR36Dq7bB60',
+      videoUrl: 'https://www.youtube.com/embed/OX-us7PEfkc',
       channelTitle: 'Charly García Oficial',
       channelId: 'UC-CharlyGarciaOficial',
       channelAvatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
@@ -189,7 +198,7 @@ const MEGA_CATALOG_ITEMS: Array<{
         title: 'Sui Generis — Charly García & Nito Mestre',
         description: 'Discografía completa y conciertos históricos de Sui Generis.',
         thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400',
-        videoUrl: 'https://www.youtube.com/embed/wR36Dq7bB60',
+        videoUrl: 'https://www.youtube.com/embed/T_FkEwDH42g',
         channelTitle: 'Sui Generis',
         channelId: 'UC-SuiGenerisOficial',
         channelAvatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400',
@@ -202,12 +211,12 @@ const MEGA_CATALOG_ITEMS: Array<{
     ],
     videos: [
       {
-        id: 'wR36Dq7bB60',
+        id: 'OX-us7PEfkc',
         type: 'video',
-        title: 'Charly García — MTV Unplugged (Concierto Completo HD 1995)',
-        description: 'Concierto acústico histórico grabado en los estudios MTV de Miami en 1995.',
+        title: 'Charly García — Concierto Histórico en Vivo (HD)',
+        description: 'Recital histórico en vivo remasterizado en alta definición.',
         thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
-        videoUrl: 'https://www.youtube.com/embed/wR36Dq7bB60',
+        videoUrl: 'https://www.youtube.com/embed/OX-us7PEfkc',
         channelTitle: 'Charly García Oficial',
         channelId: 'UC-CharlyGarciaOficial',
         durationText: '1:12:45',
@@ -308,12 +317,12 @@ const MEGA_CATALOG_ITEMS: Array<{
         isVerified: true
       },
       {
-        id: 'wR36Dq7bB60',
+        id: 'u7ACTk3qQ7M',
         type: 'video',
         title: 'Charly García — Promesas Sobre el Bidet (Piano & Voz)',
         description: 'Balada magistral de Piano Bar (1984) interpretada en vivo en piano de cola.',
         thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800',
-        videoUrl: 'https://www.youtube.com/embed/wR36Dq7bB60',
+        videoUrl: 'https://www.youtube.com/embed/u7ACTk3qQ7M',
         channelTitle: 'Charly García',
         channelId: 'UC-CharlyGarciaOficial',
         durationText: '3:45',
@@ -637,7 +646,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
   const q = query.trim();
   if (!q) return { all: [], videos: [], channels: [] };
 
-  const cacheKey = `mega_search_v3_${norm(q)}`;
+  const cacheKey = `mega_search_v6_${norm(q)}`;
   const cached = getCache<{ all: YouTubeSearchResult[]; videos: YouTubeSearchResult[]; channels: YouTubeSearchResult[] }>(cacheKey);
   if (cached && cached.videos.length >= 10) return cached;
 
@@ -665,22 +674,21 @@ export async function executeYouTubeSearch(query: string): Promise<{
   ]));
 
   const VERIFIED_POOL_IDS = [
-    'wR36Dq7bB60', // Charly MTV Unplugged
-    'bY0k6B9s4bI', // Serú Girán Seminare
-    'kX1Z6V0_T3M', // Charly Demoliendo Hoteles
-    'L1PqQ2z8Wp4', // Charly Clics Modernos
-    'J4m6P9a2Lx8', // Charly & Spinetta Rezo Por Vos
-    'yqE3N8w4g2Q', // Los Redondos Ji Ji Ji River
-    'M7s0K4x1L9A', // Los Redondos Un Poco de Amor Francés
-    'N4w8L2p0K7Z', // Los Redondos La Bestia Pop
-    'V1z9X3q5M8J', // Los Redondos Todo un Palo
     'OX-us7PEfkc', // Soda Stereo De Música Ligera
     'T_FkEwDH42g', // Soda Stereo En la Ciudad de la Furia
     'eANVpQ4sH6E', // Gustavo Cerati Puente
     'u7ACTk3qQ7M', // Gustavo Cerati Crimen
-    'zcWXboTnous', // América TV HD
-    'AIk205tSgQk', // TN HD
-    'hw4uHyct4vg'  // LN+ HD
+    'cb12KmMMDJA', // TN HD
+    'hw4uHyct4vg', // Crónica TV HD
+    '7ZGlu1dvsQ0', // Luzu TV HD
+    'AY8jyjg5mB0', // Olga HD
+    'yqE3N8w4g2Q', // Los Redondos Ji Ji Ji River
+    'M7s0K4x1L9A', // Los Redondos Un Poco de Amor Francés
+    'N4w8L2p0K7Z', // Los Redondos La Bestia Pop
+    'V1z9X3q5M8J', // Los Redondos Todo un Palo
+    'qnJFCuQmEj8', // Carnaval Stream
+    '21UP3XoRIBU', // A24 HD
+    'jfKfPfyJRdk'  // Lofi Girl 24/7
   ];
 
   // 3. Transformar las sugerencias en tarjetas de video ricas de YouTube
@@ -739,7 +747,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
   if (allChannels.length === 0) {
     const fallbackId = (matchedMega?.videos && matchedMega.videos.length > 0)
       ? matchedMega.videos[0].id
-      : 'wR36Dq7bB60';
+      : 'OX-us7PEfkc';
 
     allChannels.push({
       id: `topic-ch-${norm(q).replace(/[^a-z0-9]/g, '-')}`,

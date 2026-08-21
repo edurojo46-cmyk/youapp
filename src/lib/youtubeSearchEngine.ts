@@ -10,6 +10,7 @@
  */
 
 import { UNIVERSAL_CATALOG, type UniversalChannel } from './universalChannels';
+import { supabase } from './supabase';
 
 export interface YouTubeSearchResult {
   id: string;
@@ -394,6 +395,58 @@ export async function executeYouTubeSearch(query: string): Promise<{
   const cacheKey = `search_v2_${norm(q)}`;
   const cached = getCache<{ all: YouTubeSearchResult[]; videos: YouTubeSearchResult[]; channels: YouTubeSearchResult[] }>(cacheKey);
   if (cached && cached.all.length > 0) return cached;
+
+  // TIER 1: Supabase Edge Function (Búsqueda Real de YouTube en Servidor sin CORS ni Cuotas)
+  try {
+    const { data: edgeData, error: edgeError } = await supabase.functions.invoke('youtube-search', {
+      body: { query: q }
+    });
+
+    if (!edgeError && edgeData && edgeData.success && (edgeData.videos?.length > 0 || edgeData.channels?.length > 0)) {
+      const edgeVideos: YouTubeSearchResult[] = (edgeData.videos || []).map((v: any) => ({
+        id: v.id,
+        type: 'video' as const,
+        title: v.title,
+        description: v.description || '',
+        thumbnail: v.thumbnail || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
+        videoUrl: `https://www.youtube.com/embed/${v.id}`,
+        channelTitle: v.channelTitle || 'Canal',
+        channelId: v.channelId || '',
+        channelAvatar: v.channelAvatar,
+        durationText: v.durationText || '',
+        viewsText: v.viewsText || '',
+        publishedText: v.publishedText || '',
+        isLive: Boolean(v.isLive),
+        isVerified: Boolean(v.isVerified)
+      }));
+
+      const edgeChannels: YouTubeSearchResult[] = (edgeData.channels || []).map((c: any) => ({
+        id: c.id,
+        type: 'channel' as const,
+        title: c.title,
+        description: c.description || '',
+        thumbnail: c.thumbnail || c.channelAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.title)}&background=151329&color=00f0ff`,
+        videoUrl: `https://www.youtube.com/embed/videoseries?list=UU${c.id.replace(/^UC/, '')}`,
+        channelTitle: c.title,
+        channelId: c.id,
+        channelAvatar: c.channelAvatar || c.thumbnail,
+        subscribersText: c.subscribersText || 'Canal Oficial',
+        handle: c.handle,
+        isLive: Boolean(c.isLive),
+        isVerified: Boolean(c.isVerified)
+      }));
+
+      const payload = {
+        all: [...edgeChannels, ...edgeVideos],
+        videos: edgeVideos,
+        channels: edgeChannels
+      };
+      setCache(cacheKey, payload, 14400);
+      return payload;
+    }
+  } catch (err) {
+    console.warn('[youtubeSearchEngine] Supabase Edge Function fallback:', err);
+  }
 
   const qLower = norm(q);
 

@@ -110,7 +110,15 @@ export default function LiveZapping() {
   const [showAmbientModal, setShowAmbientModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showPiP, setShowPiP] = useState(false);
-  const [showQuadView, setShowQuadView] = useState(false);
+  const [showQuadView, setShowQuadView] = useState(() => {
+    try {
+      const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+      const params = new URLSearchParams(window.location.search || hashQuery);
+      return params.get('mode') === 'you4' || params.get('quad') === 'true' || params.get('mode') === 'quad';
+    } catch {
+      return false;
+    }
+  });
   const [isZenMode, setIsZenMode] = useState(false);
   const [isAsleep, setIsAsleep] = useState(false);
 

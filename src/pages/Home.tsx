@@ -366,10 +366,10 @@ export default function Home() {
 
           <button 
             className={`pill-btn ${activePill === 'you4' ? 'active' : ''}`}
-            onClick={() => { setActivePill('you4'); navigate('/live'); }}
+            onClick={() => { setActivePill('you4'); navigate('/live?mode=you4'); }}
           >
             <Zap size={15} color="#e879f9" />
-            <span>YOU4</span>
+            <span>YOU4 (4 en 1)</span>
           </button>
 
           <button 

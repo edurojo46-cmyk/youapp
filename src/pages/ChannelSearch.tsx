@@ -131,53 +131,44 @@ export default function ChannelSearch() {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    if (currentTab === 'channels') {
-      setResults([]);
-      try {
-        const ytResults = await searchYouTubeChannels(trimmed, 30);
-        if (ytResults && ytResults.length > 0) {
-          setResults(ytResults);
-          setIsLiveSearch(true);
-          setStatus('done');
-          return;
-        }
-      } catch {}
+    try {
+      const [chResults, vidResults] = await Promise.all([
+        searchYouTubeChannels(trimmed, 30).catch(() => []),
+        searchYouTubeVideos(trimmed, 30).catch(() => [])
+      ]);
 
-      // Fallback local
-      const qLower = trimmed.toLowerCase();
-      const local = UNIVERSAL_CATALOG
-        .filter(ch =>
-          ch.name.toLowerCase().includes(qLower) ||
-          (ch.category && ch.category.toLowerCase().includes(qLower)) ||
-          (ch.description && ch.description.toLowerCase().includes(qLower))
-        )
-        .map((ch): YTChannelResult => ({
-          channelId: ch.channelId || ch.id,
-          name: ch.name,
-          handle: `@${ch.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}`,
-          subscribers: `${Math.round(ch.viewerCount * 6 / 1000)}K suscriptores`,
-          videoCount: 'Canal Oficial',
-          description: ch.description,
-          avatarUrl: ch.avatarUrl,
-          isVerified: true,
-          channelUrl: ch.videoId ? `https://youtube.com/watch?v=${ch.videoId}` : `https://youtube.com/`
-        }));
+      if (chResults && chResults.length > 0) {
+        setResults(chResults);
+        setIsLiveSearch(true);
+      } else {
+        const qLower = trimmed.toLowerCase();
+        const local = UNIVERSAL_CATALOG
+          .filter(ch =>
+            ch.name.toLowerCase().includes(qLower) ||
+            (ch.category && ch.category.toLowerCase().includes(qLower)) ||
+            (ch.description && ch.description.toLowerCase().includes(qLower))
+          )
+          .map((ch): YTChannelResult => ({
+            channelId: ch.channelId || ch.id,
+            name: ch.name,
+            handle: `@${ch.name.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}`,
+            subscribers: `${Math.round(ch.viewerCount * 6 / 1000)}K suscriptores`,
+            videoCount: 'Canal Oficial',
+            description: ch.description,
+            avatarUrl: ch.avatarUrl,
+            isVerified: true,
+            channelUrl: ch.videoId ? `https://youtube.com/watch?v=${ch.videoId}` : `https://youtube.com/`
+          }));
+        setResults(local);
+        setIsLiveSearch(false);
+      }
 
-      setResults(local);
-      setIsLiveSearch(false);
-      setStatus('done');
-    } else {
-      // 🎬 Búsqueda de Videos
-      setVideoResults([]);
-      try {
-        const vResults = await searchYouTubeVideos(trimmed, 30);
-        if (vResults && vResults.length > 0) {
-          setVideoResults(vResults);
-          setStatus('done');
-          return;
-        }
-      } catch {}
-
+      if (vidResults && vidResults.length > 0) {
+        setVideoResults(vidResults);
+      }
+    } catch (err) {
+      console.warn('[doSearch] Error:', err);
+    } finally {
       setStatus('done');
     }
   }, [searchTab]);

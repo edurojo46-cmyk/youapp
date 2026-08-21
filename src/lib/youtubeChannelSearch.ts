@@ -217,20 +217,29 @@ export async function resolveChannelPlayable(
     console.warn('[resolveChannelPlayable] Recent videos search fallback:', err);
   }
 
-  // 3. PASO 3: Lista de reproducción oficial de subidas (UU...)
-  if (uploadsPlaylistId) {
-    return {
-      videoId: '',
-      videoUrl: `https://www.youtube.com/embed/videoseries?list=${uploadsPlaylistId}`,
-      title: 'Emisión Continua 24/7',
-      isLive: false
-    };
-  }
+  // 3. PASO 3: Búsqueda de video principal del canal por nombre/ID
+  try {
+    const qName = channelName || channelId;
+    const searchFallbackUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(qName)}&type=video&maxResults=5&key=${apiKey}`;
+    const fbRes = await fetch(searchFallbackUrl, { signal: AbortSignal.timeout(4000) });
+    if (fbRes.ok) {
+      const fbData = await fbRes.json();
+      if (fbData.items && fbData.items.length > 0) {
+        const topVid = fbData.items[0];
+        return {
+          videoId: topVid.id?.videoId,
+          videoUrl: `https://www.youtube.com/embed/${topVid.id?.videoId}`,
+          title: topVid.snippet?.title || (channelName ? `Ahora: ${channelName}` : 'Emisión en Vivo'),
+          isLive: false
+        };
+      }
+    }
+  } catch {}
 
   return {
-    videoId: channelId,
-    videoUrl: `https://www.youtube.com/embed/videoseries?list=UU${channelId.replace(/^UC/, '')}`,
-    title: 'Señal en Vivo',
+    videoId: 'hw4uHyct4vg',
+    videoUrl: 'https://www.youtube.com/embed/hw4uHyct4vg',
+    title: channelName || 'Emisión en Vivo',
     isLive: false
   };
 }

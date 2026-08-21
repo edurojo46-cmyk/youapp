@@ -1,19 +1,20 @@
-const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
+const DEFAULT_YOUTUBE_API_KEY = 'AIzaSyBMhLs1XEBfInBFB7vQ3DjMZfP-2OCM1xw';
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || DEFAULT_YOUTUBE_API_KEY;
 
-// ── Quota guard: si la API devuelve 429 bloqueamos todas las llamadas ──────────
+// ── Quota guard: manejo resiliente de cuota ──────────
 let _apiQuotaExceeded = false;
 const _QUOTA_RESET_KEY = 'youapp_yt_api_quota_exceeded';
 try { if (localStorage.getItem(_QUOTA_RESET_KEY) === 'true') _apiQuotaExceeded = true; } catch {}
 const _markQuotaExceeded = () => {
   _apiQuotaExceeded = true;
   try { localStorage.setItem(_QUOTA_RESET_KEY, 'true'); } catch {}
-  // Auto-reset after 2 hours
-  setTimeout(() => { _apiQuotaExceeded = false; try { localStorage.removeItem(_QUOTA_RESET_KEY); } catch {} }, 2 * 60 * 60 * 1000);
+  // Auto-reset after 30 min
+  setTimeout(() => { _apiQuotaExceeded = false; try { localStorage.removeItem(_QUOTA_RESET_KEY); } catch {} }, 30 * 60 * 1000);
 };
 export const isApiQuotaOk = () => !_apiQuotaExceeded;
 
 async function safeFetch(url: string): Promise<any | null> {
-  if (_apiQuotaExceeded || !YOUTUBE_API_KEY) return null;
+  if (_apiQuotaExceeded) return null;
   try {
     const res = await fetch(url);
     if (res.status === 429 || res.status === 403) { _markQuotaExceeded(); return null; }

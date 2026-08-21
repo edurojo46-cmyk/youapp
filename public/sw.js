@@ -2,7 +2,7 @@
  * YouApp TV - Service Worker con Auto-Actualización Inmediata
  */
 
-const CACHE_NAME = 'youapp-cache-v5';
+const CACHE_NAME = 'youapp-cache-v6-20260821';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

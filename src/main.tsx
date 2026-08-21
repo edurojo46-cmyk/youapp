@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import App from './App.tsx';
 import './index.css';
+import { checkAndApplyAutomaticUpdate } from './lib/forceUpdate';
+
+// Ejecutar detector forzoso de actualización de versión
+checkAndApplyAutomaticUpdate();
 
 // ── REGISTRO Y AUTO-ACTUALIZACIÓN AUTOMÁTICA DE LA APP (PWA) ──────────────────
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

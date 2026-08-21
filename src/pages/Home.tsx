@@ -4,10 +4,11 @@ import {
   Play, Radio, Tv, Sparkles, Search, Bell, Cpu, Landmark, 
   Scale, Brain, Send, Gem, Compass, Home as HomeIcon, 
   Folder, Sliders, ChevronRight, Zap, X, Check, Heart, 
-  ThumbsUp, HelpCircle, Clock, Dices, Eye, UserPlus, Star
+  ThumbsUp, HelpCircle, Clock, Dices, Eye, UserPlus, Star, RotateCw
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
+import { forceHardUpdate } from '../lib/forceUpdate';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -289,6 +290,9 @@ export default function Home() {
           </div>
 
           <div className="top-bar-actions">
+            <button className="icon-btn" onClick={() => forceHardUpdate()} title="Actualizar App / Limpiar Caché">
+              <RotateCw size={19} />
+            </button>
             <button className="icon-btn" onClick={() => navigate('/search')} title="Buscar">
               <Search size={20} />
             </button>

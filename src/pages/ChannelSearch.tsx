@@ -11,13 +11,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, X, Mic, MicOff, ArrowLeft,
   Clock, TrendingUp, Trash2, ArrowUpLeft, Loader2,
-  CheckCircle2, ExternalLink, Tv, Radio, Plus, Check, Play, Sparkles, ArrowDown
+  CheckCircle2, ExternalLink, Tv, Radio, Plus, Check, Play, Sparkles, ArrowDown, RotateCw
 } from 'lucide-react';
 import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
 import { fetchYouTubeLiveSuggestions } from '../lib/youtube';
 import { searchYouTubeChannels, searchYouTubeVideos, resolveChannelPlayable, type YTChannelResult, type YTVideoResult } from '../lib/youtubeChannelSearch';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
+import { forceHardUpdate } from '../lib/forceUpdate';
 
 // ── Historial y Canales Guardados ─────────────────────────────────────────────
 const HIST_KEY = 'youapp_chsearch_v4';
@@ -428,6 +429,14 @@ export default function ChannelSearch() {
               title="Buscar por voz"
             >
               {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+            </button>
+
+            <button
+              className="search-mic-btn"
+              onClick={() => forceHardUpdate()}
+              title="Actualizar App / Limpiar Caché"
+            >
+              <RotateCw size={18} />
             </button>
 
             {/* ── DROPDOWN AUTOCOMPLETADO & HISTORIAL ── */}

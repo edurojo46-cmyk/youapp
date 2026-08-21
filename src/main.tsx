@@ -8,43 +8,20 @@ import { checkAndApplyAutomaticUpdate } from './lib/forceUpdate';
 // Ejecutar detector forzoso de actualización de versión
 checkAndApplyAutomaticUpdate();
 
-// ── REGISTRO Y AUTO-ACTUALIZACIÓN AUTOMÁTICA DE LA APP (PWA) ──────────────────
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then((registration) => {
-        // Verificar actualizaciones en segundo plano cada 10 minutos
-        setInterval(() => {
-          registration.update().catch(() => {});
-        }, 10 * 60 * 1000);
-
-        // Si se instala un nuevo Service Worker, recargar automáticamente
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('[YouApp Auto-Update] Nueva versión detectada. Aplicando actualización...');
-                window.location.reload();
-              }
-            });
-          }
-        });
-      })
-      .catch((err) => {
-        console.warn('[YouApp PWA] Service Worker registration skipped:', err);
-      });
-
-    // Escuchar cuando el controlador cambia
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        window.location.reload();
-      }
-    });
-  });
+// ── PURGA TOTAL DE CACHÉS Y SERVICE WORKERS ─────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const reg of registrations) {
+      reg.unregister().catch(() => {});
+    }
+  }).catch(() => {});
+}
+if ('caches' in window) {
+  caches.keys().then((keys) => {
+    for (const key of keys) {
+      caches.delete(key).catch(() => {});
+    }
+  }).catch(() => {});
 }
 
 createRoot(document.getElementById('root')!).render(

@@ -404,10 +404,6 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       }).filter((ch: any) => ch !== null && ch.videoUrl !== null);
 
 
-      const real24Live = await fetchReal24_7LiveStreams('live 24/7 stream radio');
-      const topRelax = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.relax, 15);
-      const topFocus = await fetchTopViewedVideosByMood(MOOD_SEARCH_QUERIES.focus, 15);
-
       // Cargar canales personalizados guardados por el usuario
       let userCustomChannels: any[] = [];
       try {
@@ -419,15 +415,6 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
 
       // Deduplicar canales por videoUrl o ID para asegurar que cada canal sea 100% único
       const rawChannels = [...userCustomChannels, ...UNIVERSAL_CATALOG, ...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
-      if (Array.isArray(real24Live) && real24Live.length > 0 && real24Live !== VERIFIED_24_7_LIVE_CHANNELS) {
-        rawChannels.push(...real24Live);
-      }
-      if (Array.isArray(topRelax) && topRelax.length > 0 && topRelax !== VERIFIED_24_7_LIVE_CHANNELS) {
-        rawChannels.push(...topRelax);
-      }
-      if (Array.isArray(topFocus) && topFocus.length > 0 && topFocus !== VERIFIED_24_7_LIVE_CHANNELS) {
-        rawChannels.push(...topFocus);
-      }
 
       const seenUrls = new Set<string>();
       const uniqueChannels = rawChannels.filter(ch => {

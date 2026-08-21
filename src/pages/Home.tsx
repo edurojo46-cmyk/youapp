@@ -331,6 +331,14 @@ export default function Home() {
           <p className="hero-subtitle">Contenido que te inspira, siempre.</p>
         </section>
 
+        {/* 2.1 Barra de Búsqueda Rápida */}
+        <section className="home-search-bar-section" onClick={() => navigate('/search')}>
+          <div className="home-search-pill">
+            <Search size={18} className="search-pill-icon" />
+            <span className="search-pill-placeholder">Buscar canales en vivo, videos y programas...</span>
+            <span className="search-pill-badge">Buscar</span>
+          </div>
+        </section>
 
         {/* 3. Hero Card: "Continuar Mi TV" */}
         <section className="main-hero-card-section">
@@ -2007,6 +2015,49 @@ export default function Home() {
           display: flex;
           align-items: center;
           gap: 8px;
+        }
+
+        /* Barra de Búsqueda Rápida Home */
+        .home-search-bar-section {
+          padding: 0 16px 14px 16px;
+          cursor: pointer;
+        }
+        .home-search-pill {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(0, 240, 255, 0.3);
+          border-radius: 24px;
+          padding: 10px 16px;
+          backdrop-filter: blur(12px);
+          transition: all 0.2s;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        .home-search-pill:hover {
+          background: rgba(0, 240, 255, 0.1);
+          border-color: #00f0ff;
+          box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+        .search-pill-icon {
+          color: #00f0ff;
+          flex-shrink: 0;
+        }
+        .search-pill-placeholder {
+          flex: 1;
+          font-size: 0.82rem;
+          color: rgba(255, 255, 255, 0.6);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .search-pill-badge {
+          font-size: 0.72rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #00f0ff, #7928ca);
+          color: white;
+          padding: 3px 10px;
+          border-radius: 12px;
         }
       `}</style>
     </div>

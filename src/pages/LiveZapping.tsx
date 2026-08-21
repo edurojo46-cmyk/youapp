@@ -575,7 +575,7 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       triggerOSD();
     } else if (e.key === '/' || e.key === 'f' || e.key === 'F') {
       e.preventDefault();
-      setShowSearchModal(prev => !prev);
+      navigate('/search');
     } else if (e.key === 'g' || e.key === 'G') {
       setShowEPGModal(prev => !prev);
     } else if (e.key === 'm' || e.key === 'M') {
@@ -833,8 +833,8 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
             </button>
             <button 
               className="icon-action-btn search-trigger-btn" 
-              onClick={() => setShowSearchModal(true)} 
-              title="Buscar Canales (F o /)"
+              onClick={() => navigate('/search')} 
+              title="Buscar Canales y Videos (F o /)"
             >
               <Search size={18} />
             </button>

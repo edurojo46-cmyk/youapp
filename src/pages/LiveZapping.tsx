@@ -498,25 +498,6 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       return;
     }
 
-    if (moodId === 'offline') {
-      const offlineChannel = {
-        id: 'ch-offline-mode',
-        name: 'YouApp Offline (Sin Datos)',
-        category: '📡 Modo Sin Conexión',
-        description: 'Visuales generativas Synthwave 60 FPS, sintetizador Lo-Fi y minijuegos 100% offline.',
-        avatarUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400',
-        thumbnail: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=800',
-        provider: 'direct',
-        videoUrl: 'youapp-offline-signal',
-        currentVideoTitle: '📡 Señal YouApp Offline 24/7 — Visuales & Relax',
-        viewerCount: 15400,
-        isLive: true
-      };
-      setFilteredChannels([offlineChannel]);
-      triggerOSD();
-      return;
-    }
-
     if (moodId === 'live24') {
       setIsMoodLoading(true);
       try {

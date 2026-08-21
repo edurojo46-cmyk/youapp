@@ -40,6 +40,8 @@ function App() {
 
         
         <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/you4" element={<ProtectedRoute><LiveZapping forceQuad={true} /></ProtectedRoute>} />
+        <Route path="/quad" element={<ProtectedRoute><LiveZapping forceQuad={true} /></ProtectedRoute>} />
         <Route path="/stream" element={<ProtectedRoute><MyStream /></ProtectedRoute>} />
         <Route path="/live" element={<ProtectedRoute><LiveZapping /></ProtectedRoute>} />
         <Route path="/channels" element={<ProtectedRoute><ChannelProfile /></ProtectedRoute>} />

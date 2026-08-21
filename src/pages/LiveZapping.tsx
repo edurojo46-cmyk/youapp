@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
@@ -49,8 +49,13 @@ const MOODS = [
   { id: 'cinema', label: '🍿 Cine & Cortos' },
 ];
 
-export default function LiveZapping() {
+interface LiveZappingProps {
+  forceQuad?: boolean;
+}
+
+export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [allChannels, setAllChannels] = useState<any[]>(() => {
     try {
@@ -176,6 +181,33 @@ export default function LiveZapping() {
     document.addEventListener('fullscreenchange', onFSChange);
     return () => document.removeEventListener('fullscreenchange', onFSChange);
   }, []);
+
+  // ── Sincronizador de Rutas (/you4, /quad) y Creador Seleccionado desde Home ──
+  useEffect(() => {
+    const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+    const params = new URLSearchParams(window.location.search || hashQuery);
+    const isQuadRequested = forceQuad || location.pathname === '/you4' || location.pathname === '/quad' || params.get('mode') === 'you4' || params.get('quad') === 'true';
+
+    if (isQuadRequested) {
+      setShowQuadView(true);
+    }
+
+    // Verificar si se sintonizó un canal desde la Home
+    try {
+      const rawPayload = localStorage.getItem('youapp_tune_channel_payload');
+      if (rawPayload) {
+        const payload = JSON.parse(rawPayload);
+        if (payload && payload.videoUrl) {
+          localStorage.removeItem('youapp_tune_channel_payload');
+          setAllChannels(prev => [payload, ...prev.filter(c => c.id !== payload.id && c.videoUrl !== payload.videoUrl)]);
+          setFilteredChannels(prev => [payload, ...prev.filter(c => c.id !== payload.id && c.videoUrl !== payload.videoUrl)]);
+          setActiveIndex(0);
+          setShowQuadView(false);
+          triggerOSD();
+        }
+      }
+    } catch {}
+  }, [location, forceQuad]);
 
   // Favoritos
   const [favorites, setFavorites] = useState<string[]>(() => {

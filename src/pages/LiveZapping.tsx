@@ -378,6 +378,18 @@ export default function LiveZapping() {
       const finalChannels = uniqueChannels.length > 0 ? uniqueChannels : VERIFIED_24_7_LIVE_CHANNELS;
       setAllChannels(finalChannels);
       setFilteredChannels(finalChannels);
+
+      // Sintonizar automáticamente el canal seleccionado si venimos de la búsqueda
+      const targetChannelId = localStorage.getItem('youapp_active_channel_id');
+      if (targetChannelId) {
+        const foundIdx = finalChannels.findIndex(
+          c => c.id === targetChannelId || c.channelId === targetChannelId || c.id === `custom-yt-${targetChannelId}`
+        );
+        if (foundIdx !== -1) {
+          setActiveIndex(foundIdx);
+        }
+        localStorage.removeItem('youapp_active_channel_id');
+      }
     } catch (e) {
       console.error(e);
       setAllChannels(VERIFIED_24_7_LIVE_CHANNELS);

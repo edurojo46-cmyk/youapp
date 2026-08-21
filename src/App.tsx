@@ -5,6 +5,7 @@ import MyStream from './pages/MyStream';
 import LiveZapping from './pages/LiveZapping';
 import MixChannel from './pages/MixChannel';
 import SearchAndProgram from './pages/SearchAndProgram';
+import ChannelSearch from './pages/ChannelSearch';
 import ChannelProfile from './pages/ChannelProfile';
 import Login from './pages/Login';
 import PublicChannel from './pages/PublicChannel';
@@ -42,8 +43,9 @@ function App() {
         <Route path="/stream" element={<ProtectedRoute><MyStream /></ProtectedRoute>} />
         <Route path="/live" element={<ProtectedRoute><LiveZapping /></ProtectedRoute>} />
         <Route path="/channels" element={<ProtectedRoute><ChannelProfile /></ProtectedRoute>} />
-        <Route path="/mix" element={<ProtectedRoute><MixChannel /></ProtectedRoute>} />
-        <Route path="/search" element={<ProtectedRoute><SearchAndProgram /></ProtectedRoute>} />
+        <Route path="/search" element={<ProtectedRoute><ChannelSearch /></ProtectedRoute>} />
+        <Route path="/channels-search" element={<ProtectedRoute><ChannelSearch /></ProtectedRoute>} />
+        <Route path="/program" element={<ProtectedRoute><SearchAndProgram /></ProtectedRoute>} />
         <Route path="/trending" element={<ProtectedRoute><div style={{padding:'2rem'}}>Tendencias (Próximamente)</div></ProtectedRoute>} />
       </Routes>
 

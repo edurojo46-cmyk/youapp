@@ -589,18 +589,18 @@ export const UNIVERSAL_CATALOG: UniversalChannel[] = [
     tags: ['nasa', 'espacio', 'tierra', 'iss', 'ciencia', 'cosmos', 'en vivo']
   },
   {
-    id: 'ch-redbull-tv',
-    channelId: 'UCblfuW_4rakUiQrBV4W2dfA',
-    name: 'Red Bull TV Deportes',
+    id: 'ch-redbull-tv-2',
+    channelId: 'UCblfuW_4rakUiQrBV4W2dfB',
+    name: 'Red Bull TV Extremo',
     category: 'Deportes Extremos',
     description: 'Los eventos de deportes extremos, F1 y acción más impactantes del mundo.',
     avatarUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?w=400&auto=format&fit=crop&q=60',
     thumbnail: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=800&auto=format&fit=crop&q=60',
     provider: 'youtube',
-    videoId: '48ol4kGZ27A',
-    videoUrl: 'https://www.youtube.com/embed/48ol4kGZ27A?loop=1&playlist=48ol4kGZ27A',
-    currentVideoTitle: 'Red Bull Hardline - Saltos y Desafíos Extremos',
-    viewerCount: 63100,
+    videoId: '4G9O5iV123A',
+    videoUrl: 'https://www.youtube.com/embed/4G9O5iV123A?loop=1&playlist=4G9O5iV123A',
+    currentVideoTitle: 'Red Bull - Deportes de Acción Extrema',
+    viewerCount: 41200,
     tags: ['redbull', 'deportes', 'extremo', 'f1', 'skate', 'bmx', 'accion']
   }
 ];

@@ -1,862 +1,730 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, X, Tv, Sparkles, Star, Play, Radio, Loader2, CheckCircle2, Plus, PlusCircle, ExternalLink, Globe, Tv2 } from 'lucide-react';
-import { searchUniversalEngine, UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
+/**
+ * ChannelSearchModal — Motor de búsqueda unificado YouApp TV
+ * Búsqueda dual: grilla activa + catálogo universal, scoring ponderado,
+ * deduplicación por ID, 0ms latencia por keystroke.
+ */
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  Search, X, Tv, Play, Radio, CheckCircle2, Plus, Sparkles, Mic, MicOff, ArrowUpLeft
+} from 'lucide-react';
+import { UNIVERSAL_CATALOG, parseUniversalUrl, type UniversalChannel } from '../lib/universalChannels';
+import { fetchYouTubeLiveSuggestions } from '../lib/youtube';
 
-interface Channel {
+
+// ─── Tipos ──────────────────────────────────────────────────────────────────
+interface GridChannel {
   id: string;
   name: string;
   category?: string;
   currentVideoTitle?: string;
   avatarUrl?: string;
-  videoUrl?: string;
   thumbnail?: string;
+  videoUrl?: string;
+  author?: string;
 }
 
 interface ChannelSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  channels: Channel[];
+  channels: GridChannel[];
   onSelectChannel: (index: number) => void;
   onAddChannel?: (channel: any) => void;
   onSelectRealYouTubeChannel?: (channelId: string, channelTitle: string) => void;
 }
 
-const POPULAR_CHANNELS = [
-  'América TV', 'Crónica TV', 'Carnaval Stream', 'TN En Vivo', 'C5N', 'A24',
-  'El Trece', 'LUZU TV', 'OLGA', 'MrBeast', 'Ibai', 'Lofi Girl'
+// ─── Catálogos rápidos ───────────────────────────────────────────────────────
+const TRENDING_TAGS = [
+  'América TV', 'Crónica TV', 'TN', 'LUZU TV', 'OLGA', 'Lofi Girl',
+  'MrBeast', 'Ibai', 'NASA', 'Gaming', 'Música', 'Naturaleza'
 ];
 
 const CATEGORY_FILTERS = [
-  { id: 'all', label: '✨ Todos los Canales' },
-  { id: 'noticias', label: '🔴 Noticias & TV' },
-  { id: 'streaming', label: '🎙️ Streaming & Charlas' },
-  { id: 'gaming', label: '🎮 Creadores & Gaming' },
-  { id: 'musica', label: '🎵 Música 24/7' },
-  { id: 'ciencia', label: '🚀 Ciencia & Deportes' }
+  { id: 'all',        icon: '✨', label: 'Todos' },
+  { id: 'noticias',   icon: '🔴', label: 'Noticias & TV' },
+  { id: 'streaming',  icon: '🎙️', label: 'Streaming' },
+  { id: 'gaming',     icon: '🎮', label: 'Gaming' },
+  { id: 'musica',     icon: '🎵', label: 'Música' },
+  { id: 'ciencia',    icon: '🚀', label: 'Ciencia' },
+  { id: 'naturaleza', icon: '🌿', label: 'Naturaleza' },
 ];
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const norm = (s: string) =>
+  (s || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ');
+
+const scoreMatch = (haystack: string, needle: string, terms: string[]): number => {
+  let s = 0;
+  if (haystack.includes(needle)) s += 10;
+  terms.forEach(t => { if (haystack.includes(t)) s += 2; });
+  return s;
+};
+
+function dedup<T>(arr: T[], key: (x: T) => string): T[] {
+  const seen = new Set<string>();
+  return arr.filter(x => {
+    const k = key(x);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function toGridChannel(ch: UniversalChannel): any {
+  return {
+    id:                ch.id || `cat-${Date.now()}`,
+    name:              ch.name,
+    category:          ch.category || '🔴 Canal en Vivo',
+    viewerCount:       ch.viewerCount || Math.floor(Math.random() * 10000) + 2000,
+    videoUrl:          ch.videoUrl,
+    currentVideoTitle: ch.currentVideoTitle || ch.name,
+    thumbnail:         ch.thumbnail || ch.avatarUrl,
+    author:            ch.name,
+    avatarUrl:         ch.avatarUrl,
+    isLive:            ch.isLive ?? true,
+    durationSeconds:   ch.durationSeconds,
+  };
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function ChannelSearchModal({
   isOpen,
   onClose,
   channels,
   onSelectChannel,
   onAddChannel,
-  onSelectRealYouTubeChannel
+  onSelectRealYouTubeChannel,
 }: ChannelSearchModalProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [ytChannels, setYtChannels] = useState<UniversalChannel[]>(UNIVERSAL_CATALOG);
-  const [isSearchingYT, setIsSearchingYT] = useState(false);
-  const [activeTab, setActiveTab] = useState<'all' | 'youtube' | 'grilla'>('all');
-  const [addedChannelFeedback, setAddedChannelFeedback] = useState<string | null>(null);
-
-  // Normalización para búsqueda instantánea
-  const normalize = (str: string) =>
-    (str || '')
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, " ");
-
-  // Filtrado instantáneo a 0ms en cada tecla
-  const liveResults = useMemo(() => {
-    let base = UNIVERSAL_CATALOG;
-
-    // Filtrar por categoría si está seleccionada
-    if (selectedCategory !== 'all') {
-      base = base.filter(ch => {
-        const cat = normalize(ch.category + ' ' + (ch.tags || []).join(' '));
-        if (selectedCategory === 'noticias') return cat.includes('noticias') || cat.includes('tv') || cat.includes('television');
-        if (selectedCategory === 'streaming') return cat.includes('streaming') || cat.includes('charla') || cat.includes('humor');
-        if (selectedCategory === 'gaming') return cat.includes('gaming') || cat.includes('creador') || cat.includes('retos') || cat.includes('aventura');
-        if (selectedCategory === 'musica') return cat.includes('musica') || cat.includes('lofi') || cat.includes('trap') || cat.includes('rock');
-        if (selectedCategory === 'ciencia') return cat.includes('ciencia') || cat.includes('espacio') || cat.includes('deportes') || cat.includes('tech');
-        return true;
-      });
-    }
-
-    if (!searchTerm.trim()) {
-      return base;
-    }
-
-    const cleanNorm = normalize(searchTerm).trim();
-    const terms = cleanNorm.split(/\s+/).filter(Boolean);
-
-    const matches = base.filter(ch => {
-      const text = normalize([
-        ch.name,
-        ch.category,
-        ch.description,
-        ch.currentVideoTitle,
-        ...(ch.tags || [])
-      ].join(' '));
-
-      return text.includes(cleanNorm) || terms.some(t => text.includes(t));
-    });
-
-    // Ordenar por coincidencia exacta
-    matches.sort((a, b) => {
-      const aText = normalize(a.name + ' ' + (a.tags || []).join(' '));
-      const bText = normalize(b.name + ' ' + (b.tags || []).join(' '));
-      const aExact = aText.includes(cleanNorm) ? 10 : terms.filter(t => aText.includes(t)).length;
-      const bExact = bText.includes(cleanNorm) ? 10 : terms.filter(t => bText.includes(t)).length;
-      return bExact - aExact;
-    });
-
-    return matches;
-  }, [searchTerm, selectedCategory]);
+  const [query,           setQuery]           = useState('');
+  const [catFilter,       setCatFilter]       = useState('all');
+  const [feedback,        setFeedback]        = useState<string | null>(null);
+  const [urlParsed,       setUrlParsed]       = useState<UniversalChannel | null>(null);
+  const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
+  const [isListening,     setIsListening]     = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setYtChannels(liveResults);
-  }, [liveResults]);
+    if (isOpen) {
+      setQuery('');
+      setCatFilter('all');
+      setFeedback(null);
+      setUrlParsed(null);
+      setLiveSuggestions([]);
+      setShowSuggestions(false);
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }, [isOpen]);
 
-  const localFiltered = useMemo(() => {
-    if (!searchTerm.trim()) return channels;
-    const term = normalize(searchTerm);
-    return channels.filter(ch => {
-      const text = normalize(ch.name + ' ' + (ch.category || '') + ' ' + (ch.currentVideoTitle || ''));
-      return text.includes(term);
+  // Autosuggest en tiempo real estilo YouTube
+  useEffect(() => {
+    if (!query.trim() || query.length < 2) {
+      setLiveSuggestions([]);
+      return;
+    }
+    let isMounted = true;
+    const timer = setTimeout(async () => {
+      const sugs = await fetchYouTubeLiveSuggestions(query);
+      if (isMounted) setLiveSuggestions(sugs.slice(0, 6));
+    }, 150);
+    return () => { isMounted = false; clearTimeout(timer); };
+  }, [query]);
+
+  // Búsqueda por voz
+  const startVoiceSearch = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-AR';
+    recognition.interimResults = false;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    recognition.onresult = (e: any) => {
+      const text = e.results[0][0].transcript;
+      if (text) {
+        setQuery(text);
+        setShowSuggestions(false);
+      }
+    };
+    recognition.start();
+  };
+
+  useEffect(() => {
+    const parsed = parseUniversalUrl(query.trim());
+    setUrlParsed(parsed);
+  }, [query]);
+
+
+  // Catálogo universal deduplicado
+  const cleanCatalog = useMemo(() =>
+    dedup(UNIVERSAL_CATALOG, ch => ch.id),
+  []);
+
+  // Filtro por categoría del catálogo
+  const catalogByCategory = useMemo(() => {
+    if (catFilter === 'all') return cleanCatalog;
+    return cleanCatalog.filter(ch => {
+      const t = norm(ch.category + ' ' + (ch.tags || []).join(' '));
+      switch (catFilter) {
+        case 'noticias':   return t.includes('noticia') || t.includes('tv') || t.includes('television');
+        case 'streaming':  return t.includes('streaming') || t.includes('charla') || t.includes('humor');
+        case 'gaming':     return t.includes('gaming') || t.includes('creador') || t.includes('reto') || t.includes('aventura');
+        case 'musica':     return t.includes('musica') || t.includes('lofi') || t.includes('trap') || t.includes('rock') || t.includes('electronica');
+        case 'ciencia':    return t.includes('ciencia') || t.includes('espacio') || t.includes('ia') || t.includes('tech') || t.includes('cosmos');
+        case 'naturaleza': return t.includes('naturaleza') || t.includes('oceano') || t.includes('bosque') || t.includes('zen');
+        default:           return true;
+      }
     });
-  }, [channels, searchTerm]);
+  }, [catFilter, cleanCatalog]);
+
+  // Resultados de la grilla activa
+  const gridResults = useMemo(() => {
+    if (!query.trim()) return channels.map((ch, idx) => ({ ch, idx }));
+    const q     = norm(query);
+    const terms = q.split(/\s+/).filter(Boolean);
+    return channels
+      .map((ch, idx) => ({
+        ch, idx,
+        s: scoreMatch(
+          norm([ch.name, ch.category, ch.currentVideoTitle, ch.author].join(' ')),
+          q, terms
+        )
+      }))
+      .filter(r => r.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .map(r => ({ ch: r.ch, idx: r.idx }));
+  }, [query, channels]);
+
+  // Resultados del catálogo universal
+  const catalogResults = useMemo(() => {
+    if (!query.trim()) {
+      return catFilter === 'all' ? catalogByCategory.slice(0, 24) : catalogByCategory;
+    }
+    const q     = norm(query);
+    const terms = q.split(/\s+/).filter(Boolean);
+    return catalogByCategory
+      .map(ch => ({
+        ch,
+        s: scoreMatch(
+          norm([ch.name, ch.category, ch.description, ch.currentVideoTitle, ...(ch.tags || [])].join(' ')),
+          q, terms
+        )
+      }))
+      .filter(r => r.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .map(r => r.ch);
+  }, [query, catalogByCategory]);
 
   if (!isOpen) return null;
 
-  const handleQuickChannelClick = (channelName: string) => {
-    setSearchTerm(channelName);
-    setSelectedCategory('all');
-  };
-
-  const handleAddAndPlay = (channel: UniversalChannel | any) => {
-    const newChannel = {
-      id: channel.id || `custom-ch-${Date.now()}`,
-      name: channel.name,
-      category: channel.category || '🔴 Canal en Vivo',
-      viewerCount: channel.viewerCount || Math.floor(Math.random() * 5000) + 1200,
-      videoUrl: channel.videoUrl || `https://www.youtube.com/embed/${channel.videoId || 'jfKfPfyJRdk'}`,
-      currentVideoTitle: channel.currentVideoTitle || channel.name,
-      thumbnail: channel.thumbnail || channel.avatarUrl,
-      author: channel.name,
-      avatarUrl: channel.avatarUrl,
-      isLive: channel.isLive !== undefined ? channel.isLive : true
-    };
-
-    setAddedChannelFeedback(channel.name);
-    setTimeout(() => setAddedChannelFeedback(null), 2500);
-
-    if (onAddChannel) {
-      onAddChannel(newChannel);
-    } else if (onSelectRealYouTubeChannel) {
-      onSelectRealYouTubeChannel(channel.channelId || channel.id, channel.name);
-    }
+  const handleAddCatalog = (ch: UniversalChannel) => {
+    const newCh = toGridChannel(ch);
+    setFeedback(ch.name);
+    setTimeout(() => setFeedback(null), 2500);
+    if (onAddChannel) onAddChannel(newCh);
+    else if (onSelectRealYouTubeChannel) onSelectRealYouTubeChannel(ch.channelId || ch.id, ch.name);
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchTerm.trim()) return;
-
-    if (liveResults.length > 0) {
-      handleAddAndPlay(liveResults[0]);
-      return;
-    }
-
-    const clean = searchTerm.trim();
-    setIsSearchingYT(true);
-    try {
-      const results = await searchUniversalEngine(clean);
-      if (results && results.length > 0) {
-        handleAddAndPlay(results[0]);
-      }
-    } catch (err) {
-      console.error("Error on universal search submit:", err);
-    } finally {
-      setIsSearchingYT(false);
-    }
+  const handleAddUrl = () => {
+    if (!urlParsed) return;
+    handleAddCatalog(urlParsed);
   };
 
+  const handleSelectGrid = (idx: number) => {
+    onSelectChannel(idx);
+    onClose();
+  };
+
+  const totalResults = gridResults.length + catalogResults.length + (urlParsed ? 1 : 0);
+
   return (
-    <div className="search-modal-backdrop" onClick={onClose}>
-      <div className="search-modal-container glass-panel" onClick={(e) => e.stopPropagation()}>
-        {/* Cabecera del Buscador */}
-        <form onSubmit={handleSubmit} className="search-header">
-          <div className="search-input-wrapper">
-            <Search size={20} className="search-icon" />
+    <div className="csm-backdrop" onClick={onClose}>
+      <div className="csm-panel" onClick={e => e.stopPropagation()}>
+
+        {/* ── Cabecera ─────────────────────────────────────────────────────── */}
+        <div className="csm-header">
+          <div className="csm-input-wrap">
+            <Search size={18} className="csm-ico-search" />
             <input
+              ref={inputRef}
+              className="csm-input"
               type="text"
-              className="search-input"
-              placeholder="Buscar canal, noticias, creador o pega cualquier link de YouTube/Twitch..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              autoFocus
+              placeholder="Buscar canal, categoría, o pegar link de YouTube / Twitch / HLS..."
+              value={query}
+              onChange={e => { setQuery(e.target.value); setShowSuggestions(true); }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             />
-            {searchTerm && (
-              <button type="button" className="clear-btn" onClick={() => setSearchTerm('')}>
-                <X size={16} />
+            {query && (
+              <button className="csm-clear" onClick={() => { setQuery(''); inputRef.current?.focus(); }}>
+                <X size={15} />
               </button>
             )}
-          </div>
-          <button type="button" className="close-modal-btn" onClick={onClose}>
-            <X size={20} />
-          </button>
-        </form>
-
-        {/* Notificación de canal agregado */}
-        {addedChannelFeedback && (
-          <div className="added-feedback-toast">
-            <CheckCircle2 size={18} color="#4ade80" />
-            <span>¡Canal <strong>"{addedChannelFeedback}"</strong> agregado a la grilla y sintonizado!</span>
-          </div>
-        )}
-
-        {/* Filtros de Categorías Rápidas */}
-        <div className="categories-filter-bar">
-          {CATEGORY_FILTERS.map(cat => (
             <button
-              key={cat.id}
-              type="button"
-              className={`category-pill ${selectedCategory === cat.id ? 'active' : ''}`}
-              onClick={() => {
-                setSelectedCategory(cat.id);
-                setSearchTerm('');
-              }}
+              className={`csm-mic ${isListening ? 'listening' : ''}`}
+              title={isListening ? "Escuchando..." : "Buscar por voz"}
+              onClick={startVoiceSearch}
             >
-              {cat.label}
+              {isListening ? <MicOff size={16} color="#ef4444" /> : <Mic size={16} />}
             </button>
-          ))}
-        </div>
+          </div>
+          <button className="csm-close" onClick={onClose}><X size={20} /></button>
 
-        {/* Canales Populares Sugeridos */}
-        <div className="quick-tags-bar">
-          <span className="quick-tag-label">Tendencias:</span>
-          {POPULAR_CHANNELS.map(name => (
-            <button
-              key={name}
-              type="button"
-              className={`tag-chip ${searchTerm === name ? 'active' : ''}`}
-              onClick={() => handleQuickChannelClick(name)}
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-
-        {/* Pestañas de Resultados */}
-        <div className="search-tabs-row">
-          <button 
-            type="button"
-            className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveTab('all')}
-          >
-            Todos los Canales ({ytChannels.length + localFiltered.length})
-          </button>
-          <button 
-            type="button"
-            className={`tab-btn ${activeTab === 'youtube' ? 'active' : ''}`}
-            onClick={() => setActiveTab('youtube')}
-          >
-            Directorio YouTube ({ytChannels.length})
-          </button>
-          <button 
-            type="button"
-            className={`tab-btn ${activeTab === 'grilla' ? 'active' : ''}`}
-            onClick={() => setActiveTab('grilla')}
-          >
-            En Tu Grilla ({localFiltered.length})
-          </button>
-        </div>
-
-        {/* Lista de Resultados */}
-        <div className="search-results-list">
-          {/* Indicador de Carga */}
-          {isSearchingYT && (
-            <div className="search-loading-row">
-              <Loader2 size={20} className="animate-spin text-accent" />
-              <span>Buscando canales oficiales en tiempo real...</span>
-            </div>
-          )}
-
-          {/* 1. SECCIÓN CANALES REALES DE YOUTUBE */}
-          {(activeTab === 'all' || activeTab === 'youtube') && ytChannels.length > 0 && (
-            <div className="results-group">
-              <div className="group-title">
-                <Radio size={16} className="text-accent" />
-                <span>CANALES DE TELEVISIÓN Y STREAMING EN DIRECTO ({ytChannels.length})</span>
-              </div>
-
-              {ytChannels.map(yt => (
+          {/* Autosuggestions Dropdown */}
+          {showSuggestions && query.trim().length >= 2 && liveSuggestions.length > 0 && (
+            <div className="csm-suggest-dropdown">
+              {liveSuggestions.map((s, idx) => (
                 <div
-                  key={yt.id}
-                  className="search-channel-card yt-real-card"
-                  onClick={() => handleAddAndPlay(yt)}
+                  key={`${s}-${idx}`}
+                  className="csm-suggest-item"
+                  onMouseDown={() => { setQuery(s); setShowSuggestions(false); }}
                 >
-                  <div className="channel-avatar-box yt-avatar">
-                    <img src={yt.avatarUrl || yt.thumbnail} alt={yt.name} className="channel-avatar" />
-                  </div>
-
-                  <div className="channel-info">
-                    <div className="channel-title-row">
-                      <h4>{yt.name}</h4>
-                      <CheckCircle2 size={14} className="verified-badge" />
-                      <span className="yt-badge">{yt.isLive ? '🔴 EN VIVO' : 'OFICIAL'}</span>
-                    </div>
-                    <p className="channel-program-name">
-                      {yt.currentVideoTitle || yt.description || 'Transmisión continua 24/7'}
-                    </p>
-                  </div>
-
-                  <div className="card-actions-right">
-                    <button 
-                      className="add-to-grid-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddAndPlay(yt);
-                      }}
-                      title="Agregar este canal a mi grilla de televisión"
-                    >
-                      <Plus size={16} />
-                      <span>AGREGAR A GRILLA</span>
-                    </button>
-                    <button
-                      className="zap-to-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddAndPlay(yt);
-                      }}
-                      title="Sintonizar ahora"
-                    >
-                      <Play size={16} fill="white" />
-                    </button>
-                  </div>
+                  <Search size={13} className="csm-suggest-ico" />
+                  <span>{s}</span>
+                  <ArrowUpLeft size={13} className="csm-suggest-arrow" />
                 </div>
               ))}
             </div>
           )}
+        </div>
 
-          {/* 2. SECCIÓN CANALES DE LA GRILLA LOCAL */}
-          {(activeTab === 'all' || activeTab === 'grilla') && (
-            <div className="results-group">
-              <div className="group-title">
-                <Tv size={16} />
-                <span>CANALES ACTIVOS EN TU GRILLA ({localFiltered.length})</span>
+
+        {/* ── Toast feedback ───────────────────────────────────────────────── */}
+        {feedback && (
+          <div className="csm-toast">
+            <CheckCircle2 size={16} color="#4ade80" />
+            <span>¡<strong>{feedback}</strong> agregado y sintonizado!</span>
+          </div>
+        )}
+
+        {/* ── Filtros de categoría ─────────────────────────────────────────── */}
+        <div className="csm-cats">
+          {CATEGORY_FILTERS.map(c => (
+            <button
+              key={c.id}
+              className={`csm-cat-pill ${catFilter === c.id ? 'active' : ''}`}
+              onClick={() => { setCatFilter(c.id); setQuery(''); }}
+            >
+              {c.icon} {c.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tags de tendencia ────────────────────────────────────────────── */}
+        {!query && (
+          <div className="csm-trending">
+            <span className="csm-trending-lbl">🔥 Tendencias:</span>
+            {TRENDING_TAGS.map(tag => (
+              <button key={tag} className="csm-tag" onClick={() => setQuery(tag)}>
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* ── Estadística de resultados ────────────────────────────────────── */}
+        {query && (
+          <div className="csm-stat">
+            <Sparkles size={13} />
+            <span>{totalResults} resultado{totalResults !== 1 ? 's' : ''} para "<strong>{query}</strong>"</span>
+          </div>
+        )}
+
+        {/* ── Resultado de URL detectada ───────────────────────────────────── */}
+        {urlParsed && (
+          <div className="csm-url-result" onClick={handleAddUrl}>
+            <div className="csm-url-icon">🔗</div>
+            <div className="csm-url-info">
+              <p className="csm-url-name">{urlParsed.name}</p>
+              <p className="csm-url-sub">Link detectado · {urlParsed.provider.toUpperCase()} · Click para sintonizar</p>
+            </div>
+            <button className="csm-url-play" onClick={e => { e.stopPropagation(); handleAddUrl(); }}>
+              <Play size={16} fill="white" />
+            </button>
+          </div>
+        )}
+
+        {/* ── Lista de resultados ──────────────────────────────────────────── */}
+        <div className="csm-results">
+
+          {/* Sección: Canales de tu Grilla */}
+          {gridResults.length > 0 && (
+            <section className="csm-section">
+              <div className="csm-section-title">
+                <Tv size={13} />
+                EN TU GRILLA AHORA ({gridResults.length})
               </div>
-
-              {localFiltered.length > 0 ? (
-                localFiltered.map(channel => {
-                  const originalIndex = channels.findIndex(c => c.id === channel.id);
-                  return (
-                    <div
-                      key={channel.id}
-                      className="search-channel-card"
-                      onClick={() => {
-                        if (originalIndex !== -1) {
-                          onSelectChannel(originalIndex);
-                        }
-                        onClose();
-                      }}
-                    >
-                      <div className="channel-ch-num">
-                        CH {String((originalIndex !== -1 ? originalIndex : 0) + 1).padStart(2, '0')}
-                      </div>
-
-                      <div className="channel-avatar-box">
-                        {channel.avatarUrl || channel.thumbnail ? (
-                          <img src={channel.avatarUrl || channel.thumbnail} alt={channel.name} className="channel-avatar" />
-                        ) : (
-                          <div className="channel-avatar-placeholder">
-                            <Tv size={18} />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="channel-info">
-                        <div className="channel-title-row">
-                          <h4>{channel.name}</h4>
-                          <span className="channel-badge">{channel.category || 'General'}</span>
-                        </div>
-                        {channel.currentVideoTitle && (
-                          <p 
-                            className="channel-program-name"
-                            dangerouslySetInnerHTML={{ __html: channel.currentVideoTitle }}
-                          />
-                        )}
-                      </div>
-
-                      <button className="zap-to-btn" title="Sintonizar canal">
-                        <Play size={16} fill="white" />
-                      </button>
+              {gridResults.map(({ ch, idx }) => (
+                <div
+                  key={`grid-${ch.id}`}
+                  className="csm-card csm-card-grid"
+                  onClick={() => handleSelectGrid(idx)}
+                >
+                  <div className="csm-ch-num">CH {String(idx + 1).padStart(2, '0')}</div>
+                  <div className="csm-avatar">
+                    {ch.avatarUrl || ch.thumbnail
+                      ? <img src={ch.avatarUrl || ch.thumbnail} alt={ch.name} />
+                      : <Tv size={20} className="csm-avatar-placeholder" />}
+                  </div>
+                  <div className="csm-info">
+                    <div className="csm-name-row">
+                      <span className="csm-name">{ch.name}</span>
+                      {ch.category && <span className="csm-badge">{ch.category}</span>}
                     </div>
-                  );
-                })
-              ) : (
-                <div className="empty-state-text">No hay canales de la grilla que coincidan.</div>
-              )}
+                    {ch.currentVideoTitle && (
+                      <p
+                        className="csm-subtitle"
+                        dangerouslySetInnerHTML={{ __html: ch.currentVideoTitle }}
+                      />
+                    )}
+                  </div>
+                  <button className="csm-btn-play" title="Sintonizar">
+                    <Play size={15} fill="white" />
+                  </button>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* Sección: Directorio de Canales */}
+          {catalogResults.length > 0 && (
+            <section className="csm-section">
+              <div className="csm-section-title">
+                <Radio size={13} />
+                DIRECTORIO DE CANALES ({catalogResults.length})
+              </div>
+              {catalogResults.map(ch => (
+                <div
+                  key={`cat-${ch.id}`}
+                  className="csm-card csm-card-cat"
+                  onClick={() => handleAddCatalog(ch)}
+                >
+                  <div className="csm-avatar csm-avatar-yt">
+                    {ch.avatarUrl || ch.thumbnail
+                      ? <img src={ch.avatarUrl || ch.thumbnail} alt={ch.name} />
+                      : <Radio size={20} className="csm-avatar-placeholder" />}
+                  </div>
+                  <div className="csm-info">
+                    <div className="csm-name-row">
+                      <span className="csm-name">{ch.name}</span>
+                      <CheckCircle2 size={12} className="csm-verified" />
+                      {ch.isLive && <span className="csm-live-badge">🔴 EN VIVO</span>}
+                    </div>
+                    <p className="csm-subtitle">
+                      {ch.currentVideoTitle || ch.description || 'Transmisión continua 24/7'}
+                    </p>
+                  </div>
+                  <div className="csm-actions">
+                    <button
+                      className="csm-btn-add"
+                      onClick={e => { e.stopPropagation(); handleAddCatalog(ch); }}
+                      title="Agregar a tu grilla"
+                    >
+                      <Plus size={13} /> AGREGAR
+                    </button>
+                    <button
+                      className="csm-btn-play"
+                      onClick={e => { e.stopPropagation(); handleAddCatalog(ch); }}
+                      title="Sintonizar ahora"
+                    >
+                      <Play size={15} fill="white" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* Estado vacío */}
+          {!urlParsed && gridResults.length === 0 && catalogResults.length === 0 && (
+            <div className="csm-empty">
+              <Sparkles size={38} />
+              <h3>Sin resultados{query ? ` para "${query}"` : ''}</h3>
+              <p>Prueba con "América TV", "Lofi", "NASA", "Gaming", o pega un link de YouTube / Twitch / HLS</p>
             </div>
           )}
 
-          {/* Sin resultados */}
-          {!isSearchingYT && ytChannels.length === 0 && localFiltered.length === 0 && (
-            <div className="no-results-box">
-              <Sparkles size={40} className="no-results-icon" />
-              <h3>No se encontraron canales</h3>
-              <p>Prueba buscando con "América TV", "Crónica", "MrBeast", "Ibai", "Lofi" o pega un link.</p>
-            </div>
-          )}
         </div>
       </div>
 
       <style>{`
-        .added-feedback-toast {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(34, 197, 94, 0.2);
-          border: 1px solid rgba(74, 222, 128, 0.4);
-          color: #86efac;
-          padding: 8px 16px;
-          margin: 0 20px 8px 20px;
-          border-radius: 12px;
-          font-size: 0.85rem;
-          animation: fadeIn 0.2s ease-out;
-        }
-
-        .card-actions-right {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .add-to-grid-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: #6366f1;
-          color: white;
-          border: none;
-          padding: 8px 14px;
-          border-radius: 12px;
-          font-size: 0.75rem;
-          font-weight: 800;
-          cursor: pointer;
-          transition: background 0.15s, transform 0.15s;
-          box-shadow: 0 2px 10px rgba(99, 102, 241, 0.4);
-          white-space: nowrap;
-        }
-
-        .add-to-grid-btn:hover {
-          background: #4f46e5;
-          transform: scale(1.05);
-        }
-
-        .add-to-grid-btn:active {
-          transform: scale(0.95);
-        }
-
-        .search-modal-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 9999;
-          background: rgba(0, 0, 0, 0.85);
-          backdrop-filter: blur(16px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .csm-backdrop {
+          position: fixed; inset: 0; z-index: 9999;
+          background: rgba(0,0,0,0.88);
+          backdrop-filter: blur(18px);
+          display: flex; align-items: center; justify-content: center;
           padding: 20px;
-          animation: fadeIn 0.2s ease-out;
+          animation: csmFadeIn .18s ease-out;
         }
+        @keyframes csmFadeIn { from { opacity:0 } to { opacity:1 } }
 
-        .search-modal-container {
-          width: 100%;
-          max-width: 720px;
-          max-height: 88vh;
-          background: #0d1017;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 24px;
-          display: flex;
-          flex-direction: column;
-          box-shadow: 0 25px 60px rgba(0, 0, 0, 0.95);
+        .csm-panel {
+          width: 100%; max-width: 740px; max-height: 90vh;
+          background: #0c0e14;
+          border: 1px solid rgba(255,255,255,.12);
+          border-radius: 22px;
+          display: flex; flex-direction: column;
+          box-shadow: 0 28px 70px rgba(0,0,0,.9);
           overflow: hidden;
+          animation: csmSlideUp .22s cubic-bezier(.34,1.56,.64,1);
         }
+        @keyframes csmSlideUp { from { transform: translateY(24px); opacity:0 } to { transform: translateY(0); opacity:1 } }
 
-        .search-header {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 16px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .search-input-wrapper {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(99, 102, 241, 0.3);
-          border-radius: 14px;
-          padding: 12px 16px;
-        }
-
-        .search-icon {
-          color: #818cf8;
+        .csm-header {
+          display: flex; align-items: center; gap: 10px;
+          padding: 14px 18px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
           flex-shrink: 0;
+          position: relative;
         }
-
-        .search-input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          color: white;
-          font-size: 1.05rem;
-          font-weight: 500;
-          outline: none;
+        .csm-input-wrap {
+          flex: 1; display: flex; align-items: center; gap: 10px;
+          background: rgba(255,255,255,.06);
+          border: 1.5px solid rgba(99,102,241,.35);
+          border-radius: 14px; padding: 11px 14px;
+          transition: border-color .2s;
         }
-
-        .search-input::placeholder {
-          color: rgba(255, 255, 255, 0.4);
+        .csm-input-wrap:focus-within { border-color: #818cf8; }
+        .csm-ico-search { color: #818cf8; flex-shrink: 0; }
+        .csm-input {
+          flex: 1; background: transparent; border: none;
+          color: #fff; font-size: 1rem; font-weight: 500; outline: none;
         }
-
-        .clear-btn, .close-modal-btn {
-          background: transparent;
-          border: none;
-          color: rgba(255, 255, 255, 0.6);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 4px;
-          border-radius: 50%;
-          transition: background 0.2s, color 0.2s;
+        .csm-input::placeholder { color: rgba(255,255,255,.38); }
+        .csm-clear, .csm-close {
+          background: transparent; border: none;
+          color: rgba(255,255,255,.55); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          padding: 5px; border-radius: 50%;
+          transition: background .18s, color .18s;
         }
-
-        .clear-btn:hover, .close-modal-btn:hover {
-          background: rgba(255, 255, 255, 0.1);
-          color: white;
+        .csm-clear:hover, .csm-close:hover {
+          background: rgba(255,255,255,.1); color: #fff;
         }
-
-        .categories-filter-bar {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 20px;
-          overflow-x: auto;
-          scrollbar-width: none;
-          background: rgba(255, 255, 255, 0.03);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        .csm-mic {
+          background: transparent; border: none;
+          color: rgba(255,255,255,.55); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          padding: 5px; border-radius: 50%;
+          transition: all .18s;
         }
+        .csm-mic:hover { color: #fff; background: rgba(255,255,255,.1); }
+        .csm-mic.listening { animation: micPulse 1.2s infinite; background: rgba(239,68,68,0.2); }
 
-        .categories-filter-bar::-webkit-scrollbar {
-          display: none;
-        }
-
-        .category-pill {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.85);
-          padding: 6px 14px;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: 700;
-          white-space: nowrap;
-          cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .category-pill:hover {
-          background: rgba(99, 102, 241, 0.25);
-          border-color: #6366f1;
-          color: white;
-          transform: translateY(-1px);
-        }
-
-        .category-pill.active {
-          background: linear-gradient(135deg, #6366f1, #4f46e5);
-          border-color: #818cf8;
-          color: white;
-          box-shadow: 0 2px 10px rgba(99, 102, 241, 0.5);
-        }
-
-        .quick-tags-bar {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 20px;
-          overflow-x: auto;
-          scrollbar-width: none;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-          background: rgba(0, 0, 0, 0.2);
-        }
-
-        .quick-tags-bar::-webkit-scrollbar {
-          display: none;
-        }
-
-        .quick-tag-label {
-          font-size: 0.75rem;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.4);
-          text-transform: uppercase;
-          flex-shrink: 0;
-        }
-
-        .tag-chip {
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.85);
-          padding: 5px 12px;
-          border-radius: 16px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          white-space: nowrap;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .tag-chip:hover {
-          background: rgba(99, 102, 241, 0.3);
-          border-color: #6366f1;
-          color: white;
-        }
-
-        .tag-chip.active {
-          background: #6366f1;
-          border-color: #6366f1;
-          color: white;
-        }
-
-        .search-tabs-row {
-          display: flex;
-          gap: 12px;
-          padding: 8px 20px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .tab-btn {
-          background: transparent;
-          border: none;
-          color: rgba(255, 255, 255, 0.5);
-          font-size: 0.8rem;
-          font-weight: 700;
-          padding: 6px 0;
-          cursor: pointer;
-          border-bottom: 2px solid transparent;
-          transition: color 0.2s, border-color 0.2s;
-        }
-
-        .tab-btn.active {
-          color: #a5b4fc;
-          border-bottom-color: #6366f1;
-        }
-
-        .search-results-list {
-          flex: 1;
-          overflow-y: auto;
-          padding: 16px 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          max-height: 60vh;
-        }
-
-        .search-loading-row {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          color: #a5b4fc;
-          font-size: 0.85rem;
-          padding: 10px;
-          background: rgba(99, 102, 241, 0.1);
+        .csm-suggest-dropdown {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 18px;
+          right: 58px;
+          background: #181b26;
+          border: 1px solid rgba(99,102,241,.3);
           border-radius: 12px;
+          box-shadow: 0 12px 36px rgba(0,0,0,0.8);
+          z-index: 1000;
+          overflow: hidden;
+          animation: csmFadeIn .15s ease-out;
         }
-
-        .results-group {
+        .csm-suggest-item {
           display: flex;
-          flex-direction: column;
+          align-items: center;
           gap: 10px;
-        }
-
-        .group-title {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 0.75rem;
-          font-weight: 800;
-          color: rgba(255, 255, 255, 0.5);
-          letter-spacing: 0.5px;
-          margin-bottom: 2px;
-        }
-
-        .search-channel-card {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid rgba(255, 255, 255, 0.07);
-          border-radius: 16px;
+          padding: 10px 14px;
+          color: rgba(255,255,255,0.85);
+          font-size: 0.88rem;
           cursor: pointer;
-          transition: transform 0.15s, background 0.15s, border-color 0.15s;
+          transition: background .12s;
+        }
+        .csm-suggest-item:hover { background: rgba(99,102,241,0.18); color: #fff; }
+        .csm-suggest-ico { color: #818cf8; flex-shrink: 0; }
+        .csm-suggest-arrow { margin-left: auto; color: rgba(255,255,255,0.25); }
+
+
+        .csm-toast {
+          display: flex; align-items: center; gap: 8px;
+          margin: 0 18px 6px;
+          background: rgba(74,222,128,.15);
+          border: 1px solid rgba(74,222,128,.35);
+          color: #86efac; padding: 8px 14px; border-radius: 12px;
+          font-size: .82rem; animation: csmFadeIn .2s;
+          flex-shrink: 0;
         }
 
-        .yt-real-card {
-          background: rgba(99, 102, 241, 0.06);
-          border-color: rgba(99, 102, 241, 0.2);
+        .csm-cats {
+          display: flex; align-items: center; gap: 7px;
+          padding: 9px 18px; overflow-x: auto; scrollbar-width: none;
+          border-bottom: 1px solid rgba(255,255,255,.05);
+          background: rgba(255,255,255,.025);
+          flex-shrink: 0;
+        }
+        .csm-cats::-webkit-scrollbar { display: none; }
+        .csm-cat-pill {
+          background: rgba(255,255,255,.06);
+          border: 1px solid rgba(255,255,255,.1);
+          color: rgba(255,255,255,.82); padding: 5px 13px;
+          border-radius: 20px; font-size: .78rem; font-weight: 700;
+          white-space: nowrap; cursor: pointer;
+          transition: all .18s cubic-bezier(.4,0,.2,1);
+        }
+        .csm-cat-pill:hover {
+          background: rgba(99,102,241,.25); border-color: #6366f1; color: #fff;
+        }
+        .csm-cat-pill.active {
+          background: linear-gradient(135deg,#6366f1,#4f46e5);
+          border-color: #818cf8; color: #fff;
+          box-shadow: 0 2px 10px rgba(99,102,241,.45);
         }
 
-        .search-channel-card:hover {
-          background: rgba(99, 102, 241, 0.18);
-          border-color: rgba(99, 102, 241, 0.5);
+        .csm-trending {
+          display: flex; align-items: center; gap: 7px;
+          padding: 8px 18px; overflow-x: auto; scrollbar-width: none;
+          border-bottom: 1px solid rgba(255,255,255,.05);
+          flex-shrink: 0;
+        }
+        .csm-trending::-webkit-scrollbar { display: none; }
+        .csm-trending-lbl {
+          font-size: .72rem; font-weight: 800; color: rgba(255,255,255,.38);
+          text-transform: uppercase; flex-shrink: 0; letter-spacing: .3px;
+        }
+        .csm-tag {
+          background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
+          color: rgba(255,255,255,.82); padding: 4px 11px;
+          border-radius: 14px; font-size: .73rem; font-weight: 600;
+          white-space: nowrap; cursor: pointer; transition: all .18s;
+        }
+        .csm-tag:hover { background: rgba(99,102,241,.28); border-color: #6366f1; color: #fff; }
+
+        .csm-stat {
+          display: flex; align-items: center; gap: 6px;
+          padding: 6px 18px; font-size: .78rem; color: rgba(255,255,255,.45);
+          flex-shrink: 0;
+        }
+
+        .csm-url-result {
+          margin: 8px 18px; display: flex; align-items: center; gap: 14px;
+          padding: 12px 16px;
+          background: rgba(99,102,241,.14);
+          border: 1.5px solid rgba(99,102,241,.45);
+          border-radius: 16px; cursor: pointer;
+          transition: background .18s;
+          flex-shrink: 0;
+        }
+        .csm-url-result:hover { background: rgba(99,102,241,.25); }
+        .csm-url-icon { font-size: 1.6rem; }
+        .csm-url-info { flex: 1; }
+        .csm-url-name { margin: 0; font-size: .95rem; font-weight: 700; color: #fff; }
+        .csm-url-sub  { margin: 2px 0 0; font-size: .73rem; color: rgba(255,255,255,.5); }
+        .csm-url-play {
+          background: #6366f1; border: none; border-radius: 50%;
+          width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: background .18s;
+        }
+        .csm-url-play:hover { background: #4f46e5; }
+
+        .csm-results {
+          flex: 1; overflow-y: auto; padding: 10px 18px 18px;
+          display: flex; flex-direction: column; gap: 14px;
+        }
+        .csm-results::-webkit-scrollbar { width: 4px; }
+        .csm-results::-webkit-scrollbar-track { background: transparent; }
+        .csm-results::-webkit-scrollbar-thumb { background: rgba(99,102,241,.4); border-radius: 4px; }
+
+        .csm-section { display: flex; flex-direction: column; gap: 8px; }
+        .csm-section-title {
+          display: flex; align-items: center; gap: 6px;
+          font-size: .7rem; font-weight: 800; letter-spacing: .6px;
+          color: rgba(255,255,255,.4); padding: 2px 0;
+        }
+
+        .csm-card {
+          display: flex; align-items: center; gap: 12px;
+          padding: 11px 14px;
+          border-radius: 14px; cursor: pointer;
+          transition: transform .15s, background .15s, border-color .15s;
+          border: 1px solid rgba(255,255,255,.06);
+          background: rgba(255,255,255,.03);
+        }
+        .csm-card:hover {
+          background: rgba(99,102,241,.18);
+          border-color: rgba(99,102,241,.5);
           transform: translateY(-2px);
         }
+        .csm-card-cat {
+          background: rgba(99,102,241,.06);
+          border-color: rgba(99,102,241,.18);
+        }
 
-        .channel-ch-num {
-          font-family: monospace;
-          font-size: 0.85rem;
-          font-weight: 800;
-          color: #a5b4fc;
-          background: rgba(99, 102, 241, 0.15);
-          padding: 4px 8px;
-          border-radius: 8px;
+        .csm-ch-num {
+          font-family: monospace; font-size: .8rem; font-weight: 800;
+          color: #a5b4fc; background: rgba(99,102,241,.18);
+          padding: 3px 7px; border-radius: 7px; flex-shrink: 0;
+        }
+
+        .csm-avatar {
+          width: 46px; height: 46px; border-radius: 50%;
+          overflow: hidden; background: rgba(255,255,255,.08);
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0; border: 1px solid rgba(255,255,255,.1);
+        }
+        .csm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .csm-avatar-placeholder { color: rgba(255,255,255,.4); }
+        .csm-avatar-yt { border-color: rgba(99,102,241,.3); }
+
+        .csm-info { flex: 1; min-width: 0; }
+        .csm-name-row { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; flex-wrap: wrap; }
+        .csm-name {
+          font-size: .92rem; font-weight: 700; color: #fff;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          max-width: 200px;
+        }
+        .csm-badge {
+          font-size: .62rem; font-weight: 700;
+          background: rgba(255,255,255,.08); color: rgba(255,255,255,.65);
+          padding: 2px 6px; border-radius: 6px; text-transform: uppercase;
+          white-space: nowrap; flex-shrink: 0;
+        }
+        .csm-verified { color: #38bdf8; flex-shrink: 0; }
+        .csm-live-badge {
+          font-size: .6rem; font-weight: 800;
+          background: #ef4444; color: #fff;
+          padding: 2px 5px; border-radius: 5px; letter-spacing: .4px;
           flex-shrink: 0;
         }
-
-        .channel-avatar-box {
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          overflow: hidden;
-          background: rgba(255, 255, 255, 0.08);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          border: 1px solid rgba(255, 255, 255, 0.1);
+        .csm-subtitle {
+          margin: 0; font-size: .73rem; color: rgba(255,255,255,.48);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
-        .channel-avatar {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
+        .csm-actions { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+        .csm-btn-add {
+          display: flex; align-items: center; gap: 5px;
+          background: #6366f1; color: #fff; border: none;
+          padding: 7px 12px; border-radius: 10px;
+          font-size: .7rem; font-weight: 800; cursor: pointer;
+          white-space: nowrap; transition: background .15s, transform .15s;
+          box-shadow: 0 2px 10px rgba(99,102,241,.4);
         }
-
-        .channel-avatar-placeholder {
-          color: rgba(255, 255, 255, 0.5);
-        }
-
-        .channel-info {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .channel-title-row {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-bottom: 3px;
-        }
-
-        .channel-title-row h4 {
-          margin: 0;
-          font-size: 0.95rem;
-          font-weight: 700;
-          color: white;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .verified-badge {
-          color: #38bdf8;
+        .csm-btn-add:hover { background: #4f46e5; transform: scale(1.04); }
+        .csm-btn-play {
+          background: rgba(99,102,241,.75); border: none;
+          width: 34px; height: 34px; border-radius: 50%;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: background .15s;
           flex-shrink: 0;
         }
+        .csm-btn-play:hover { background: #6366f1; }
 
-        .yt-badge {
-          font-size: 0.65rem;
-          font-weight: 800;
-          background: #ef4444;
-          color: white;
-          padding: 2px 6px;
-          border-radius: 6px;
-          letter-spacing: 0.5px;
+        .csm-empty {
+          display: flex; flex-direction: column; align-items: center;
+          gap: 10px; padding: 40px 20px; text-align: center;
+          color: rgba(255,255,255,.4);
         }
-
-        .channel-badge {
-          font-size: 0.65rem;
-          font-weight: 700;
-          background: rgba(255, 255, 255, 0.08);
-          color: rgba(255, 255, 255, 0.7);
-          padding: 2px 6px;
-          border-radius: 6px;
-          text-transform: uppercase;
-        }
-
-        .channel-program-name {
-          margin: 0;
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.5);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .zap-to-btn {
-          width: 38px;
-          height: 38px;
-          border-radius: 50%;
-          background: #6366f1;
-          border: none;
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          opacity: 0.9;
-          transition: opacity 0.2s, transform 0.15s;
-          box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-        }
-
-        .search-channel-card:hover .zap-to-btn {
-          opacity: 1;
-          transform: scale(1.1);
-          background: #4f46e5;
-        }
-
-        .no-results-box {
-          text-align: center;
-          padding: 40px 20px;
-          color: rgba(255, 255, 255, 0.6);
-        }
-
-        .no-results-icon {
-          color: #6366f1;
-          margin-bottom: 12px;
-          animation: pulse 2s infinite;
-        }
-
-        .empty-state-text {
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.4);
-          padding: 10px;
-        }
-
-        @media (max-width: 600px) {
-          .search-modal-container {
-            max-height: 94vh;
-            border-radius: 20px;
-          }
-          .search-header {
-            padding: 12px 14px;
-          }
-          .search-results-list {
-            padding: 10px 14px;
-          }
-          .search-channel-card {
-            padding: 10px 12px;
-          }
-          .channel-avatar-box {
-            width: 42px;
-            height: 42px;
-          }
-        }
+        .csm-empty h3 { margin: 0; font-size: 1rem; font-weight: 700; color: rgba(255,255,255,.7); }
+        .csm-empty p  { margin: 0; font-size: .83rem; }
       `}</style>
     </div>
   );

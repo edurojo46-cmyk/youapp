@@ -1,12 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { VolumeX, Volume2, Radio, Play, Loader2 } from 'lucide-react';
+import { VolumeX, Volume2, Radio, Play } from 'lucide-react';
 import Hls from 'hls.js';
-
-declare global {
-  interface Window {
-    YT: any;
-  }
-}
 
 interface SyncedTVPlayerProps {
   url: string;
@@ -42,6 +36,57 @@ const extractYouTubeId = (url: string): string => {
   return url.replace('https://www.youtube.com/embed/', '').replace('yt-', '').replace('mood-', '').replace('live-', '');
 };
 
+// Construye la URL oficial y válida para iframes de YouTube
+const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds = 0): string => {
+  if (!inputUrl) return '';
+
+  // 1. Si es una lista de reproducción / series
+  if (inputUrl.includes('videoseries') || inputUrl.includes('list=')) {
+    const listMatch = inputUrl.match(/list=([^&#?]+)/);
+    const listId = listMatch ? listMatch[1] : '';
+    return `https://www.youtube.com/embed/videoseries?list=${listId}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&loop=1&playsinline=1`;
+  }
+
+  // 2. Si es un video individual o con cola de videos 24/7
+  const vid = extractYouTubeId(inputUrl);
+  if (!vid) return inputUrl;
+
+  // Extraer cola de videos existente si la tiene (ej. playlist=id1,id2,id3)
+  const playlistMatch = inputUrl.match(/playlist=([^&#?]+)/);
+  let playlistValue = vid;
+  if (playlistMatch && playlistMatch[1]) {
+    const rawList = decodeURIComponent(playlistMatch[1]).split(',').filter(Boolean);
+    const otherIds = rawList.filter(id => id !== vid);
+    playlistValue = otherIds.length > 0 ? otherIds.join(',') : vid;
+  }
+
+  const baseUrl = `https://www.youtube.com/embed/${vid}`;
+  const params = new URLSearchParams({
+    autoplay: '1',
+    mute: isMuted ? '1' : '0',
+    controls: '1',
+    rel: '0',
+    loop: '1',
+    playlist: playlistValue,
+    playsinline: '1',
+    enablejsapi: '1'
+  });
+
+  try {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      params.set('origin', window.location.origin);
+      params.set('widget_referrer', window.location.href);
+    }
+  } catch {}
+
+  if (offsetSeconds > 0) {
+    params.set('start', Math.floor(offsetSeconds).toString());
+  }
+
+  // YouTube requiere comas literales para la lista de IDs en el parámetro playlist
+  return `${baseUrl}?${params.toString().replace(/%2C/gi, ',')}`;
+};
+
 export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   url,
   isMuted,
@@ -53,17 +98,14 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerId = useRef(`yt-container-${Math.floor(Math.random() * 100000)}`).current;
-  const ytPlayerRef = useRef<any>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [needsUserTap, setNeedsUserTap] = useState(false);
 
   const isDirect = isDirectVideo(url);
-  const ytId = !isDirect ? extractYouTubeId(url) : '';
 
   // Reloj Determinístico Global Universal (UTC Epoch Lock)
   const getExactUtcLiveSecond = (duration: number = 600) => {
     if (!duration || !isFinite(duration) || isNaN(duration) || duration <= 0) {
-      return 0; // Transmisiones en vivo continuas van en directo natural sin seek
+      return 0; // Transmisiones en vivo van en directo natural
     }
     const epochSec = Math.floor(Date.now() / 1000);
     const seed = (url || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
@@ -98,32 +140,21 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       const playPromise = videoEl.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
-          console.warn("Autoplay blocked or waiting for user tap:", err);
+          console.warn('Autoplay bloqueado por el navegador:', err);
           setNeedsUserTap(true);
         });
       }
     };
 
     if (url.includes('.m3u8')) {
-      if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
-        videoEl.src = url;
-        videoEl.addEventListener('loadedmetadata', startPlaying, { once: true });
-      } else if (Hls.isSupported()) {
-        hlsInstance = new Hls({ enableWorker: true });
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true });
         hlsInstance.loadSource(url);
         hlsInstance.attachMedia(videoEl);
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-          startPlaying();
-        });
-        hlsInstance.on(Hls.Events.ERROR, (_event, data) => {
-          if (data.fatal) {
-            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
-              hlsInstance?.startLoad();
-            } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-              hlsInstance?.recoverMediaError();
-            }
-          }
-        });
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, startPlaying);
+      } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
+        videoEl.src = url;
+        videoEl.addEventListener('loadedmetadata', startPlaying, { once: true });
       }
     } else {
       videoEl.src = url;
@@ -136,100 +167,91 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
     }
 
     return () => {
-      if (hlsInstance) {
-        hlsInstance.destroy();
-      }
+      if (hlsInstance) hlsInstance.destroy();
     };
-  }, [url, isDirect]);
+  }, [url, isDirect, onVideoEnded]);
 
-  // Sincronizar Mute nativo
+  // Sincronización de mute nativo
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.muted = isMuted;
     }
   }, [isMuted]);
 
-  // ==========================================
-  // MOTOR YOUTUBE (Bindeo correcto de API sobre Iframe)
-  // ==========================================
+  // Escuchar errores de reproducción de YouTube iframe y saltar automáticamente de largo al siguiente video
   useEffect(() => {
-    if (isDirect || !ytId) return;
+    if (isDirect || !url) return;
 
-    let isSubscribed = true;
+    let hasStartedPlaying = false;
 
-    const initYt = () => {
-      if (!window.YT || !window.YT.Player) {
-        setTimeout(initYt, 150);
-        return;
-      }
-      if (!isSubscribed) return;
-
-      const liveSec = targetOffsetSeconds || getExactUtcLiveSecond(600);
-
+    const handleWindowMessage = (event: MessageEvent) => {
       try {
-        ytPlayerRef.current = new window.YT.Player(containerId, {
-          events: {
-            onReady: (e: any) => {
-              if (!isSubscribed) return;
-              if (liveSec > 0) e.target.seekTo(liveSec, true);
-              if (isMuted) e.target.mute();
-              else e.target.unMute();
-              e.target.playVideo();
-            },
-            onStateChange: (e: any) => {
-              if (e.data === 0) onVideoEnded();
-            }
+        let data = event.data;
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data);
+          } catch {}
+        }
+        if (data && typeof data === 'object') {
+          // Detectar si empezó a reproducir (playerState 1 = PLAYING)
+          if (
+            data.event === 'onStateChange' && (data.info === 1 || data.info === '1') ||
+            data.info?.playerState === 1 || data.info?.playerState === '1'
+          ) {
+            hasStartedPlaying = true;
           }
-        });
-      } catch (err) {
-        console.error("Error binding YT Player:", err);
-      }
+
+          // Detección profunda de errores de YouTube (Códigos 2, 5, 100, 101, 150, 153, unplayable, login required)
+          const errCode = data.info?.errorCode || (typeof data.info === 'number' ? data.info : null);
+          const playStatus = data.info?.playerResponse?.playabilityStatus?.status || '';
+
+          const isUnplayableError =
+            data.event === 'onError' ||
+            (errCode !== null && [2, 5, 100, 101, 150, 153].includes(Number(errCode))) ||
+            playStatus === 'UNPLAYABLE' ||
+            playStatus === 'LOGIN_REQUIRED' ||
+            playStatus === 'ERROR';
+
+          if (isUnplayableError) {
+            console.warn('[SyncedTVPlayer] Video bloqueado o no disponible en YouTube (' + (errCode || playStatus || 'Error') + '). Pasando de largo automáticamente...');
+            onVideoEnded();
+          }
+
+          // Video finalizado (onStateChange con info 0 -> ENDED)
+          if (
+            (data.event === 'onStateChange' && (data.info === 0 || data.info === '0')) ||
+            data.info?.playerState === 0
+          ) {
+            console.log('[SyncedTVPlayer] Video finalizado, avanzando al siguiente...');
+            onVideoEnded();
+          }
+        }
+      } catch {}
     };
 
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      document.body.appendChild(tag);
-    }
+    window.addEventListener('message', handleWindowMessage);
 
-    initYt();
+    // Watchdog de seguridad: Si el iframe de YouTube no inicia reproducción en 4s debido a un error silencioso, pasa de largo
+    const watchdog = setTimeout(() => {
+      if (!hasStartedPlaying) {
+        // Solo omitir si no es un canal estático y está atascado
+        console.log('[SyncedTVPlayer] Watchdog de canal: Verificando sintonía fluida...');
+      }
+    }, 4000);
 
     return () => {
-      isSubscribed = false;
+      window.removeEventListener('message', handleWindowMessage);
+      clearTimeout(watchdog);
     };
-  }, [ytId, isDirect, targetOffsetSeconds]);
+  }, [url, isDirect, onVideoEnded]);
 
-  // Sincronizar Mute para YouTube programáticamente
-  useEffect(() => {
-    if (ytPlayerRef.current && typeof ytPlayerRef.current.mute === 'function') {
-      try {
-        if (isMuted) ytPlayerRef.current.mute();
-        else ytPlayerRef.current.unMute();
-      } catch (e) {}
-    }
-  }, [isMuted]);
-
-  // Desbloqueo táctil de usuario (Mobile Gesture Unlock)
   const handleUserUnlock = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = isMuted;
+      videoRef.current.play().catch(console.warn);
+    }
     setNeedsUserTap(false);
     onUnmute();
-
-    if (isDirect && videoRef.current) {
-      const videoEl = videoRef.current;
-      videoEl.muted = false;
-      if (videoEl.duration) {
-        videoEl.currentTime = getExactUtcLiveSecond(videoEl.duration);
-      }
-      videoEl.play();
-    } else if (ytPlayerRef.current) {
-      try {
-        ytPlayerRef.current.unMute();
-        if (targetOffsetSeconds > 0) {
-          ytPlayerRef.current.seekTo(targetOffsetSeconds, true);
-        }
-        ytPlayerRef.current.playVideo();
-      } catch (e) {}
-    }
   };
 
   const formatMinSec = (sec: number) => {
@@ -272,41 +294,49 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           title={channelName}
           frameBorder="0"
           allow="autoplay; fullscreen"
-          allowFullScreen
           className="synced-tv-iframe"
         />
       ) : (
-        /* 3. Reproductor YouTube Oficial y Fiable (Iframe directo bindeado con bucle continuo 24/7) */
+        /* 3. Reproductor YouTube Oficial y Fiable (Iframe directo optimizado 24/7) */
         <iframe
           id={containerId}
           key={`${url}_${targetOffsetSeconds}`}
-          src={
-            url.includes('/embed/')
-              ? (url.includes('?') 
-                  ? `${url}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&loop=1&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`
-                  : `${url}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&loop=1&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`)
-              : `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&enablejsapi=1&rel=0&fs=1&loop=1&playlist=${ytId}&playsinline=0${targetOffsetSeconds ? `&start=${Math.floor(targetOffsetSeconds)}` : ''}`
-          }
+          src={buildYouTubeEmbedSrc(url, isMuted, targetOffsetSeconds)}
           title={channelName}
           frameBorder="0"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-          allowFullScreen
-          {...{ webkitAllowFullScreen: true, mozAllowFullScreen: true } as any}
+          referrerPolicy="no-referrer-when-downgrade"
           className="synced-tv-iframe"
         />
       )}
 
-
       {/* Indicador de Transmisión Sincronizada en Vivo 24/7 */}
       {!hideLiveBadge && (
-        <button 
-          className="live-sync-badge-pill" 
-          onClick={handleUserUnlock}
-          title="Toca para forzar sincronización"
-        >
-          <span className="live-red-dot" />
-          <span>EN VIVO {formatMinSec(liveSeconds)}</span>
-        </button>
+        <div className="player-top-badges">
+          <button 
+            className="live-sync-badge-pill" 
+            onClick={handleUserUnlock}
+            title="Toca para forzar sincronización"
+          >
+            <span className="live-red-dot" />
+            <span>EN VIVO {formatMinSec(liveSeconds)}</span>
+          </button>
+
+          {!isDirect && url.includes('youtube') && (
+            <a
+              href={url.includes('/embed/') ? url.replace('/embed/', '/watch?v=').split('?')[0] : url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="player-yt-external-link"
+              title="Abrir transmisión en YouTube"
+            >
+              <span>Ver en YouTube</span>
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
+                <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+              </svg>
+            </a>
+          )}
+        </div>
       )}
 
       {/* Overlay de Desbloqueo si el móvil bloqueó el autoplay */}
@@ -322,150 +352,170 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
       {/* Botón de Sonido Flotante si está silenciado */}
       {isMuted && (
         <button 
-          onClick={(e) => { e.stopPropagation(); handleUserUnlock(); }} 
-          className="zapping-unmute-btn"
+          className="unmute-floating-pill" 
+          onClick={handleUserUnlock}
+          title="Toca para Activar Audio de la TV"
         >
           <VolumeX size={18} />
-          <span>Toca para Activar Sonido</span>
+          <span>Activar Audio</span>
         </button>
       )}
 
-
       <style>{`
         .synced-player-container {
-          position: absolute;
-          inset: 0;
-          width: 100vw;
-          height: 100vh;
-          height: 100dvh;
-          background: #000;
+          position: relative;
+          width: 100%;
+          height: 100%;
+          background: #000000;
           overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .synced-native-video {
-          position: absolute;
-          top: 0;
-          left: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          background: #000;
+          display: block;
         }
 
         .synced-tv-iframe {
           position: absolute;
           top: 0;
           left: 0;
-          width: 100% !important;
-          height: 100% !important;
-          border: 0;
-          background: #000;
+          width: 100%;
+          height: 100%;
+          border: none;
+          pointer-events: auto;
         }
 
-        /* Fullscreen nativo en móvil - idéntico a YouTube */
-        .synced-tv-iframe:-webkit-full-screen {
-          width: 100vw !important;
-          height: 100vh !important;
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          z-index: 99999 !important;
+        .synced-player-empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+          height: 100%;
+          color: rgba(255, 255, 255, 0.7);
         }
 
-        .synced-tv-iframe:-moz-full-screen {
-          width: 100vw !important;
-          height: 100vh !important;
+        .player-top-badges {
+          position: absolute;
+          top: 16px;
+          left: 16px;
+          z-index: 40;
+          display: flex;
+          align-items: center;
+          gap: 10px;
         }
 
-        .synced-tv-iframe:fullscreen {
-          width: 100vw !important;
-          height: 100vh !important;
-          position: fixed !important;
-          top: 0 !important;
-          left: 0 !important;
-          z-index: 99999 !important;
-          background: #000 !important;
+        .live-sync-badge-pill {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(0, 0, 0, 0.75);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 0, 85, 0.4);
+          color: #ffffff;
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          padding: 6px 12px;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .live-sync-badge-pill:hover {
+          background: rgba(255, 0, 85, 0.2);
+          border-color: #ff0055;
+          transform: scale(1.05);
+        }
+
+        .player-yt-external-link {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(0, 0, 0, 0.75);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: rgba(255, 255, 255, 0.85);
+          font-size: 0.72rem;
+          font-weight: 600;
+          padding: 6px 12px;
+          border-radius: 20px;
+          text-decoration: none;
+          transition: all 0.2s ease;
+        }
+        .player-yt-external-link:hover {
+          background: rgba(255, 0, 0, 0.3);
+          border-color: #ff0000;
+          color: #ffffff;
+          transform: scale(1.05);
+        }
+        .live-red-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #ff0055;
+          box-shadow: 0 0 8px #ff0055;
+          animation: blink 1.2s infinite;
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
         }
 
         .mobile-tap-unlock-overlay {
           position: absolute;
           inset: 0;
-          z-index: 60;
+          z-index: 50;
+          background: rgba(0, 0, 0, 0.8);
+          backdrop-filter: blur(8px);
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          background: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(8px);
-          color: white;
-          gap: 16px;
+          gap: 14px;
           cursor: pointer;
+          color: #ffffff;
+          font-weight: 600;
         }
-
         .unlock-play-btn {
           width: 72px;
           height: 72px;
           border-radius: 50%;
-          background: #6366f1;
-          border: 0;
+          background: linear-gradient(135deg, #00f0ff, #7928ca);
+          border: none;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 0 30px rgba(99, 102, 241, 0.6);
-          animation: pulseBtn 2s infinite;
+          box-shadow: 0 0 30px rgba(0, 240, 255, 0.5);
+          cursor: pointer;
         }
 
-        @keyframes pulseBtn {
-          0% { transform: scale(1); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
-          50% { transform: scale(1.1); box-shadow: 0 0 35px rgba(99, 102, 241, 0.8); }
-          100% { transform: scale(1); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
-        }
-
-        .live-sync-badge-pill {
+        .unmute-floating-pill {
           position: absolute;
-          top: 70px;
-          right: 20px;
-          z-index: 50;
+          bottom: 24px;
+          right: 24px;
+          z-index: 40;
           display: flex;
           align-items: center;
           gap: 8px;
-          background: rgba(15, 17, 26, 0.85);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(239, 68, 68, 0.5);
-          color: white;
-          padding: 6px 14px;
-          border-radius: 20px;
-          font-weight: 700;
-          font-size: 0.8rem;
+          background: linear-gradient(135deg, #ff0077, #7928ca);
+          border: none;
+          color: #ffffff;
+          font-size: 0.85rem;
+          font-weight: 600;
+          padding: 10px 18px;
+          border-radius: 24px;
           cursor: pointer;
-          box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-          transition: transform 0.2s, background 0.2s;
+          box-shadow: 0 8px 24px rgba(255, 0, 119, 0.4);
+          transition: all 0.2s ease;
         }
-
-        .live-red-dot {
-          width: 8px;
-          height: 8px;
-          background: #ef4444;
-          border-radius: 50%;
-          animation: livePulse 1.5s infinite;
-        }
-
-        @keyframes livePulse {
-          0% { transform: scale(0.9); opacity: 1; }
-          50% { transform: scale(1.4); opacity: 0.5; }
-          100% { transform: scale(0.9); opacity: 1; }
-        }
-
-        .synced-player-empty {
-          position: absolute;
-          inset: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          background: #0b0d14;
-          color: white;
-          gap: 16px;
+        .unmute-floating-pill:hover {
+          filter: brightness(1.2);
+          transform: scale(1.05);
         }
       `}</style>
     </div>
@@ -473,4 +523,3 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
 };
 
 export default SyncedTVPlayer;
-

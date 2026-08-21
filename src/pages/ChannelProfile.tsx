@@ -49,14 +49,8 @@ export default function ChannelProfile() {
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
-      // Canales donde es colaborador (Cadena de creadores)
-      const { data: collabData } = await supabase
-        .from('channel_collaborators')
-        .select('channels(*)')
-        .eq('user_id', user?.id);
-
-      const collabChannels = collabData ? collabData.map((c: any) => c.channels).filter(Boolean) : [];
-      const allChannels = [...(ownChannels || []), ...collabChannels];
+      // channel_collaborators tabla no existe — se omite para evitar 404
+      const allChannels = ownChannels || [];
       
       if (allChannels.length > 0) {
         setChannels(allChannels);
@@ -73,16 +67,9 @@ export default function ChannelProfile() {
     }
   };
 
-  const fetchCollaborators = async (channelId: string) => {
-    try {
-      const { data } = await supabase
-        .from('channel_collaborators')
-        .select('*')
-        .eq('channel_id', channelId);
-      if (data) setCollaborators(data);
-    } catch (e) {
-      console.error(e);
-    }
+  const fetchCollaborators = async (_channelId: string) => {
+    // channel_collaborators tabla no existe — se omite para evitar 404
+    setCollaborators([]);
   };
 
   const handleInviteCollaborator = async (e: React.FormEvent) => {

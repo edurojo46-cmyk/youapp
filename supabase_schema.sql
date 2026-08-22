@@ -72,3 +72,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- 7. YouApp Index (Buscador Comunitario)
+CREATE TABLE youapp_index (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  video_id TEXT NOT NULL,
+  url TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  thumbnail TEXT,
+  provider TEXT NOT NULL,
+  added_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  duration_text TEXT DEFAULT '',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+);
+
+ALTER TABLE youapp_index ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Todos pueden ver el índice" ON youapp_index FOR SELECT USING (true);
+CREATE POLICY "Usuarios autenticados pueden agregar al índice" ON youapp_index FOR INSERT WITH CHECK (auth.uid() = added_by);

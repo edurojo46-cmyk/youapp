@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Tv, Grid, Radio, Plus, Play, Info } from 'lucide-react';
+import { Search, Tv, Grid, Radio, Plus, Play, Info, Video } from 'lucide-react';
+import AddVideoModal from '../components/AddVideoModal';
 
 export default function Home() {
   const navigate = useNavigate();
+  const [showAddModal, setShowAddModal] = useState(false);
 
   return (
     <div className="home-desktop-page">
@@ -16,8 +19,8 @@ export default function Home() {
           <button className="hdt-btn-primary" onClick={() => navigate('/live')}>
             <Play size={18} fill="white" /> Ver señal
           </button>
-          <button className="hdt-btn-outline">
-            Más info <Info size={16} />
+          <button className="hdt-btn-outline" onClick={() => setShowAddModal(true)}>
+            <Video size={16} /> Agregar Video
           </button>
         </div>
         
@@ -510,6 +513,10 @@ export default function Home() {
           }
         }
       `}</style>
+      
+      {showAddModal && (
+        <AddVideoModal onClose={() => setShowAddModal(false)} />
+      )}
     </div>
   );
 }

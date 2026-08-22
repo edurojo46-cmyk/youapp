@@ -624,6 +624,36 @@ export async function executeYouTubeSearch(query: string): Promise<{
 
   const qLower = norm(q);
 
+  // --- 0.5 YOUAPP INDEX (Búsqueda en la BD Comunitaria) ---
+  let communityVideos: YouTubeSearchResult[] = [];
+  try {
+    const { data: indexData, error: indexError } = await supabase
+      .from('youapp_index')
+      .select('*')
+      .ilike('title', `%${q}%`)
+      .limit(10);
+      
+    if (!indexError && indexData) {
+      communityVideos = indexData.map(v => ({
+        id: `youapp_idx_${v.id}`,
+        type: 'video' as const,
+        title: v.title,
+        description: v.description || 'Agregado por la comunidad YouApp',
+        thumbnail: v.thumbnail || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800',
+        videoUrl: v.url,
+        channelTitle: 'Comunidad YouApp',
+        channelId: 'youapp-community',
+        publishedText: 'Comunidad',
+        durationText: v.duration_text || 'Video',
+        isLive: false,
+        isVerified: true,
+        provider: (v.provider as any) || 'youtube'
+      }));
+    }
+  } catch (e) {
+    console.error('Error fetching from YouApp Index:', e);
+  }
+
   // Helper function for fuzzy matching (Levenshtein distance)
   const getLevenshteinDistance = (a: string, b: string): number => {
     if (a.length === 0) return b.length;
@@ -862,7 +892,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
   directVideos = directVideos.map(v => ({ ...v, provider: v.provider || 'youtube' })).slice(0, 7);
   itunesVideos = itunesVideos.slice(0, 7);
   
-  const combinedVideos = [...directVideos, ...dmVideos, ...tiktokMock, ...instagramMock, ...mockVideos, ...itunesVideos];
+  const combinedVideos = [...communityVideos, ...directVideos, ...dmVideos, ...tiktokMock, ...instagramMock, ...mockVideos, ...itunesVideos];
   const seenTitles = new Set<string>();
   const finalVideos = combinedVideos.filter(v => {
     const key = v.title.toLowerCase().trim();

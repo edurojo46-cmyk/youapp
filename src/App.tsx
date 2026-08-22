@@ -15,6 +15,7 @@ import MyAlgorithm from './pages/MyAlgorithm';
 import CreateSignal from './pages/CreateSignal';
 import MyLists from './pages/MyLists';
 import MyMoments from './pages/MyMoments';
+import ShareTarget from './pages/ShareTarget';
 import { useStore } from './store/useStore';
 
 import DesktopLayout from './components/DesktopLayout';
@@ -45,6 +46,20 @@ function App() {
     initAuth();
   }, [initAuth]);
 
+  // Interceptar URL compartida desde Web Share Target API
+  useEffect(() => {
+    if (window.location.search) {
+      const params = new URLSearchParams(window.location.search);
+      const sharedUrl = params.get('url') || params.get('text');
+      if (sharedUrl) {
+        // Redirigir a la ruta interna de share manteniendo los params
+        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "#/share" + window.location.search;
+        window.history.replaceState(null, '', newUrl);
+        window.location.reload(); // Forzar recarga limpia en el HashRouter
+      }
+    }
+  }, []);
+
   return (
     <div className="app-layout">
       <Routes>
@@ -71,6 +86,9 @@ function App() {
         <Route path="/channels-search" element={<DashboardRoute><ChannelSearch /></DashboardRoute>} />
         <Route path="/program" element={<DashboardRoute><SearchAndProgram /></DashboardRoute>} />
         <Route path="/trending" element={<DashboardRoute><div style={{padding:'2rem'}}>Tendencias (Próximamente)</div></DashboardRoute>} />
+        
+        {/* Ruta para capturar enlaces compartidos */}
+        <Route path="/share" element={<ProtectedRoute><ShareTarget /></ProtectedRoute>} />
       </Routes>
 
       <style>{`

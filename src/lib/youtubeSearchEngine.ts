@@ -756,14 +756,14 @@ export async function executeYouTubeSearch(query: string): Promise<{
       isVerified: true,
       provider: 'twitch'
     })),
-    {
-      id: `vimeo-mock-${Date.now()}`,
+    ...Array(7).fill(null).map((_, i) => ({
+      id: `vimeo-mock-${Date.now()}-${i}`,
       type: 'video' as const,
-      title: `Documental HD: ${q.charAt(0).toUpperCase() + q.slice(1)}`,
+      title: `Arte y Cultura: ${q} (Vimeo #${i + 1})`,
       description: 'Cortometraje en alta definición desde Vimeo.',
-      thumbnail: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=600',
+      thumbnail: `https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=600&sig=${i}`,
       videoUrl: 'https://player.vimeo.com/video/1084537?autoplay=1&loop=1&title=0&byline=0&portrait=0',
-        title: 'Vimeo Staff Picks',
+      channelTitle: 'Vimeo Staff Picks',
       channelId: 'vimeo-staff',
       publishedText: 'Vimeo Pro',
       durationText: 'VIMEO',

@@ -635,21 +635,43 @@ export async function executeYouTubeSearch(query: string): Promise<{
       .limit(10);
       
     if (!indexError && indexData) {
-      communityVideos = indexData.map(v => ({
-        id: `youapp_idx_${v.id}`,
-        type: 'video' as const,
-        title: v.title,
-        description: v.description || 'Agregado por la comunidad YouApp',
-        thumbnail: v.thumbnail || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800',
-        videoUrl: v.url,
-        channelTitle: 'Comunidad YouApp',
-        channelId: 'youapp-community',
-        publishedText: 'Comunidad',
-        durationText: v.duration_text || 'Video',
-        isLive: false,
-        isVerified: true,
-        provider: (v.provider as any) || 'youtube'
-      }));
+      communityVideos = indexData.map(v => {
+        let finalUrl = v.url;
+        
+        // Convertir URLs estándar a formato Embed para iFrames
+        if (v.provider === 'tiktok' && finalUrl.includes('/video/')) {
+          const videoIdMatch = finalUrl.match(/\/video\/(\d+)/);
+          if (videoIdMatch && videoIdMatch[1]) {
+            finalUrl = `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
+          }
+        } else if (v.provider === 'instagram' && finalUrl.includes('/reel/')) {
+          if (!finalUrl.endsWith('/embed/')) {
+            const cleanUrl = finalUrl.split('?')[0];
+            finalUrl = cleanUrl.endsWith('/') ? `${cleanUrl}embed/` : `${cleanUrl}/embed/`;
+          }
+        } else if (v.provider === 'vimeo' && !finalUrl.includes('player.vimeo.com')) {
+          const vimeoMatch = finalUrl.match(/vimeo\.com\/(\d+)/);
+          if (vimeoMatch && vimeoMatch[1]) {
+            finalUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;
+          }
+        }
+
+        return {
+          id: `youapp_idx_${v.id}`,
+          type: 'video' as const,
+          title: v.title,
+          description: v.description || 'Agregado por la comunidad YouApp',
+          thumbnail: v.thumbnail || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800',
+          videoUrl: finalUrl,
+          channelTitle: 'Comunidad YouApp',
+          channelId: 'youapp-community',
+          publishedText: 'Comunidad',
+          durationText: v.duration_text || 'Video',
+          isLive: false,
+          isVerified: true,
+          provider: (v.provider as any) || 'youtube'
+        };
+      });
     }
   } catch (e) {
     console.error('Error fetching from YouApp Index:', e);

@@ -49,10 +49,11 @@ function getCache<T>(key: string): T | null {
   }
 
   try {
-    const raw = localStorage.getItem(`yt_mega_${key}`);
+    const cacheKey = `youapp_search_v2_${key}`;
+    const raw = localStorage.getItem(cacheKey);
     if (raw) {
       if (raw.includes('listType=search') || raw.includes('sug-vid-')) {
-        localStorage.removeItem(`yt_mega_${key}`);
+        localStorage.removeItem(cacheKey);
         return null;
       }
       const parsed = JSON.parse(raw);
@@ -69,7 +70,7 @@ function setCache(key: string, data: any, ttlSeconds = 7200): void {
   const item = { data, expires: Date.now() + ttlSeconds * 1000 };
   RAM_CACHE.set(key, item);
   try {
-    localStorage.setItem(`yt_mega_${key}`, JSON.stringify(item));
+    localStorage.setItem(`youapp_search_v2_${key}`, JSON.stringify(item));
   } catch {}
 }
 
@@ -774,7 +775,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
   ];
 
   // Generador Mock para TikTok (usando YouTube Shorts por debajo)
-  const tiktokShortsIds = ['bMknfKXIFA8', 'aF9xG3-G0fE', 'WcIcjTog99A', 'L33g1hV-Hpw', 'y-vVjYk6PzM', '8wP_DkR5a_I', 'vW6mC8yO4iU'];
+  const tiktokShortsIds = ['oIn-zQZ_3gI', 'XRYIAyGWvig', 'kQbal1hwt-U', 'VRHU4v24TfY', 'DK4_5_B_lyU', 'z02_QimGyyc', 'A3zAiKCo3oc'];
   const tiktokMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
     id: `tiktok_${i}_${Date.now()}`,
     type: 'video' as const,
@@ -791,14 +792,14 @@ export async function executeYouTubeSearch(query: string): Promise<{
     provider: 'tiktok'
   }));
 
-  const instaShortsIds = ['xL3M1H3u5kI', 'p69TfO8hE1c', 'Q4m8t-Fk7sI', 'h9T_F-1p4bA', 'v1O3a-Z9c2E', 'P2x9b-Y4n3M', 'K3s8d-V2c1X'];
+  const instaShortsIds = ['xxBlUSd2Iqs', 'UFNsUUXS0go', '83gdZXcpYXw', 'sqZNMnydAxU', 'qTVq6NXxtOI', 'TCucvfFb3xQ', 'x7Aiq7PBzxY'];
   const instagramMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
     id: `ig-mock-${Date.now()}-${i}`,
     type: 'video' as const,
     title: `Instagram Reel: ${q} #${i + 1}`,
     description: 'Reel popular de Instagram.',
     thumbnail: `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=60&sig=${i}`,
-    videoUrl: `https://www.youtube.com/embed/${tiktokShortsIds[(i + 3) % tiktokShortsIds.length]}`, // reusing safe shorts
+    videoUrl: `https://www.youtube.com/embed/${instaShortsIds[i % instaShortsIds.length]}`, // usando shorts reales
     channelTitle: 'ig_influencer',
     channelId: 'ig-influencer',
     publishedText: 'Ayer',

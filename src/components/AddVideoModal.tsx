@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Link as LinkIcon, Plus, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
+import { useStore } from '../store/useStore';
 
 interface AddVideoModalProps {
   onClose: () => void;
@@ -9,7 +9,7 @@ interface AddVideoModalProps {
 }
 
 export default function AddVideoModal({ onClose, onSuccess }: AddVideoModalProps) {
-  const { user } = useAuth();
+  const { user } = useStore();
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
   const [loading, setLoading] = useState(false);

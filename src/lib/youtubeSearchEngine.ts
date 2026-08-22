@@ -774,15 +774,15 @@ export async function executeYouTubeSearch(query: string): Promise<{
     }))
   ];
 
-  // Generador Mock para TikTok (usando YouTube Shorts por debajo)
-  const tiktokShortsIds = ['oIn-zQZ_3gI', 'XRYIAyGWvig', 'kQbal1hwt-U', 'VRHU4v24TfY', 'DK4_5_B_lyU', 'z02_QimGyyc', 'A3zAiKCo3oc'];
+  // Generador Mock para TikTok
+  const tiktokIds = ['7290136683838641413', '7301072935295241477', '7183040331070508331'];
   const tiktokMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
     id: `tiktok_${i}_${Date.now()}`,
     type: 'video' as const,
     title: `TikTok Viral: ${q} #${i + 1}`,
     description: 'Video tendencia importado desde TikTok.',
     thumbnail: `https://images.unsplash.com/photo-1611605698335-8b1569810432?w=800&auto=format&fit=crop&q=60&sig=${i}`,
-    videoUrl: `https://www.youtube.com/embed/${tiktokShortsIds[i % tiktokShortsIds.length]}`,
+    videoUrl: `https://www.tiktok.com/embed/v2/${tiktokIds[i % tiktokIds.length]}`,
     channelTitle: '@tiktok_creator',
     channelId: 'tiktok-creator',
     publishedText: 'Hoy',
@@ -792,14 +792,15 @@ export async function executeYouTubeSearch(query: string): Promise<{
     provider: 'tiktok'
   }));
 
-  const instaShortsIds = ['xxBlUSd2Iqs', 'UFNsUUXS0go', '83gdZXcpYXw', 'sqZNMnydAxU', 'qTVq6NXxtOI', 'TCucvfFb3xQ', 'x7Aiq7PBzxY'];
+  // Generador Mock para Instagram
+  const instaIds = ['C-z81N3pY8_', 'CwY5y9gMt3c', 'CmUv48Zq2sq'];
   const instagramMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
     id: `ig-mock-${Date.now()}-${i}`,
     type: 'video' as const,
     title: `Instagram Reel: ${q} #${i + 1}`,
     description: 'Reel popular de Instagram.',
     thumbnail: `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=60&sig=${i}`,
-    videoUrl: `https://www.youtube.com/embed/${instaShortsIds[i % instaShortsIds.length]}`, // usando shorts reales
+    videoUrl: `https://www.instagram.com/p/${instaIds[i % instaIds.length]}/embed/captioned/`,
     channelTitle: 'ig_influencer',
     channelId: 'ig-influencer',
     publishedText: 'Ayer',

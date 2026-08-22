@@ -963,7 +963,7 @@ export default function ChannelSearch() {
 
             <div className="video-modal-iframe-container">
               <iframe
-                src={activeModalVideo.videoUrl || `https://www.youtube.com/embed/${activeModalVideo.videoId || 'wR36Dq7bB60'}?autoplay=1&controls=1`}
+                src={(activeModalVideo.videoUrl || `https://www.youtube.com/embed/${activeModalVideo.videoId || 'wR36Dq7bB60'}?autoplay=1&controls=1`).replace('[HOSTNAME]', window.location.hostname)}
                 title={activeModalVideo.title}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

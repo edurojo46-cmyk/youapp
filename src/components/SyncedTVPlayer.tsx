@@ -243,7 +243,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
         <iframe
           id={containerId}
           key={url}
-          src={url.includes('muted=') ? url : `${url}&muted=${isMuted}`}
+          src={(url.includes('muted=') ? url : `${url}&muted=${isMuted}`).replace('[HOSTNAME]', window.location.hostname)}
           title={channelName}
           frameBorder="0"
           allow="autoplay; fullscreen"

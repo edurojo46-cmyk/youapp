@@ -72,12 +72,15 @@ export default function CreateSignal() {
       id: `custom-${Date.now()}`,
       name: signalName,
       description: 'Programación personalizada',
-      icon: Tv,
-      color: 'purple',
-      type: 'mixed',
-      playlistIds: [], // Would map schedule.video.id
-      tags: ['Personal', 'Custom'],
-      priority: 1
+      category: 'custom',
+      avatarUrl: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=200',
+      thumbnail: 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=600',
+      provider: 'direct',
+      videoUrl: '',
+      currentVideoTitle: 'Programación Custom',
+      viewerCount: 0,
+      isLive: true,
+      tags: ['Personal', 'Custom']
     };
 
     const saved = localStorage.getItem('youapp_saved_custom_channels');

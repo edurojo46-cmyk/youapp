@@ -793,7 +793,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
       durationText: 'TWITCH',
       isLive: true,
       isVerified: true,
-      provider: 'twitch'
+      provider: 'twitch' as const
     },
     ...Array(6).fill(null).map((_, i) => ({
       id: `twitch-mock-${Date.now()}-${i}`,
@@ -807,8 +807,8 @@ export async function executeYouTubeSearch(query: string): Promise<{
       publishedText: 'Ahora',
       durationText: 'TWITCH',
       isLive: true,
-      isVerified: true,
-      provider: 'twitch'
+      isVerified: false,
+      provider: 'vimeo' as const
     })),
     ...Array(7).fill(null).map((_, i) => ({
       id: `vimeo-mock-${Date.now()}-${i}`,
@@ -823,7 +823,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
       durationText: 'VIMEO',
       isLive: false,
       isVerified: true,
-      provider: 'vimeo'
+      provider: 'itunes' as const
     }))
   ];
 

@@ -810,7 +810,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
     title: `Instagram Reel: ${q} #${i + 1}`,
     description: 'Reel popular de Instagram.',
     thumbnail: `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=60&sig=${i}`,
-    videoUrl: 'https://www.instagram.com/p/CoU9X0vMhLp/embed',
+    videoUrl: 'https://www.instagram.com/p/CmUv48Zq2sq/embed',
     channelTitle: 'ig_influencer',
     channelId: 'ig-influencer',
     publishedText: 'Ayer',

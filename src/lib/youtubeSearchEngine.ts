@@ -12,6 +12,7 @@
 
 import { UNIVERSAL_CATALOG, type UniversalChannel } from './universalChannels';
 import { fetchYouTubeViaCorsProxy } from './youtubeChannelSearch';
+import { supabase } from './supabase';
 
 export interface YouTubeSearchResult {
   id: string;

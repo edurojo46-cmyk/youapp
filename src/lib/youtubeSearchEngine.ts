@@ -763,22 +763,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
       description: 'Cortometraje en alta definición desde Vimeo.',
       thumbnail: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=600',
       videoUrl: 'https://player.vimeo.com/video/1084537?autoplay=1&loop=1&title=0&byline=0&portrait=0',
-      channelTitle: 'Vimeo Staff Picks',
-      channelId: 'vimeo-staff',
-      publishedText: 'Vimeo Pro',
-      durationText: 'VIMEO',
-      isLive: false,
-      isVerified: true,
-      provider: 'vimeo'
-    },
-    ...Array(6).fill(null).map((_, i) => ({
-      id: `vimeo-mock-${Date.now()}-${i}`,
-      type: 'video' as const,
-      title: `Arte y Cultura: ${q} (Vimeo #${i + 1})`,
-      description: 'Cortometraje en alta definición desde Vimeo.',
-      thumbnail: `https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=600&sig=${i}`,
-      videoUrl: 'https://player.vimeo.com/video/1084537?autoplay=1&loop=1&title=0&byline=0&portrait=0',
-      channelTitle: 'Vimeo Staff Picks',
+        title: 'Vimeo Staff Picks',
       channelId: 'vimeo-staff',
       publishedText: 'Vimeo Pro',
       durationText: 'VIMEO',
@@ -788,29 +773,32 @@ export async function executeYouTubeSearch(query: string): Promise<{
     }))
   ];
 
+  // Generador Mock para TikTok (usando YouTube Shorts por debajo)
+  const tiktokShortsIds = ['bMknfKXIFA8', 'aF9xG3-G0fE', 'WcIcjTog99A', 'L33g1hV-Hpw', 'y-vVjYk6PzM', '8wP_DkR5a_I', 'vW6mC8yO4iU'];
   const tiktokMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
-    id: `tiktok-mock-${Date.now()}-${i}`,
+    id: `tiktok_${i}_${Date.now()}`,
     type: 'video' as const,
     title: `TikTok Viral: ${q} #${i + 1}`,
     description: 'Video tendencia importado desde TikTok.',
     thumbnail: `https://images.unsplash.com/photo-1611605698335-8b1569810432?w=800&auto=format&fit=crop&q=60&sig=${i}`,
-    videoUrl: 'https://www.tiktok.com/embed/v2/7290136683838641413',
+    videoUrl: `https://www.youtube.com/embed/${tiktokShortsIds[i % tiktokShortsIds.length]}`,
     channelTitle: '@tiktok_creator',
     channelId: 'tiktok-creator',
     publishedText: 'Hoy',
-    durationText: '0:15',
+    durationText: '0:30',
     isLive: false,
     isVerified: false,
     provider: 'tiktok'
   }));
 
+  const instaShortsIds = ['xL3M1H3u5kI', 'p69TfO8hE1c', 'Q4m8t-Fk7sI', 'h9T_F-1p4bA', 'v1O3a-Z9c2E', 'P2x9b-Y4n3M', 'K3s8d-V2c1X'];
   const instagramMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
     id: `ig-mock-${Date.now()}-${i}`,
     type: 'video' as const,
     title: `Instagram Reel: ${q} #${i + 1}`,
     description: 'Reel popular de Instagram.',
     thumbnail: `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=60&sig=${i}`,
-    videoUrl: 'https://www.instagram.com/p/C-z81N3pY8_/embed/captioned/',
+    videoUrl: `https://www.youtube.com/embed/${tiktokShortsIds[(i + 3) % tiktokShortsIds.length]}`, // reusing safe shorts
     channelTitle: 'ig_influencer',
     channelId: 'ig-influencer',
     publishedText: 'Ayer',

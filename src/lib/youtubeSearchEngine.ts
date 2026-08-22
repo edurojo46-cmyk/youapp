@@ -32,6 +32,7 @@ export interface YouTubeSearchResult {
   videoCountText?: string;
   handle?: string;
   badge?: string;
+  provider?: 'youtube' | 'twitch' | 'tiktok' | 'instagram' | 'vimeo' | 'dailymotion' | 'itunes' | 'direct';
 }
 
 // ─── CACHÉ LOCAL ─────────────────────────────────────────────────────────────
@@ -614,7 +615,8 @@ export async function executeYouTubeSearch(query: string): Promise<{
       viewsText: '---',
       publishedText: 'Reciente',
       isLive: false,
-      isVerified: true
+      isVerified: true,
+      provider: 'direct'
     };
     return { all: [directVideo], videos: [directVideo], channels: [] };
   }
@@ -690,7 +692,8 @@ export async function executeYouTubeSearch(query: string): Promise<{
           publishedText: r.releaseDate ? r.releaseDate.substring(0, 4) : 'Clásico',
           durationText: 'MV',
           isLive: false,
-          isVerified: true
+          isVerified: true,
+          provider: 'itunes'
         }));
     }
   } catch (e) {
@@ -715,8 +718,9 @@ export async function executeYouTubeSearch(query: string): Promise<{
         publishedText: 'DailyMotion',
         durationText: 'DM',
         isLive: false,
-        isVerified: true
-      }));
+        isVerified: true,
+        provider: 'dailymotion'
+      })).slice(0, 7); // Limitar a 7
     }
   } catch (e) {}
 
@@ -734,8 +738,24 @@ export async function executeYouTubeSearch(query: string): Promise<{
       publishedText: 'Ahora',
       durationText: 'TWITCH',
       isLive: true,
-      isVerified: true
+      isVerified: true,
+      provider: 'twitch'
     },
+    ...Array(6).fill(null).map((_, i) => ({
+      id: `twitch-mock-${Date.now()}-${i}`,
+      type: 'video' as const,
+      title: `🔴 En Vivo: Stream ${q} #${i + 1}`,
+      description: 'Transmisión en vivo desde Twitch.',
+      thumbnail: `https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600&sig=${i}`,
+      videoUrl: 'https://player.twitch.tv/?channel=ibai&parent=localhost&parent=127.0.0.1',
+      channelTitle: 'Twitch Streamer',
+      channelId: 'twitch-ibai',
+      publishedText: 'Ahora',
+      durationText: 'TWITCH',
+      isLive: true,
+      isVerified: true,
+      provider: 'twitch'
+    })),
     {
       id: `vimeo-mock-${Date.now()}`,
       type: 'video' as const,
@@ -748,9 +768,57 @@ export async function executeYouTubeSearch(query: string): Promise<{
       publishedText: 'Vimeo Pro',
       durationText: 'VIMEO',
       isLive: false,
-      isVerified: true
-    }
+      isVerified: true,
+      provider: 'vimeo'
+    },
+    ...Array(6).fill(null).map((_, i) => ({
+      id: `vimeo-mock-${Date.now()}-${i}`,
+      type: 'video' as const,
+      title: `Arte y Cultura: ${q} (Vimeo #${i + 1})`,
+      description: 'Cortometraje en alta definición desde Vimeo.',
+      thumbnail: `https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=600&sig=${i}`,
+      videoUrl: 'https://player.vimeo.com/video/1084537?autoplay=1&loop=1&title=0&byline=0&portrait=0',
+      channelTitle: 'Vimeo Staff Picks',
+      channelId: 'vimeo-staff',
+      publishedText: 'Vimeo Pro',
+      durationText: 'VIMEO',
+      isLive: false,
+      isVerified: true,
+      provider: 'vimeo'
+    }))
   ];
+
+  const tiktokMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
+    id: `tiktok-mock-${Date.now()}-${i}`,
+    type: 'video' as const,
+    title: `TikTok Viral: ${q} #${i + 1}`,
+    description: 'Video tendencia importado desde TikTok.',
+    thumbnail: `https://images.unsplash.com/photo-1611605698335-8b1569810432?w=800&auto=format&fit=crop&q=60&sig=${i}`,
+    videoUrl: 'https://www.tiktok.com/embed/v2/7161234567890123456',
+    channelTitle: '@tiktok_creator',
+    channelId: 'tiktok-creator',
+    publishedText: 'Hoy',
+    durationText: '0:15',
+    isLive: false,
+    isVerified: false,
+    provider: 'tiktok'
+  }));
+
+  const instagramMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
+    id: `ig-mock-${Date.now()}-${i}`,
+    type: 'video' as const,
+    title: `Instagram Reel: ${q} #${i + 1}`,
+    description: 'Reel popular de Instagram.',
+    thumbnail: `https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800&auto=format&fit=crop&q=60&sig=${i}`,
+    videoUrl: 'https://www.instagram.com/p/CoU9X0vMhLp/embed',
+    channelTitle: 'ig_influencer',
+    channelId: 'ig-influencer',
+    publishedText: 'Ayer',
+    durationText: 'Reel',
+    isLive: false,
+    isVerified: true,
+    provider: 'instagram'
+  }));
 
 
   const catalogChannels = UNIVERSAL_CATALOG
@@ -772,7 +840,8 @@ export async function executeYouTubeSearch(query: string): Promise<{
       subscribersText: `${Math.round(ch.viewerCount * 5 / 1000)}K suscriptores`,
       videoCountText: 'Emisión 24/7',
       isLive: Boolean(ch.isLive),
-      isVerified: true
+      isVerified: true,
+      provider: ch.provider as any || 'youtube'
     }));
 
   // 5. Unificar todos los canales
@@ -793,12 +862,17 @@ export async function executeYouTubeSearch(query: string): Promise<{
       channelId: `topic-${norm(q)}`,
       subscribersText: 'Canal Verificado',
       isLive: false,
-      isVerified: true
+      isVerified: true,
+      provider: 'youtube'
     });
   }
 
   // 8. Unificar y desduplicar todos los videos
-  const combinedVideos = [...directVideos, ...dmVideos, ...itunesVideos, ...mockVideos];
+  // Asignar provider "youtube" por defecto a los de youtube directo
+  directVideos = directVideos.map(v => ({ ...v, provider: v.provider || 'youtube' })).slice(0, 7);
+  itunesVideos = itunesVideos.slice(0, 7);
+  
+  const combinedVideos = [...directVideos, ...dmVideos, ...tiktokMock, ...instagramMock, ...mockVideos, ...itunesVideos];
   const seenTitles = new Set<string>();
   const finalVideos = combinedVideos.filter(v => {
     const key = v.title.toLowerCase().trim();

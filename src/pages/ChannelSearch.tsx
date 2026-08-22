@@ -142,7 +142,8 @@ export default function ChannelSearch() {
         avatarUrl: c.thumbnail || c.channelAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.title)}&background=151329&color=00f0ff`,
         isVerified: c.isVerified,
         channelUrl: `https://www.youtube.com/channel/${c.channelId || c.id}`,
-        isLiveNow: c.isLive
+        isLiveNow: c.isLive,
+        provider: (c as any).provider || 'youtube'
       }));
 
       // 2. Mapear Videos encontrados
@@ -158,7 +159,8 @@ export default function ChannelSearch() {
         isLive: v.isLive,
         durationText: v.durationText,
         viewsText: v.viewsText,
-        isVerified: v.isVerified
+        isVerified: v.isVerified,
+        provider: (v as any).provider || 'youtube'
       }));
 
       setResults(mappedChannels);
@@ -203,7 +205,7 @@ export default function ChannelSearch() {
       viewerCount: Math.floor(Math.random() * 25000) + 5000,
       isLive: vid.isLive || false,
       durationSeconds: 0,
-      tags: ['video', 'ondemand', 'youtube']
+      tags: ['video', 'ondemand', vid.provider || 'youtube']
     };
 
     localStorage.setItem('youapp_active_channel_id', videoChannelPayload.id);
@@ -229,7 +231,7 @@ export default function ChannelSearch() {
       currentVideoTitle: vid.title,
       viewerCount: Math.floor(Math.random() * 25000) + 5000,
       isLive: vid.isLive || false,
-      tags: ['video', 'guardado', 'youtube']
+      tags: ['video', 'guardado', vid.provider || 'youtube']
     };
 
     const updated = [newChannel, ...savedChannels];
@@ -741,6 +743,11 @@ export default function ChannelSearch() {
                           <span>EN DIRECTO</span>
                         </span>
                       )}
+                      {ch.provider && ch.provider !== 'youtube' && (
+                        <span className={`provider-badge provider-${ch.provider.toLowerCase()}`} style={{ marginLeft: '6px', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                          {ch.provider.toUpperCase()}
+                        </span>
+                      )}
                     </div>
 
                     {/* Metadatos (Handle, Suscriptores, Videos) */}
@@ -866,6 +873,13 @@ export default function ChannelSearch() {
                       <span className="video-date-bullet">• {vid.publishedAt}</span>
                     )}
                   </div>
+                  {vid.provider && (
+                    <div style={{ marginTop: '4px', marginBottom: '4px' }}>
+                      <span className={`provider-badge provider-${vid.provider.toLowerCase()}`} style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: vid.provider === 'youtube' ? '#ff0000' : vid.provider === 'twitch' ? '#9146FF' : vid.provider === 'tiktok' ? '#00f2fe' : vid.provider === 'instagram' ? 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)' : vid.provider === 'dailymotion' ? '#0062ff' : vid.provider === 'vimeo' ? '#1ab7ea' : 'rgba(255,255,255,0.1)', color: '#fff', fontWeight: 'bold' }}>
+                        {vid.provider.toUpperCase()}
+                      </span>
+                    </div>
+                  )}
 
                   {vid.description && (
                     <p className="video-desc-snippet">{vid.description}</p>

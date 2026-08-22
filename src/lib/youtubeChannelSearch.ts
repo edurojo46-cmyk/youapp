@@ -25,6 +25,7 @@ export interface YTChannelResult {
   channelUrl: string;
   latestVideoId?: string;
   isLiveNow?: boolean;
+  provider?: string;
 }
 
 export interface YTVideoResult {
@@ -40,6 +41,7 @@ export interface YTVideoResult {
   durationText?: string;
   viewsText?: string;
   isVerified?: boolean;
+  provider?: string;
 }
 
 export interface ChannelPlayableInfo {

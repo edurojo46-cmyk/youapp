@@ -42,15 +42,15 @@ const extractYouTubeId = (url: string): string => {
 
 // Construye la URL oficial y válida para iframes de YouTube
 const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds = 0, channelName = 'YouApp TV'): string => {
+  const fallbackVideoId = 'jfKfPfyJRdk'; // Lofi Girl 24/7 stream
+
   if (!inputUrl) {
-    return `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(channelName)}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+    return `https://www.youtube.com/embed/${fallbackVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
-  // 1. Si es búsqueda nativa de YouTube embebida (listType=search)
+  // 1. Si es búsqueda nativa de YouTube embebida (ya no soportado por YT)
   if (inputUrl.includes('listType=search') || inputUrl.includes('listtype=search')) {
-    const listMatch = inputUrl.match(/list=([^&#?]+)/);
-    const queryTerm = listMatch ? listMatch[1] : encodeURIComponent(channelName);
-    return `https://www.youtube.com/embed?listType=search&list=${queryTerm}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+    return `https://www.youtube.com/embed/${fallbackVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
   // 2. Si es una lista de reproducción / series (videoseries)
@@ -62,11 +62,19 @@ const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds 
     }
   }
 
-  // 3. Si es un video individual o con cola de videos 24/7
+  // 3. Si es un stream en vivo dinámico por ID de canal
+  if (inputUrl.includes('live_stream?channel=')) {
+    const channelMatch = inputUrl.match(/channel=([^&#?]+)/);
+    const channelId = channelMatch ? channelMatch[1] : '';
+    if (channelId) {
+      return `https://www.youtube.com/embed/live_stream?channel=${channelId}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+    }
+  }
+
+  // 4. Si es un video individual o con cola de videos 24/7
   const vid = extractYouTubeId(inputUrl);
   if (!vid || vid.length !== 11) {
-    const queryFallback = encodeURIComponent(channelName || 'musica argentina');
-    return `https://www.youtube.com/embed?listType=search&list=${queryFallback}&autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+    return `https://www.youtube.com/embed/${fallbackVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
   }
 
   const baseUrl = `https://www.youtube.com/embed/${vid}`;
@@ -263,8 +271,30 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           allow="autoplay; fullscreen; picture-in-picture"
           className="synced-tv-iframe"
         />
+      ) : url.includes('tiktok.com/embed') ? (
+        /* 5. Reproductor Oficial de TikTok */
+        <iframe
+          id={containerId}
+          key={url}
+          src={url}
+          title={channelName}
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          className="synced-tv-iframe"
+        />
+      ) : url.includes('instagram.com') && url.includes('embed') ? (
+        /* 6. Reproductor Oficial de Instagram */
+        <iframe
+          id={containerId}
+          key={url}
+          src={url}
+          title={channelName}
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          className="synced-tv-iframe"
+        />
       ) : (
-        /* 5. Reproductor YouTube Oficial y Fiable (Iframe directo optimizado 24/7) */
+        /* 7. Reproductor YouTube Oficial y Fiable (Iframe directo optimizado 24/7) */
         <iframe
           id={containerId}
           key={`${url}_${targetOffsetSeconds}`}

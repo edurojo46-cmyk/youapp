@@ -280,6 +280,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           title={channelName}
           frameBorder="0"
           allow="autoplay; fullscreen; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
           className="synced-tv-iframe"
         />
       ) : url.includes('instagram.com') && url.includes('embed') ? (
@@ -291,6 +292,7 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           title={channelName}
           frameBorder="0"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
           className="synced-tv-iframe"
         />
       ) : (

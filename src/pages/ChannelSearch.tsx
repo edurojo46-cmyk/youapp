@@ -967,6 +967,7 @@ export default function ChannelSearch() {
                 title={activeModalVideo.title}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                sandbox={activeModalVideo.videoUrl && (activeModalVideo.videoUrl.includes('tiktok.com') || activeModalVideo.videoUrl.includes('instagram.com')) ? "allow-scripts allow-same-origin allow-popups allow-presentation" : undefined}
                 allowFullScreen
                 className="video-modal-iframe"
               />

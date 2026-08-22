@@ -20,8 +20,10 @@ const isDirectVideo = (url: string): boolean => {
     clean.endsWith('.mp4') ||
     clean.endsWith('.m3u8') ||
     clean.endsWith('.webm') ||
+    clean.endsWith('.m4v') ||
     clean.includes('.mp4') ||
     clean.includes('.m3u8') ||
+    clean.includes('.m4v') ||
     clean.includes('commondatastorage.googleapis.com') ||
     clean.includes('storage.googleapis.com') ||
     clean.includes('supabase.co/storage')
@@ -239,8 +241,30 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           allow="autoplay; fullscreen"
           className="synced-tv-iframe"
         />
+      ) : url.includes('dailymotion.com/embed') ? (
+        /* 3. Reproductor Oficial de DailyMotion */
+        <iframe
+          id={containerId}
+          key={url}
+          src={url.includes('mute=') ? url : `${url}&mute=${isMuted ? 1 : 0}`}
+          title={channelName}
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          className="synced-tv-iframe"
+        />
+      ) : url.includes('player.vimeo.com') ? (
+        /* 4. Reproductor Oficial de Vimeo */
+        <iframe
+          id={containerId}
+          key={url}
+          src={url.includes('muted=') ? url : `${url}&muted=${isMuted ? 1 : 0}`}
+          title={channelName}
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture"
+          className="synced-tv-iframe"
+        />
       ) : (
-        /* 3. Reproductor YouTube Oficial y Fiable (Iframe directo optimizado 24/7) */
+        /* 5. Reproductor YouTube Oficial y Fiable (Iframe directo optimizado 24/7) */
         <iframe
           id={containerId}
           key={`${url}_${targetOffsetSeconds}`}

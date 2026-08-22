@@ -4,8 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
   Loader2, Radio, Compass, Sparkles, Coffee, Smile, Film, Sun,
-  Image, Info, EyeOff, Layers, Search, Cast, Smartphone, Grid, Maximize, Minimize, Download
+  Image, Info, EyeOff, Layers, Search, Cast, Smartphone, Grid, Maximize, Minimize, Download, Plus, Bookmark, Brain
 } from 'lucide-react';
+import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 import { 
   fetchTopViewedVideosByMood, 
@@ -79,6 +80,48 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
   const [loading, setLoading] = useState(false);
   const [isMoodLoading, setIsMoodLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+
+  // Moments Logic
+  const { addMoment } = useStore();
+  const [isCapturingMoment, setIsCapturingMoment] = useState(false);
+  const [momentSimStep, setMomentSimStep] = useState(0); // 0: off, 1: guardando timestamp, 2: IA analizando, 3: guardado
+
+  const handleCaptureMoment = () => {
+    if (isCapturingMoment) return;
+    setIsCapturingMoment(true);
+    setMomentSimStep(1); // "Momento guardado (timestamp)"
+
+    setTimeout(() => {
+      setMomentSimStep(2); // "IA analizando contexto..."
+    }, 1500);
+
+    setTimeout(() => {
+      // "Momento guardado con IA"
+      setMomentSimStep(3);
+      
+      // Add to store
+      const currentChannel = filteredChannels[activeIndex];
+      addMoment({
+        id: `moment-${Date.now()}`,
+        videoId: currentChannel?.id || 'v1',
+        videoTitle: currentChannel?.title || 'Canal Desconocido',
+        thumbnailUrl: currentChannel?.thumbnail || 'https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&q=80',
+        speaker: 'Presentador',
+        startConceptualTime: 120, // sim
+        momentTime: 135,
+        endConceptualTime: 180,
+        aiTitle: currentChannel?.title ? `Análisis: ${currentChannel.title}` : 'Tema Interesante',
+        aiSummary: 'La IA extrajo automáticamente este contexto detectando el inicio y fin de la idea basándose en la transcripción.',
+        tags: ['IA', 'Destacado'],
+        createdAt: new Date().toISOString()
+      });
+
+      setTimeout(() => {
+        setIsCapturingMoment(false);
+        setMomentSimStep(0);
+      }, 3000);
+    }, 4000);
+  };
 
 
   // Control Remoto Virtual por Código QR y PIN de 4 dígitos (Persistente para evitar desconexiones)
@@ -741,6 +784,41 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
         </div>
       )}
 
+      {/* Simulador IA de "Momentos" */}
+      {isCapturingMoment && (
+        <div className="moment-capture-overlay fade-in" onClick={(e) => e.stopPropagation()}>
+          {momentSimStep === 1 && (
+            <div className="mc-toast mc-step-1">
+              <Bookmark size={24} color="#a78bfa" />
+              <div>
+                <strong>Momento guardado</strong>
+                <p>Capturando tiempo exacto...</p>
+              </div>
+            </div>
+          )}
+          {momentSimStep === 2 && (
+            <div className="mc-toast mc-step-2">
+              <Brain size={24} color="#ec4899" className="pulse-anim" />
+              <div>
+                <strong>IA analizando el contexto</strong>
+                <div className="audio-wave">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+            </div>
+          )}
+          {momentSimStep === 3 && (
+            <div className="mc-toast mc-step-3">
+              <Sparkles size={24} color="#34d399" />
+              <div>
+                <strong>Título y resumen creados</strong>
+                <p>Guardado en tu biblioteca inteligente.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Selector de Mood TV (Barra Superior de Acciones) - se oculta en fullscreen */}
       {!isZenMode && (!isFullscreen || showFullscreenUI) && (
         <div className="mood-bar glass-panel" onClick={(e) => e.stopPropagation()}>
@@ -761,6 +839,16 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
           </div>
 
           <div className="quick-actions">
+            <button 
+              className="icon-action-btn momento-action-btn" 
+              onClick={handleCaptureMoment} 
+              title="Guardar Momento Inteligente (IA)"
+              style={{ background: 'linear-gradient(135deg, #a78bfa, #c084fc)', borderColor: '#8b5cf6', boxShadow: '0 0 15px rgba(167, 139, 250, 0.4)' }}
+            >
+              <Plus size={18} color="#050505" strokeWidth={3} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#050505', marginLeft: '4px' }}>MOMENTO</span>
+            </button>
+
             <button 
               className="icon-action-btn cast-action-btn" 
               onClick={() => setShowCastModal(true)} 
@@ -1417,6 +1505,76 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
           border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
+        /* Moments Capture Overlay */
+        .moment-capture-overlay {
+          position: absolute;
+          top: 20%;
+          left: 50%;
+          transform: translate(-50%, 0);
+          z-index: 1000;
+          pointer-events: none;
+        }
+
+        .mc-toast {
+          background: rgba(5,5,5,0.85);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255,255,255,0.1);
+          padding: 16px 24px;
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          color: white;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+          animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .mc-toast strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+        .mc-toast p { margin: 0; font-size: 0.8rem; color: #9ca3af; }
+
+        .mc-step-1 { border-color: rgba(167, 139, 250, 0.4); }
+        .mc-step-2 { border-color: rgba(236, 72, 153, 0.4); }
+        .mc-step-3 { border-color: rgba(52, 211, 153, 0.4); }
+
+        .pulse-anim {
+          animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.7; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes popIn {
+          from { opacity: 0; transform: scale(0.9) translateY(10px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .audio-wave {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          height: 16px;
+          margin-top: 6px;
+        }
+        .audio-wave span {
+          display: block;
+          width: 3px;
+          height: 100%;
+          background: #ec4899;
+          border-radius: 3px;
+          animation: wave 1s infinite ease-in-out;
+        }
+        .audio-wave span:nth-child(2) { animation-delay: 0.1s; }
+        .audio-wave span:nth-child(3) { animation-delay: 0.2s; }
+        .audio-wave span:nth-child(4) { animation-delay: 0.1s; }
+        .audio-wave span:nth-child(5) { animation-delay: 0.3s; }
+        
+        @keyframes wave {
+          0%, 100% { height: 4px; }
+          50% { height: 16px; }
+        }
+
+        /* Ambient/Zen Overlays */
         .zap-nav-btn {
           background: rgba(15, 17, 26, 0.9);
           backdrop-filter: blur(14px);

@@ -382,7 +382,7 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
 ];
 
 // ─── 4. SCRAPING Y RESOLUCIÓN PÚBLICA (0 CUOTA) ───────────────────────────────
-async function fetchYouTubeViaCorsProxy(query: string, type: 'channel' | 'video'): Promise<any[]> {
+export async function fetchYouTubeViaCorsProxy(query: string, type: 'channel' | 'video'): Promise<any[]> {
   const targetUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=${type === 'channel' ? 'EgIQAg%3D%3D' : 'EgIQAQ%3D%3D'}`;
   
   const proxyEndpoints = [
@@ -436,10 +436,48 @@ export async function searchYouTubeChannels(
 
   const qLower = normQuery(q);
 
-  // 1. Verificar Base de Conocimiento Curada
-  const matchedTopic = CURATED_KNOWLEDGE_TOPICS.find(t =>
-    t.keywords.some(kw => qLower.includes(kw) || kw.includes(qLower))
-  );
+  // Helper function for fuzzy matching
+  const getLevenshteinDistance = (a: string, b: string): number => {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j - 1] + cost
+        );
+      }
+    }
+    return matrix[a.length][b.length];
+  };
+
+  // 1. Verificar Base de Conocimiento Curada con Fuzzy Matching
+  let matchedTopic = null;
+  let bestMatchScore = Infinity;
+
+  for (const t of CURATED_KNOWLEDGE_TOPICS) {
+    for (const kw of t.keywords) {
+      if (qLower.includes(kw) || kw.includes(qLower)) {
+        matchedTopic = t;
+        bestMatchScore = 0;
+        break;
+      }
+      if (Math.abs(qLower.length - kw.length) <= 3) {
+        const distance = getLevenshteinDistance(qLower, kw);
+        const maxErrors = kw.length > 8 ? 3 : 2;
+        if (distance <= maxErrors && distance < bestMatchScore) {
+          bestMatchScore = distance;
+          matchedTopic = t;
+        }
+      }
+    }
+    if (bestMatchScore === 0) break;
+  }
 
   // 2. TIER API Google (si hay key activa con cuota)
   const apiKey = getActiveApiKey();
@@ -572,10 +610,40 @@ export async function searchYouTubeVideos(
 
   const qLower = normQuery(q);
 
-  // 1. Verificar Base de Conocimiento Curada
-  const matchedTopic = CURATED_KNOWLEDGE_TOPICS.find(t =>
-    t.keywords.some(kw => qLower.includes(kw) || kw.includes(qLower))
-  );
+  // 1. Verificar Base de Conocimiento Curada con Fuzzy Matching
+  let matchedTopic = null;
+  let bestMatchScore = Infinity;
+
+  // Use the same fuzzy logic (getLevenshteinDistance is defined inside this scope if we just inline it or hoist it. Wait, I should hoist getLevenshteinDistance to the top of the file.)
+  // Let's just find it similarly.
+  for (const t of CURATED_KNOWLEDGE_TOPICS) {
+    for (const kw of t.keywords) {
+      if (qLower.includes(kw) || kw.includes(qLower)) {
+        matchedTopic = t;
+        bestMatchScore = 0;
+        break;
+      }
+      if (Math.abs(qLower.length - kw.length) <= 3) {
+        const a = qLower; const b = kw;
+        let matrix = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+        for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+        for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= a.length; i++) {
+          for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+          }
+        }
+        const distance = matrix[a.length][b.length];
+        const maxErrors = kw.length > 8 ? 3 : 2;
+        if (distance <= maxErrors && distance < bestMatchScore) {
+          bestMatchScore = distance;
+          matchedTopic = t;
+        }
+      }
+    }
+    if (bestMatchScore === 0) break;
+  }
 
   // 2. TIER API Google (si hay key activa con cuota)
   const apiKey = getActiveApiKey();

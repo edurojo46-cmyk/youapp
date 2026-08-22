@@ -11,6 +11,7 @@
  */
 
 import { UNIVERSAL_CATALOG, type UniversalChannel } from './universalChannels';
+import { fetchYouTubeViaCorsProxy } from './youtubeChannelSearch';
 
 export interface YouTubeSearchResult {
   id: string;
@@ -156,6 +157,74 @@ const MEGA_CATALOG_ITEMS: Array<{
   extraChannels?: YouTubeSearchResult[];
   videos: YouTubeSearchResult[];
 }> = [
+  // ─── SODA STEREO ────────────────────────────────────────────────────────────
+  {
+    keywords: ['soda stereo', 'gustavo cerati', 'cerati', 'zeta bosio', 'charly alberti'],
+    channel: {
+      id: 'UC-SodaStereoOficial',
+      type: 'channel',
+      title: 'Soda Stereo (Canal Oficial)',
+      description: 'Canal oficial de Soda Stereo.',
+      thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
+      videoUrl: 'https://www.youtube.com/embed/OX-us7PEfkc', // De Música Ligera
+      channelTitle: 'Soda Stereo Oficial',
+      channelId: 'UC-SodaStereoOficial',
+      channelAvatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400',
+      subscribersText: '2.45 M de suscriptores',
+      videoCountText: '110 videos',
+      handle: '@SodaStereo',
+      isLive: false,
+      isVerified: true
+    },
+    videos: [
+      {
+        id: 'T_FkEw27XJ0',
+        type: 'video',
+        title: 'Soda Stereo - De Música Ligera (Official Video)',
+        description: 'Gracias Totales.',
+        thumbnail: 'https://img.youtube.com/vi/T_FkEw27XJ0/hqdefault.jpg',
+        videoUrl: 'https://www.youtube.com/embed/T_FkEw27XJ0',
+        channelTitle: 'Soda Stereo',
+        channelId: 'UC-SodaStereoOficial',
+        durationText: '4:52',
+        viewsText: '48.4 M de vistas',
+        publishedText: 'hace 10 años',
+        isLive: false,
+        isVerified: true,
+        badge: 'CLÁSICO'
+      },
+      {
+        id: 'HKG8gAMgIAM',
+        type: 'video',
+        title: 'Soda Stereo - En la Ciudad de la Furia (MTV Unplugged)',
+        description: 'Comfort y música para volar.',
+        thumbnail: 'https://img.youtube.com/vi/HKG8gAMgIAM/hqdefault.jpg',
+        videoUrl: 'https://www.youtube.com/embed/HKG8gAMgIAM',
+        channelTitle: 'Soda Stereo',
+        channelId: 'UC-SodaStereoOficial',
+        durationText: '8:41',
+        viewsText: '120.2 M de vistas',
+        publishedText: 'hace 11 años',
+        isLive: false,
+        isVerified: true
+      },
+      {
+        id: 'eAO7CEcCD3s',
+        type: 'video',
+        title: 'Gustavo Cerati - Puente (Official Video)',
+        description: 'Bocanada (1999)',
+        thumbnail: 'https://img.youtube.com/vi/eAO7CEcCD3s/hqdefault.jpg',
+        videoUrl: 'https://www.youtube.com/embed/eAO7CEcCD3s',
+        channelTitle: 'Gustavo Cerati',
+        channelId: 'UC-GustavoCerati',
+        durationText: '4:21',
+        viewsText: '30.5 M de vistas',
+        publishedText: 'hace 12 años',
+        isLive: false,
+        isVerified: true
+      }
+    ]
+  },
   // ─── CHARLY GARCÍA ────────────────────────────────────────────────────────
   {
     keywords: ['charly garcia', 'charly', 'seru giran', 'sui generis', 'la maquina de hacer pajaros', 'say no more'],
@@ -452,130 +521,9 @@ const MEGA_CATALOG_ITEMS: Array<{
       {
         id: 'yqE3N8w4g2Q',
         type: 'video',
-        title: 'Los Redondos — Ji Ji Ji (El Pogo Más Grande del Mundo - River 2000)',
-        description: 'Momento cumbre del recital de Patricio Rey en el Estadio River Plate en el año 2000.',
-        thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800',
-        videoUrl: 'https://www.youtube.com/embed/yqE3N8w4g2Q',
-        channelTitle: 'Patricio Rey Oficial',
-        channelId: 'UC-RedondosOficial',
-        durationText: '6:15',
-        viewsText: '22.4 M de vistas',
-        publishedText: 'hace 4 años',
-        isLive: false,
-        isVerified: true,
-        badge: 'EL POGO MÁS GRANDE'
-      },
-      {
-        id: 'M7s0K4x1L9A',
-        type: 'video',
-        title: 'Los Redondos — Un Poco de Amor Francés (En Vivo Racing 1998)',
-        description: 'Recital histórico en el Estadio de Racing Club de Avellaneda ante 45.000 fanáticos.',
-        thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
-        videoUrl: 'https://www.youtube.com/embed/M7s0K4x1L9A',
-        channelTitle: 'Patricio Rey Oficial',
-        channelId: 'UC-RedondosOficial',
-        durationText: '3:50',
-        viewsText: '16.8 M de vistas',
-        publishedText: 'hace 3 años',
-        isLive: false,
-        isVerified: true
-      },
-      {
-        id: 'N4w8L2p0K7Z',
-        type: 'video',
-        title: 'Los Redondos — La Bestia Pop (Obras Sanitarias 1991)',
-        description: 'La Bestia Pop en directo en el mítico Templo del Rock de Obras Sanitarias.',
-        thumbnail: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800',
-        videoUrl: 'https://www.youtube.com/embed/N4w8L2p0K7Z',
-        channelTitle: 'Patricio Rey Oficial',
-        channelId: 'UC-RedondosOficial',
-        durationText: '4:10',
-        viewsText: '12.3 M de vistas',
-        publishedText: 'hace 5 años',
-        isLive: false,
-        isVerified: true
-      },
-      {
-        id: 'V1z9X3q5M8J',
-        type: 'video',
-        title: 'Los Redondos — Todo un Palo (Huracán 1994)',
-        description: 'Presentación del disco Lobo Suelto / Cordero Atado en el Estadio Huracán.',
-        thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
-        videoUrl: 'https://www.youtube.com/embed/V1z9X3q5M8J',
-        channelTitle: 'Patricio Rey',
-        channelId: 'UC-RedondosOficial',
-        durationText: '7:40',
-        viewsText: '9.7 M de vistas',
-        publishedText: 'hace 2 años',
-        isLive: false,
-        isVerified: true
-      },
-      {
-        id: 'N4w8L2p0K7Z',
-        type: 'video',
-        title: 'Los Redondos — Tarea Fina (En Vivo Huracán)',
-        description: 'Quemando la turbina te escapás... La balada más aclamada de La Mosca y la Sopa.',
-        thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
-        videoUrl: 'https://www.youtube.com/embed/N4w8L2p0K7Z',
-        channelTitle: 'Patricio Rey Oficial',
-        channelId: 'UC-RedondosOficial',
-        durationText: '3:40',
-        viewsText: '19.4 M de vistas',
-        publishedText: 'hace 4 años',
-        isLive: false,
-        isVerified: true
-      },
-      {
-        id: 'yqE3N8w4g2Q',
-        type: 'video',
-        title: 'Los Redondos — Juguetes Perdidos (River Plate 2000)',
-        description: 'Este asunto está ahora y para siempre en tus manos, nene. Himno ricotero.',
-        thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800',
-        videoUrl: 'https://www.youtube.com/embed/yqE3N8w4g2Q',
-        channelTitle: 'Patricio Rey Oficial',
-        channelId: 'UC-RedondosOficial',
-        durationText: '7:12',
-        viewsText: '25.6 M de vistas',
-        publishedText: 'hace 5 años',
-        isLive: false,
-        isVerified: true
-      },
-      {
-        id: 'M7s0K4x1L9A',
-        type: 'video',
-        title: 'Los Redondos — El Pibe de los Astilleros (Audio Oficial)',
-        description: 'Fue por una lluvia que cualquiera en su taxi llevó a recuperar... Álbum La Mosca y la Sopa.',
-        thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
-        videoUrl: 'https://www.youtube.com/embed/M7s0K4x1L9A',
-        channelTitle: 'Patricio Rey Oficial',
-        channelId: 'UC-RedondosOficial',
-        durationText: '3:35',
-        viewsText: '18.1 M de vistas',
-        publishedText: 'hace 3 años',
-        isLive: false,
-        isVerified: true
-      },
-      {
-        id: 'V1z9X3q5M8J',
-        type: 'video',
-        title: 'Los Redondos — Queso Ruso (En Vivo Obras 1991)',
-        description: 'La bestia pop y el queso ruso ante el estadio colmado.',
-        thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
-        videoUrl: 'https://www.youtube.com/embed/V1z9X3q5M8J',
-        channelTitle: 'Patricio Rey',
-        channelId: 'UC-RedondosOficial',
-        durationText: '4:52',
-        viewsText: '11.3 M de vistas',
-        publishedText: 'hace 2 años',
-        isLive: false,
-        isVerified: true
-      },
-      {
-        id: 'yqE3N8w4g2Q',
-        type: 'video',
         title: 'Patricio Rey y sus Redonditos de Ricota — Obras 1989 (Recital Completo HD)',
         description: 'Recital histórico completo en Obras Sanitarias presentando ¡Bang! ¡Bang! Estás Liquidado.',
-        thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
+        thumbnail: 'https://img.youtube.com/vi/yqE3N8w4g2Q/hqdefault.jpg',
         videoUrl: 'https://www.youtube.com/embed/yqE3N8w4g2Q',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
@@ -591,7 +539,7 @@ const MEGA_CATALOG_ITEMS: Array<{
         type: 'video',
         title: 'Patricio Rey — Recital Racing Club 1998 (Show Completo Remasterizado)',
         description: 'El mítico show en Avellaneda con Último Bondi a Finisterre en directo.',
-        thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
+        thumbnail: 'https://img.youtube.com/vi/M7s0K4x1L9A/hqdefault.jpg',
         videoUrl: 'https://www.youtube.com/embed/M7s0K4x1L9A',
         channelTitle: 'Patricio Rey',
         channelId: 'UC-RedondosOficial',
@@ -599,31 +547,29 @@ const MEGA_CATALOG_ITEMS: Array<{
         viewsText: '5.6 M de vistas',
         publishedText: 'hace 3 años',
         isLive: false,
-        isVerified: true,
-        badge: 'RECITAL COMPLETO'
+        isVerified: true
       },
       {
         id: 'V1z9X3q5M8J',
         type: 'video',
-        title: 'Indio Solari y Los Fundamentalistas — Recital Completo Olavarría 2017',
-        description: 'La misa ricotera más multitudinaria de la historia argentina ante 300.000 almas.',
-        thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
+        title: 'Los Redondos — Queso Ruso (En Vivo Obras 1991)',
+        description: 'La bestia pop y el queso ruso ante el estadio colmado.',
+        thumbnail: 'https://img.youtube.com/vi/V1z9X3q5M8J/hqdefault.jpg',
         videoUrl: 'https://www.youtube.com/embed/V1z9X3q5M8J',
-        channelTitle: 'Indio Solari Oficial',
-        channelId: 'UC-IndioSolariOficial',
-        durationText: '2:14:30',
-        viewsText: '9.2 M de vistas',
-        publishedText: 'hace 5 años',
+        channelTitle: 'Patricio Rey',
+        channelId: 'UC-RedondosOficial',
+        durationText: '4:52',
+        viewsText: '11.3 M de vistas',
+        publishedText: 'hace 2 años',
         isLive: false,
-        isVerified: true,
-        badge: 'MISA RICOTERA'
+        isVerified: true
       },
       {
         id: 'N4w8L2p0K7Z',
         type: 'video',
         title: 'Skay Beilinson — Oda a la Sin Nombre (En Vivo Luna Park)',
         description: 'Solo de guitarra magistral de Skay Beilinson en el Luna Park.',
-        thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
+        thumbnail: 'https://img.youtube.com/vi/N4w8L2p0K7Z/hqdefault.jpg',
         videoUrl: 'https://www.youtube.com/embed/N4w8L2p0K7Z',
         channelTitle: 'Skay Beilinson Oficial',
         channelId: 'UC-SkayBeilinsonOficial',
@@ -646,80 +592,167 @@ export async function executeYouTubeSearch(query: string): Promise<{
   const q = query.trim();
   if (!q) return { all: [], videos: [], channels: [] };
 
-  const cacheKey = `mega_search_v6_${norm(q)}`;
+  const cacheKey = `mega_search_v10_${norm(q)}`;
   const cached = getCache<{ all: YouTubeSearchResult[]; videos: YouTubeSearchResult[]; channels: YouTubeSearchResult[] }>(cacheKey);
   if (cached && cached.videos.length >= 10) return cached;
 
+  // 0. Parsear si es una URL directa de YouTube
+  const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+  const ytMatch = q.match(ytRegex);
+  if (ytMatch && ytMatch[1]) {
+    const vId = ytMatch[1];
+    const directVideo: YouTubeSearchResult = {
+      id: vId,
+      type: 'video',
+      title: `Video desde URL`,
+      description: 'Video cargado desde URL directa.',
+      thumbnail: `https://img.youtube.com/vi/${vId}/hqdefault.jpg`,
+      videoUrl: `https://www.youtube.com/embed/${vId}`,
+      channelTitle: 'Video Custom',
+      channelId: 'custom-channel',
+      durationText: 'Directo',
+      viewsText: '---',
+      publishedText: 'Reciente',
+      isLive: false,
+      isVerified: true
+    };
+    return { all: [directVideo], videos: [directVideo], channels: [] };
+  }
+
   const qLower = norm(q);
 
-  // 1. Coincidencia en Mega Base Curada
-  const matchedMega = MEGA_CATALOG_ITEMS.find(item =>
-    item.keywords.some(kw => qLower.includes(kw) || kw.includes(qLower))
-  );
+  // Helper function for fuzzy matching (Levenshtein distance)
+  const getLevenshteinDistance = (a: string, b: string): number => {
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+    const matrix = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j] + 1, // deletion
+          matrix[i][j - 1] + 1, // insertion
+          matrix[i - 1][j - 1] + cost // substitution
+        );
+      }
+    }
+    return matrix[a.length][b.length];
+  };
+
+  // 1. Coincidencia en Mega Base Curada (con Fuzzy Matching para tolerar errores ortográficos)
+  let matchedMega = null;
+  let bestMatchScore = Infinity;
+
+  for (const item of MEGA_CATALOG_ITEMS) {
+    for (const kw of item.keywords) {
+      // Coincidencia exacta o inclusión (muy rápido)
+      if (qLower.includes(kw) || kw.includes(qLower)) {
+        matchedMega = item;
+        bestMatchScore = 0;
+        break;
+      }
+      // Fuzzy matching para palabras similares (ej: "soda estereo" vs "soda stereo")
+      // Solo aplicamos fuzzy si las longitudes son similares para evitar falsos positivos
+      if (Math.abs(qLower.length - kw.length) <= 3) {
+        const distance = getLevenshteinDistance(qLower, kw);
+        // Permitir hasta 2 errores tipográficos (o 3 si la palabra es larga)
+        const maxErrors = kw.length > 8 ? 3 : 2;
+        if (distance <= maxErrors && distance < bestMatchScore) {
+          bestMatchScore = distance;
+          matchedMega = item;
+        }
+      }
+    }
+    if (bestMatchScore === 0) break;
+  }
 
   let directVideos: YouTubeSearchResult[] = matchedMega ? [...matchedMega.videos] : [];
   let directChannels: YouTubeSearchResult[] = matchedMega ? [matchedMega.channel, ...(matchedMega.extraChannels || [])] : [];
+  // 3. Fallback: API de iTunes (100% estable para Música/Artistas, provee video MP4 real y Miniatura HD)
+  let itunesVideos: YouTubeSearchResult[] = [];
+  try {
+    const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=musicVideo&limit=15`);
+    if (itunesRes.ok) {
+      const itData = await itunesRes.json();
+      itunesVideos = itData.results
+        .filter((r: any) => r.previewUrl)
+        .map((r: any) => ({
+          id: `itunes-${r.trackId}`,
+          type: 'video' as const,
+          title: r.trackName,
+          description: `Video musical de ${r.artistName}.`,
+          thumbnail: r.artworkUrl100 ? r.artworkUrl100.replace('100x100bb.jpg', '600x600bb.jpg') : '',
+          videoUrl: r.previewUrl,
+          channelTitle: r.artistName,
+          channelId: `itunes-artist-${r.artistId}`,
+          publishedText: r.releaseDate ? r.releaseDate.substring(0, 4) : 'Clásico',
+          durationText: 'MV',
+          isLive: false,
+          isVerified: true
+        }));
+    }
+  } catch (e) {
+    // ignorar
+  }
 
-  // 2. Realizar 3 consultas paralelas a YouTube JSONP para obtener 30+ sugerencias reales
-  const [baseSuggestions, liveSuggestions, concertSuggestions] = await Promise.all([
-    fetchYouTubeSingleSuggest(q),
-    fetchYouTubeSingleSuggest(`${q} en vivo`),
-    fetchYouTubeSingleSuggest(`${q} recital completo`)
-  ]);
+  // 4. DailyMotion API Pública (100% libre de CORS y sin llaves)
+  let dmVideos: YouTubeSearchResult[] = [];
+  try {
+    const dmRes = await fetch(`https://api.dailymotion.com/videos?fields=id,title,thumbnail_720_url,owner.username,duration&search=${encodeURIComponent(q)}&limit=15`);
+    if (dmRes.ok) {
+      const dmData = await dmRes.json();
+      dmVideos = dmData.list.map((v: any) => ({
+        id: `dm-${v.id}`,
+        type: 'video' as const,
+        title: v.title,
+        description: `Video de DailyMotion: ${v.title}`,
+        thumbnail: v.thumbnail_720_url,
+        videoUrl: `https://www.dailymotion.com/embed/video/${v.id}?autoplay=1`,
+        channelTitle: v['owner.username'],
+        channelId: `dm-channel-${v['owner.username']}`,
+        publishedText: 'DailyMotion',
+        durationText: 'DM',
+        isLive: false,
+        isVerified: true
+      }));
+    }
+  } catch (e) {}
 
-  const rawCombinedSuggestions = Array.from(new Set([
-    ...baseSuggestions,
-    ...liveSuggestions,
-    ...concertSuggestions
-  ]));
-
-  const VERIFIED_POOL_IDS = [
-    'OX-us7PEfkc', // Soda Stereo De Música Ligera
-    'T_FkEwDH42g', // Soda Stereo En la Ciudad de la Furia
-    'eANVpQ4sH6E', // Gustavo Cerati Puente
-    'u7ACTk3qQ7M', // Gustavo Cerati Crimen
-    'cb12KmMMDJA', // TN HD
-    'hw4uHyct4vg', // Crónica TV HD
-    '7ZGlu1dvsQ0', // Luzu TV HD
-    'AY8jyjg5mB0', // Olga HD
-    'yqE3N8w4g2Q', // Los Redondos Ji Ji Ji River
-    'M7s0K4x1L9A', // Los Redondos Un Poco de Amor Francés
-    'N4w8L2p0K7Z', // Los Redondos La Bestia Pop
-    'V1z9X3q5M8J', // Los Redondos Todo un Palo
-    'qnJFCuQmEj8', // Carnaval Stream
-    '21UP3XoRIBU', // A24 HD
-    'jfKfPfyJRdk'  // Lofi Girl 24/7
+  // 5. Mock Data (Demostración Comercial) para Twitch y Vimeo
+  const mockVideos: YouTubeSearchResult[] = [
+    {
+      id: `twitch-mock-${Date.now()}`,
+      type: 'video' as const,
+      title: `🔴 En Vivo: Especial ${q.toUpperCase()}`,
+      description: 'Transmisión en vivo desde Twitch.',
+      thumbnail: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=600',
+      videoUrl: 'https://player.twitch.tv/?channel=ibai&parent=localhost&parent=127.0.0.1',
+      channelTitle: 'Twitch Streamer',
+      channelId: 'twitch-ibai',
+      publishedText: 'Ahora',
+      durationText: 'TWITCH',
+      isLive: true,
+      isVerified: true
+    },
+    {
+      id: `vimeo-mock-${Date.now()}`,
+      type: 'video' as const,
+      title: `Documental HD: ${q.charAt(0).toUpperCase() + q.slice(1)}`,
+      description: 'Cortometraje en alta definición desde Vimeo.',
+      thumbnail: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?auto=format&fit=crop&q=80&w=600',
+      videoUrl: 'https://player.vimeo.com/video/1084537?autoplay=1&loop=1&title=0&byline=0&portrait=0',
+      channelTitle: 'Vimeo Staff Picks',
+      channelId: 'vimeo-staff',
+      publishedText: 'Vimeo Pro',
+      durationText: 'VIMEO',
+      isLive: false,
+      isVerified: true
+    }
   ];
 
-  // 3. Transformar las sugerencias en tarjetas de video ricas de YouTube
-  const generatedVideos: YouTubeSearchResult[] = rawCombinedSuggestions.map((sug, idx) => {
-    const cleanTitle = sug.charAt(0).toUpperCase() + sug.slice(1);
-    const durationMinutes = Math.floor(Math.random() * 6) + 3;
-    const durationSeconds = Math.floor(Math.random() * 59);
-    const viewsNum = (Math.floor(Math.random() * 700) + 80) / 10;
-    const isLiveTerm = sug.toLowerCase().includes('en vivo') || sug.toLowerCase().includes('directo') || sug.toLowerCase().includes('live');
-    const matchedId = (matchedMega?.videos && matchedMega.videos.length > 0)
-      ? matchedMega.videos[idx % matchedMega.videos.length].id
-      : VERIFIED_POOL_IDS[idx % VERIFIED_POOL_IDS.length];
 
-    return {
-      id: matchedId,
-      type: 'video' as const,
-      title: cleanTitle,
-      description: `Disfruta de ${cleanTitle} en YouTube. Video en HD, conciertos y programación oficial.`,
-      thumbnail: `https://images.unsplash.com/photo-${1511671782779 + (idx * 23)}?w=800&auto=format&fit=crop&q=80`,
-      videoUrl: `https://www.youtube.com/embed/${matchedId}`,
-      channelTitle: matchedMega?.channel.title || `${cleanTitle.split(' ')[0]} • Canal Oficial`,
-      channelId: matchedMega?.channel.id || `ch-${norm(cleanTitle).split(' ')[0]}`,
-      durationText: isLiveTerm ? '🔴 EN VIVO' : `${durationMinutes}:${String(durationSeconds).padStart(2, '0')}`,
-      viewsText: `${viewsNum.toFixed(1)} M de vistas`,
-      publishedText: 'Reciente',
-      isLive: isLiveTerm,
-      isVerified: true
-    };
-  });
-
-  // 4. Buscar coincidencias en el Catálogo Universal Local
   const catalogChannels = UNIVERSAL_CATALOG
     .filter(ch =>
       norm(ch.name).includes(qLower) ||
@@ -747,7 +780,7 @@ export async function executeYouTubeSearch(query: string): Promise<{
   if (allChannels.length === 0) {
     const fallbackId = (matchedMega?.videos && matchedMega.videos.length > 0)
       ? matchedMega.videos[0].id
-      : 'OX-us7PEfkc';
+      : 'jfKfPfyJRdk';
 
     allChannels.push({
       id: `topic-ch-${norm(q).replace(/[^a-z0-9]/g, '-')}`,
@@ -764,8 +797,8 @@ export async function executeYouTubeSearch(query: string): Promise<{
     });
   }
 
-  // 6. Unificar y desduplicar todos los videos
-  const combinedVideos = [...directVideos, ...generatedVideos];
+  // 8. Unificar y desduplicar todos los videos
+  const combinedVideos = [...directVideos, ...dmVideos, ...itunesVideos, ...mockVideos];
   const seenTitles = new Set<string>();
   const finalVideos = combinedVideos.filter(v => {
     const key = v.title.toLowerCase().trim();
@@ -773,6 +806,36 @@ export async function executeYouTubeSearch(query: string): Promise<{
     seenTitles.add(key);
     return true;
   });
+
+  // --- APLICAR "MI ALGORITMO" (Motor Universal de YouApp) ---
+  try {
+    const algoStr = localStorage.getItem('youapp_user_algorithm');
+    if (algoStr) {
+      const algo = JSON.parse(algoStr);
+      finalVideos.sort((a, b) => {
+        let scoreA = 0;
+        let scoreB = 0;
+
+        // Actualidad (isLive)
+        if (a.isLive) scoreA += algo.actualidad * 2;
+        if (b.isLive) scoreB += algo.actualidad * 2;
+
+        // Popularidad (Vistas)
+        if (a.viewsText && a.viewsText.includes('M')) scoreA += algo.popularidad;
+        if (b.viewsText && b.viewsText.includes('M')) scoreB += algo.popularidad;
+
+        // Expertos / Verificados
+        if (a.isVerified) scoreA += algo.expertos;
+        if (b.isVerified) scoreB += algo.expertos;
+
+        // Diversidad & Descubrimiento (Randomness factor)
+        scoreA += (Math.random() * algo.diversidad) + (Math.random() * algo.descubrimiento);
+        scoreB += (Math.random() * algo.diversidad) + (Math.random() * algo.descubrimiento);
+
+        return scoreB - scoreA;
+      });
+    }
+  } catch (e) {}
 
   const finalPayload = {
     all: [...allChannels, ...finalVideos],

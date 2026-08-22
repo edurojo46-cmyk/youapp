@@ -180,11 +180,14 @@ export default function ChannelSearch() {
   };
 
   const handlePlayVideo = (vid: YTVideoResult) => {
-    const rawId = (vid.videoId && vid.videoId.length === 11)
-      ? vid.videoId
-      : (vid.videoUrl?.match(/embed\/([^?&#]+)/)?.[1] || 'wR36Dq7bB60');
-
-    const effectiveUrl = `https://www.youtube.com/embed/${rawId}`;
+    let effectiveUrl = vid.videoUrl;
+    let rawId = vid.videoId || '';
+    if (!effectiveUrl) {
+      rawId = (vid.videoId && vid.videoId.length === 11)
+        ? vid.videoId
+        : 'wR36Dq7bB60';
+      effectiveUrl = `https://www.youtube.com/embed/${rawId}`;
+    }
 
     const videoChannelPayload: UniversalChannel = {
       id: `video-${rawId}-${Date.now()}`,
@@ -946,7 +949,7 @@ export default function ChannelSearch() {
 
             <div className="video-modal-iframe-container">
               <iframe
-                src={`https://www.youtube.com/embed/${(activeModalVideo.videoId && activeModalVideo.videoId.length === 11) ? activeModalVideo.videoId : (activeModalVideo.videoUrl?.match(/embed\/([^?&#]+)/)?.[1] || 'wR36Dq7bB60')}?autoplay=1&controls=1&rel=0&playsinline=1`}
+                src={activeModalVideo.videoUrl || `https://www.youtube.com/embed/${activeModalVideo.videoId || 'wR36Dq7bB60'}?autoplay=1&controls=1`}
                 title={activeModalVideo.title}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

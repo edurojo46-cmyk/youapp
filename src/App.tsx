@@ -11,7 +11,13 @@ import Login from './pages/Login';
 import PublicChannel from './pages/PublicChannel';
 import EmbedChannel from './pages/EmbedChannel';
 import MobileRemote from './pages/MobileRemote';
+import MyAlgorithm from './pages/MyAlgorithm';
+import CreateSignal from './pages/CreateSignal';
+import MyLists from './pages/MyLists';
+import MyMoments from './pages/MyMoments';
 import { useStore } from './store/useStore';
+
+import DesktopLayout from './components/DesktopLayout';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -19,6 +25,17 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   if (loading) return <div style={{ padding: '2rem' }}>Cargando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
+};
+
+// Dashboard Route (Includes Left & Right Sidebar)
+const DashboardRoute = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <ProtectedRoute>
+      <DesktopLayout>
+        {children}
+      </DesktopLayout>
+    </ProtectedRoute>
+  );
 };
 
 function App() {
@@ -39,16 +56,21 @@ function App() {
         <Route path="/remote/:sessionId" element={<MobileRemote />} />
 
         
-        <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+        <Route path="/" element={<DashboardRoute><Home /></DashboardRoute>} />
         <Route path="/you4" element={<ProtectedRoute><LiveZapping forceQuad={true} /></ProtectedRoute>} />
         <Route path="/quad" element={<ProtectedRoute><LiveZapping forceQuad={true} /></ProtectedRoute>} />
         <Route path="/stream" element={<ProtectedRoute><MyStream /></ProtectedRoute>} />
         <Route path="/live" element={<ProtectedRoute><LiveZapping /></ProtectedRoute>} />
-        <Route path="/channels" element={<ProtectedRoute><ChannelProfile /></ProtectedRoute>} />
-        <Route path="/search" element={<ProtectedRoute><ChannelSearch /></ProtectedRoute>} />
-        <Route path="/channels-search" element={<ProtectedRoute><ChannelSearch /></ProtectedRoute>} />
-        <Route path="/program" element={<ProtectedRoute><SearchAndProgram /></ProtectedRoute>} />
-        <Route path="/trending" element={<ProtectedRoute><div style={{padding:'2rem'}}>Tendencias (Próximamente)</div></ProtectedRoute>} />
+        <Route path="/channels" element={<DashboardRoute><ChannelProfile /></DashboardRoute>} />
+        <Route path="/search" element={<DashboardRoute><ChannelSearch /></DashboardRoute>} />
+        <Route path="/my-algorithm" element={<DashboardRoute><MyAlgorithm /></DashboardRoute>} />
+        <Route path="/create-signal" element={<DashboardRoute><CreateSignal /></DashboardRoute>} />
+        <Route path="/my-lists" element={<DashboardRoute><MyLists /></DashboardRoute>} />
+        {/* Nueva Ruta de Momentos */}
+        <Route path="/moments" element={<DashboardRoute><MyMoments /></DashboardRoute>} />
+        <Route path="/channels-search" element={<DashboardRoute><ChannelSearch /></DashboardRoute>} />
+        <Route path="/program" element={<DashboardRoute><SearchAndProgram /></DashboardRoute>} />
+        <Route path="/trending" element={<DashboardRoute><div style={{padding:'2rem'}}>Tendencias (Próximamente)</div></DashboardRoute>} />
       </Routes>
 
       <style>{`

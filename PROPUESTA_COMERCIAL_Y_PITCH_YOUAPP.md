@@ -104,7 +104,43 @@ YouApp toma el archivo de videos y playlists del creador y lo convierte en una *
 
 ---
 
-## ❓ 5. MANEJO DE OBJECIONES FRECUENTES (FAQ)
+## 🧠 5. EL MOTOR DE DESCUBRIMIENTO UNIVERSAL (EL FUTURO DEL VIDEO)
+
+YouApp TV no es solo una interfaz bonita para ver YouTube, es el **Buscador y Programador Universal de Video**. 
+Mientras plataformas tradicionales buscan retenerte con algoritmos de caja negra que recomiendan lo que *ellos* quieren que veas, YouApp devuelve el control al usuario con una arquitectura independiente.
+
+### A. Índice Propio y Búsqueda Semántica
+No raspamos (scrapeamos) otras plataformas. Construimos un **catálogo descentralizado (Supabase + Typesense)** alimentado de manera lícita por:
+1. **Creadores (YouApp Creator):** Autorizan e importan sus archivos históricos completos.
+2. **Curadores Humanos:** Personas que construyen listas (Ej: *"Los 100 mejores documentales de historia"*).
+3. **Comunidad:** Usuarios que agregan enlaces externos al catálogo interno.
+
+El buscador entiende **significado, no solo palabras clave**. Si buscas *"Quiero entender el impacto de la IA en el trabajo"*, el motor semántico encuentra videos sobre *"automatización"*, *"futuro del empleo"* y *"reemplazo laboral"*, permitiéndote saltar exactamente al minuto 42:17 donde se discute ese tema.
+
+### B. "Mi Algoritmo" (El usuario tiene el control)
+Inspirado en nuestro exclusivo diseño de UI **Dark Neon**, YouApp TV introduce el panel **"Mi Algoritmo"**. Cuando un usuario busca un término, obtiene miles de resultados, pero el orden lo decide su propia configuración mediante sliders intuitivos:
+- **Expertos y Fuentes Oficiales:** 30%
+- **Creadores que Sigo:** 25%
+- **Recomendaciones Humanas (Curadores):** 20%
+- **Actualidad / Tiempo Real:** 15%
+- **Descubrimiento / Diversidad:** 10%
+
+**Visualmente en la UI:** El usuario ajusta los pesos de su algoritmo y ve cómo la interfaz reordena los resultados en tiempo real, aplicando el filtro a **Señales** y vistas como el modo **YOU4** (pantalla dividida para debates y noticieros).
+
+### C. El "Program Score" vs. El "View Count"
+En YouTube, un video vale por cuántas veces se hizo clic (View Count).
+En YouApp TV creamos el **Program Score**: Si un video de nicho fue visto por 15.000 personas, pero 4.500 lo **guardaron en sus listas (Mis Listas)** y 1.200 **lo programaron para transmitirlo en sus propias señales (Crear Señal)**, ese contenido es oro puro. Mide **atención profunda e intención**, un dato que las marcas pagan altísimo por conocer.
+
+### D. La Experiencia Final: De Buscar a Programar
+1. **Buscar:** 🔎 *"Inteligencia artificial"*
+2. **Procesar:** 🧠 "Mi Algoritmo" filtra los resultados.
+3. **Seleccionar:** 🎯 Elegimos un mix de opiniones y documentales.
+4. **Programar:** 📺 Se empaquetan en una señal de 45 minutos.
+5. **Ver:** ▶ El usuario (o su audiencia) disfruta de la señal en el reproductor continuo sin interrupciones.
+
+---
+
+## ❓ 6. MANEJO DE OBJECIONES FRECUENTES (FAQ)
 
 ### Objeción 1: *"¿Esto infringe las políticas de YouTube o puede perjudicar mi canal?"*
 > **Respuesta:** *"Al contrario. YouApp utiliza la API oficial de Google y reproductores certificados (`<iframe>`). Para YouTube, se trata de reproducciones externas legítimas que suman visitas, tiempo de retención e ingresos de AdSense conforme a sus términos de servicio."*

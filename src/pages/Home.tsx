@@ -47,7 +47,18 @@ export default function Home() {
   const [realProgress, setRealProgress] = useState(0);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isSquare, setIsSquare] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = React.useRef<NodeJS.Timeout>();
   const videoRef = React.useRef<HTMLVideoElement>(null);
+
+  const handleMouseMove = () => {
+    if (!isSquare) return;
+    setShowControls(true);
+    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 1000);
+  };
 
   const videoSources = [
     "/background.mp4",
@@ -149,7 +160,13 @@ export default function Home() {
       </header>
 
       {/* ── DIAL CENTRAL ── */}
-      <main className={`hud-main-dial ${isSquare ? 'you-frame-active' : ''}`}>
+      <main 
+        className={`hud-main-dial ${isSquare ? 'you-frame-active' : ''}`}
+        onMouseMove={handleMouseMove}
+        onClick={handleMouseMove}
+        onTouchStart={handleMouseMove}
+        onMouseLeave={() => isSquare && setShowControls(false)}
+      >
         <div className={`dial-wrapper ${isSquare ? 'square-mode' : ''}`}>
           {/* Fondo Espacial Central con Video */}
           <div className="dial-center-orb">
@@ -291,7 +308,7 @@ export default function Home() {
 
           {/* ── YOU FRAME UI ── */}
           {isSquare && (
-            <div className="you-frame-ui">
+            <div className={`you-frame-ui ${showControls ? '' : 'hidden'}`}>
               <div className="frame-border-glow"></div>
               
               {/* Top Controls */}
@@ -934,6 +951,11 @@ export default function Home() {
           position: relative; pointer-events: none; z-index: 20;
           display: flex; flex-direction: column;
           width: 100%; height: 100%;
+          transition: opacity 0.5s ease;
+          opacity: 1;
+        }
+        .you-frame-ui.hidden {
+          opacity: 0;
         }
         .frame-border-glow {
           position: absolute; inset: 0;

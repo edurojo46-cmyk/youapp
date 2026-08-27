@@ -317,6 +317,11 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* Glowing Progress Line at the bottom of the frame */}
+              <div className="frame-progress-line">
+                 <div className="frame-progress-fill" style={{ width: `${realProgress * 100}%` }}></div>
+              </div>
+
               {/* Left Edge Controls */}
               <div className="frame-edge left">
                 <button className="frame-edge-btn" onClick={() => navigate('/moments')}>
@@ -914,6 +919,17 @@ export default function Home() {
         .stat-text small { font-size: 0.8rem; font-weight: 600; color: white; }
         .frame-stat.right { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
         
+        .frame-progress-line {
+          position: absolute; bottom: 0; left: 40px; right: 40px;
+          height: 3px; background: rgba(255,255,255,0.1);
+          border-radius: 3px; overflow: hidden; pointer-events: none;
+        }
+        .frame-progress-fill {
+          height: 100%; background: #0ea5e9;
+          box-shadow: 0 0 10px #0ea5e9;
+          transition: width 1s linear;
+        }
+
         .frame-minimize-btn {
           pointer-events: auto;
           background: #0a0a0f; padding: 15px 30px;

@@ -769,7 +769,7 @@ export default function Home() {
           .hud-user .user-text { display: none; }
           .hud-main-dial { align-items: flex-start; }
           .dial-wrapper { 
-            transform: scale(0.68) translateY(120px); 
+            transform: scale(0.64) translateY(120px); 
             transform-origin: top center; 
             margin-top: 20px; 
           }
@@ -777,9 +777,6 @@ export default function Home() {
           .hud-mega-play { width: 80px; height: 80px; }
           .hud-mega-play span { font-size: 0.6rem; }
           .hud-add-video-btn span { display: none; }
-        }
-        @media (max-width: 400px) {
-          .dial-wrapper { transform: scale(0.52); margin-top: -90px; }
         }
       `}</style>
     </div>

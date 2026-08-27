@@ -14,7 +14,9 @@ import {
   CheckCircle2, ExternalLink, Tv, Radio, Plus, Check, Play, Sparkles, ArrowDown, RotateCw
 } from 'lucide-react';
 import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
-import { executeYouTubeSearch, fetchYouTubeAutocomplete, type YouTubeSearchResult } from '../lib/youtubeSearchEngine';
+import { executeSearch } from '../lib/search/searchEngine';
+import { fetchYouTubeAutocomplete } from '../lib/search/queryEngine';
+import type { ContentItem } from '../lib/search/types';
 import { resolveChannelPlayable, type YTChannelResult, type YTVideoResult } from '../lib/youtubeChannelSearch';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
@@ -70,8 +72,11 @@ export default function ChannelSearch() {
   const [isListening, setIsListening] = useState(false);
 
   const [searchTab, setSearchTab] = useState<'channels' | 'videos'>('channels');
-  const [results, setResults] = useState<YTChannelResult[]>([]);
-  const [videoResults, setVideoResults] = useState<YTVideoResult[]>([]);
+  const [results, setResults] = useState<{ videos: ContentItem[]; channels: ContentItem[]; all: ContentItem[] }>({
+    videos: [],
+    channels: [],
+    all: []
+  });
   const [activeModalVideo, setActiveModalVideo] = useState<YTVideoResult | null>(null);
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [isLiveSearch, setIsLiveSearch] = useState(true);
@@ -129,42 +134,9 @@ export default function ChannelSearch() {
     }
 
     try {
-      const searchData = await executeYouTubeSearch(trimmed);
+      const searchData = await executeSearch(trimmed);
 
-      // 1. Mapear Canales encontrados
-      const mappedChannels: YTChannelResult[] = searchData.channels.map(c => ({
-        channelId: c.channelId || c.id,
-        name: c.title,
-        handle: c.handle || `@${c.title.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')}`,
-        subscribers: c.subscribersText || 'Canal Oficial',
-        videoCount: c.videoCountText || 'Videos',
-        description: c.description || '',
-        avatarUrl: c.thumbnail || c.channelAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(c.title)}&background=151329&color=00f0ff`,
-        isVerified: c.isVerified,
-        channelUrl: `https://www.youtube.com/channel/${c.channelId || c.id}`,
-        isLiveNow: c.isLive,
-        provider: (c as any).provider || 'youtube'
-      }));
-
-      // 2. Mapear Videos encontrados
-      const mappedVideos: YTVideoResult[] = searchData.videos.map(v => ({
-        videoId: v.id,
-        title: v.title,
-        description: v.description,
-        thumbnail: v.thumbnail,
-        channelTitle: v.channelTitle,
-        channelId: v.channelId,
-        publishedAt: v.publishedText || '',
-        videoUrl: v.videoUrl,
-        isLive: v.isLive,
-        durationText: v.durationText,
-        viewsText: v.viewsText,
-        isVerified: v.isVerified,
-        provider: (v as any).provider || 'youtube'
-      }));
-
-      setResults(mappedChannels);
-      setVideoResults(mappedVideos);
+      setResults(searchData);
       setIsLiveSearch(true);
     } catch (err) {
       console.warn('[doSearch] Error:', err);
@@ -545,7 +517,7 @@ export default function ChannelSearch() {
               <Tv size={16} />
               <span>📺 Canales en Vivo</span>
               {hasCommitted && status === 'done' && searchTab === 'channels' && (
-                <span className="tab-count-badge">{results.length}</span>
+                <span className="tab-count-badge">{results.channels.length}</span>
               )}
             </button>
 
@@ -556,7 +528,7 @@ export default function ChannelSearch() {
               <Play size={15} fill={searchTab === 'videos' ? 'currentColor' : 'none'} />
               <span>🎬 Videos & Programas</span>
               {hasCommitted && status === 'done' && searchTab === 'videos' && (
-                <span className="tab-count-badge">{videoResults.length}</span>
+                <span className="tab-count-badge">{results.videos.length}</span>
               )}
             </button>
           </div>
@@ -619,12 +591,12 @@ export default function ChannelSearch() {
         )}
 
         {/* ── BARRA DE ESTADO: CANALES ── */}
-        {searchTab === 'channels' && status === 'done' && results.length > 0 && (
+        {searchTab === 'channels' && status === 'done' && results.channels.length > 0 && (
           <div className="results-status-banner">
             <div className="banner-left">
               <CheckCircle2 size={16} className="text-neon-cyan" />
               <span>
-                <strong>{results.length}</strong> canales encontrados para "<strong>{committed}</strong>"
+                <strong>{results.channels.length}</strong> canales encontrados para "<strong>{committed}</strong>"
               </span>
             </div>
             <div className="banner-right">
@@ -646,12 +618,12 @@ export default function ChannelSearch() {
         )}
 
         {/* ── BARRA DE ESTADO: VIDEOS ── */}
-        {searchTab === 'videos' && status === 'done' && videoResults.length > 0 && (
+        {searchTab === 'videos' && status === 'done' && results.videos.length > 0 && (
           <div className="results-status-banner videos-banner">
             <div className="banner-left">
               <CheckCircle2 size={16} className="text-neon-purple" />
               <span>
-                <strong>{videoResults.length}</strong> videos y programas encontrados para "<strong>{committed}</strong>"
+                <strong>{results.videos.length}</strong> videos y programas encontrados para "<strong>{committed}</strong>"
               </span>
             </div>
             <div className="banner-right">
@@ -671,7 +643,7 @@ export default function ChannelSearch() {
         )}
 
         {/* Sin Resultados */}
-        {status === 'done' && ((searchTab === 'channels' && results.length === 0) || (searchTab === 'videos' && videoResults.length === 0)) && (
+        {status === 'done' && ((searchTab === 'channels' && results.channels.length === 0) || (searchTab === 'videos' && results.videos.length === 0)) && (
           <div className="search-empty-state">
             <Search size={54} className="empty-icon" />
             <h3>No encontramos {searchTab === 'channels' ? 'canales' : 'videos'} para "{committed}"</h3>
@@ -696,12 +668,12 @@ export default function ChannelSearch() {
         {/* ════════════════════ LISTA DE CANALES EN VIVO ═══════════════════════ */}
         {searchTab === 'channels' && (
           <div className="channels-results-list">
-            {results.map((ch, idx) => {
-              const isAdded = savedChannelIds.has(ch.channelId);
+            {results.channels.map((ch: any, idx: number) => {
+              const isAdded = savedChannelIds.has(ch.id);
 
               return (
                 <article
-                  key={`${ch.channelId}-${idx}`}
+                  key={`${ch.id}-${idx}`}
                   className={`channel-card-item ${isAdded ? 'is-in-signal' : ''}`}
                   style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
                 >

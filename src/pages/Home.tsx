@@ -197,11 +197,11 @@ export default function Home() {
                 </filter>
               </defs>
               {/* Pista de fondo */}
-              <circle cx="305" cy="305" r="295" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <circle cx="305" cy="305" r="295" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
               {/* Barra de progreso luminosa */}
               <circle 
                 cx="305" cy="305" r="295" 
-                fill="none" stroke="#0ea5e9" strokeWidth="1"
+                fill="none" stroke="#0ea5e9" strokeWidth="3"
                 strokeLinecap="round"
                 filter="url(#glow)"
                 className="progress-arc"
@@ -607,17 +607,17 @@ export default function Home() {
         }
         .dial-physical-ring::before {
           content: ''; position: absolute; inset: -46px;
-          border-radius: 50%; border: 1px solid rgba(255,255,255,0.15);
+          border-radius: 50%; border: 3px solid rgba(255,255,255,0.3);
         }
         .dial-physical-ring::after {
           content: ''; position: absolute; inset: 0px;
-          border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 50%; border: 3px solid rgba(255,255,255,0.25);
         }
         .dial-spoke {
           position: absolute;
-          top: -46px; left: calc(50% - 2px);
-          width: 4px; height: 46px;
-          background: rgba(255,255,255,0.3);
+          top: -46px; left: calc(50% - 3px);
+          width: 6px; height: 46px;
+          background: rgba(255,255,255,0.4);
           transform-origin: center 360px;
           z-index: 2;
         }

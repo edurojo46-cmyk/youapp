@@ -51,11 +51,14 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
     );
   };
 
+  const isHome = location.pathname === '/';
+
   return (
     <div className="dl-wrapper">
       {/* LEFT SIDEBAR */}
-      <aside className="dl-sidebar-left">
-        <div className="dl-logo">
+      {!isHome && (
+        <aside className="dl-sidebar-left">
+          <div className="dl-logo">
           YouApp <span className="dl-logo-badge">TV</span>
         </div>
 
@@ -107,47 +110,51 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           <button className="dl-radar-btn">Ver y editar</button>
         </div>
       </aside>
+      )}
 
       {/* MAIN CONTENT AREA */}
       <main className="dl-main">
-        <header className="dl-topbar">
-          <div className="dl-search-container">
-            <Search size={18} className="dl-search-icon" />
-            <input 
-              type="text" 
-              placeholder="¿Qué querés ver hoy?" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  navigate(`/search`);
-                }
-              }}
-            />
-          </div>
-          <div className="dl-top-actions">
-            <button className="dl-btn-primary" onClick={() => navigate('/create-signal')}>
-              <Plus size={18} /> Crear
-            </button>
-            <button className="dl-btn-icon">
-              <Bell size={20} />
-              <span className="dl-notification-dot">3</span>
-            </button>
-            <div className="dl-profile-dropdown" onClick={() => navigate('/channels')}>
-              <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Eduardo" />
-              <span>Eduardo</span>
+        {!isHome && (
+          <header className="dl-topbar">
+            <div className="dl-search-container">
+              <Search size={18} className="dl-search-icon" />
+              <input 
+                type="text" 
+                placeholder="¿Qué querés ver hoy?" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    navigate(`/search`);
+                  }
+                }}
+              />
             </div>
-          </div>
-        </header>
+            <div className="dl-top-actions">
+              <button className="dl-btn-primary" onClick={() => navigate('/create-signal')}>
+                <Plus size={18} /> Crear
+              </button>
+              <button className="dl-btn-icon">
+                <Bell size={20} />
+                <span className="dl-notification-dot">3</span>
+              </button>
+              <div className="dl-profile-dropdown" onClick={() => navigate('/channels')}>
+                <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Eduardo" />
+                <span>Eduardo</span>
+              </div>
+            </div>
+          </header>
+        )}
 
-        <div className="dl-content-scroll">
+        <div className="dl-content-scroll" style={{ padding: isHome ? '0' : '32px' }}>
           {children}
         </div>
       </main>
 
       {/* RIGHT SIDEBAR */}
-      <aside className="dl-sidebar-right">
-        <div className="dl-right-section">
+      {!isHome && (
+        <aside className="dl-sidebar-right">
+          <div className="dl-right-section">
           <div className="dl-algo-card">
             <div className="dl-algo-header">
               <h3>{activeAlgo.name}</h3>
@@ -251,6 +258,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           </div>
         </div>
       </aside>
+      )}
 
       <div className="dl-mobile-nav">
         <BottomNav />

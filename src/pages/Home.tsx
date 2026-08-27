@@ -362,6 +362,46 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* ── YOU FRAME SIDEBAR (YouTube Style) ── */}
+          {isSquare && (
+            <div className="you-frame-sidebar">
+              <h3>En tu Señal</h3>
+              <div className="sidebar-video-list">
+                {INITIAL_SCHEDULE.slice(0, 5).map((slot, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`sidebar-video-item ${currentVideoIndex === idx ? 'playing' : ''}`}
+                    onClick={() => {
+                       setCurrentVideoIndex(idx);
+                       setIsPlayingInOrb(true);
+                       if (videoRef.current) {
+                          videoRef.current.muted = false;
+                          videoRef.current.play().catch(()=>{});
+                       }
+                    }}
+                  >
+                    <div className="sidebar-thumb-wrapper">
+                      <img src={videoThumbnails[idx % videoThumbnails.length]} alt={slot.video.title} />
+                      <span className="sidebar-duration">{slot.video.duration}</span>
+                      {currentVideoIndex === idx && (
+                        <div className="sidebar-playing-overlay">
+                           <div className="playing-bars">
+                              <span/><span/><span/>
+                           </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="sidebar-video-info">
+                      <h4>{slot.video.title}</h4>
+                      <p>{slot.video.channel}</p>
+                      <small>{slot.timeStart} - {slot.timeEnd}</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -865,8 +905,13 @@ export default function Home() {
           height: 85vh;
           transform: none !important;
           margin-top: 0 !important;
+          display: grid;
+          grid-template-columns: 1fr 380px;
+          grid-template-rows: 100%;
+          gap: 24px;
         }
         .hud-main-dial.you-frame-active .dial-center-orb {
+          grid-area: 1 / 1;
           width: 100% !important;
           height: 100% !important;
           left: 0 !important;
@@ -875,18 +920,21 @@ export default function Home() {
           padding: 20px;
           background: none;
           box-shadow: none;
+          position: relative !important;
         }
         .hud-main-dial.you-frame-active .orb-bg {
           border-radius: 16px !important;
         }
         .hud-main-dial.you-frame-active .circular-progress-container,
-        .hud-main-dial.you-frame-active .dial-physical-ring {
+        .hud-main-dial.you-frame-active .dial-physical-ring,
+        .hud-main-dial.you-frame-active .dial-ring {
           display: none !important;
         }
         
-        /* YOU FRAME UI */
+        /* YOU FRAME UI (Overlaps with video in Grid) */
         .you-frame-ui {
-          position: absolute; inset: 0; pointer-events: none; z-index: 20;
+          grid-area: 1 / 1;
+          position: relative; pointer-events: none; z-index: 20;
           display: flex; flex-direction: column;
         }
         .frame-border-glow {
@@ -978,6 +1026,69 @@ export default function Home() {
         .frame-divider.vertical { width: 1px; height: 30px; margin: auto 0; }
 
 
+        /* ── YOU FRAME SIDEBAR ── */
+        .you-frame-sidebar {
+          grid-area: 1 / 2;
+          background: rgba(10,10,15,0.7);
+          border-radius: 24px;
+          border: 1px solid rgba(255,255,255,0.1);
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          overflow-y: auto;
+        }
+        .you-frame-sidebar h3 {
+          font-size: 1.2rem; margin: 0; color: white;
+          padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .sidebar-video-list {
+          display: flex; flex-direction: column; gap: 16px;
+        }
+        .sidebar-video-item {
+          display: flex; gap: 12px; cursor: pointer; padding: 8px; border-radius: 12px;
+          transition: 0.2s;
+        }
+        .sidebar-video-item:hover {
+          background: rgba(255,255,255,0.05);
+        }
+        .sidebar-video-item.playing {
+          background: rgba(59,130,246,0.1);
+          border: 1px solid rgba(59,130,246,0.3);
+        }
+        .sidebar-thumb-wrapper {
+          position: relative; width: 120px; height: 68px; flex-shrink: 0;
+          border-radius: 8px; overflow: hidden;
+        }
+        .sidebar-thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        .sidebar-duration {
+          position: absolute; bottom: 4px; right: 4px;
+          background: rgba(0,0,0,0.8); color: white; font-size: 0.6rem;
+          padding: 2px 4px; border-radius: 4px; font-weight: 600;
+        }
+        .sidebar-playing-overlay {
+          position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+          display: flex; align-items: center; justify-content: center;
+        }
+        .playing-bars { display: flex; gap: 3px; align-items: flex-end; height: 16px; }
+        .playing-bars span {
+          width: 3px; background: #0ea5e9; border-radius: 2px;
+          animation: bounce 1s infinite ease-in-out;
+        }
+        .playing-bars span:nth-child(1) { height: 60%; animation-delay: 0s; }
+        .playing-bars span:nth-child(2) { height: 100%; animation-delay: 0.2s; }
+        .playing-bars span:nth-child(3) { height: 80%; animation-delay: 0.4s; }
+        
+        .sidebar-video-info { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+        .sidebar-video-info h4 { font-size: 0.85rem; margin: 0; color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .sidebar-video-info p { font-size: 0.75rem; margin: 0; color: #9ca3af; }
+        .sidebar-video-info small { font-size: 0.65rem; color: #3b82f6; }
+
+        @keyframes bounce {
+          0%, 100% { transform: scaleY(0.5); }
+          50% { transform: scaleY(1); }
+        }
+
         /* RESPONSIVE SCALING */
         @media (max-width: 1200px) {
           .dial-wrapper { transform: scale(0.85); }
@@ -989,6 +1100,24 @@ export default function Home() {
           .hud-search { display: none; }
           .hud-you-select-toggle { display: none; }
           .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
+          
+          /* YOU FRAME Mobile Layout */
+          .hud-main-dial.you-frame-active .dial-wrapper {
+             grid-template-columns: 1fr;
+             grid-template-rows: auto 1fr;
+             height: 100vh;
+             max-height: 100vh;
+             width: 100vw;
+             border-radius: 0;
+          }
+          .hud-main-dial.you-frame-active .dial-center-orb {
+             height: 35vh !important;
+          }
+          .you-frame-sidebar {
+             grid-area: 2 / 1;
+             border-radius: 24px 24px 0 0;
+             border: none; border-top: 1px solid rgba(255,255,255,0.1);
+          }
         }
         @media (max-width: 600px) {
           .hud-topbar { padding: 5px 15px; }

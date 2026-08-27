@@ -102,7 +102,7 @@ export default function Home() {
       {/* ── TOP BAR ── */}
       <header className="hud-topbar">
         <div className="hud-logo">
-          <h1>YOUAPP <span>TV</span></h1>
+          <h1>YouApp <span>TV v3</span></h1>
           <p>TU MUNDO EN UN SOLO CÍRCULO</p>
         </div>
         
@@ -760,7 +760,7 @@ export default function Home() {
           .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
         }
         @media (max-width: 600px) {
-          .dial-wrapper { transform: scale(calc(90vw / 900)); }
+          .dial-wrapper { transform: scale(calc(70vw / 900)); }
           .hud-bottom-bar { flex-direction: column; gap: 10px; }
           .hud-mega-play { width: 90px; height: 90px; }
           .hud-add-video-btn span { display: none; }

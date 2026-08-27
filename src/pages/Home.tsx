@@ -769,7 +769,7 @@ export default function Home() {
           .hud-user .user-text { display: none; }
           .hud-main-dial { align-items: flex-start; }
           .dial-wrapper { 
-            transform: scale(0.49) translateY(80px); 
+            transform: scale(0.52) translateY(80px); 
             transform-origin: top center; 
             margin-top: 20px; 
           }

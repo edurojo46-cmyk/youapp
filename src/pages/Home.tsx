@@ -109,6 +109,18 @@ export default function Home() {
             </div>
           </div>
 
+          {/* El Aro Físico (Thick Ring) y sus divisiones */}
+          <div className="dial-physical-ring">
+            {/* Divisiones (Spokes) */}
+            {Array.from({ length: 18 }).map((_, i) => (
+              <div 
+                key={`spoke-${i}`} 
+                className="dial-spoke" 
+                style={{ transform: `rotate(${-80 + (i * 20)}deg)` }}
+              ></div>
+            ))}
+          </div>
+
           {/* Anillo de Segmentos y Textos */}
           <div className="dial-ring">
             {HUD_ITEMS.map((item, index) => {
@@ -117,12 +129,13 @@ export default function Home() {
               const angleDeg = -90 + (index * 20);
               const angleRad = (angleDeg * Math.PI) / 180;
               
-              // Posición del icono en el anillo
-              const x = Math.cos(angleRad) * radius;
-              const y = Math.sin(angleRad) * radius;
+              // Radio del aro físico donde se asientan los iconos
+              const ringRadius = 270;
+              const x = Math.cos(angleRad) * ringRadius;
+              const y = Math.sin(angleRad) * ringRadius;
               
-              // Posición del texto extendido (más lejos del radio)
-              const textRadius = radius + 60;
+              // Radio donde empiezan las líneas conectoras y el texto
+              const textRadius = ringRadius + 120;
               const tx = Math.cos(angleRad) * textRadius;
               const ty = Math.sin(angleRad) * textRadius;
 
@@ -134,7 +147,8 @@ export default function Home() {
 
               return (
                 <div key={item.id} className="dial-segment" style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}>
-                  {/* Icono interactivo */}
+                  
+                  {/* Icono interactivo asentado sobre el aro */}
                   <button 
                     className={`dial-icon-btn ${hoveredItem === item.id ? 'active' : ''}`}
                     style={{ '--clr': item.color } as React.CSSProperties}
@@ -142,25 +156,33 @@ export default function Home() {
                     onMouseLeave={() => setHoveredItem(null)}
                     onClick={() => navigate(item.route)}
                   >
-                    <item.icon size={22} />
-                    {isTop && <span className="dial-icon-label-center">INICIO</span>}
-                    {isBottom && <span className="dial-icon-label-center">IA</span>}
+                    <item.icon size={24} />
+                    {isTop && <span className="dial-icon-label-center" style={{color: item.color}}>INICIO</span>}
+                    {isBottom && <span className="dial-icon-label-center" style={{color: item.color}}>IA</span>}
                   </button>
 
-                  {/* Texto Conector (Punta del HUD) */}
+                  {/* Texto Conector (HUD Callout Line) */}
                   {!isTop && !isBottom && (
                     <div 
                       className={`dial-text-connector ${isRightSide ? 'right' : ''} ${isLeftSide ? 'left' : ''} ${hoveredItem === item.id ? 'highlight' : ''}`}
                       style={{ 
                         transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`,
                         alignItems: isRightSide ? 'flex-start' : 'flex-end',
-                        textAlign: isRightSide ? 'left' : 'right'
-                      }}
+                        textAlign: isRightSide ? 'left' : 'right',
+                        '--clr': item.color
+                      } as React.CSSProperties}
                     >
                       <h4>{item.label}</h4>
                       <p>{item.sub}</p>
-                      {/* Línea conectora óptica visual */}
-                      <div className="connector-line" style={{ '--clr': item.color } as React.CSSProperties}></div>
+                      
+                      {/* Línea conectora quebrada (Callout line) */}
+                      <svg className="connector-svg" preserveAspectRatio="none">
+                        {isRightSide ? (
+                          <path d={`M -60 5 L -20 5 L 0 ${-ty/4}`} />
+                        ) : (
+                          <path d={`M 240 5 L 200 5 L 180 ${-ty/4}`} />
+                        )}
+                      </svg>
                     </div>
                   )}
                 </div>
@@ -342,8 +364,8 @@ export default function Home() {
 
         .dial-wrapper {
           position: relative;
-          width: 800px;
-          height: 800px;
+          width: 900px;
+          height: 900px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -351,14 +373,14 @@ export default function Home() {
 
         /* Center Orb */
         .dial-center-orb {
-          width: 460px;
-          height: 460px;
+          width: 440px;
+          height: 440px;
           border-radius: 50%;
           position: absolute;
           z-index: 5;
           padding: 10px;
-          background: conic-gradient(from 0deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.05) 100%);
-          box-shadow: inset 0 0 40px rgba(0,0,0,0.8), 0 0 60px rgba(59,130,246,0.1);
+          background: conic-gradient(from 0deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.02) 100%);
+          box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 80px rgba(0,0,0,0.8);
           animation: spin-slow 20s linear infinite;
         }
         .dial-center-orb > * { animation: spin-slow-reverse 20s linear infinite; }
@@ -368,17 +390,17 @@ export default function Home() {
 
         .orb-bg {
           position: absolute;
-          inset: 10px;
+          inset: 15px;
           border-radius: 50%;
           background: url('https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?w=800&q=80') center/cover;
-          opacity: 0.8;
+          opacity: 0.6;
           z-index: 1;
           border: 2px solid rgba(255,255,255,0.1);
         }
         .orb-bg::after {
           content: ''; position: absolute; inset: 0;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(0,0,0,0) 20%, rgba(0,0,0,0.8) 100%);
+          background: radial-gradient(circle, rgba(0,0,0,0) 20%, rgba(0,0,0,0.9) 100%);
         }
 
         .orb-content {
@@ -432,11 +454,40 @@ export default function Home() {
         .progress-bar .fill { height: 100%; background: #3b82f6; border-radius: 2px; box-shadow: 0 0 10px #3b82f6; }
 
 
+        /* El Aro Físico */
+        .dial-physical-ring {
+          position: absolute;
+          width: 620px;
+          height: 620px;
+          border-radius: 50%;
+          border: 80px solid rgba(15, 15, 20, 0.7);
+          box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6);
+          backdrop-filter: blur(10px);
+          z-index: 1;
+        }
+        .dial-physical-ring::before {
+          content: ''; position: absolute; inset: -80px;
+          border-radius: 50%; border: 1px solid rgba(255,255,255,0.15);
+        }
+        .dial-physical-ring::after {
+          content: ''; position: absolute; inset: 0px;
+          border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .dial-spoke {
+          position: absolute;
+          top: -80px; left: 50%;
+          width: 2px; height: 80px;
+          background: rgba(255,255,255,0.15);
+          transform-origin: center 390px; /* 310 + 80 */
+        }
+
+
         /* Ring Items */
         .dial-ring {
           position: absolute;
           width: 100%; height: 100%;
           pointer-events: none;
+          z-index: 10;
         }
 
         .dial-segment {
@@ -447,34 +498,28 @@ export default function Home() {
         }
 
         .dial-icon-btn {
-          width: 56px; height: 56px;
-          border-radius: 50%;
-          background: rgba(20,20,25,0.8);
-          border: 1px solid rgba(255,255,255,0.1);
-          color: var(--clr);
+          width: 100%; height: 100%;
+          min-width: 60px; min-height: 60px;
+          border-radius: 12px; /* Cambiado a cuadrado redondeado para parecer botón de segmento */
+          background: transparent;
+          border: none;
+          color: rgba(255,255,255,0.5);
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           cursor: pointer;
-          backdrop-filter: blur(10px);
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
           position: relative;
         }
 
-        .dial-icon-btn::before {
-          content: ''; position: absolute; inset: -4px; border-radius: 50%;
-          border: 1px solid transparent; transition: 0.3s;
-        }
-
         .dial-icon-btn:hover, .dial-icon-btn.active {
-          transform: scale(1.15);
-          background: rgba(30,30,40,0.9);
-          border-color: var(--clr);
-          box-shadow: 0 0 20px var(--clr), inset 0 0 10px var(--clr);
-          color: white;
-        }
-        .dial-icon-btn.active::before {
-          border-color: rgba(255,255,255,0.2);
+          color: var(--clr);
           transform: scale(1.1);
+          text-shadow: 0 0 10px var(--clr);
+        }
+        /* Glow indicator underneath */
+        .dial-icon-btn:hover::after, .dial-icon-btn.active::after {
+          content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
+          width: 20px; height: 3px; background: var(--clr); border-radius: 2px;
+          box-shadow: 0 0 10px var(--clr);
         }
 
         .dial-icon-label-center {
@@ -483,16 +528,15 @@ export default function Home() {
           font-size: 0.75rem;
           font-weight: 700;
           letter-spacing: 1px;
-          color: white;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.8);
           white-space: nowrap;
+          text-shadow: 0 0 10px var(--clr);
         }
 
         /* External Connectors */
         .dial-text-connector {
           position: absolute;
           top: 50%; left: 50%;
-          width: 180px;
+          width: 180px; height: 40px;
           display: flex;
           flex-direction: column;
           opacity: 0.6;
@@ -502,26 +546,36 @@ export default function Home() {
         .dial-text-connector.highlight { opacity: 1; transform: scale(1.05) !important; }
         
         .dial-text-connector h4 {
-          margin: 0 0 4px 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+          margin: 0 0 2px 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+          color: rgba(255,255,255,0.9);
         }
+        .dial-text-connector.highlight h4 { color: var(--clr); text-shadow: 0 0 8px var(--clr); }
         .dial-text-connector p {
-          margin: 0; font-size: 0.7rem; color: #9ca3af; line-height: 1.3;
+          margin: 0; font-size: 0.65rem; color: #9ca3af; line-height: 1.2;
         }
 
-        /* Connector visual line */
-        .connector-line {
+        /* Angular Callout Line SVG */
+        .connector-svg {
           position: absolute;
           top: 50%;
-          width: 30px;
-          height: 1px;
-          background: rgba(255,255,255,0.1);
+          width: 200px;
+          height: 100px;
+          pointer-events: none;
+          overflow: visible;
         }
-        .dial-text-connector.right .connector-line { left: -40px; }
-        .dial-text-connector.left .connector-line { right: -40px; }
+        .dial-text-connector.right .connector-svg { left: -70px; transform: translateY(-50%); }
+        .dial-text-connector.left .connector-svg { right: -70px; transform: translateY(-50%); }
         
-        .dial-text-connector.highlight .connector-line {
-          background: var(--clr);
-          box-shadow: 0 0 8px var(--clr);
+        .connector-svg path {
+          fill: none;
+          stroke: rgba(255,255,255,0.15);
+          stroke-width: 1.5;
+          transition: 0.3s;
+        }
+        
+        .dial-text-connector.highlight .connector-svg path {
+          stroke: var(--clr);
+          filter: drop-shadow(0 0 4px var(--clr));
         }
 
 

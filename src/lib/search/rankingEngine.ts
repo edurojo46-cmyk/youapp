@@ -18,13 +18,15 @@ export function calculateRelevanceAndYouScore(items: ContentItem[], query: Searc
     if (relevanceScore > 100) relevanceScore = 100;
     
     // YouScore es la combinación de Quality y Relevance
+    // Aquí el confidence no domina el ranking todavía (MVP).
     const qualityScore = v.qualityScore || 50;
     const youScore = (qualityScore * 0.4) + (relevanceScore * 0.6);
 
     return {
       ...v,
       relevanceScore,
-      youScore
+      youScore,
+      rankingVersion: 'you-score-v1'
     };
   });
 }

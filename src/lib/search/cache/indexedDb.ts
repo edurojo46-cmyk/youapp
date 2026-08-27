@@ -34,7 +34,7 @@ interface YouAppDB extends DBSchema {
 }
 
 const DB_NAME = 'youapp-db';
-const DB_VERSION = 2; // Upgraded to v2 with 4 stores
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<YouAppDB>> | null = null;
 
@@ -47,8 +47,6 @@ export async function getDb() {
           const catalogStore = db.createObjectStore('catalog', { keyPath: 'id' });
           catalogStore.createIndex('by-provider', 'provider');
         }
-        
-        // Migration from V1 to V2
         if (oldVersion < 2) {
           if (!db.objectStoreNames.contains('candidate_pool')) {
             db.createObjectStore('candidate_pool', { keyPath: 'normalizedQuery' });
@@ -56,7 +54,6 @@ export async function getDb() {
           if (!db.objectStoreNames.contains('embeddings')) {
             db.createObjectStore('embeddings', { keyPath: 'id' });
           }
-          // If search_cache exists from V1, we could drop it or migrate it, but let's just create new ones
           if (db.objectStoreNames.contains('search_cache' as any)) {
             db.deleteObjectStore('search_cache' as any);
           }
@@ -84,6 +81,33 @@ export async function saveCandidatePool(pool: CandidatePool) {
   try {
     const db = await getDb();
     await db.put('candidate_pool', pool);
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+  }
+}
+
+export async function getCatalogItems(ids: string[]): Promise<ContentItem[]> {
+  try {
+    const db = await getDb();
+    const tx = db.transaction('catalog', 'readonly');
+    const store = tx.objectStore('catalog');
+    const items = await Promise.all(ids.map(id => store.get(id)));
+    return items.filter(Boolean) as ContentItem[];
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+    return [];
+  }
+}
+
+export async function saveCatalogItems(items: ContentItem[]) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction('catalog', 'readwrite');
+    const store = tx.objectStore('catalog');
+    for (const item of items) {
+      store.put(item);
+    }
+    await tx.done;
   } catch (error) {
     console.error("IndexedDB Error:", error);
   }

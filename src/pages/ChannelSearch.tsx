@@ -596,7 +596,7 @@ export default function ChannelSearch() {
             <div className="banner-left">
               <CheckCircle2 size={16} className="text-neon-cyan" />
               <span>
-                <strong>{results.channels.length}</strong> canales encontrados para "<strong>{committed}</strong>"
+                <strong>{results.channels.length}</strong> canales superaron nuestro estándar para "<strong>{committed}</strong>"
               </span>
             </div>
             <div className="banner-right">
@@ -623,7 +623,7 @@ export default function ChannelSearch() {
             <div className="banner-left">
               <CheckCircle2 size={16} className="text-neon-purple" />
               <span>
-                <strong>{results.videos.length}</strong> videos y programas encontrados para "<strong>{committed}</strong>"
+                <strong>{results.videos.length}</strong> videos superaron nuestro estándar para "<strong>{committed}</strong>"
               </span>
             </div>
             <div className="banner-right">

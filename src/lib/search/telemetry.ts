@@ -12,26 +12,37 @@ export type SearchEventName =
   | 'result_saved'
   | 'result_programmed'
   | 'moment_created'
-  | 'search_abandoned';
+  | 'search_abandoned'
+  | 'search_completed';
 
 interface SearchEventPayload {
+  request_id?: string;
   session_id?: string;
   query_normalized?: string;
   provider?: string;
+  
+  candidate_count?: number;
+  eligible_count?: number;
   result_count?: number;
+  position?: number;
+  
+  external_used?: boolean;
+  external_latency_ms?: number;
   latency_ms?: number;
+  
+  success?: boolean;
+  error_code?: string;
   cache_source?: string;
 }
 
-// Queue for batching events (simplified for now)
 let eventQueue: any[] = [];
 let queueTimeout: any = null;
 
-const FLUSH_INTERVAL = 5000; // 5 seconds
+const FLUSH_INTERVAL = 5000;
 
 export function trackSearchEvent(eventName: SearchEventName, payload?: SearchEventPayload) {
-  // Fire and forget, never block
-  setTimeout(async () => {
+  // Fire and forget, absolutely no blocking
+  Promise.resolve().then(() => {
     const eventData = {
       event_name: eventName,
       ...payload,
@@ -41,8 +52,6 @@ export function trackSearchEvent(eventName: SearchEventName, payload?: SearchEve
 
     if (import.meta.env.DEV) {
       console.info(`[Telemetry] ${eventName}`, payload);
-      // In dev, we can optionally skip sending to Supabase, but the user requested:
-      // "DEVELOPMENT: console + Supabase opcional. PRODUCTION: Supabase"
     }
 
     eventQueue.push(eventData);
@@ -50,7 +59,9 @@ export function trackSearchEvent(eventName: SearchEventName, payload?: SearchEve
     if (!queueTimeout) {
       queueTimeout = setTimeout(flushEventQueue, FLUSH_INTERVAL);
     }
-  }, 0);
+  }).catch(() => {
+    // Fail silently
+  });
 }
 
 async function flushEventQueue() {

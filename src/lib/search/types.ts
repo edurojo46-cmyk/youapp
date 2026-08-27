@@ -13,6 +13,8 @@ export interface ContentItem {
   type: 'video' | 'channel' | 'playlist';
   
   provider: 'youtube' | 'twitch' | 'tiktok' | 'instagram' | 'vimeo' | 'dailymotion' | 'itunes' | 'direct' | 'youapp' | 'unknown';
+  providerId?: string;
+  canonicalUrl?: string;
   
   title: string;
   description?: string;
@@ -43,10 +45,14 @@ export interface ContentItem {
   
   qualityScore?: number;
   qualityConfidence?: number;
+  sourceConfidence?: number;
   valueRate?: number;
   relevanceScore?: number;
   affinityScore?: number;
   youScore?: number;
+  
+  rankingVersion?: string;
+  qualityVersion?: string;
   
   source?: {
     provider: string;
@@ -56,10 +62,19 @@ export interface ContentItem {
   };
 }
 
+export interface CandidateRef {
+  contentId: string;
+  relevanceScore?: number;
+  qualityScore?: number;
+  youScore?: number;
+}
+
 export interface CandidatePool {
   normalizedQuery: string;
-  candidates: ContentItem[];
+  candidates: CandidateRef[];
+  queryVersion: number;
+  qualityVersion: number;
+  rankingVersion: number;
   createdAt: number;
   expiresAt: number;
-  sourceVersion: number;
 }

@@ -771,7 +771,7 @@ export default function Home() {
           .dial-wrapper { 
             transform: scale(0.68); 
             transform-origin: top center; 
-            margin-top: 20px; 
+            margin-top: 60px; 
           }
           .hud-bottom-bar { flex-direction: column; gap: 10px; padding: 10px; margin-top: -20px; }
           .hud-mega-play { width: 80px; height: 80px; }

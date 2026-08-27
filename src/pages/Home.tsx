@@ -48,7 +48,7 @@ export default function Home() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [isSquare, setIsSquare] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const controlsTimeoutRef = React.useRef<NodeJS.Timeout>();
+  const controlsTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const handleMouseMove = () => {

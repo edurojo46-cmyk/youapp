@@ -121,6 +121,42 @@ export default function Home() {
             ))}
           </div>
 
+          {/* Líneas Conectoras Globales SVG */}
+          <svg className="hud-global-lines" width="900" height="900" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+            {HUD_ITEMS.map((item, index) => {
+              const angleDeg = -90 + (index * 20);
+              const isTop = angleDeg === -90;
+              const isBottom = angleDeg === 90;
+              if (isTop || isBottom) return null;
+
+              const angleRad = (angleDeg * Math.PI) / 180;
+              const cx = 450 + Math.cos(angleRad) * 270;
+              const cy = 450 + Math.sin(angleRad) * 270;
+              
+              const tx = 450 + Math.cos(angleRad) * 380;
+              const ty = 450 + Math.sin(angleRad) * 380;
+              
+              const isRightSide = angleDeg > -90 && angleDeg < 90;
+              
+              // Angled HUD line: starts at icon (cx, cy), goes to a point near text, then horizontal
+              const endX = isRightSide ? tx + 140 : tx - 140;
+              const elbowX = isRightSide ? tx - 10 : tx + 10;
+              
+              const isHovered = hoveredItem === item.id;
+              
+              return (
+                <path 
+                  key={`line-${item.id}`}
+                  d={`M ${cx} ${cy} L ${elbowX} ${ty} L ${endX} ${ty}`}
+                  fill="none"
+                  stroke={isHovered ? item.color : "rgba(255,255,255,0.15)"}
+                  strokeWidth={isHovered ? 2 : 1.5}
+                  style={{ transition: 'stroke 0.3s, stroke-width 0.3s', filter: isHovered ? `drop-shadow(0 0 6px ${item.color})` : 'none' }}
+                />
+              );
+            })}
+          </svg>
+
           {/* Anillo de Segmentos y Textos */}
           <div className="dial-ring">
             {HUD_ITEMS.map((item, index) => {
@@ -129,15 +165,15 @@ export default function Home() {
               const angleDeg = -90 + (index * 20);
               const angleRad = (angleDeg * Math.PI) / 180;
               
-              // Radio del aro físico donde se asientan los iconos
+              // Centro del wrapper = 450, 450
               const ringRadius = 270;
-              const x = Math.cos(angleRad) * ringRadius;
-              const y = Math.sin(angleRad) * ringRadius;
+              const x = 450 + Math.cos(angleRad) * ringRadius;
+              const y = 450 + Math.sin(angleRad) * ringRadius;
               
-              // Radio donde empiezan las líneas conectoras y el texto
-              const textRadius = ringRadius + 120;
-              const tx = Math.cos(angleRad) * textRadius;
-              const ty = Math.sin(angleRad) * textRadius;
+              // Radio del texto
+              const textRadius = 380;
+              const tx = 450 + Math.cos(angleRad) * textRadius;
+              const ty = 450 + Math.sin(angleRad) * textRadius;
 
               // Lógica de alineación del texto según el lado
               const isRightSide = angleDeg > -90 && angleDeg < 90;
@@ -146,27 +182,32 @@ export default function Home() {
               const isBottom = angleDeg === 90;
 
               return (
-                <div key={item.id} className="dial-segment" style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}>
-                  
+                <React.Fragment key={item.id}>
                   {/* Icono interactivo asentado sobre el aro */}
-                  <button 
-                    className={`dial-icon-btn ${hoveredItem === item.id ? 'active' : ''}`}
-                    style={{ '--clr': item.color } as React.CSSProperties}
-                    onMouseEnter={() => setHoveredItem(item.id)}
-                    onMouseLeave={() => setHoveredItem(null)}
-                    onClick={() => navigate(item.route)}
+                  <div 
+                    className="dial-segment-icon"
+                    style={{ left: `${x}px`, top: `${y}px` }}
                   >
-                    <item.icon size={24} />
-                    {isTop && <span className="dial-icon-label-center" style={{color: item.color}}>INICIO</span>}
-                    {isBottom && <span className="dial-icon-label-center" style={{color: item.color}}>IA</span>}
-                  </button>
+                    <button 
+                      className={`dial-icon-btn ${hoveredItem === item.id ? 'active' : ''}`}
+                      style={{ '--clr': item.color } as React.CSSProperties}
+                      onMouseEnter={() => setHoveredItem(item.id)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      onClick={() => navigate(item.route)}
+                    >
+                      <item.icon size={24} />
+                      {isTop && <span className="dial-icon-label-center" style={{color: item.color}}>INICIO</span>}
+                      {isBottom && <span className="dial-icon-label-center" style={{color: item.color}}>IA</span>}
+                    </button>
+                  </div>
 
                   {/* Texto Conector (HUD Callout Line) */}
                   {!isTop && !isBottom && (
                     <div 
                       className={`dial-text-connector ${isRightSide ? 'right' : ''} ${isLeftSide ? 'left' : ''} ${hoveredItem === item.id ? 'highlight' : ''}`}
                       style={{ 
-                        transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`,
+                        left: `${tx}px`, top: `${ty}px`,
+                        transform: isRightSide ? 'translate(0, -100%)' : 'translate(-100%, -100%)',
                         alignItems: isRightSide ? 'flex-start' : 'flex-end',
                         textAlign: isRightSide ? 'left' : 'right',
                         '--clr': item.color
@@ -174,18 +215,9 @@ export default function Home() {
                     >
                       <h4>{item.label}</h4>
                       <p>{item.sub}</p>
-                      
-                      {/* Línea conectora quebrada (Callout line) */}
-                      <svg className="connector-svg" preserveAspectRatio="none">
-                        {isRightSide ? (
-                          <path d={`M -60 5 L -20 5 L 0 ${-ty/4}`} />
-                        ) : (
-                          <path d={`M 240 5 L 200 5 L 180 ${-ty/4}`} />
-                        )}
-                      </svg>
                     </div>
                   )}
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -490,17 +522,16 @@ export default function Home() {
           z-index: 10;
         }
 
-        .dial-segment {
+        .dial-segment-icon {
           position: absolute;
-          top: 50%; left: 50%;
-          transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y)));
+          transform: translate(-50%, -50%);
           pointer-events: auto;
+          width: 60px; height: 60px;
         }
 
         .dial-icon-btn {
           width: 100%; height: 100%;
-          min-width: 60px; min-height: 60px;
-          border-radius: 12px; /* Cambiado a cuadrado redondeado para parecer botón de segmento */
+          border-radius: 12px;
           background: transparent;
           border: none;
           color: rgba(255,255,255,0.5);
@@ -535,7 +566,6 @@ export default function Home() {
         /* External Connectors */
         .dial-text-connector {
           position: absolute;
-          top: 50%; left: 50%;
           width: 180px; height: 40px;
           display: flex;
           flex-direction: column;
@@ -552,30 +582,6 @@ export default function Home() {
         .dial-text-connector.highlight h4 { color: var(--clr); text-shadow: 0 0 8px var(--clr); }
         .dial-text-connector p {
           margin: 0; font-size: 0.65rem; color: #9ca3af; line-height: 1.2;
-        }
-
-        /* Angular Callout Line SVG */
-        .connector-svg {
-          position: absolute;
-          top: 50%;
-          width: 200px;
-          height: 100px;
-          pointer-events: none;
-          overflow: visible;
-        }
-        .dial-text-connector.right .connector-svg { left: -70px; transform: translateY(-50%); }
-        .dial-text-connector.left .connector-svg { right: -70px; transform: translateY(-50%); }
-        
-        .connector-svg path {
-          fill: none;
-          stroke: rgba(255,255,255,0.15);
-          stroke-width: 1.5;
-          transition: 0.3s;
-        }
-        
-        .dial-text-connector.highlight .connector-svg path {
-          stroke: var(--clr);
-          filter: drop-shadow(0 0 4px var(--clr));
         }
 
 

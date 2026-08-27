@@ -102,7 +102,7 @@ export default function Home() {
       {/* ── TOP BAR ── */}
       <header className="hud-topbar">
         <div className="hud-logo">
-          <h1>YouApp <span>TV v3</span></h1>
+          <h1>YouApp <span>TV</span></h1>
           <p>TU MUNDO EN UN SOLO CÍRCULO</p>
         </div>
         
@@ -749,21 +749,24 @@ export default function Home() {
 
         /* RESPONSIVE SCALING */
         @media (max-width: 1200px) {
-          .dial-wrapper { transform: scale(calc(min(90vw, 900px) / 800)); }
+          .dial-wrapper { transform: scale(0.85); }
           .hud-topbar { padding: 20px; }
           .hud-search { width: 300px; }
         }
         @media (max-width: 900px) {
-          .dial-wrapper { transform: scale(calc(80vw / 900)); }
+          .dial-wrapper { transform: scale(0.65); }
           .hud-search { display: none; }
           .hud-you-select-toggle { display: none; }
           .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
         }
         @media (max-width: 600px) {
-          .dial-wrapper { transform: scale(calc(70vw / 900)); }
+          .dial-wrapper { transform: scale(0.48); }
           .hud-bottom-bar { flex-direction: column; gap: 10px; }
           .hud-mega-play { width: 90px; height: 90px; }
           .hud-add-video-btn span { display: none; }
+        }
+        @media (max-width: 400px) {
+          .dial-wrapper { transform: scale(0.42); }
         }
       `}</style>
     </div>

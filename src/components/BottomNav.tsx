@@ -15,10 +15,9 @@ export default function BottomNav() {
           <span>Inicio</span>
         </button>
 
-
-        <button className={`nav-item ${isActive('/my-lists') ? 'active' : ''}`} onClick={() => navigate('/my-lists')}>
-          <List size={20} />
-          <span>Mis Listas</span>
+        <button className={`nav-item ${isActive('/search') ? 'active' : ''}`} onClick={() => navigate('/search')}>
+          <Search size={20} />
+          <span>Buscar</span>
         </button>
 
         {/* Botón Central Flotante Neón (En Vivo) */}
@@ -26,6 +25,11 @@ export default function BottomNav() {
           <div className="fab-glow-core">
             <Radio size={22} fill="white" color="white" />
           </div>
+        </button>
+
+        <button className={`nav-item ${isActive('/my-lists') ? 'active' : ''}`} onClick={() => navigate('/my-lists')}>
+          <List size={20} />
+          <span>Mis Listas</span>
         </button>
 
         <button className={`nav-item ${isActive('/channels') ? 'active' : ''}`} onClick={() => navigate('/channels')}>
@@ -46,10 +50,11 @@ export default function BottomNav() {
           background: rgba(5, 5, 5, 0.95);
           backdrop-filter: blur(20px);
           border-top: 1px solid rgba(255, 255, 255, 0.05);
-          display: flex;
-          justify-content: space-around;
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          justify-items: center;
           align-items: center;
-          padding: 0 10px;
+          padding: 0;
           z-index: 99;
         }
 

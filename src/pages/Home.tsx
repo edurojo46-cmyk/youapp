@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, Tv, Grid, Radio, Plus, Play, Brain, BarChart2, Bookmark,
-  SplitSquareHorizontal, Film, GraduationCap, List, PlaySquare, Star, User, Calendar, Mic, Settings
+  SplitSquareHorizontal, Film, GraduationCap, List, PlaySquare, Star, User, Calendar, Mic, Settings,
+  SkipBack, Pause, SkipForward
 } from 'lucide-react';
 import AddVideoModal from '../components/AddVideoModal';
+import { INITIAL_SCHEDULE } from './CreateSignal';
 
 const HUD_ITEMS = [
   { id: 'inicio', icon: HomeIcon, label: 'INICIO', sub: '', color: '#60a5fa', route: '/' },
@@ -40,7 +42,59 @@ export default function Home() {
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [isPlayingInOrb, setIsPlayingInOrb] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [realProgress, setRealProgress] = useState(0);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
+  const videoSources = [
+    "/background.mp4",
+    "/video2.mp4",
+    "/video3.mp4"
+  ];
+  const videoThumbnails = [
+    "https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?w=800&q=80",
+    "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=800&q=80",
+    "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=800&q=80"
+  ];
+
+  // Hacer la barra de progreso "real" (gira con el tiempo) y manejar la barra espaciadora
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      // Simulamos que el progreso es el porcentaje de los segundos del minuto actual (da una vuelta cada minuto)
+      const secProgress = now.getSeconds() / 60;
+      setRealProgress(secProgress);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault(); // Evitar que la página haga scroll
+        if (isPlayingInOrb) {
+          setIsPaused(prev => !prev);
+        } else {
+          setIsPlayingInOrb(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlayingInOrb]);
+
+  const handleNextVideo = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCurrentVideoIndex((prev) => (prev + 1) % videoSources.length);
+  };
+
+  const handlePrevVideo = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setCurrentVideoIndex((prev) => (prev - 1 + videoSources.length) % videoSources.length);
+  };
+
+  const currentSignalSlot = INITIAL_SCHEDULE[currentVideoIndex % INITIAL_SCHEDULE.length];
   const radius = 280; // Radio del círculo
 
   return (
@@ -85,35 +139,89 @@ export default function Home() {
       {/* ── DIAL CENTRAL ── */}
       <main className="hud-main-dial">
         <div className="dial-wrapper">
-          {/* Fondo Espacial Central */}
+          {/* Fondo Espacial Central con Video */}
           <div className="dial-center-orb">
-            <div className="orb-bg"></div>
-            <div className="orb-content">
-              <button className="orb-play-btn" onClick={() => navigate('/live')}>
-                <Play size={48} fill="currentColor" />
-              </button>
-              <div className="orb-info">
-                <h3>El futuro de la humanidad</h3>
-                <p>Documental · 45 min</p>
-                <div className="orb-badges">
-                  <span>4K</span>
-                  <span>HDR</span>
+            <div className="orb-bg">
+              <video 
+                key={currentVideoIndex} // Fuerza recarga al cambiar de canal
+                src={videoSources[currentVideoIndex]}
+                poster={videoThumbnails[currentVideoIndex]}
+                className="orb-bg-video"
+                autoPlay
+                muted={!isPlayingInOrb}
+                loop
+                playsInline
+                ref={(el) => {
+                  if (el) {
+                    isPaused ? el.pause() : el.play().catch(()=>{});
+                  }
+                }}
+              />
+            </div>
+            
+            {!isPlayingInOrb && (
+              <div className="orb-content">
+                <button className="orb-play-btn" onClick={() => setIsPlayingInOrb(true)}>
+                  <Play size={48} fill="currentColor" />
+                </button>
+                <div className="orb-info">
+                  <h3>{currentSignalSlot.video.title}</h3>
+                  <p>{currentSignalSlot.video.channel.toUpperCase()} · {currentSignalSlot.video.duration}</p>
+                  <div className="orb-badges">
+                    <span>4K</span>
+                    <span>HDR</span>
+                  </div>
+                  
+                  <div className="orb-media-controls">
+                    <button onClick={handlePrevVideo}><SkipBack size={20} fill="currentColor" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); setIsPaused(!isPaused); }}>
+                      {isPaused ? <Play size={28} fill="currentColor" /> : <Pause size={28} fill="currentColor" />}
+                    </button>
+                    <button onClick={handleNextVideo}><SkipForward size={20} fill="currentColor" /></button>
+                  </div>
                 </div>
               </div>
-              
-              <div className="orb-progress">
-                <span>18:27</span>
-                <div className="progress-bar"><div className="fill" style={{width:'40%'}}></div></div>
-                <span>45:00</span>
-              </div>
+            )}
+          </div>
+
+          {/* Circular Progress Ring (Estilo YOU RING) */}
+          <div className="circular-progress-container" style={{ '--progress': realProgress } as React.CSSProperties}>
+            <svg width="520" height="520" viewBox="0 0 520 520" className="progress-svg">
+              <defs>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+              {/* Pista de fondo */}
+              <circle cx="260" cy="260" r="250" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" />
+              {/* Barra de progreso luminosa */}
+              <circle 
+                cx="260" cy="260" r="250" 
+                fill="none" stroke="#0ea5e9" strokeWidth="2"
+                strokeLinecap="round"
+                filter="url(#glow)"
+                className="progress-arc"
+              />
+            </svg>
+            <div className="progress-dot-wrapper">
+              <div className="progress-dot" />
             </div>
+            
+            {/* Tiempos */}
+            <div className="progress-text left-text">{currentSignalSlot.timeStart}</div>
+            <div className="progress-text right-text">{currentSignalSlot.timeEnd}</div>
           </div>
 
           {/* El Aro Físico (Thick Ring) y sus divisiones */}
           <div className="dial-physical-ring">
             {/* Divisiones (Spokes) matemáticas para el aro */}
             {Array.from({ length: 18 }).map((_, i) => {
-              const angleDeg = -80 + (i * 20);
+              // Desfasamos 10 grados para que los iconos caigan justo en medio
+              const angleDeg = -70 + (i * 20);
               return (
                 <div 
                   key={`spoke-${i}`} 
@@ -365,15 +473,21 @@ export default function Home() {
           position: absolute;
           inset: 15px;
           border-radius: 50%;
-          background: url('https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?w=800&q=80') center/cover;
-          opacity: 0.6;
+          background: transparent;
+          opacity: 1;
           z-index: 1;
           border: 2px solid rgba(255,255,255,0.1);
+          overflow: hidden;
         }
-        .orb-bg::after {
-          content: ''; position: absolute; inset: 0;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(0,0,0,0) 20%, rgba(0,0,0,0.9) 100%);
+        .orb-bg-video {
+          position: absolute;
+          top: 0; left: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          pointer-events: none;
+          opacity: 1;
+          z-index: 1;
         }
 
         .orb-content {
@@ -405,26 +519,76 @@ export default function Home() {
           box-shadow: 0 0 30px rgba(255,255,255,0.3);
         }
 
-        .orb-info h3 { margin: 0 0 8px 0; font-size: 1.4rem; font-weight: 600; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
-        .orb-info p { margin: 0 0 12px 0; font-size: 0.9rem; color: #cbd5e1; }
+        .orb-info h3 { margin: 0 0 8px 0; font-size: 1rem; font-weight: 700; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0,0,0,0.8); text-transform: uppercase; }
+        .orb-info p { margin: 0 0 12px 0; font-size: 0.75rem; color: #cbd5e1; letter-spacing: 1px; }
         .orb-badges { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
         .orb-badges span {
           background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-          padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;
+          padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 600;
         }
 
-        .orb-progress {
-          width: 70%;
+        .orb-media-controls {
           display: flex;
           align-items: center;
-          gap: 12px;
-          font-size: 0.75rem;
+          justify-content: center;
+          gap: 32px;
+          margin-top: 10px;
+        }
+        .orb-media-controls button {
+          background: none; border: none; color: white; cursor: pointer;
+          opacity: 0.8; transition: all 0.2s;
+          display: flex; align-items: center; justify-content: center;
+        }
+        .orb-media-controls button:hover { opacity: 1; transform: scale(1.1); text-shadow: 0 0 10px white; }
+
+        /* CIRCULAR PROGRESS RING */
+        .circular-progress-container {
+          position: absolute;
+          width: 520px;
+          height: 520px;
+          left: calc(50% - 260px);
+          top: calc(50% - 260px);
+          z-index: 6;
+          pointer-events: none;
+          --progress: 0.42;
+          --circumference: 1570.8;
+          --offset: calc(var(--circumference) * (1 - var(--progress)));
+        }
+        .progress-svg {
+          transform: rotate(180deg);
+        }
+        .progress-arc {
+          stroke-dasharray: var(--circumference);
+          stroke-dashoffset: var(--offset);
+          transition: stroke-dashoffset 0.5s ease;
+        }
+        .progress-dot-wrapper {
+          position: absolute;
+          width: 500px; height: 500px;
+          top: 10px; left: 10px;
+          border-radius: 50%;
+          transform: rotate(calc(180deg + (var(--progress) * 360deg)));
+        }
+        .progress-dot {
+          position: absolute;
+          top: calc(50% - 4px);
+          right: -4px;
+          width: 8px; height: 8px;
+          border-radius: 50%;
+          background: #0ea5e9;
+          box-shadow: 0 0 8px #0ea5e9, 0 0 15px #0ea5e9, 0 0 20px #fff;
+        }
+        .progress-text {
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 0.8rem;
+          font-weight: 700;
           color: #9ca3af;
+          letter-spacing: 1px;
         }
-        .progress-bar {
-          flex: 1; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px;
-        }
-        .progress-bar .fill { height: 100%; background: #3b82f6; border-radius: 2px; box-shadow: 0 0 10px #3b82f6; }
+        .progress-text.left-text { left: -45px; }
+        .progress-text.right-text { right: -45px; }
 
 
         /* El Aro Físico */

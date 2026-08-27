@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   server: {
+    host: true,
     proxy: {
       '/api/youtubei': {
         target: 'https://www.youtube.com',

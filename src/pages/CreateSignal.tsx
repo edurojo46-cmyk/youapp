@@ -4,7 +4,7 @@ import { ChevronLeft, Play, Tv, Clock, RotateCcw, Save, Sparkles, X, Plus } from
 import { type UniversalChannel } from '../lib/universalChannels';
 
 // Sample video data to populate and swap
-const VIDEO_LIBRARY = [
+export const VIDEO_LIBRARY = [
   { id: 'v1', title: 'El futuro del trabajo y la IA', duration: '60 min', channel: 'Tech Trends', thumb: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&q=80' },
   { id: 'v2', title: 'Historia de la Antigua Roma', duration: '60 min', channel: 'DocuHistory', thumb: 'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=400&q=80' },
   { id: 'v3', title: 'Cómo invertir en 2026', duration: '60 min', channel: 'Finanzas Hoy', thumb: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&q=80' },
@@ -21,7 +21,7 @@ interface TimeSlot {
   video: typeof VIDEO_LIBRARY[0];
 }
 
-const INITIAL_SCHEDULE: TimeSlot[] = [
+export const INITIAL_SCHEDULE: TimeSlot[] = [
   { timeStart: '18:00', timeEnd: '19:00', video: VIDEO_LIBRARY[0] },
   { timeStart: '19:00', timeEnd: '20:00', video: VIDEO_LIBRARY[1] },
   { timeStart: '20:00', timeEnd: '21:00', video: VIDEO_LIBRARY[2] },

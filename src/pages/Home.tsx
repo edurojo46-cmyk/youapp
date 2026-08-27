@@ -109,20 +109,33 @@ export default function Home() {
             </div>
           </div>
 
-          {/* El Aro Físico (Thick Ring) y sus divisiones */}
-          <div className="dial-physical-ring">
-            {/* Divisiones (Spokes) */}
-            {Array.from({ length: 18 }).map((_, i) => (
-              <div 
-                key={`spoke-${i}`} 
-                className="dial-spoke" 
-                style={{ transform: `rotate(${-80 + (i * 20)}deg)` }}
-              ></div>
-            ))}
+          {/* El Aro Físico (Thick Ring) */}
+          <div className="dial-physical-ring"></div>
+          
+          {/* Divisiones (Spokes) separadas del DOM del anillo para precisión matemática absoluta */}
+          <div className="dial-spokes-container" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+            {Array.from({ length: 18 }).map((_, i) => {
+              const angleDeg = -80 + (i * 20);
+              return (
+                <div 
+                  key={`spoke-${i}`} 
+                  style={{
+                    position: 'absolute',
+                    width: '2px',
+                    height: '80px',
+                    backgroundColor: 'rgba(255,255,255,0.15)',
+                    left: 'calc(50% - 1px)',
+                    top: 'calc(50% - 350px)',
+                    transformOrigin: 'center 350px',
+                    transform: `rotate(${angleDeg}deg)`
+                  }}
+                />
+              );
+            })}
           </div>
 
           {/* Anillo de Segmentos y Textos */}
-          <div className="dial-ring">
+          <div className="dial-ring" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
             {HUD_ITEMS.map((item, index) => {
               // 18 items -> 20 grados cada uno
               // Empezamos en -90deg (arriba)
@@ -449,14 +462,6 @@ export default function Home() {
           content: ''; position: absolute; inset: 0px;
           border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
         }
-        .dial-spoke {
-          position: absolute;
-          top: -80px; left: calc(50% - 1px);
-          width: 2px; height: 80px;
-          background: rgba(255,255,255,0.15);
-          transform-origin: center 350px;
-        }
-
 
         /* Ring Items */
         .dial-ring {

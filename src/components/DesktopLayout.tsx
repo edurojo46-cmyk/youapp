@@ -146,7 +146,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           </header>
         )}
 
-        <div className="dl-content-scroll" style={{ padding: isHome ? '0' : '32px', overflowX: 'hidden', overflowY: isHome ? 'hidden' : 'auto' }}>
+        <div className="dl-content-scroll" style={{ padding: isHome ? '0' : '32px', overflowX: 'hidden' }}>
           {children}
         </div>
       </main>

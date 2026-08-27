@@ -439,9 +439,6 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           z-index: 10;
-          overflow: hidden;
-          max-width: 100vw;
-          width: 100%;
         }
 
         .dial-wrapper {
@@ -763,10 +760,14 @@ export default function Home() {
           .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
         }
         @media (max-width: 600px) {
-          .hud-topbar { padding: 5px 20px; }
-          .hud-logo h1 { font-size: 1.2rem; }
-          .hud-logo p { font-size: 0.5rem; letter-spacing: 0px; }
-          .dial-wrapper { transform: scale(0.58); margin-top: -80px; }
+          .hud-topbar { padding: 5px 15px; }
+          .hud-logo h1 { font-size: 1rem; }
+          .hud-logo p { display: none; }
+          .hud-add-video-btn { padding: 6px 12px; }
+          .hud-add-video-btn svg { width: 14px; height: 14px; }
+          .hud-user img { width: 30px; height: 30px; }
+          .hud-user .user-text { display: none; }
+          .dial-wrapper { transform: scale(0.58); margin-top: -120px; }
           .hud-bottom-bar { flex-direction: column; gap: 10px; padding: 10px; margin-top: -20px; }
           .hud-mega-play { width: 80px; height: 80px; }
           .hud-mega-play span { font-size: 0.6rem; }

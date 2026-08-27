@@ -7,6 +7,7 @@ import MixChannel from './pages/MixChannel';
 import SearchAndProgram from './pages/SearchAndProgram';
 import ChannelSearch from './pages/ChannelSearch';
 import ChannelProfile from './pages/ChannelProfile';
+import SearchLab from './pages/SearchLab';
 import Login from './pages/Login';
 import PublicChannel from './pages/PublicChannel';
 import EmbedChannel from './pages/EmbedChannel';
@@ -86,6 +87,9 @@ function App() {
         <Route path="/channels-search" element={<DashboardRoute><ChannelSearch /></DashboardRoute>} />
         <Route path="/program" element={<DashboardRoute><SearchAndProgram /></DashboardRoute>} />
         <Route path="/trending" element={<DashboardRoute><div style={{padding:'2rem'}}>Tendencias (Próximamente)</div></DashboardRoute>} />
+        
+        {/* Herramienta de Laboratorio para evaluar el Search Engine */}
+        <Route path="/lab/search" element={<DashboardRoute><SearchLab /></DashboardRoute>} />
         
         {/* Ruta para capturar enlaces compartidos */}
         <Route path="/share" element={<ProtectedRoute><ShareTarget /></ProtectedRoute>} />

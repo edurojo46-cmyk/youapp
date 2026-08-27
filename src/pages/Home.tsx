@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Search, Tv, Grid, Radio, Plus, Play, Brain, BarChart2, Bookmark,
   SplitSquareHorizontal, Film, GraduationCap, List, PlaySquare, Star, User, Calendar, Mic, Settings,
-  SkipBack, Pause, SkipForward
+  SkipBack, Pause, SkipForward, Maximize
 } from 'lucide-react';
 import AddVideoModal from '../components/AddVideoModal';
 import { INITIAL_SCHEDULE } from './CreateSignal';
 
 const HUD_ITEMS = [
-  { id: 'inicio', icon: HomeIcon, label: 'INICIO', sub: '', color: '#60a5fa', route: '/' },
+  { id: 'inicio', icon: Maximize, label: 'CUADRADO', sub: 'Cambiar formato del video.', color: '#60a5fa', action: 'toggleSquare', route: '/' },
   { id: 'algoritmo', icon: Brain, label: 'MI ALGORITMO', sub: 'Personalizá cómo te recomienda.', color: '#c084fc', route: '/my-algorithm' },
   { id: 'tendencias', icon: BarChart2, label: 'TENDENCIAS', sub: 'Lo más relevante ahora.', color: '#f59e0b', route: '/trending' },
   { id: 'momentos', icon: Bookmark, label: 'MOMENTOS', sub: 'Guardá y reviví lo mejor.', color: '#fcd34d', route: '/moments' },
@@ -46,6 +46,7 @@ export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
   const [realProgress, setRealProgress] = useState(0);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [isSquare, setIsSquare] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const videoSources = [
@@ -149,7 +150,7 @@ export default function Home() {
 
       {/* ── DIAL CENTRAL ── */}
       <main className="hud-main-dial">
-        <div className="dial-wrapper">
+        <div className={`dial-wrapper ${isSquare ? 'square-mode' : ''}`}>
           {/* Fondo Espacial Central con Video */}
           <div className="dial-center-orb">
             <div className="orb-bg">
@@ -270,7 +271,13 @@ export default function Home() {
                       style={{ '--clr': item.color } as React.CSSProperties}
                       onMouseEnter={() => setHoveredItem(item.id)}
                       onMouseLeave={() => setHoveredItem(null)}
-                      onClick={() => navigate(item.route)}
+                      onClick={() => {
+                        if (item.action === 'toggleSquare') {
+                          setIsSquare(!isSquare);
+                        } else {
+                          navigate(item.route);
+                        }
+                      }}
                     >
                       <item.icon size={32} />
                       {/* Opcional: mostrar un tooltip al pasar el cursor si no hay texto fijo */}
@@ -478,6 +485,19 @@ export default function Home() {
           animation: spin-slow 20s linear infinite;
         }
         .dial-center-orb > * { animation: spin-slow-reverse 20s linear infinite; }
+
+        .dial-wrapper.square-mode .dial-center-orb {
+          border-radius: 24px;
+          animation: none;
+          transform: rotate(0deg);
+        }
+        .dial-wrapper.square-mode .dial-center-orb > * {
+          animation: none;
+          transform: rotate(0deg);
+        }
+        .dial-wrapper.square-mode .orb-bg {
+          border-radius: 16px;
+        }
 
         @keyframes spin-slow { 100% { transform: rotate(360deg); } }
         @keyframes spin-slow-reverse { 100% { transform: rotate(-360deg); } }

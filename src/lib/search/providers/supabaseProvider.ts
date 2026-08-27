@@ -13,7 +13,7 @@ export class SupabaseProvider implements SearchProvider {
       const { data, error } = await supabase
         .from('youapp_index')
         .select('*')
-        .or(`title.ilike.%${query.normalizedQuery}%,description.ilike.%${query.normalizedQuery}%,tags.cs.{${query.normalizedQuery}}`)
+        .or(`title.ilike.%${query.normalizedQuery}%,description.ilike.%${query.normalizedQuery}%,tags.cs.{"${query.normalizedQuery}"}`)
         .limit(options?.limit || 50);
 
       if (error) {

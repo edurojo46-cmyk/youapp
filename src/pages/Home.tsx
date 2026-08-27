@@ -149,7 +149,7 @@ export default function Home() {
       </header>
 
       {/* ── DIAL CENTRAL ── */}
-      <main className="hud-main-dial">
+      <main className={`hud-main-dial ${isSquare ? 'you-frame-active' : ''}`}>
         <div className={`dial-wrapper ${isSquare ? 'square-mode' : ''}`}>
           {/* Fondo Espacial Central con Video */}
           <div className="dial-center-orb">
@@ -247,7 +247,7 @@ export default function Home() {
           </div>
 
           {/* Anillo de Segmentos y Textos */}
-          <div className="dial-ring" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+          <div className="dial-ring" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: isSquare ? 'none' : 'block' }}>
             {HUD_ITEMS.map((item, index) => {
               // 18 items -> 20 grados cada uno
               const angleDeg = -90 + (index * 20);
@@ -288,6 +288,75 @@ export default function Home() {
               );
             })}
           </div>
+
+          {/* ── YOU FRAME UI ── */}
+          {isSquare && (
+            <div className="you-frame-ui">
+              <div className="frame-border-glow"></div>
+              
+              {/* Top Controls */}
+              <div className="frame-top-bar">
+                <div className="frame-stat">
+                  <div className="stat-circle"></div>
+                  <div className="stat-text">
+                    <span>PROGRESO</span>
+                    <small>15:00 / 30:00</small>
+                  </div>
+                </div>
+                
+                <button className="frame-minimize-btn" onClick={() => setIsSquare(false)}>
+                  <div className="minimize-dots"></div>
+                </button>
+
+                <div className="frame-stat right">
+                  <div className="stat-text">
+                    <span>PRÓXIMO</span>
+                    <small>19:30</small>
+                  </div>
+                  <div className="stat-icon"><SkipForward size={16} /></div>
+                </div>
+              </div>
+
+              {/* Left Edge Controls */}
+              <div className="frame-edge left">
+                <button className="frame-edge-btn" onClick={() => navigate('/moments')}>
+                  <Bookmark size={20} color="#fcd34d" />
+                  <span>MOMENTO</span>
+                </button>
+                <div className="frame-divider"></div>
+                <button className="frame-edge-btn" onClick={() => navigate('/search')}>
+                  <Search size={20} color="#0ea5e9" />
+                  <span>BUSCAR</span>
+                </button>
+              </div>
+
+              {/* Right Edge Controls */}
+              <div className="frame-edge right">
+                <button className="frame-edge-btn" onClick={() => navigate('/live')}>
+                  <Radio size={20} color="#ef4444" />
+                  <span>EN VIVO</span>
+                </button>
+                <div className="frame-divider"></div>
+                <button className="frame-edge-btn" onClick={() => navigate('/my-lists')}>
+                  <List size={20} color="#f472b6" />
+                  <span>LISTAS</span>
+                </button>
+              </div>
+
+              {/* Bottom Edge Controls */}
+              <div className="frame-edge bottom">
+                <button className="frame-edge-btn horizontal" onClick={() => navigate('/my-algorithm')}>
+                  <Brain size={20} color="#c084fc" />
+                  <span>MI ALGORITMO</span>
+                </button>
+                <div className="frame-divider vertical"></div>
+                <button className="frame-edge-btn horizontal" onClick={() => {}}>
+                  <Settings size={20} color="#22d3ee" />
+                  <span>YOU REMOTE</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -777,6 +846,116 @@ export default function Home() {
         .hud-mega-play span {
           font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;
         }
+
+        /* ── YOU FRAME MODE OVERRIDES ── */
+        .hud-main-dial.you-frame-active {
+          position: fixed;
+          top: 0; left: 0; width: 100vw; height: 100vh;
+          background: rgba(10,10,15,0.95);
+          z-index: 100;
+          backdrop-filter: blur(20px);
+        }
+        .hud-main-dial.you-frame-active .dial-wrapper {
+          width: 95vw;
+          height: 85vh;
+          transform: none !important;
+          margin-top: 0 !important;
+        }
+        .hud-main-dial.you-frame-active .dial-center-orb {
+          width: 100% !important;
+          height: 100% !important;
+          left: 0 !important;
+          top: 0 !important;
+          border-radius: 24px !important;
+          padding: 20px;
+          background: none;
+          box-shadow: none;
+        }
+        .hud-main-dial.you-frame-active .orb-bg {
+          border-radius: 16px !important;
+        }
+        
+        /* YOU FRAME UI */
+        .you-frame-ui {
+          position: absolute; inset: 0; pointer-events: none; z-index: 20;
+          display: flex; flex-direction: column;
+        }
+        .frame-border-glow {
+          position: absolute; inset: 0;
+          border-radius: 24px;
+          border: 2px solid transparent;
+          background: linear-gradient(135deg, rgba(59,130,246,0.6), rgba(168,85,247,0.6)) border-box;
+          -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask-composite: exclude;
+          box-shadow: 0 0 30px rgba(168,85,247,0.2), inset 0 0 20px rgba(59,130,246,0.2);
+        }
+
+        .frame-top-bar {
+          position: absolute; top: -1px; left: 0; right: 0;
+          display: flex; justify-content: space-between; align-items: flex-start;
+          padding: 0 40px; pointer-events: none;
+        }
+        
+        .frame-stat {
+          display: flex; align-items: center; gap: 10px;
+          background: #0a0a0f; padding: 10px 20px;
+          border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-top: none;
+        }
+        .stat-circle { width: 14px; height: 14px; border: 2px solid #0ea5e9; border-radius: 50%; box-shadow: 0 0 8px #0ea5e9; }
+        .stat-text { display: flex; flex-direction: column; }
+        .stat-text span { font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 1px; }
+        .stat-text small { font-size: 0.8rem; font-weight: 600; color: white; }
+        .frame-stat.right { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+        
+        .frame-minimize-btn {
+          pointer-events: auto;
+          background: #0a0a0f; padding: 15px 30px;
+          border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+          border: 1px solid rgba(255,255,255,0.1); border-top: none;
+          cursor: pointer; transition: 0.2s;
+        }
+        .frame-minimize-btn:hover { background: rgba(255,255,255,0.05); }
+        .minimize-dots {
+          display: flex; gap: 4px;
+        }
+        .minimize-dots::before, .minimize-dots::after, .minimize-dots {
+          content: ''; width: 4px; height: 4px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 5px #22d3ee;
+        }
+
+        .frame-edge {
+          position: absolute; pointer-events: auto;
+          display: flex; background: #0a0a0f;
+          border: 1px solid rgba(255,255,255,0.1);
+        }
+        .frame-edge.left {
+          top: 50%; left: -1px; transform: translateY(-50%);
+          flex-direction: column; border-left: none;
+          border-top-right-radius: 16px; border-bottom-right-radius: 16px;
+        }
+        .frame-edge.right {
+          top: 50%; right: -1px; transform: translateY(-50%);
+          flex-direction: column; border-right: none;
+          border-top-left-radius: 16px; border-bottom-left-radius: 16px;
+        }
+        .frame-edge.bottom {
+          bottom: -1px; left: 50%; transform: translateX(-50%);
+          border-bottom: none; border-top-left-radius: 16px; border-top-right-radius: 16px;
+        }
+
+        .frame-edge-btn {
+          background: transparent; border: none; color: white;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 20px 15px; gap: 8px; cursor: pointer; transition: 0.2s;
+        }
+        .frame-edge-btn:hover { background: rgba(255,255,255,0.05); }
+        .frame-edge-btn span { font-size: 0.6rem; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.7); }
+        .frame-edge-btn.horizontal { flex-direction: row; padding: 15px 30px; }
+        
+        .frame-divider { width: 80%; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto; }
+        .frame-divider.vertical { width: 1px; height: 30px; margin: auto 0; }
 
 
         /* RESPONSIVE SCALING */

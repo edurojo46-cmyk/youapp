@@ -186,7 +186,7 @@ export default function Home() {
 
           {/* Circular Progress Ring (Estilo YOU RING) */}
           <div className="circular-progress-container" style={{ '--progress': realProgress } as React.CSSProperties}>
-            <svg width="640" height="640" viewBox="0 0 640 640" className="progress-svg">
+            <svg width="600" height="600" viewBox="0 0 600 600" className="progress-svg">
               <defs>
                 <filter id="glow">
                   <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
@@ -197,10 +197,10 @@ export default function Home() {
                 </filter>
               </defs>
               {/* Pista de fondo */}
-              <circle cx="320" cy="320" r="310" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <circle cx="300" cy="300" r="290" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
               {/* Barra de progreso luminosa */}
               <circle 
-                cx="320" cy="320" r="310" 
+                cx="300" cy="300" r="290" 
                 fill="none" stroke="#0ea5e9" strokeWidth="1"
                 strokeLinecap="round"
                 filter="url(#glow)"
@@ -239,8 +239,8 @@ export default function Home() {
               const angleDeg = -90 + (index * 20);
               const angleRad = (angleDeg * Math.PI) / 180;
               
-              // Radio exacto del centro del borde físico (320px)
-              const ringRadius = 320;
+              // Radio exacto del centro del borde físico (325px)
+              const ringRadius = 325;
               // Usamos coordenadas relativas al centro 0,0 para que CSS calc() maneje el centro
               const x = Math.cos(angleRad) * ringRadius;
               const y = Math.sin(angleRad) * ringRadius;
@@ -461,7 +461,7 @@ export default function Home() {
           z-index: 5;
           padding: 10px;
           background: conic-gradient(from 0deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.02) 100%);
-          box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 80px rgba(0,0,0,0.8);
+          box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.3);
           animation: spin-slow 20s linear infinite;
         }
         .dial-center-orb > * { animation: spin-slow-reverse 20s linear infinite; }
@@ -544,14 +544,14 @@ export default function Home() {
         /* CIRCULAR PROGRESS RING */
         .circular-progress-container {
           position: absolute;
-          width: 640px;
-          height: 640px;
-          left: calc(50% - 320px);
-          top: calc(50% - 320px);
+          width: 600px;
+          height: 600px;
+          left: calc(50% - 300px);
+          top: calc(50% - 300px);
           z-index: 6;
           pointer-events: none;
           --progress: 0.42;
-          --circumference: 1947.78;
+          --circumference: 1822.12;
           --offset: calc(var(--circumference) * (1 - var(--progress)));
         }
         .progress-svg {
@@ -564,7 +564,7 @@ export default function Home() {
         }
         .progress-dot-wrapper {
           position: absolute;
-          width: 620px; height: 620px;
+          width: 580px; height: 580px;
           top: 10px; left: 10px;
           border-radius: 50%;
           transform: rotate(calc(180deg + (var(--progress) * 360deg)));
@@ -595,10 +595,10 @@ export default function Home() {
         .dial-physical-ring {
           position: absolute;
           box-sizing: border-box;
-          width: 720px;
-          height: 720px;
-          left: calc(50% - 360px);
-          top: calc(50% - 360px);
+          width: 680px;
+          height: 680px;
+          left: calc(50% - 340px);
+          top: calc(50% - 340px);
           border-radius: 50%;
           border: 30px solid rgba(15, 15, 20, 0.7);
           box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6);
@@ -618,7 +618,7 @@ export default function Home() {
           top: -30px; left: calc(50% - 2px);
           width: 4px; height: 30px;
           background: rgba(255,255,255,0.3);
-          transform-origin: center 360px;
+          transform-origin: center 340px;
           z-index: 2;
         }
 

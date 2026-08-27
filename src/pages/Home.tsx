@@ -642,7 +642,7 @@ export default function Home() {
           border-radius: 12px;
           background: transparent;
           border: none;
-          color: rgba(255,255,255,0.5);
+          color: var(--clr);
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           cursor: pointer;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -650,7 +650,6 @@ export default function Home() {
         }
 
         .dial-icon-btn:hover, .dial-icon-btn.active {
-          color: var(--clr);
           transform: scale(1.1);
           text-shadow: 0 0 10px var(--clr);
         }

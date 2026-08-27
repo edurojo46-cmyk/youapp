@@ -109,26 +109,16 @@ export default function Home() {
             </div>
           </div>
 
-          {/* El Aro Físico (Thick Ring) */}
-          <div className="dial-physical-ring"></div>
-          
-          {/* Divisiones (Spokes) separadas del DOM del anillo para precisión matemática absoluta */}
-          <div className="dial-spokes-container" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+          {/* El Aro Físico (Thick Ring) y sus divisiones */}
+          <div className="dial-physical-ring">
+            {/* Divisiones (Spokes) matemáticas para el aro */}
             {Array.from({ length: 18 }).map((_, i) => {
               const angleDeg = -80 + (i * 20);
               return (
                 <div 
                   key={`spoke-${i}`} 
-                  style={{
-                    position: 'absolute',
-                    width: '2px',
-                    height: '80px',
-                    backgroundColor: 'rgba(255,255,255,0.15)',
-                    left: 'calc(50% - 1px)',
-                    top: 'calc(50% - 350px)',
-                    transformOrigin: 'center 350px',
-                    transform: `rotate(${angleDeg}deg)`
-                  }}
+                  className="dial-spoke"
+                  style={{ transform: `rotate(${angleDeg}deg)` }}
                 />
               );
             })}
@@ -138,24 +128,21 @@ export default function Home() {
           <div className="dial-ring" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
             {HUD_ITEMS.map((item, index) => {
               // 18 items -> 20 grados cada uno
-              // Empezamos en -90deg (arriba)
               const angleDeg = -90 + (index * 20);
               const angleRad = (angleDeg * Math.PI) / 180;
               
-              // Centro del wrapper = 450, 450
-              const ringRadius = 310; // Exact center of the 80px border (radius 350 - 40)
-              const x = 450 + Math.cos(angleRad) * ringRadius;
-              const y = 450 + Math.sin(angleRad) * ringRadius;
-
-              const isTop = angleDeg === -90;
-              const isBottom = angleDeg === 90;
+              // Radio exacto del centro del borde físico (310px)
+              const ringRadius = 310;
+              // Usamos coordenadas relativas al centro 0,0 para que CSS calc() maneje el centro
+              const x = Math.cos(angleRad) * ringRadius;
+              const y = Math.sin(angleRad) * ringRadius;
 
               return (
                 <React.Fragment key={item.id}>
                   {/* Icono interactivo asentado sobre el aro */}
                   <div 
                     className="dial-segment-icon"
-                    style={{ left: `${x}px`, top: `${y}px` }}
+                    style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
                   >
                     <button 
                       className={`dial-icon-btn ${hoveredItem === item.id ? 'active' : ''}`}
@@ -461,6 +448,14 @@ export default function Home() {
         .dial-physical-ring::after {
           content: ''; position: absolute; inset: 0px;
           border-radius: 50%; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .dial-spoke {
+          position: absolute;
+          top: -80px; left: calc(50% - 1px);
+          width: 2px; height: 80px;
+          background: rgba(255,255,255,0.15);
+          transform-origin: center 350px;
+          z-index: 2;
         }
 
         /* Ring Items */

@@ -13,8 +13,9 @@
 import { UNIVERSAL_CATALOG, type UniversalChannel } from './universalChannels';
 import { fetchYouTubeViaCorsProxy } from './youtubeChannelSearch';
 import { supabase } from './supabase';
+import { getCachedSearch, setCachedSearch } from './indexedDb';
 
-export interface YouTubeSearchResult {
+export interface ContentItem {
   id: string;
   type: 'video' | 'channel' | 'playlist';
   title: string;
@@ -34,7 +35,18 @@ export interface YouTubeSearchResult {
   handle?: string;
   badge?: string;
   provider?: 'youtube' | 'twitch' | 'tiktok' | 'instagram' | 'vimeo' | 'dailymotion' | 'itunes' | 'direct';
+  qualityScore?: number;
+  relevanceScore?: number;
+  affinityScore?: number;
+  youScore?: number;
+  source?: {
+    provider: string;
+    discoveryMethod: string;
+    fetchedAt: number;
+  };
 }
+
+export type YouTubeSearchResult = ContentItem;
 
 // ─── CACHÉ LOCAL ─────────────────────────────────────────────────────────────
 const RAM_CACHE = new Map<string, { data: any; expires: number }>();
@@ -156,9 +168,9 @@ export async function fetchYouTubeAutocomplete(query: string): Promise<string[]>
 // ─── 2. MEGA BASE DE CONOCIMIENTO (CHARLY, REDONDOS, SODA, NOTICIAS, ETC.) ─────
 const MEGA_CATALOG_ITEMS: Array<{
   keywords: string[];
-  channel: YouTubeSearchResult;
-  extraChannels?: YouTubeSearchResult[];
-  videos: YouTubeSearchResult[];
+  channel: ContentItem;
+  extraChannels?: ContentItem[];
+  videos: ContentItem[];
 }> = [
   // ─── SODA STEREO ────────────────────────────────────────────────────────────
   {
@@ -587,17 +599,19 @@ const MEGA_CATALOG_ITEMS: Array<{
 ];
 
 // ─── 3. EJECUTOR PRINCIPAL DE BÚSQUEDA MULTI-QUERY ─────────────────────────────
-export async function executeYouTubeSearch(query: string): Promise<{
-  all: YouTubeSearchResult[];
-  videos: YouTubeSearchResult[];
-  channels: YouTubeSearchResult[];
-}> {
+export async function executeYouTubeSearch(query: string, useBackend = false): Promise<{ all: ContentItem[], videos: ContentItem[], channels: ContentItem[] }> {
   const q = query.trim();
   if (!q) return { all: [], videos: [], channels: [] };
 
-  const cacheKey = `mega_search_v10_${norm(q)}`;
-  const cached = getCache<{ all: YouTubeSearchResult[]; videos: YouTubeSearchResult[]; channels: YouTubeSearchResult[] }>(cacheKey);
-  if (cached && cached.videos.length >= 10) return cached;
+  const qLower = norm(q);
+
+  // Intentar caché en IndexedDB
+  const cached = await getCachedSearch(`search_v2_${qLower}`);
+  if (cached && cached.length > 0) {
+    const vids = cached.filter(c => c.type === 'video');
+    const chans = cached.filter(c => c.type === 'channel');
+    return { all: cached, videos: vids, channels: chans };
+  }
 
   // 0. Parsear si es una URL directa de YouTube
   const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
@@ -622,8 +636,6 @@ export async function executeYouTubeSearch(query: string): Promise<{
     };
     return { all: [directVideo], videos: [directVideo], channels: [] };
   }
-
-  const qLower = norm(q);
 
   // --- 0.5 YOUAPP INDEX (Búsqueda en la BD Comunitaria) ---
   let communityVideos: YouTubeSearchResult[] = [];
@@ -779,7 +791,9 @@ export async function executeYouTubeSearch(query: string): Promise<{
   } catch (e) {}
 
   // 5. Mock Data (Demostración Comercial) para Twitch y Vimeo
-  const mockVideos: YouTubeSearchResult[] = [
+  let mockVideos: YouTubeSearchResult[] = [];
+  if (import.meta.env.DEV) {
+    mockVideos = [
     {
       id: `twitch-mock-${Date.now()}`,
       type: 'video' as const,
@@ -824,12 +838,14 @@ export async function executeYouTubeSearch(query: string): Promise<{
       isLive: false,
       isVerified: true,
       provider: 'itunes' as const
-    }))
-  ];
+    }))];
+  }
 
   // Generador Mock para TikTok (YouTube Shorts camuflados)
   const tiktokIds = ['oIn-zQZ_3gI', 'XRYIAyGWvig', 'kQbal1hwt-U', 'VRHU4v24TfY', 'DK4_5_B_lyU', 'z02_QimGyyc', 'A3zAiKCo3oc'];
-  const tiktokMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
+  let tiktokMock: YouTubeSearchResult[] = [];
+  if (import.meta.env.DEV) {
+    tiktokMock = Array(7).fill(null).map((_, i) => ({
     id: `tiktok_${i}_${Date.now()}`,
     type: 'video' as const,
     title: `TikTok Viral: ${q} #${i + 1}`,
@@ -843,11 +859,14 @@ export async function executeYouTubeSearch(query: string): Promise<{
     isLive: false,
     isVerified: false,
     provider: 'tiktok'
-  }));
+    }));
+  }
 
   // Generador Mock para Instagram (YouTube Shorts camuflados)
   const instaIds = ['xxBlUSd2Iqs', 'UFNsUUXS0go', '83gdZXcpYXw', 'sqZNMnydAxU', 'qTVq6NXxtOI', 'TCucvfFb3xQ', 'x7Aiq7PBzxY'];
-  const instagramMock: YouTubeSearchResult[] = Array(7).fill(null).map((_, i) => ({
+  let instagramMock: YouTubeSearchResult[] = [];
+  if (import.meta.env.DEV) {
+    instagramMock = Array(7).fill(null).map((_, i) => ({
     id: `ig-mock-${Date.now()}-${i}`,
     type: 'video' as const,
     title: `Instagram Reel: ${q} #${i + 1}`,
@@ -861,7 +880,8 @@ export async function executeYouTubeSearch(query: string): Promise<{
     isLive: false,
     isVerified: true,
     provider: 'instagram'
-  }));
+    }));
+  }
 
 
   const catalogChannels = UNIVERSAL_CATALOG
@@ -910,28 +930,53 @@ export async function executeYouTubeSearch(query: string): Promise<{
     });
   }
 
-  // 8. Unificar y desduplicar todos los videos
+  // MOTOR 4: Unificar y Desduplicar
   // Asignar provider "youtube" por defecto a los de youtube directo
   directVideos = directVideos.map(v => ({ ...v, provider: v.provider || 'youtube' })).slice(0, 7);
   itunesVideos = itunesVideos.slice(0, 7);
   
   const combinedVideos = [...communityVideos, ...directVideos, ...dmVideos, ...tiktokMock, ...instagramMock, ...mockVideos, ...itunesVideos];
-  const seenTitles = new Set<string>();
-  const finalVideos = combinedVideos.filter(v => {
-    const key = v.title.toLowerCase().trim();
-    if (seenTitles.has(key)) return false;
-    seenTitles.add(key);
+  const seenUrls = new Set<string>();
+  let finalVideos = combinedVideos.filter(v => {
+    const key = v.videoUrl;
+    if (seenUrls.has(key)) return false;
+    seenUrls.add(key);
     return true;
   });
 
-  // --- APLICAR "MI ALGORITMO" (Motor Universal de YouApp) ---
+  // MOTOR 5 & 6: Quality Score y Relevance Score
+  finalVideos = finalVideos.map(v => {
+    let qualityScore = 50; // Base score
+    if (v.isVerified) qualityScore += 25;
+    if (v.badge) qualityScore += 15;
+    if (v.provider === 'youtube') qualityScore += 5;
+    
+    let relevanceScore = 70; 
+    if (norm(v.title).includes(qLower)) relevanceScore += 30;
+
+    let youScore = (qualityScore * 0.4) + (relevanceScore * 0.6);
+
+    return {
+      ...v,
+      qualityScore,
+      relevanceScore,
+      youScore,
+      source: {
+        provider: v.provider || 'unknown',
+        discoveryMethod: 'local-catalog',
+        fetchedAt: Date.now()
+      }
+    };
+  });
+
+  // MOTOR 7: Personalization (MI ALGORITMO)
   try {
     const algoStr = localStorage.getItem('youapp_user_algorithm');
     if (algoStr) {
       const algo = JSON.parse(algoStr);
       finalVideos.sort((a, b) => {
-        let scoreA = 0;
-        let scoreB = 0;
+        let scoreA = a.youScore || 0;
+        let scoreB = b.youScore || 0;
 
         // Actualidad (isLive)
         if (a.isLive) scoreA += algo.actualidad * 2;
@@ -951,8 +996,13 @@ export async function executeYouTubeSearch(query: string): Promise<{
 
         return scoreB - scoreA;
       });
+    } else {
+      // Orden por defecto usando youScore
+      finalVideos.sort((a, b) => (b.youScore || 0) - (a.youScore || 0));
     }
-  } catch (e) {}
+  } catch (e) {
+    finalVideos.sort((a, b) => (b.youScore || 0) - (a.youScore || 0));
+  }
 
   const finalPayload = {
     all: [...allChannels, ...finalVideos],
@@ -960,6 +1010,8 @@ export async function executeYouTubeSearch(query: string): Promise<{
     channels: allChannels
   };
 
-  setCache(cacheKey, finalPayload, 14400);
+  // Guardar en caché asíncronamente en IndexedDB (TTL 2 horas)
+  setCachedSearch(`search_v2_${qLower}`, finalPayload.all, 7200000);
+
   return finalPayload;
 }

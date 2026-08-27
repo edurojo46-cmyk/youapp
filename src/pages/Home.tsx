@@ -933,6 +933,7 @@ export default function Home() {
           grid-area: 1 / 1;
           position: relative; pointer-events: none; z-index: 20;
           display: flex; flex-direction: column;
+          width: 100%; height: 100%;
         }
         .frame-border-glow {
           position: absolute; inset: 0;

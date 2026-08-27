@@ -31,7 +31,12 @@ export default {
             throw new Error('YOUTUBE_API_KEY is not configured');
         }
 
-        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=${limit}&type=video&key=${YOUTUBE_API_KEY}`);
+        const fetchOptions: RequestInit = {};
+        if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+            fetchOptions.signal = AbortSignal.timeout(3000);
+        }
+        
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=${limit}&type=video&key=${YOUTUBE_API_KEY}`, fetchOptions);
         if (!res.ok) {
             const errBody = await res.text();
             throw new Error(`YouTube API returned ${res.status}: ${errBody}`);

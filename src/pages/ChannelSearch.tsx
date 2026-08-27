@@ -72,6 +72,7 @@ export default function ChannelSearch() {
   const [isListening, setIsListening] = useState(false);
 
   const [searchTab, setSearchTab] = useState<'channels' | 'videos'>('channels');
+  const searchRaceRef = useRef(0);
   const [results, setResults] = useState<{ videos: ContentItem[]; channels: ContentItem[]; all: ContentItem[] }>({
     videos: [],
     channels: [],
@@ -133,15 +134,25 @@ export default function ChannelSearch() {
       scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    const currentSearchId = ++searchRaceRef.current;
+
     try {
       const searchData = await executeSearch(trimmed);
+
+      if (searchRaceRef.current !== currentSearchId) {
+        console.warn(`[doSearch] Ignorando resultados antiguos para: ${trimmed}`);
+        return;
+      }
 
       setResults(searchData);
       setIsLiveSearch(true);
     } catch (err) {
+      if (searchRaceRef.current !== currentSearchId) return;
       console.warn('[doSearch] Error:', err);
     } finally {
-      setStatus('done');
+      if (searchRaceRef.current === currentSearchId) {
+        setStatus('done');
+      }
     }
   }, [searchTab]);
 

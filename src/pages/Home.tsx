@@ -186,7 +186,7 @@ export default function Home() {
 
           {/* Circular Progress Ring (Estilo YOU RING) */}
           <div className="circular-progress-container" style={{ '--progress': realProgress } as React.CSSProperties}>
-            <svg width="700" height="700" viewBox="0 0 700 700" className="progress-svg">
+            <svg width="640" height="640" viewBox="0 0 640 640" className="progress-svg">
               <defs>
                 <filter id="glow">
                   <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
@@ -197,10 +197,10 @@ export default function Home() {
                 </filter>
               </defs>
               {/* Pista de fondo */}
-              <circle cx="350" cy="350" r="340" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <circle cx="320" cy="320" r="310" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
               {/* Barra de progreso luminosa */}
               <circle 
-                cx="350" cy="350" r="340" 
+                cx="320" cy="320" r="310" 
                 fill="none" stroke="#0ea5e9" strokeWidth="1"
                 strokeLinecap="round"
                 filter="url(#glow)"
@@ -239,8 +239,8 @@ export default function Home() {
               const angleDeg = -90 + (index * 20);
               const angleRad = (angleDeg * Math.PI) / 180;
               
-              // Radio exacto del centro del borde físico (360px)
-              const ringRadius = 360;
+              // Radio exacto del centro del borde físico (320px)
+              const ringRadius = 320;
               // Usamos coordenadas relativas al centro 0,0 para que CSS calc() maneje el centro
               const x = Math.cos(angleRad) * ringRadius;
               const y = Math.sin(angleRad) * ringRadius;
@@ -544,14 +544,14 @@ export default function Home() {
         /* CIRCULAR PROGRESS RING */
         .circular-progress-container {
           position: absolute;
-          width: 700px;
-          height: 700px;
-          left: calc(50% - 350px);
-          top: calc(50% - 350px);
+          width: 640px;
+          height: 640px;
+          left: calc(50% - 320px);
+          top: calc(50% - 320px);
           z-index: 6;
           pointer-events: none;
           --progress: 0.42;
-          --circumference: 2136.28;
+          --circumference: 1947.78;
           --offset: calc(var(--circumference) * (1 - var(--progress)));
         }
         .progress-svg {
@@ -564,7 +564,7 @@ export default function Home() {
         }
         .progress-dot-wrapper {
           position: absolute;
-          width: 680px; height: 680px;
+          width: 620px; height: 620px;
           top: 10px; left: 10px;
           border-radius: 50%;
           transform: rotate(calc(180deg + (var(--progress) * 360deg)));
@@ -595,10 +595,10 @@ export default function Home() {
         .dial-physical-ring {
           position: absolute;
           box-sizing: border-box;
-          width: 800px;
-          height: 800px;
-          left: calc(50% - 400px);
-          top: calc(50% - 400px);
+          width: 720px;
+          height: 720px;
+          left: calc(50% - 360px);
+          top: calc(50% - 360px);
           border-radius: 50%;
           border: 30px solid rgba(15, 15, 20, 0.7);
           box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6);
@@ -618,7 +618,7 @@ export default function Home() {
           top: -30px; left: calc(50% - 2px);
           width: 4px; height: 30px;
           background: rgba(255,255,255,0.3);
-          transform-origin: center 400px;
+          transform-origin: center 360px;
           z-index: 2;
         }
 

@@ -145,6 +145,14 @@ export default function Home() {
             <div className="toggle-switch active"></div>
           </div>
           
+          <button 
+            className="hud-add-video-btn" 
+            style={{ background: 'var(--neon-purple)' }}
+            onClick={() => navigate('/lab/search')}
+          >
+            <Star size={16} fill="currentColor" /> LAB
+          </button>
+          
           <button className="hud-add-video-btn" onClick={() => setShowAddModal(true)}>
             <Plus size={16} /> AGREGAR VIDEO
           </button>

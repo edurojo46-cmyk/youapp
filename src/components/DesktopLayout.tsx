@@ -78,6 +78,10 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           
           <div className="dl-nav-divider"></div>
 
+          <button className={`dl-nav-item ${isActive('/lab/search') ? 'active' : ''}`} onClick={() => navigate('/lab/search')} style={{ color: 'var(--neon-purple)' }}>
+            <Star size={20} /> Search Lab
+          </button>
+          
           <button className={`dl-nav-item ${isActive('/moments') ? 'active' : ''}`} onClick={() => navigate('/moments')}>
             <Bookmark size={20} /> Mis momentos
           </button>

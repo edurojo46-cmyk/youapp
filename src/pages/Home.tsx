@@ -769,9 +769,9 @@ export default function Home() {
           .hud-user .user-text { display: none; }
           .hud-main-dial { align-items: flex-start; }
           .dial-wrapper { 
-            transform: scale(0.68); 
+            transform: scale(0.68) translateY(120px); 
             transform-origin: top center; 
-            margin-top: 150px; 
+            margin-top: 20px; 
           }
           .hud-bottom-bar { flex-direction: column; gap: 10px; padding: 10px; margin-top: -20px; }
           .hud-mega-play { width: 80px; height: 80px; }

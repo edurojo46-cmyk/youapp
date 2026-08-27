@@ -186,7 +186,7 @@ export default function Home() {
 
           {/* Circular Progress Ring (Estilo YOU RING) */}
           <div className="circular-progress-container" style={{ '--progress': realProgress } as React.CSSProperties}>
-            <svg width="520" height="520" viewBox="0 0 520 520" className="progress-svg">
+            <svg width="620" height="620" viewBox="0 0 620 620" className="progress-svg">
               <defs>
                 <filter id="glow">
                   <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
@@ -197,10 +197,10 @@ export default function Home() {
                 </filter>
               </defs>
               {/* Pista de fondo */}
-              <circle cx="260" cy="260" r="250" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" />
+              <circle cx="310" cy="310" r="300" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" />
               {/* Barra de progreso luminosa */}
               <circle 
-                cx="260" cy="260" r="250" 
+                cx="310" cy="310" r="300" 
                 fill="none" stroke="#0ea5e9" strokeWidth="2"
                 strokeLinecap="round"
                 filter="url(#glow)"
@@ -452,10 +452,10 @@ export default function Home() {
 
         /* Center Orb */
         .dial-center-orb {
-          width: 460px;
-          height: 460px;
-          left: calc(50% - 230px);
-          top: calc(50% - 230px);
+          width: 580px;
+          height: 580px;
+          left: calc(50% - 290px);
+          top: calc(50% - 290px);
           border-radius: 50%;
           position: absolute;
           z-index: 5;
@@ -544,14 +544,14 @@ export default function Home() {
         /* CIRCULAR PROGRESS RING */
         .circular-progress-container {
           position: absolute;
-          width: 520px;
-          height: 520px;
-          left: calc(50% - 260px);
-          top: calc(50% - 260px);
+          width: 620px;
+          height: 620px;
+          left: calc(50% - 310px);
+          top: calc(50% - 310px);
           z-index: 6;
           pointer-events: none;
           --progress: 0.42;
-          --circumference: 1570.8;
+          --circumference: 1884.95;
           --offset: calc(var(--circumference) * (1 - var(--progress)));
         }
         .progress-svg {
@@ -564,7 +564,7 @@ export default function Home() {
         }
         .progress-dot-wrapper {
           position: absolute;
-          width: 500px; height: 500px;
+          width: 600px; height: 600px;
           top: 10px; left: 10px;
           border-radius: 50%;
           transform: rotate(calc(180deg + (var(--progress) * 360deg)));
@@ -600,13 +600,13 @@ export default function Home() {
           left: calc(50% - 350px);
           top: calc(50% - 350px);
           border-radius: 50%;
-          border: 80px solid rgba(15, 15, 20, 0.7);
+          border: 30px solid rgba(15, 15, 20, 0.7);
           box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6);
           backdrop-filter: blur(10px);
           z-index: 1;
         }
         .dial-physical-ring::before {
-          content: ''; position: absolute; inset: -80px;
+          content: ''; position: absolute; inset: -30px;
           border-radius: 50%; border: 1px solid rgba(255,255,255,0.15);
         }
         .dial-physical-ring::after {
@@ -615,8 +615,8 @@ export default function Home() {
         }
         .dial-spoke {
           position: absolute;
-          top: -80px; left: calc(50% - 1px);
-          width: 2px; height: 80px;
+          top: -30px; left: calc(50% - 1px);
+          width: 2px; height: 30px;
           background: rgba(255,255,255,0.15);
           transform-origin: center 350px;
           z-index: 2;
@@ -749,18 +749,18 @@ export default function Home() {
 
         /* RESPONSIVE SCALING */
         @media (max-width: 1200px) {
-          .dial-wrapper { transform: scale(0.85); }
+          .dial-wrapper { transform: scale(calc(min(90vw, 900px) / 800)); }
           .hud-topbar { padding: 20px; }
           .hud-search { width: 300px; }
         }
         @media (max-width: 900px) {
-          .dial-wrapper { transform: scale(0.65); }
+          .dial-wrapper { transform: scale(calc(95vw / 780)); }
           .hud-search { display: none; }
           .hud-you-select-toggle { display: none; }
           .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
         }
         @media (max-width: 600px) {
-          .dial-wrapper { transform: scale(0.45); }
+          .dial-wrapper { transform: scale(calc(100vw / 750)); }
           .hud-bottom-bar { flex-direction: column; gap: 10px; }
           .hud-mega-play { width: 90px; height: 90px; }
           .hud-add-video-btn span { display: none; }

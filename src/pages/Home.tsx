@@ -46,6 +46,7 @@ export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
   const [realProgress, setRealProgress] = useState(0);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const videoRef = React.useRef<HTMLVideoElement>(null);
 
   const videoSources = [
     "/background.mp4",
@@ -68,6 +69,16 @@ export default function Home() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  React.useEffect(() => {
+    if (videoRef.current) {
+      if (isPaused) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(()=>{});
+      }
+    }
+  }, [isPaused, currentVideoIndex]);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -151,17 +162,19 @@ export default function Home() {
                 muted={!isPlayingInOrb}
                 loop
                 playsInline
-                ref={(el) => {
-                  if (el) {
-                    isPaused ? el.pause() : el.play().catch(()=>{});
-                  }
-                }}
+                ref={videoRef}
               />
             </div>
             
             {!isPlayingInOrb && (
               <div className="orb-content">
-                <button className="orb-play-btn" onClick={() => setIsPlayingInOrb(true)}>
+                <button className="orb-play-btn" onClick={() => {
+                  setIsPlayingInOrb(true);
+                  if (videoRef.current) {
+                    videoRef.current.muted = false;
+                    videoRef.current.play().catch(()=>{});
+                  }
+                }}>
                   <Play size={48} fill="currentColor" />
                 </button>
                 <div className="orb-info">

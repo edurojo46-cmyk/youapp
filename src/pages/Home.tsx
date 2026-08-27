@@ -615,10 +615,10 @@ export default function Home() {
         }
         .dial-spoke {
           position: absolute;
-          top: -30px; left: calc(50% - 1px);
-          width: 2px; height: 30px;
-          background: rgba(255,255,255,0.15);
-          transform-origin: center 350px;
+          top: -30px; left: calc(50% - 2px);
+          width: 4px; height: 30px;
+          background: rgba(255,255,255,0.3);
+          transform-origin: center 400px;
           z-index: 2;
         }
 

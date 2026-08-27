@@ -146,7 +146,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           </header>
         )}
 
-        <div className="dl-content-scroll" style={{ padding: isHome ? '0' : '32px' }}>
+        <div className="dl-content-scroll" style={{ padding: isHome ? '0' : '32px', overflowX: 'hidden', overflowY: isHome ? 'hidden' : 'auto' }}>
           {children}
         </div>
       </main>
@@ -490,7 +490,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
 
         .dl-content-scroll {
           flex: 1;
-          overflow-y: auto;
+          overflow-x: hidden;
           padding: 32px;
         }
         .dl-content-scroll::-webkit-scrollbar { display: none; }

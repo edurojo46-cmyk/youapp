@@ -439,6 +439,9 @@ export default function Home() {
           align-items: center;
           justify-content: center;
           z-index: 10;
+          overflow: hidden;
+          max-width: 100vw;
+          width: 100%;
         }
 
         .dial-wrapper {
@@ -760,13 +763,13 @@ export default function Home() {
           .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
         }
         @media (max-width: 600px) {
-          .dial-wrapper { transform: scale(0.48); }
+          .dial-wrapper { transform: scale(0.53); }
           .hud-bottom-bar { flex-direction: column; gap: 10px; }
           .hud-mega-play { width: 90px; height: 90px; }
           .hud-add-video-btn span { display: none; }
         }
         @media (max-width: 400px) {
-          .dial-wrapper { transform: scale(0.42); }
+          .dial-wrapper { transform: scale(0.48); }
         }
       `}</style>
     </div>

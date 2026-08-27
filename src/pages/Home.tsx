@@ -130,7 +130,7 @@ export default function Home() {
               const angleRad = (angleDeg * Math.PI) / 180;
               
               // Centro del wrapper = 450, 450
-              const ringRadius = 270;
+              const ringRadius = 310; // Exact center of the 80px border (radius 350 - 40)
               const x = 450 + Math.cos(angleRad) * ringRadius;
               const y = 450 + Math.sin(angleRad) * ringRadius;
 
@@ -344,8 +344,10 @@ export default function Home() {
 
         /* Center Orb */
         .dial-center-orb {
-          width: 440px;
-          height: 440px;
+          width: 460px;
+          height: 460px;
+          left: calc(50% - 230px);
+          top: calc(50% - 230px);
           border-radius: 50%;
           position: absolute;
           z-index: 5;
@@ -428,8 +430,11 @@ export default function Home() {
         /* El Aro Físico */
         .dial-physical-ring {
           position: absolute;
-          width: 620px;
-          height: 620px;
+          box-sizing: border-box;
+          width: 700px;
+          height: 700px;
+          left: calc(50% - 350px);
+          top: calc(50% - 350px);
           border-radius: 50%;
           border: 80px solid rgba(15, 15, 20, 0.7);
           box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6);
@@ -446,10 +451,10 @@ export default function Home() {
         }
         .dial-spoke {
           position: absolute;
-          top: -80px; left: 50%;
+          top: -80px; left: calc(50% - 1px);
           width: 2px; height: 80px;
           background: rgba(255,255,255,0.15);
-          transform-origin: center 390px; /* 310 + 80 */
+          transform-origin: center 350px;
         }
 
 

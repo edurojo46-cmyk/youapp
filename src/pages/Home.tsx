@@ -328,7 +328,6 @@ export default function Home() {
                   <Bookmark size={20} color="#fcd34d" />
                   <span>MOMENTO</span>
                 </button>
-                <div className="frame-divider"></div>
                 <button className="frame-edge-btn" onClick={() => navigate('/search')}>
                   <Search size={20} color="#0ea5e9" />
                   <span>BUSCAR</span>
@@ -341,7 +340,6 @@ export default function Home() {
                   <Radio size={20} color="#ef4444" />
                   <span>EN VIVO</span>
                 </button>
-                <div className="frame-divider"></div>
                 <button className="frame-edge-btn" onClick={() => navigate('/my-lists')}>
                   <List size={20} color="#f472b6" />
                   <span>LISTAS</span>
@@ -354,7 +352,6 @@ export default function Home() {
                   <Brain size={20} color="#c084fc" />
                   <span>MI ALGORITMO</span>
                 </button>
-                <div className="frame-divider vertical"></div>
                 <button className="frame-edge-btn horizontal" onClick={() => {}}>
                   <Settings size={20} color="#22d3ee" />
                   <span>YOU REMOTE</span>
@@ -968,9 +965,10 @@ export default function Home() {
         .frame-stat.right { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
         
         .frame-progress-line {
-          position: absolute; bottom: 70px; left: 40px; right: 40px;
+          position: absolute; bottom: 0; left: 0; right: 0;
           height: 4px; background: rgba(255,255,255,0.15);
-          border-radius: 4px; overflow: hidden; pointer-events: none;
+          border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
+          overflow: hidden; pointer-events: none; z-index: 30;
         }
         .frame-progress-fill {
           height: 100%; background: #0ea5e9;
@@ -1021,9 +1019,6 @@ export default function Home() {
         .frame-edge-btn:hover { background: rgba(255,255,255,0.05); }
         .frame-edge-btn span { font-size: 0.6rem; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.7); }
         .frame-edge-btn.horizontal { flex-direction: row; padding: 15px 30px; }
-        
-        .frame-divider { width: 80%; height: 1px; background: rgba(255,255,255,0.1); margin: 0 auto; }
-        .frame-divider.vertical { width: 1px; height: 30px; margin: auto 0; }
 
 
         /* ── YOU FRAME SIDEBAR ── */

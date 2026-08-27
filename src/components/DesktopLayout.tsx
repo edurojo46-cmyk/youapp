@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, Tv, Search, Radio, List, Clock, Users, Grid, Crown, 
-  Bell, Plus, Sliders, PlayCircle, Bookmark
+  Bell, Plus, Sliders, PlayCircle, Bookmark, Star
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import BottomNav from './BottomNav';

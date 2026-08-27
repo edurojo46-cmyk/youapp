@@ -6,8 +6,9 @@ import { getLevenshteinDistance } from '../queryEngine'; // Lo implementaremos p
 
 // Copiamos o importamos MEGA_CATALOG_ITEMS (aquí lo abstraemos para simplificar, 
 // idealmente debería moverse a un data/catalog.ts, pero lo pondremos directo para migración rápida)
-import { MEGA_CATALOG_ITEMS } from '../../youtubeSearchEngine'; // Todavía no hemos borrado el archivo. Espera, mejor lo muevo.
-
+// El catálogo se simulará o cargará desde IndexedDB en producción.
+// Por ahora dejamos una lista vacía para que siempre vaya a Supabase o YouTube si no hay cache.
+const MEGA_CATALOG_ITEMS: any[] = [];
 export class LocalProvider implements SearchProvider {
   name = 'local';
 

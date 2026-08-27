@@ -78,7 +78,7 @@ export default function ChannelSearch() {
     channels: [],
     all: []
   });
-  const [activeModalVideo, setActiveModalVideo] = useState<YTVideoResult | null>(null);
+  const [activeModalVideo, setActiveModalVideo] = useState<ContentItem | null>(null);
   const [status, setStatus] = useState<SearchStatus>('idle');
   const [isLiveSearch, setIsLiveSearch] = useState(true);
 
@@ -164,12 +164,12 @@ export default function ChannelSearch() {
     }
   };
 
-  const handlePlayVideo = (vid: YTVideoResult) => {
+  const handlePlayVideo = (vid: ContentItem) => {
     let effectiveUrl = vid.videoUrl;
-    let rawId = vid.videoId || '';
+    let rawId = vid.id || '';
     if (!effectiveUrl) {
-      rawId = (vid.videoId && vid.videoId.length === 11)
-        ? vid.videoId
+      rawId = (vid.id && vid.id.length === 11)
+        ? vid.id
         : 'wR36Dq7bB60';
       effectiveUrl = `https://www.youtube.com/embed/${rawId}`;
     }
@@ -196,20 +196,20 @@ export default function ChannelSearch() {
     navigate('/live');
   };
 
-  const handleAddVideoToSignal = (vid: YTVideoResult) => {
-    const effectiveUrl = vid.videoUrl || (vid.videoId && vid.videoId.length === 11
-      ? `https://www.youtube.com/embed/${vid.videoId}`
+  const handleAddVideoToSignal = (vid: ContentItem) => {
+    const effectiveUrl = vid.videoUrl || (vid.id && vid.id.length === 11
+      ? `https://www.youtube.com/embed/${vid.id}`
       : `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(vid.title)}`);
 
     const newChannel: UniversalChannel = {
-      id: `video-${vid.videoId || Date.now()}`,
+      id: `video-${vid.id || Date.now()}`,
       name: `${vid.channelTitle || 'Video'}: ${vid.title.slice(0, 30)}...`,
       category: '🎬 Video Guardado',
       description: vid.title,
       avatarUrl: vid.thumbnail,
       thumbnail: vid.thumbnail,
       provider: 'youtube',
-      videoId: (vid.videoId && vid.videoId.length === 11) ? vid.videoId : undefined,
+      videoId: (vid.id && vid.id.length === 11) ? vid.id : undefined,
       videoUrl: effectiveUrl,
       currentVideoTitle: vid.title,
       viewerCount: Math.floor(Math.random() * 25000) + 5000,
@@ -804,16 +804,16 @@ export default function ChannelSearch() {
         {/* ════════════════════ LISTA DE VIDEOS & PROGRAMAS ═════════════════════ */}
         {searchTab === 'videos' && (
           <div className="videos-results-grid">
-            {videoResults.map((vid, idx) => (
+            {results.videos.map((vid, idx) => (
               <article
-                key={`${vid.videoId}-${idx}`}
+                key={`${vid.id}-${idx}`}
                 className="video-card-item"
                 style={{ animationDelay: `${Math.min(idx * 30, 300)}ms` }}
               >
                 {/* Thumbnail con Botón Play y Live */}
                 <div className="video-thumb-wrap" onClick={() => setActiveModalVideo(vid)}>
                   <img
-                    src={vid.thumbnail || `https://i.ytimg.com/vi/${vid.videoId}/hqdefault.jpg`}
+                    src={vid.thumbnail || `https://i.ytimg.com/vi/${vid.id}/hqdefault.jpg`}
                     alt={vid.title}
                     className="video-thumb-img"
                     onError={e => {
@@ -904,18 +904,18 @@ export default function ChannelSearch() {
         )}
 
         {/* Indicador de fin de lista completa */}
-        {((searchTab === 'channels' && results.length > 0) || (searchTab === 'videos' && videoResults.length > 0)) && (
+        {((searchTab === 'channels' && results.channels.length > 0) || (searchTab === 'videos' && results.videos.length > 0)) && (
           <div className="results-bottom-status">
             <div className="status-line" />
             <span>
-              ✓ Mostrando los {searchTab === 'channels' ? results.length : videoResults.length} resultados encontrados
+              ✓ Mostrando los {searchTab === 'channels' ? results.channels.length : results.videos.length} resultados encontrados
             </span>
             <div className="status-line" />
           </div>
         )}
 
         {/* Botón flotante para deslizar hacia abajo */}
-        {((searchTab === 'channels' && results.length > 2) || (searchTab === 'videos' && videoResults.length > 2)) && (
+        {((searchTab === 'channels' && results.channels.length > 2) || (searchTab === 'videos' && results.videos.length > 2)) && (
           <button
             className="floating-scroll-down-btn"
             onClick={() => {
@@ -925,7 +925,7 @@ export default function ChannelSearch() {
             title="Deslizar hacia abajo"
           >
             <ArrowDown size={18} />
-            <span>Ver más ({searchTab === 'channels' ? results.length : videoResults.length})</span>
+            <span>Ver más ({searchTab === 'channels' ? results.channels.length : results.videos.length})</span>
           </button>
         )}
       </main>
@@ -946,7 +946,7 @@ export default function ChannelSearch() {
 
             <div className="video-modal-iframe-container">
               <iframe
-                src={(activeModalVideo.videoUrl || `https://www.youtube.com/embed/${activeModalVideo.videoId || 'wR36Dq7bB60'}?autoplay=1&controls=1`).replace('[HOSTNAME]', window.location.hostname)}
+                src={(activeModalVideo.videoUrl || `https://www.youtube.com/embed/${activeModalVideo.id || 'wR36Dq7bB60'}?autoplay=1&controls=1`).replace('[HOSTNAME]', window.location.hostname)}
                 title={activeModalVideo.title}
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
@@ -987,7 +987,7 @@ export default function ChannelSearch() {
                 </button>
 
                 <a
-                  href={`https://www.youtube.com/watch?v=${activeModalVideo.videoId}`}
+                  href={`https://www.youtube.com/watch?v=${activeModalVideo.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-modal-open-yt"

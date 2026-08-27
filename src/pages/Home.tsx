@@ -121,42 +121,6 @@ export default function Home() {
             ))}
           </div>
 
-          {/* Líneas Conectoras Globales SVG */}
-          <svg className="hud-global-lines" width="900" height="900" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
-            {HUD_ITEMS.map((item, index) => {
-              const angleDeg = -90 + (index * 20);
-              const isTop = angleDeg === -90;
-              const isBottom = angleDeg === 90;
-              if (isTop || isBottom) return null;
-
-              const angleRad = (angleDeg * Math.PI) / 180;
-              const cx = 450 + Math.cos(angleRad) * 270;
-              const cy = 450 + Math.sin(angleRad) * 270;
-              
-              const tx = 450 + Math.cos(angleRad) * 380;
-              const ty = 450 + Math.sin(angleRad) * 380;
-              
-              const isRightSide = angleDeg > -90 && angleDeg < 90;
-              
-              // Angled HUD line: starts at icon (cx, cy), goes to a point near text, then horizontal
-              const endX = isRightSide ? tx + 140 : tx - 140;
-              const elbowX = isRightSide ? tx - 10 : tx + 10;
-              
-              const isHovered = hoveredItem === item.id;
-              
-              return (
-                <path 
-                  key={`line-${item.id}`}
-                  d={`M ${cx} ${cy} L ${elbowX} ${ty} L ${endX} ${ty}`}
-                  fill="none"
-                  stroke={isHovered ? item.color : "rgba(255,255,255,0.15)"}
-                  strokeWidth={isHovered ? 2 : 1.5}
-                  style={{ transition: 'stroke 0.3s, stroke-width 0.3s', filter: isHovered ? `drop-shadow(0 0 6px ${item.color})` : 'none' }}
-                />
-              );
-            })}
-          </svg>
-
           {/* Anillo de Segmentos y Textos */}
           <div className="dial-ring">
             {HUD_ITEMS.map((item, index) => {
@@ -169,15 +133,7 @@ export default function Home() {
               const ringRadius = 270;
               const x = 450 + Math.cos(angleRad) * ringRadius;
               const y = 450 + Math.sin(angleRad) * ringRadius;
-              
-              // Radio del texto
-              const textRadius = 380;
-              const tx = 450 + Math.cos(angleRad) * textRadius;
-              const ty = 450 + Math.sin(angleRad) * textRadius;
 
-              // Lógica de alineación del texto según el lado
-              const isRightSide = angleDeg > -90 && angleDeg < 90;
-              const isLeftSide = angleDeg > 90 || angleDeg < -90;
               const isTop = angleDeg === -90;
               const isBottom = angleDeg === 90;
 
@@ -196,27 +152,10 @@ export default function Home() {
                       onClick={() => navigate(item.route)}
                     >
                       <item.icon size={24} />
-                      {isTop && <span className="dial-icon-label-center" style={{color: item.color}}>INICIO</span>}
-                      {isBottom && <span className="dial-icon-label-center" style={{color: item.color}}>IA</span>}
+                      {/* Opcional: mostrar un tooltip al pasar el cursor si no hay texto fijo */}
+                      <span className="dial-tooltip">{item.label}</span>
                     </button>
                   </div>
-
-                  {/* Texto Conector (HUD Callout Line) */}
-                  {!isTop && !isBottom && (
-                    <div 
-                      className={`dial-text-connector ${isRightSide ? 'right' : ''} ${isLeftSide ? 'left' : ''} ${hoveredItem === item.id ? 'highlight' : ''}`}
-                      style={{ 
-                        left: `${tx}px`, top: `${ty}px`,
-                        transform: isRightSide ? 'translate(0, -100%)' : 'translate(-100%, -100%)',
-                        alignItems: isRightSide ? 'flex-start' : 'flex-end',
-                        textAlign: isRightSide ? 'left' : 'right',
-                        '--clr': item.color
-                      } as React.CSSProperties}
-                    >
-                      <h4>{item.label}</h4>
-                      <p>{item.sub}</p>
-                    </div>
-                  )}
                 </React.Fragment>
               );
             })}
@@ -553,35 +492,28 @@ export default function Home() {
           box-shadow: 0 0 10px var(--clr);
         }
 
-        .dial-icon-label-center {
+        .dial-tooltip {
           position: absolute;
-          bottom: -24px;
+          top: -30px;
           font-size: 0.75rem;
           font-weight: 700;
           letter-spacing: 1px;
           white-space: nowrap;
-          text-shadow: 0 0 10px var(--clr);
+          color: white;
+          background: rgba(0,0,0,0.8);
+          padding: 4px 12px;
+          border-radius: 12px;
+          border: 1px solid var(--clr);
+          box-shadow: 0 0 10px var(--clr);
+          opacity: 0;
+          pointer-events: none;
+          transform: translateY(10px);
+          transition: all 0.3s;
         }
 
-        /* External Connectors */
-        .dial-text-connector {
-          position: absolute;
-          width: 180px; height: 40px;
-          display: flex;
-          flex-direction: column;
-          opacity: 0.6;
-          transition: 0.3s;
-          pointer-events: none;
-        }
-        .dial-text-connector.highlight { opacity: 1; transform: scale(1.05) !important; }
-        
-        .dial-text-connector h4 {
-          margin: 0 0 2px 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
-          color: rgba(255,255,255,0.9);
-        }
-        .dial-text-connector.highlight h4 { color: var(--clr); text-shadow: 0 0 8px var(--clr); }
-        .dial-text-connector p {
-          margin: 0; font-size: 0.65rem; color: #9ca3af; line-height: 1.2;
+        .dial-icon-btn:hover .dial-tooltip {
+          opacity: 1;
+          transform: translateY(0);
         }
 
 

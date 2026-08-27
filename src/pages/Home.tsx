@@ -767,7 +767,7 @@ export default function Home() {
           .hud-add-video-btn svg { width: 14px; height: 14px; }
           .hud-user img { width: 30px; height: 30px; }
           .hud-user .user-text { display: none; }
-          .dial-wrapper { transform: scale(0.58); margin-top: -120px; }
+          .dial-wrapper { transform: scale(0.61); margin-top: -160px; }
           .hud-bottom-bar { flex-direction: column; gap: 10px; padding: 10px; margin-top: -20px; }
           .hud-mega-play { width: 80px; height: 80px; }
           .hud-mega-play span { font-size: 0.6rem; }

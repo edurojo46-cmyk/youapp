@@ -186,7 +186,7 @@ export default function Home() {
 
           {/* Circular Progress Ring (Estilo YOU RING) */}
           <div className="circular-progress-container" style={{ '--progress': realProgress } as React.CSSProperties}>
-            <svg width="600" height="600" viewBox="0 0 600 600" className="progress-svg">
+            <svg width="610" height="610" viewBox="0 0 610 610" className="progress-svg">
               <defs>
                 <filter id="glow">
                   <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
@@ -197,10 +197,10 @@ export default function Home() {
                 </filter>
               </defs>
               {/* Pista de fondo */}
-              <circle cx="300" cy="300" r="290" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+              <circle cx="305" cy="305" r="295" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
               {/* Barra de progreso luminosa */}
               <circle 
-                cx="300" cy="300" r="290" 
+                cx="305" cy="305" r="295" 
                 fill="none" stroke="#0ea5e9" strokeWidth="1"
                 strokeLinecap="round"
                 filter="url(#glow)"
@@ -239,8 +239,8 @@ export default function Home() {
               const angleDeg = -90 + (index * 20);
               const angleRad = (angleDeg * Math.PI) / 180;
               
-              // Radio exacto del centro del borde físico (325px)
-              const ringRadius = 325;
+              // Radio exacto del centro del borde físico (337px)
+              const ringRadius = 337;
               // Usamos coordenadas relativas al centro 0,0 para que CSS calc() maneje el centro
               const x = Math.cos(angleRad) * ringRadius;
               const y = Math.sin(angleRad) * ringRadius;
@@ -259,7 +259,7 @@ export default function Home() {
                       onMouseLeave={() => setHoveredItem(null)}
                       onClick={() => navigate(item.route)}
                     >
-                      <item.icon size={24} />
+                      <item.icon size={32} />
                       {/* Opcional: mostrar un tooltip al pasar el cursor si no hay texto fijo */}
                       <span className="dial-tooltip">{item.label}</span>
                     </button>
@@ -544,14 +544,14 @@ export default function Home() {
         /* CIRCULAR PROGRESS RING */
         .circular-progress-container {
           position: absolute;
-          width: 600px;
-          height: 600px;
-          left: calc(50% - 300px);
-          top: calc(50% - 300px);
+          width: 610px;
+          height: 610px;
+          left: calc(50% - 305px);
+          top: calc(50% - 305px);
           z-index: 6;
           pointer-events: none;
           --progress: 0.42;
-          --circumference: 1822.12;
+          --circumference: 1853.53;
           --offset: calc(var(--circumference) * (1 - var(--progress)));
         }
         .progress-svg {
@@ -564,7 +564,7 @@ export default function Home() {
         }
         .progress-dot-wrapper {
           position: absolute;
-          width: 580px; height: 580px;
+          width: 590px; height: 590px;
           top: 10px; left: 10px;
           border-radius: 50%;
           transform: rotate(calc(180deg + (var(--progress) * 360deg)));
@@ -595,18 +595,18 @@ export default function Home() {
         .dial-physical-ring {
           position: absolute;
           box-sizing: border-box;
-          width: 680px;
-          height: 680px;
-          left: calc(50% - 340px);
-          top: calc(50% - 340px);
+          width: 720px;
+          height: 720px;
+          left: calc(50% - 360px);
+          top: calc(50% - 360px);
           border-radius: 50%;
-          border: 30px solid rgba(15, 15, 20, 0.7);
+          border: 46px solid rgba(15, 15, 20, 0.7);
           box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6);
           backdrop-filter: blur(10px);
           z-index: 1;
         }
         .dial-physical-ring::before {
-          content: ''; position: absolute; inset: -30px;
+          content: ''; position: absolute; inset: -46px;
           border-radius: 50%; border: 1px solid rgba(255,255,255,0.15);
         }
         .dial-physical-ring::after {
@@ -615,10 +615,10 @@ export default function Home() {
         }
         .dial-spoke {
           position: absolute;
-          top: -30px; left: calc(50% - 2px);
-          width: 4px; height: 30px;
+          top: -46px; left: calc(50% - 2px);
+          width: 4px; height: 46px;
           background: rgba(255,255,255,0.3);
-          transform-origin: center 340px;
+          transform-origin: center 360px;
           z-index: 2;
         }
 
@@ -634,7 +634,7 @@ export default function Home() {
           position: absolute;
           transform: translate(-50%, -50%);
           pointer-events: auto;
-          width: 60px; height: 60px;
+          width: 80px; height: 80px;
         }
 
         .dial-icon-btn {

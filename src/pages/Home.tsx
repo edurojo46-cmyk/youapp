@@ -849,15 +849,14 @@ export default function Home() {
 
         /* ── YOU FRAME MODE OVERRIDES ── */
         .hud-main-dial.you-frame-active {
-          position: fixed;
-          top: 0; left: 0; width: 100vw; height: 100vh;
-          background: rgba(10,10,15,0.95);
-          z-index: 100;
-          backdrop-filter: blur(20px);
+          width: 100%;
+          background: transparent;
+          z-index: 10;
         }
         .hud-main-dial.you-frame-active .dial-wrapper {
-          width: 95vw;
-          height: 85vh;
+          width: 95%;
+          height: 100%;
+          max-height: 80vh;
           transform: none !important;
           margin-top: 0 !important;
         }

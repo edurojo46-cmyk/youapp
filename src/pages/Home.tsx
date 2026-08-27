@@ -754,13 +754,13 @@ export default function Home() {
           .hud-search { width: 300px; }
         }
         @media (max-width: 900px) {
-          .dial-wrapper { transform: scale(calc(95vw / 780)); }
+          .dial-wrapper { transform: scale(calc(80vw / 900)); }
           .hud-search { display: none; }
           .hud-you-select-toggle { display: none; }
           .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
         }
         @media (max-width: 600px) {
-          .dial-wrapper { transform: scale(calc(100vw / 750)); }
+          .dial-wrapper { transform: scale(calc(90vw / 900)); }
           .hud-bottom-bar { flex-direction: column; gap: 10px; }
           .hud-mega-play { width: 90px; height: 90px; }
           .hud-add-video-btn span { display: none; }

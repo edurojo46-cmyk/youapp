@@ -368,7 +368,7 @@ export default function Home() {
             <div className="you-frame-sidebar">
               <h3>En tu Señal</h3>
               <div className="sidebar-video-list">
-                {INITIAL_SCHEDULE.slice(0, 5).map((slot, idx) => (
+                {INITIAL_SCHEDULE.map((slot, idx) => (
                   <div 
                     key={idx} 
                     className={`sidebar-video-item ${currentVideoIndex === idx ? 'playing' : ''}`}
@@ -917,7 +917,7 @@ export default function Home() {
           left: 0 !important;
           top: 0 !important;
           border-radius: 24px !important;
-          padding: 20px;
+          padding: 0 !important; /* Quitar padding para que coincida exacto con el borde glow */
           background: none;
           box-shadow: none;
           position: relative !important;
@@ -968,9 +968,9 @@ export default function Home() {
         .frame-stat.right { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
         
         .frame-progress-line {
-          position: absolute; bottom: 0; left: 40px; right: 40px;
-          height: 3px; background: rgba(255,255,255,0.1);
-          border-radius: 3px; overflow: hidden; pointer-events: none;
+          position: absolute; bottom: 70px; left: 40px; right: 40px;
+          height: 4px; background: rgba(255,255,255,0.15);
+          border-radius: 4px; overflow: hidden; pointer-events: none;
         }
         .frame-progress-fill {
           height: 100%; background: #0ea5e9;

@@ -1,522 +1,610 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Tv, Grid, Radio, Plus, Play, Info, Video } from 'lucide-react';
+import { 
+  Search, Tv, Grid, Radio, Plus, Play, Brain, BarChart2, Bookmark,
+  SplitSquareHorizontal, Film, GraduationCap, List, PlaySquare, Star, User, Calendar, Mic, Settings
+} from 'lucide-react';
 import AddVideoModal from '../components/AddVideoModal';
+
+const HUD_ITEMS = [
+  { id: 'inicio', icon: HomeIcon, label: 'INICIO', sub: '', color: '#60a5fa', route: '/' },
+  { id: 'algoritmo', icon: Brain, label: 'MI ALGORITMO', sub: 'Personalizá cómo te recomienda.', color: '#c084fc', route: '/my-algorithm' },
+  { id: 'tendencias', icon: BarChart2, label: 'TENDENCIAS', sub: 'Lo más relevante ahora.', color: '#f59e0b', route: '/trending' },
+  { id: 'momentos', icon: Bookmark, label: 'MOMENTOS', sub: 'Guardá y reviví lo mejor.', color: '#fcd34d', route: '/moments' },
+  { id: 'you4', icon: Grid, label: 'YOU4', sub: 'Cuatro perspectivas. Un mismo tema.', color: '#4ade80', route: '/quad' },
+  { id: 'comparar', icon: SplitSquareHorizontal, label: 'COMPARAR', sub: 'Varios videos en paralelo.', color: '#22d3ee', route: '/compare' },
+  { id: 'director', icon: Film, label: 'YOU DIRECTOR', sub: 'IA que crea tu experiencia.', color: '#818cf8', route: '/director' },
+  { id: 'aprender', icon: GraduationCap, label: 'APRENDER', sub: 'Rutas de aprendizaje por nivel.', color: '#d946ef', route: '/learn' },
+  { id: 'listas', icon: List, label: 'LISTAS', sub: 'Tus listas y colecciones.', color: '#f472b6', route: '/my-lists' },
+  { id: 'ia', icon: Brain, label: 'IA ASISTENTE', sub: 'Tu guía inteligente en YouApp.', color: '#3b82f6', route: '/assistant' },
+  { id: 'canales', icon: PlaySquare, label: 'CANALES', sub: 'Canales temáticos 24/7.', color: '#06b6d4', route: '/channels' },
+  { id: 'curadores', icon: Star, label: 'CURADORES', sub: 'Las mejores selecciones temáticas.', color: '#10b981', route: '/curators' },
+  { id: 'creadores', icon: User, label: 'CREADORES', sub: 'Seguí, descubrí y apoyá creadores.', color: '#fbbf24', route: '/creators' },
+  { id: 'envivo', icon: Radio, label: 'EN VIVO', sub: 'En vivo y próximos eventos.', color: '#ef4444', route: '/live' },
+  { id: 'programacion', icon: Calendar, label: 'PROGRAMACIÓN', sub: 'Organizá tu TV por día y hora.', color: '#f43f5e', route: '/program' },
+  { id: 'misenal', icon: Tv, label: 'MI SEÑAL', sub: 'Tu programación personalizada.', color: '#ec4899', route: '/create-signal' },
+  { id: 'youselect', icon: Star, label: 'YOU SELECT', sub: 'Los 20 mejores sobre cualquier tema.', color: '#a855f7', route: '/select' },
+  { id: 'buscar', icon: Search, label: 'BUSCAR', sub: 'Encontrá los mejores videos con IA.', color: '#0ea5e9', route: '/search' }
+];
+
+function HomeIcon(props: any) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  );
+}
 
 export default function Home() {
   const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+
+  const radius = 280; // Radio del círculo
 
   return (
-    <div className="home-desktop-page">
-      {/* Hero Banner */}
-      <div className="hdt-hero-banner">
-        <span className="hdt-hero-badge">SEÑAL DESTACADA</span>
-        <h2 className="hdt-hero-title">El mundo<br/>que viene</h2>
-        <p className="hdt-hero-desc">Una selección de los mejores análisis<br/>sobre tecnología, sociedad y el futuro.</p>
-        
-        <div className="hdt-hero-actions">
-          <button className="hdt-btn-primary" onClick={() => navigate('/live')}>
-            <Play size={18} fill="white" /> Ver señal
-          </button>
-          <button className="hdt-btn-outline" onClick={() => setShowAddModal(true)}>
-            <Video size={16} /> Agregar Video
-          </button>
+    <div className="hud-home-container">
+      {/* ── TOP BAR ── */}
+      <header className="hud-topbar">
+        <div className="hud-logo">
+          <h1>YOUAPP <span>TV</span></h1>
+          <p>TU MUNDO EN UN SOLO CÍRCULO</p>
         </div>
         
-        <div className="hdt-hero-dots">
-          <span className="dot active"></span>
-          <span className="dot"></span>
-          <span className="dot"></span>
-          <span className="dot"></span>
+        <div className="hud-search">
+          <Search size={18} className="search-icon" />
+          <input type="text" placeholder="¿Qué querés ver?" />
+          <Mic size={18} className="mic-icon" />
         </div>
-      </div>
 
-      {/* ¿Qué querés hacer? */}
-      <section className="hdt-section">
-        <h3 className="hdt-section-title">¿Qué querés hacer?</h3>
-        <div className="hdt-actions-row">
-
-
-          <div className="hdt-action-card" onClick={() => navigate('/my-algorithm')}>
-            <div className="hdt-action-icon purple"><Tv size={22} /></div>
-            <div className="hdt-action-text">
-              <h4>Mi Algoritmo</h4>
-              <p>Ajustá reglas<br/>y perfiles</p>
+        <div className="hud-top-actions">
+          <div className="hud-you-select-toggle">
+            <Star size={14} className="star-icon" />
+            <div className="toggle-text">
+              <span>YOU SELECT</span>
+              <small>Solo lo mejor</small>
             </div>
-          </div>
-
-          <div className="hdt-action-card" onClick={() => navigate('/quad')}>
-            <div className="hdt-action-icon orange"><Grid size={22} /></div>
-            <div className="hdt-action-text">
-              <h4>You4</h4>
-              <p>Compará opiniones<br/>sobre un tema</p>
-            </div>
-          </div>
-
-          <div className="hdt-action-card" onClick={() => navigate('/live')}>
-            <div className="hdt-action-icon red"><Radio size={22} /></div>
-            <div className="hdt-action-text">
-              <h4>En vivo</h4>
-              <p>Mirá transmisiones<br/>en directo</p>
-            </div>
-          </div>
-
-          <div className="hdt-action-card" onClick={() => navigate('/create-signal')}>
-            <div className="hdt-action-icon green"><Plus size={22} /></div>
-            <div className="hdt-action-text">
-              <h4>Estudio TV</h4>
-              <p>Programar<br/>tu señal</p>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Señales para vos */}
-      <section className="hdt-section">
-        <div className="hdt-section-header">
-          <h3 className="hdt-section-title">Señales para vos</h3>
-          <span className="hdt-link" onClick={() => navigate('/search')}>Ver todas {'>'}</span>
-        </div>
-        <div className="hdt-carousel">
-          
-          <div className="hdt-signal-card" onClick={() => navigate('/live')}>
-            <div className="hdt-signal-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&q=80')"}}>
-              <span className="hdt-badge purple">NUEVA</span>
-            </div>
-            <div className="hdt-signal-info">
-              <h4>Ciencia Sin Límites</h4>
-              <div className="hdt-signal-meta"><span>12 videos</span><span>3:45:20</span></div>
-            </div>
-          </div>
-
-          <div className="hdt-signal-card" onClick={() => navigate('/live')}>
-            <div className="hdt-signal-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1582555172866-f73bb12a2ab3?w=400&q=80')"}}>
-              <span className="hdt-badge orange">POPULAR</span>
-            </div>
-            <div className="hdt-signal-info">
-              <h4>Historia Argentina</h4>
-              <div className="hdt-signal-meta"><span>18 videos</span><span>5:22:10</span></div>
-            </div>
-          </div>
-
-          <div className="hdt-signal-card" onClick={() => navigate('/live')}>
-            <div className="hdt-signal-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1560415755-bd80d06eda60?w=400&q=80')"}}>
-              <span className="hdt-badge green">RECOMENDADA</span>
-            </div>
-            <div className="hdt-signal-info">
-              <h4>Innovadores</h4>
-              <div className="hdt-signal-meta"><span>14 videos</span><span>4:10:33</span></div>
-            </div>
-          </div>
-
-          <div className="hdt-signal-card" onClick={() => navigate('/live')}>
-            <div className="hdt-signal-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80')"}}>
-              <span className="hdt-badge blue">EN TENDENCIA</span>
-            </div>
-            <div className="hdt-signal-info">
-              <h4>Naturaleza Extrema</h4>
-              <div className="hdt-signal-meta"><span>9 videos</span><span>2:15:40</span></div>
-            </div>
-          </div>
-
-          <div className="hdt-signal-card" onClick={() => navigate('/live')}>
-            <div className="hdt-signal-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1559757175-5700dde675bc?w=400&q=80')"}}>
-              <span className="hdt-badge purple">NUEVA</span>
-            </div>
-            <div className="hdt-signal-info">
-              <h4>Psicología al Día</h4>
-              <div className="hdt-signal-meta"><span>11 videos</span><span>2:40:15</span></div>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* Continúa mirando */}
-      <section className="hdt-section">
-        <h3 className="hdt-section-title">Continúa mirando</h3>
-        <div className="hdt-carousel">
-          
-          <div className="hdt-video-card">
-            <div className="hdt-video-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&q=80')"}}>
-              <span className="hdt-video-time">45:20</span>
-              <div className="hdt-progress-bar"><div className="hdt-progress-fill" style={{width: '60%'}}></div></div>
-            </div>
-            <h4>La carrera espacial</h4>
-            <p>Queda 15 min</p>
-          </div>
-
-          <div className="hdt-video-card">
-            <div className="hdt-video-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1573164713988-8665fc963095?w=400&q=80')"}}>
-              <span className="hdt-video-time">32:10</span>
-              <div className="hdt-progress-bar"><div className="hdt-progress-fill" style={{width: '75%'}}></div></div>
-            </div>
-            <h4>Entrevista a Juan</h4>
-            <p>Queda 8 min</p>
-          </div>
-
-          <div className="hdt-video-card">
-            <div className="hdt-video-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=400&q=80')"}}>
-              <span className="hdt-video-time">1:05:30</span>
-              <div className="hdt-progress-bar"><div className="hdt-progress-fill" style={{width: '40%'}}></div></div>
-            </div>
-            <h4>Roma: el imperio eterno</h4>
-            <p>Queda 22 min</p>
-          </div>
-
-          <div className="hdt-video-card">
-            <div className="hdt-video-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=400&q=80')"}}>
-              <span className="hdt-video-time">28:45</span>
-              <div className="hdt-progress-bar"><div className="hdt-progress-fill" style={{width: '80%'}}></div></div>
-            </div>
-            <h4>Economía global 2024</h4>
-            <p>Queda 10 min</p>
+            <div className="toggle-switch active"></div>
           </div>
           
-          <div className="hdt-video-card">
-            <div className="hdt-video-img" style={{backgroundImage: "url('https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=400&q=80')"}}>
-              <span className="hdt-video-time">52:10</span>
-              <div className="hdt-progress-bar"><div className="hdt-progress-fill" style={{width: '30%'}}></div></div>
+          <button className="hud-add-video-btn" onClick={() => setShowAddModal(true)}>
+            <Plus size={16} /> AGREGAR VIDEO
+          </button>
+          
+          <div className="hud-user">
+            <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Edu" />
+            <div className="user-text">
+              <span>Hola, Edu</span>
+              <small>Tu TV. Tus reglas.</small>
             </div>
-            <h4>Cambio climático</h4>
-            <p>Queda 18 min</p>
+          </div>
+        </div>
+      </header>
+
+      {/* ── DIAL CENTRAL ── */}
+      <main className="hud-main-dial">
+        <div className="dial-wrapper">
+          {/* Fondo Espacial Central */}
+          <div className="dial-center-orb">
+            <div className="orb-bg"></div>
+            <div className="orb-content">
+              <button className="orb-play-btn" onClick={() => navigate('/live')}>
+                <Play size={48} fill="currentColor" />
+              </button>
+              <div className="orb-info">
+                <h3>El futuro de la humanidad</h3>
+                <p>Documental · 45 min</p>
+                <div className="orb-badges">
+                  <span>4K</span>
+                  <span>HDR</span>
+                </div>
+              </div>
+              
+              <div className="orb-progress">
+                <span>18:27</span>
+                <div className="progress-bar"><div className="fill" style={{width:'40%'}}></div></div>
+                <span>45:00</span>
+              </div>
+            </div>
           </div>
 
-        </div>
-      </section>
+          {/* Anillo de Segmentos y Textos */}
+          <div className="dial-ring">
+            {HUD_ITEMS.map((item, index) => {
+              // 18 items -> 20 grados cada uno
+              // Empezamos en -90deg (arriba)
+              const angleDeg = -90 + (index * 20);
+              const angleRad = (angleDeg * Math.PI) / 180;
+              
+              // Posición del icono en el anillo
+              const x = Math.cos(angleRad) * radius;
+              const y = Math.sin(angleRad) * radius;
+              
+              // Posición del texto extendido (más lejos del radio)
+              const textRadius = radius + 60;
+              const tx = Math.cos(angleRad) * textRadius;
+              const ty = Math.sin(angleRad) * textRadius;
 
+              // Lógica de alineación del texto según el lado
+              const isRightSide = angleDeg > -90 && angleDeg < 90;
+              const isLeftSide = angleDeg > 90 || angleDeg < -90;
+              const isTop = angleDeg === -90;
+              const isBottom = angleDeg === 90;
+
+              return (
+                <div key={item.id} className="dial-segment" style={{ '--x': `${x}px`, '--y': `${y}px` } as React.CSSProperties}>
+                  {/* Icono interactivo */}
+                  <button 
+                    className={`dial-icon-btn ${hoveredItem === item.id ? 'active' : ''}`}
+                    style={{ '--clr': item.color } as React.CSSProperties}
+                    onMouseEnter={() => setHoveredItem(item.id)}
+                    onMouseLeave={() => setHoveredItem(null)}
+                    onClick={() => navigate(item.route)}
+                  >
+                    <item.icon size={22} />
+                    {isTop && <span className="dial-icon-label-center">INICIO</span>}
+                    {isBottom && <span className="dial-icon-label-center">IA</span>}
+                  </button>
+
+                  {/* Texto Conector (Punta del HUD) */}
+                  {!isTop && !isBottom && (
+                    <div 
+                      className={`dial-text-connector ${isRightSide ? 'right' : ''} ${isLeftSide ? 'left' : ''} ${hoveredItem === item.id ? 'highlight' : ''}`}
+                      style={{ 
+                        transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`,
+                        alignItems: isRightSide ? 'flex-start' : 'flex-end',
+                        textAlign: isRightSide ? 'left' : 'right'
+                      }}
+                    >
+                      <h4>{item.label}</h4>
+                      <p>{item.sub}</p>
+                      {/* Línea conectora óptica visual */}
+                      <div className="connector-line" style={{ '--clr': item.color } as React.CSSProperties}></div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </main>
+
+      {/* ── BOTTOM CONTROL BAR ── */}
+      <footer className="hud-bottom-bar">
+        <div className="hud-pill-btn">
+          <div className="pill-icon"><Star size={20} /></div>
+          <div className="pill-text">
+            <span>MI DÍA</span>
+            <small>Tu resumen inteligente.</small>
+          </div>
+        </div>
+
+        <button className="hud-mega-play" onClick={() => navigate('/live')}>
+          <Play size={28} fill="currentColor" />
+          <span>PLAY MI TV</span>
+        </button>
+
+        <div className="hud-pill-btn right">
+          <div className="pill-text">
+            <span>TU TIEMPO VALE</span>
+            <small>Mejores videos. Mejores personas.</small>
+          </div>
+          <div className="pill-icon"><Settings size={20} /></div>
+        </div>
+      </footer>
+
+      {showAddModal && <AddVideoModal onClose={() => setShowAddModal(false)} />}
+
+      {/* ── STYLES ── */}
       <style>{`
-        .home-desktop-page {
-          display: flex;
-          flex-direction: column;
-          gap: 40px;
-        }
-
-        /* Hero Banner */
-        .hdt-hero-banner {
-          position: relative;
-          background: linear-gradient(90deg, rgba(5,5,5,1) 0%, rgba(5,5,5,0.4) 50%, rgba(5,5,5,0) 100%), 
-                      url('https://images.unsplash.com/photo-1534972195531-d756b9bfa9f2?w=1600&q=80') center/cover;
-          border-radius: 20px;
-          padding: 40px;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          min-height: 380px;
-          border: 1px solid rgba(139, 92, 246, 0.2);
-          overflow: hidden;
-        }
-
-        .hdt-hero-badge {
-          background: rgba(167, 139, 250, 0.2);
-          color: #a78bfa;
-          padding: 6px 12px;
-          border-radius: 6px;
-          font-size: 0.7rem;
-          font-weight: 800;
-          width: fit-content;
-          margin-bottom: 20px;
-          letter-spacing: 0.5px;
-        }
-
-        .hdt-hero-title {
-          font-size: 3.5rem;
-          font-weight: 800;
-          line-height: 1.1;
-          margin: 0 0 16px 0;
-          text-shadow: 0 4px 20px rgba(0,0,0,0.8);
-        }
-
-        .hdt-hero-desc {
-          font-size: 1.05rem;
-          color: rgba(255,255,255,0.8);
-          line-height: 1.5;
-          margin: 0 0 32px 0;
-        }
-
-        .hdt-hero-actions {
-          display: flex;
-          gap: 16px;
-        }
-
-        .hdt-btn-primary {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          background: #a78bfa;
-          color: #050505;
-          border: none;
-          padding: 12px 24px;
-          border-radius: 12px;
-          font-weight: 700;
-          font-size: 0.95rem;
-          cursor: pointer;
-          transition: transform 0.2s;
-        }
-        .hdt-btn-primary:hover { transform: scale(1.05); }
-
-        .hdt-btn-outline {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.2);
+        .hud-home-container {
+          min-height: 100vh;
+          background: #020202; /* Deep black space background */
           color: white;
-          padding: 12px 24px;
-          border-radius: 12px;
-          font-weight: 600;
-          font-size: 0.95rem;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .hdt-btn-outline:hover { background: rgba(255,255,255,0.2); }
-
-        .hdt-hero-dots {
-          position: absolute;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
           display: flex;
-          gap: 8px;
-        }
-        .hdt-hero-dots .dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.3);
-        }
-        .hdt-hero-dots .dot.active {
-          background: #a78bfa;
-          width: 24px;
-          border-radius: 4px;
+          flex-direction: column;
+          font-family: 'Inter', system-ui, sans-serif;
+          overflow: hidden;
+          position: relative;
         }
 
-        /* Sections */
-        .hdt-section-title {
-          font-size: 1.2rem;
-          font-weight: 600;
-          margin: 0 0 20px 0;
+        /* Subtle background glow */
+        .hud-home-container::before {
+          content: '';
+          position: absolute;
+          top: 50%; left: 50%;
+          transform: translate(-50%, -50%);
+          width: 800px; height: 800px;
+          background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(0,0,0,0) 70%);
+          z-index: 0;
+          pointer-events: none;
         }
-        .hdt-section-header {
+
+        /* ── TOPBAR ── */
+        .hud-topbar {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 20px;
+          padding: 24px 40px;
+          z-index: 10;
         }
-        .hdt-section-header h3 { margin: 0; }
-        .hdt-link { color: #a78bfa; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 
-        /* Actions Row */
-        .hdt-actions-row {
-          display: flex;
-          gap: 16px;
-          overflow-x: auto;
-          padding-bottom: 8px;
+        .hud-logo h1 {
+          margin: 0;
+          font-size: 1.8rem;
+          font-weight: 800;
+          letter-spacing: 1px;
         }
-        .hdt-actions-row::-webkit-scrollbar { display: none; }
+        .hud-logo h1 span { color: #3b82f6; }
+        .hud-logo p {
+          margin: 4px 0 0 0;
+          font-size: 0.7rem;
+          letter-spacing: 2px;
+          color: #9ca3af;
+        }
 
-        .hdt-action-card {
+        .hud-search {
           display: flex;
           align-items: center;
-          gap: 16px;
-          background: rgba(255,255,255,0.02);
-          border: 1px solid rgba(255,255,255,0.05);
-          padding: 16px;
-          border-radius: 16px;
-          cursor: pointer;
-          transition: background 0.2s;
-          flex: 1;
-          min-width: 220px;
+          background: rgba(255,255,255,0.03);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 30px;
+          padding: 10px 20px;
+          width: 400px;
+          backdrop-filter: blur(10px);
         }
-        .hdt-action-card:hover { background: rgba(255,255,255,0.05); }
+        .hud-search input {
+          background: transparent;
+          border: none;
+          color: white;
+          width: 100%;
+          padding: 0 16px;
+          outline: none;
+          font-size: 0.95rem;
+        }
+        .hud-search .search-icon, .hud-search .mic-icon { color: #9ca3af; }
 
-        .hdt-action-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
+        .hud-top-actions {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+        }
+
+        .hud-you-select-toggle {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: rgba(255,255,255,0.05);
+          padding: 8px 16px;
+          border-radius: 30px;
+        }
+        .hud-you-select-toggle .star-icon { color: #60a5fa; }
+        .toggle-text span { display: block; font-size: 0.8rem; font-weight: 700; }
+        .toggle-text small { color: #9ca3af; font-size: 0.65rem; }
+        .toggle-switch {
+          width: 36px; height: 20px;
+          background: rgba(255,255,255,0.2);
+          border-radius: 20px;
+          position: relative;
+        }
+        .toggle-switch.active { background: #3b82f6; }
+        .toggle-switch::after {
+          content: ''; position: absolute;
+          width: 16px; height: 16px;
+          background: white; border-radius: 50%;
+          top: 2px; left: 2px;
+          transition: 0.3s;
+        }
+        .toggle-switch.active::after { transform: translateX(16px); }
+
+        .hud-add-video-btn {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(139, 92, 246, 0.2);
+          color: #c4b5fd;
+          border: 1px solid rgba(139, 92, 246, 0.5);
+          padding: 10px 20px;
+          border-radius: 30px;
+          font-weight: 700;
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: all 0.3s;
+        }
+        .hud-add-video-btn:hover {
+          background: rgba(139, 92, 246, 0.4);
+          transform: translateY(-2px);
+          box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+        }
+
+        .hud-user {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .hud-user img {
+          width: 40px; height: 40px;
+          border-radius: 50%;
+          border: 2px solid rgba(255,255,255,0.2);
+        }
+        .user-text span { display: block; font-weight: 600; font-size: 0.9rem; }
+        .user-text small { color: #9ca3af; font-size: 0.75rem; }
+
+        /* ── DIAL CENTRAL ── */
+        .hud-main-dial {
+          flex: 1;
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 1px solid rgba(255,255,255,0.1);
-          flex-shrink: 0;
+          z-index: 10;
         }
-        .hdt-action-icon.blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border-color: rgba(59,130,246,0.3); }
-        .hdt-action-icon.purple { background: rgba(167, 139, 250, 0.15); color: #c084fc; border-color: rgba(167,139,250,0.3); }
-        .hdt-action-icon.orange { background: rgba(249, 115, 22, 0.15); color: #fb923c; border-color: rgba(249,115,22,0.3); }
-        .hdt-action-icon.red { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239,68,68,0.3); }
-        .hdt-action-icon.green { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16,185,129,0.3); }
 
-        .hdt-action-text h4 { margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 600; line-height: 1.2; }
-        .hdt-action-text p { margin: 0; font-size: 0.75rem; color: #9ca3af; line-height: 1.3; }
-
-        /* Carousels */
-        .hdt-carousel {
-          display: flex;
-          gap: 20px;
-          overflow-x: auto;
-          padding-bottom: 10px;
-        }
-        .hdt-carousel::-webkit-scrollbar { display: none; }
-
-        /* Signal Card */
-        .hdt-signal-card {
-          min-width: 220px;
-          cursor: pointer;
-        }
-        .hdt-signal-img {
-          width: 100%;
-          height: 140px;
-          border-radius: 12px;
-          background-size: cover;
-          background-position: center;
+        .dial-wrapper {
           position: relative;
-          margin-bottom: 12px;
-          border: 1px solid rgba(255,255,255,0.1);
+          width: 800px;
+          height: 800px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
-        .hdt-badge {
+
+        /* Center Orb */
+        .dial-center-orb {
+          width: 460px;
+          height: 460px;
+          border-radius: 50%;
           position: absolute;
-          top: 10px;
-          left: 10px;
-          font-size: 0.6rem;
-          font-weight: 800;
-          padding: 4px 8px;
-          border-radius: 6px;
+          z-index: 5;
+          padding: 10px;
+          background: conic-gradient(from 0deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.05) 100%);
+          box-shadow: inset 0 0 40px rgba(0,0,0,0.8), 0 0 60px rgba(59,130,246,0.1);
+          animation: spin-slow 20s linear infinite;
+        }
+        .dial-center-orb > * { animation: spin-slow-reverse 20s linear infinite; }
+
+        @keyframes spin-slow { 100% { transform: rotate(360deg); } }
+        @keyframes spin-slow-reverse { 100% { transform: rotate(-360deg); } }
+
+        .orb-bg {
+          position: absolute;
+          inset: 10px;
+          border-radius: 50%;
+          background: url('https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?w=800&q=80') center/cover;
+          opacity: 0.8;
+          z-index: 1;
+          border: 2px solid rgba(255,255,255,0.1);
+        }
+        .orb-bg::after {
+          content: ''; position: absolute; inset: 0;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(0,0,0,0) 20%, rgba(0,0,0,0.8) 100%);
+        }
+
+        .orb-content {
+          position: absolute;
+          inset: 10px;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+        }
+
+        .orb-play-btn {
+          width: 80px; height: 80px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.3);
+          color: white;
+          display: flex; align-items: center; justify-content: center;
+          backdrop-filter: blur(5px);
+          cursor: pointer;
+          transition: all 0.3s;
+          margin-bottom: 40px;
+        }
+        .orb-play-btn:hover {
+          background: rgba(255,255,255,0.2);
+          transform: scale(1.1);
+          box-shadow: 0 0 30px rgba(255,255,255,0.3);
+        }
+
+        .orb-info h3 { margin: 0 0 8px 0; font-size: 1.4rem; font-weight: 600; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+        .orb-info p { margin: 0 0 12px 0; font-size: 0.9rem; color: #cbd5e1; }
+        .orb-badges { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
+        .orb-badges span {
+          background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+          padding: 2px 8px; border-radius: 4px; font-size: 0.7rem;
+        }
+
+        .orb-progress {
+          width: 70%;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-size: 0.75rem;
+          color: #9ca3af;
+        }
+        .progress-bar {
+          flex: 1; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px;
+        }
+        .progress-bar .fill { height: 100%; background: #3b82f6; border-radius: 2px; box-shadow: 0 0 10px #3b82f6; }
+
+
+        /* Ring Items */
+        .dial-ring {
+          position: absolute;
+          width: 100%; height: 100%;
+          pointer-events: none;
+        }
+
+        .dial-segment {
+          position: absolute;
+          top: 50%; left: 50%;
+          transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y)));
+          pointer-events: auto;
+        }
+
+        .dial-icon-btn {
+          width: 56px; height: 56px;
+          border-radius: 50%;
+          background: rgba(20,20,25,0.8);
+          border: 1px solid rgba(255,255,255,0.1);
+          color: var(--clr);
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          cursor: pointer;
+          backdrop-filter: blur(10px);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+          position: relative;
+        }
+
+        .dial-icon-btn::before {
+          content: ''; position: absolute; inset: -4px; border-radius: 50%;
+          border: 1px solid transparent; transition: 0.3s;
+        }
+
+        .dial-icon-btn:hover, .dial-icon-btn.active {
+          transform: scale(1.15);
+          background: rgba(30,30,40,0.9);
+          border-color: var(--clr);
+          box-shadow: 0 0 20px var(--clr), inset 0 0 10px var(--clr);
           color: white;
         }
-        .hdt-badge.purple { background: #8b5cf6; }
-        .hdt-badge.orange { background: #f59e0b; }
-        .hdt-badge.green { background: #10b981; }
-        .hdt-badge.blue { background: #3b82f6; }
-
-        .hdt-signal-info h4 { margin: 0 0 6px 0; font-size: 1rem; font-weight: 600; }
-        .hdt-signal-meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: #9ca3af; }
-
-        /* Video Card */
-        .hdt-video-card {
-          min-width: 220px;
-          cursor: pointer;
+        .dial-icon-btn.active::before {
+          border-color: rgba(255,255,255,0.2);
+          transform: scale(1.1);
         }
-        .hdt-video-img {
-          width: 100%;
-          height: 120px;
-          border-radius: 12px;
-          background-size: cover;
-          background-position: center;
-          position: relative;
-          margin-bottom: 12px;
+
+        .dial-icon-label-center {
+          position: absolute;
+          bottom: -24px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 1px;
+          color: white;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+          white-space: nowrap;
+        }
+
+        /* External Connectors */
+        .dial-text-connector {
+          position: absolute;
+          top: 50%; left: 50%;
+          width: 180px;
+          display: flex;
+          flex-direction: column;
+          opacity: 0.6;
+          transition: 0.3s;
+          pointer-events: none;
+        }
+        .dial-text-connector.highlight { opacity: 1; transform: scale(1.05) !important; }
+        
+        .dial-text-connector h4 {
+          margin: 0 0 4px 0; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+        }
+        .dial-text-connector p {
+          margin: 0; font-size: 0.7rem; color: #9ca3af; line-height: 1.3;
+        }
+
+        /* Connector visual line */
+        .connector-line {
+          position: absolute;
+          top: 50%;
+          width: 30px;
+          height: 1px;
+          background: rgba(255,255,255,0.1);
+        }
+        .dial-text-connector.right .connector-line { left: -40px; }
+        .dial-text-connector.left .connector-line { right: -40px; }
+        
+        .dial-text-connector.highlight .connector-line {
+          background: var(--clr);
+          box-shadow: 0 0 8px var(--clr);
+        }
+
+
+        /* ── BOTTOM BAR ── */
+        .hud-bottom-bar {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 60px;
+          padding: 30px;
+          z-index: 10;
+        }
+
+        .hud-pill-btn {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          background: rgba(255,255,255,0.03);
           border: 1px solid rgba(255,255,255,0.1);
-          overflow: hidden;
+          padding: 8px 24px 8px 8px;
+          border-radius: 40px;
+          backdrop-filter: blur(10px);
+          cursor: pointer;
+          transition: 0.2s;
         }
-        .hdt-video-time {
-          position: absolute;
-          bottom: 12px;
-          right: 8px;
-          background: rgba(0,0,0,0.8);
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          font-weight: 600;
+        .hud-pill-btn.right {
+          padding: 8px 8px 8px 24px;
         }
-        .hdt-progress-bar {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 4px;
-          background: rgba(255,255,255,0.2);
+        .hud-pill-btn:hover { background: rgba(255,255,255,0.08); }
+        
+        .pill-icon {
+          width: 48px; height: 48px; border-radius: 50%;
+          background: rgba(255,255,255,0.1);
+          display: flex; align-items: center; justify-content: center;
         }
-        .hdt-progress-fill {
-          height: 100%;
-          background: #ef4444;
+        .pill-text span { display: block; font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; }
+        .pill-text small { color: #9ca3af; font-size: 0.7rem; }
+        .hud-pill-btn.right .pill-text { text-align: right; }
+
+        .hud-mega-play {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 120px; height: 120px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(10,10,15,0.8) 100%);
+          border: 2px solid #3b82f6;
+          color: white;
+          box-shadow: 0 0 30px rgba(59,130,246,0.4), inset 0 0 20px rgba(59,130,246,0.2);
+          cursor: pointer;
+          transition: all 0.3s;
         }
-        .hdt-video-card h4 { margin: 0 0 4px 0; font-size: 0.95rem; font-weight: 600; }
-        .hdt-video-card p { margin: 0; font-size: 0.8rem; color: #9ca3af; }
+        .hud-mega-play:hover {
+          transform: translateY(-5px) scale(1.05);
+          box-shadow: 0 10px 40px rgba(59,130,246,0.6), inset 0 0 30px rgba(59,130,246,0.4);
+          background: radial-gradient(circle, rgba(59,130,246,0.4) 0%, rgba(10,10,15,0.9) 100%);
+        }
+        .hud-mega-play span {
+          font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;
+        }
 
-        /* RESPONSIVE DESIGNS */
-        @media (max-width: 1024px) {
-          .home-desktop-page {
-            gap: 24px;
-          }
 
-          .hdt-hero-banner {
-            min-height: 280px;
-            padding: 24px;
-          }
-
-          .hdt-hero-title {
-            font-size: 2.2rem;
-          }
-
-          .hdt-hero-desc {
-            font-size: 0.9rem;
-            margin-bottom: 24px;
-          }
-
-          .hdt-hero-actions {
-            flex-direction: column;
-            gap: 12px;
-          }
-
-          .hdt-actions-row {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            overflow-x: visible;
-          }
-
-          .hdt-action-card {
-            min-width: 0; /* Override the 200px min-width */
-            padding: 12px;
-            gap: 8px;
-            flex-direction: column;
-            text-align: center;
-          }
-          
-          .hdt-action-icon {
-            width: 44px;
-            height: 44px;
-            margin: 0 auto;
-          }
-          
-          .hdt-action-text h4 {
-            font-size: 0.9rem;
-            margin-bottom: 2px;
-          }
-
-          .hdt-action-text p {
-            display: none; /* Hide subtext on mobile to save space */
-          }
-          
-          .hdt-action-icon {
-            width: 40px;
-            height: 40px;
-          }
-          
-          .hdt-action-text h4 {
-            font-size: 0.85rem;
-          }
-
-          .hdt-signal-card {
-            min-width: 160px;
-          }
-
-          .hdt-video-card {
-            min-width: 160px;
-          }
-          
-          .hdt-video-img, .hdt-signal-img {
-            height: 100px;
-          }
+        /* RESPONSIVE SCALING */
+        @media (max-width: 1200px) {
+          .dial-wrapper { transform: scale(0.85); }
+          .hud-topbar { padding: 20px; }
+          .hud-search { width: 300px; }
+        }
+        @media (max-width: 900px) {
+          .dial-wrapper { transform: scale(0.65); }
+          .hud-search { display: none; }
+          .hud-you-select-toggle { display: none; }
+          .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
+        }
+        @media (max-width: 600px) {
+          .dial-wrapper { transform: scale(0.45); }
+          .hud-bottom-bar { flex-direction: column; gap: 10px; }
+          .hud-mega-play { width: 90px; height: 90px; }
+          .hud-add-video-btn span { display: none; }
         }
       `}</style>
-      
-      {showAddModal && (
-        <AddVideoModal onClose={() => setShowAddModal(false)} />
-      )}
     </div>
   );
 }

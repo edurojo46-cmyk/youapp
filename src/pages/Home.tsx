@@ -874,6 +874,10 @@ export default function Home() {
         .hud-main-dial.you-frame-active .orb-bg {
           border-radius: 16px !important;
         }
+        .hud-main-dial.you-frame-active .circular-progress-container,
+        .hud-main-dial.you-frame-active .dial-physical-ring {
+          display: none !important;
+        }
         
         /* YOU FRAME UI */
         .you-frame-ui {

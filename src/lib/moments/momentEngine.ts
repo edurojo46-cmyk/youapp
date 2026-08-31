@@ -2,7 +2,7 @@ import { supabase } from '../supabase';
 import type { PlaybackItem } from '../player/playerTypes';
 import type { VideoMoment } from './momentTypes';
 
-export async function getMomentsForVideo(item: PlaybackItem): Promise<{ moments: VideoMoment[]; isFallback: boolean }> {
+export async function getMomentsForVideo(item: PlaybackItem): Promise<{ moments: VideoMoment[]; summary?: string; isFallback: boolean }> {
   const contentKey = `${item.provider}:${item.providerContentId}`;
   try {
     // 1. Try to fetch analyzed moments from Supabase
@@ -28,6 +28,7 @@ export async function getMomentsForVideo(item: PlaybackItem): Promise<{ moments:
           confidence: m.confidence,
           source: m.source as any
         })),
+        summary: '', // We could fetch from youapp_index.description here if we wanted
         isFallback: false
       };
     }
@@ -42,7 +43,7 @@ export async function getMomentsForVideo(item: PlaybackItem): Promise<{ moments:
   };
 }
 
-export async function requestSemanticAnalysis(item: PlaybackItem): Promise<VideoMoment[] | null> {
+export async function requestSemanticAnalysis(item: PlaybackItem): Promise<{ moments: VideoMoment[]; summary?: string } | null> {
   // Gate: don't analyze very short videos (< 180s)
   try {
     const { data: indexData } = await supabase
@@ -93,35 +94,42 @@ export async function requestSemanticAnalysis(item: PlaybackItem): Promise<Video
           .limit(4);
 
         if (data && data.length === 4) {
-          return data.map(m => ({
-            id: m.id,
-            contentKey: m.content_key,
-            startSec: m.start_sec,
-            endSec: m.end_sec || m.start_sec + 60,
-            title: m.title,
-            summary: m.summary || '',
-            type: m.moment_type as any || 'key_point',
-            confidence: m.confidence,
-            source: m.source as any
-          }));
+          return {
+            moments: data.map(m => ({
+              id: m.id,
+              contentKey: m.content_key,
+              startSec: m.start_sec,
+              endSec: m.end_sec || m.start_sec + 60,
+              title: m.title,
+              summary: m.summary || '',
+              type: m.moment_type as any || 'key_point',
+              confidence: m.confidence,
+              source: m.source as any
+            })),
+            summary: ''
+          };
         }
       }
       return null; // Timed out
     }
 
     const moments = response.data?.moments;
+    const summary = response.data?.summary;
     if (moments && moments.length === 4) {
-      return moments.map((m: any, index: number) => ({
-        id: `ai-${contentKey}-${index}`,
-        contentKey,
-        startSec: m.start_sec,
-        endSec: m.end_sec,
-        title: m.title,
-        summary: m.summary || '',
-        type: 'key_point',
-        confidence: m.confidence || 100,
-        source: 'video_ai'
-      }));
+      return {
+        moments: moments.map((m: any, index: number) => ({
+          id: `ai-${contentKey}-${index}`,
+          contentKey,
+          startSec: m.start_sec || m.startSec,
+          endSec: m.end_sec || m.endSec,
+          title: m.title,
+          summary: m.summary || '',
+          type: 'key_point',
+          confidence: m.confidence || 100,
+          source: 'video_ai'
+        })),
+        summary
+      };
     }
     return null;
   } catch (e) {

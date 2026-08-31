@@ -490,10 +490,9 @@ export default {
           
           if (insertError) throw new Error(`DB Insert Error: ${insertError.message}`);
 
-          // Update summary in youapp_index or atlas_video_features if needed
-          // For now, let's update youapp_index if it exists
+          // Update summary in youapp_index (append to description to avoid losing original)
           await supabase.from('youapp_index')
-            .update({ description: parsed.videoSummary }) // Or save in a dedicated column, but we keep it simple
+            .update({ description: `${description}\n\n[YOUAPP_SUMMARY]\n${parsed.videoSummary}` }) 
             .eq('provider_content_id', providerContentId)
             .eq('provider', provider);
 

@@ -19,25 +19,42 @@ const corsHeaders = {
 
 // ── Llamada a Gemini Flash ───────────────────────────────────────────────────
 async function callGemini(prompt: string, apiKey: string, maxTokens = 512): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: maxTokens,
-        }
-      }),
-      signal: AbortSignal.timeout(60000)
-    }
-  );
+  const maxRetries = 3;
+  let attempt = 0;
 
-  if (!res.ok) throw new Error(`Gemini API ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  while (true) {
+    attempt++;
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: maxTokens,
+          }
+        }),
+        signal: AbortSignal.timeout(60000)
+      }
+    );
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      // Retry on 503 Service Unavailable or 429 Too Many Requests
+      if ((res.status === 503 || res.status === 429) && attempt <= maxRetries) {
+         // attempt 1: 2-3s, attempt 2: 6-8s, attempt 3: 15-20s
+         const baseDelay = attempt === 1 ? 2000 : attempt === 2 ? 6000 : 15000;
+         const jitter = Math.random() * (attempt === 1 ? 1000 : attempt === 2 ? 2000 : 5000);
+         await new Promise(resolve => setTimeout(resolve, baseDelay + jitter));
+         continue;
+      }
+      throw new Error(`Gemini API ${res.status}: ${errorText}`);
+    }
+    const data = await res.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  }
 }
 
 // ── 1. SUMMARY — Resumen inteligente de un video ────────────────────────────
@@ -434,7 +451,7 @@ export default {
         const analysisVersion = 'you4_semantic_v1';
         
         // 1. Deduplication Check via video_analysis_jobs
-        const { data: job, error: jobErr } = await supabase
+        const { data: job } = await supabase
           .from('video_analysis_jobs')
           .select('*')
           .eq('content_key', contentKey)
@@ -442,22 +459,36 @@ export default {
           .eq('analysis_version', analysisVersion)
           .maybeSingle();
 
-        if (job && job.status === 'running') {
-          const startedAt = new Date(job.started_at).getTime();
-          // If running for more than 2 minutes, assume it's stuck and retry
-          if (Date.now() - startedAt < 120000) {
-             return new Response(JSON.stringify({ status: 'running', message: 'Analysis in progress by another worker.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        if (job) {
+          if (job.status === 'running') {
+            const startedAt = new Date(job.started_at).getTime();
+            // If running for more than 2 minutes, assume it's stuck and let it retry below
+            if (Date.now() - startedAt < 120000) {
+               return new Response(JSON.stringify({ status: 'running', message: 'Analysis in progress by another worker.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            }
+          } else if (job.status === 'completed') {
+             return new Response(JSON.stringify({ status: 'completed', message: 'Already completed.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           }
+          
+          // If failed, retryable_failed, or stuck running -> update to running
+          await supabase.from('video_analysis_jobs')
+            .update({ status: 'running', started_at: new Date().toISOString() })
+            .eq('content_key', contentKey)
+            .eq('analysis_type', 'you4_moments')
+            .eq('analysis_version', analysisVersion);
+        } else {
+           // Insert. If another request inserts first, this one throws unique constraint 23505
+           const { error: insertErr } = await supabase.from('video_analysis_jobs').insert({
+              content_key: contentKey,
+              analysis_type: 'you4_moments',
+              analysis_version: analysisVersion,
+              status: 'running',
+              started_at: new Date().toISOString()
+           });
+           if (insertErr && insertErr.code === '23505') {
+               return new Response(JSON.stringify({ status: 'running', message: 'Analysis in progress by another worker.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+           }
         }
-
-        // Upsert job to mark as running
-        await supabase.from('video_analysis_jobs').upsert({
-          content_key: contentKey,
-          analysis_type: 'you4_moments',
-          analysis_version: analysisVersion,
-          status: 'running',
-          started_at: new Date().toISOString()
-        }, { onConflict: 'content_key,analysis_type,analysis_version' });
 
         try {
           const parsed = await generateYou4Moments({
@@ -490,9 +521,9 @@ export default {
           
           if (insertError) throw new Error(`DB Insert Error: ${insertError.message}`);
 
-          // Update summary in youapp_index (append to description to avoid losing original)
+          // Update summary in youapp_index (using dedicated column)
           await supabase.from('youapp_index')
-            .update({ description: `${description}\n\n[YOUAPP_SUMMARY]\n${parsed.videoSummary}` }) 
+            .update({ video_summary: parsed.videoSummary }) 
             .eq('provider_content_id', providerContentId)
             .eq('provider', provider);
 
@@ -507,14 +538,17 @@ export default {
           });
 
         } catch (error: any) {
+          const isCapacityError = error.message.includes('503') || error.message.includes('429');
+          const finalStatus = isCapacityError ? 'retryable_failed' : 'failed';
+          
           // Mark job as failed
           await supabase.from('video_analysis_jobs').update({
-            status: 'failed',
+            status: finalStatus,
             error_code: error.message,
             completed_at: new Date().toISOString()
           }).eq('content_key', contentKey).eq('analysis_type', 'you4_moments').eq('analysis_version', analysisVersion);
           
-          return new Response(JSON.stringify({ error: error.message, status: 'failed' }), {
+          return new Response(JSON.stringify({ error: error.message, status: finalStatus }), {
             status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }

@@ -54,7 +54,7 @@ export function optimizeSchedule(
     for (let i = 0; i < available.length; i++) {
       const candidate = available[i];
       const item = candidate.item;
-      const duration = (item.durationMs || 0) / 1000;
+      const duration = item.durationSeconds || 0;
       
       // Determine if it fits the role (roughly)
       const isLong = duration > 1200; // > 20 mins
@@ -97,7 +97,7 @@ export function optimizeSchedule(
     const chosen = available[bestIdx];
     available.splice(bestIdx, 1); // Remove from pool
     
-    const itemDurSec = (chosen.item.durationMs || 10 * 60000) / 1000;
+    const itemDurSec = chosen.item.durationSeconds || 600;
     
     schedule.push({
       id: `block-${Date.now()}-${schedule.length}`,

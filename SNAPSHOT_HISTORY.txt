@@ -1,0 +1,48 @@
+﻿YOUAPP — IP SNAPSHOT HISTORY
+
+SNAPSHOT V1
+Fecha: 30/08/2026
+
+Git tag:
+youapp-core-v1
+
+Descripción:
+Primera versión integral congelada de YouApp Core V1.
+
+Incluye:
+- Search Engine
+- Atlas
+- Ranking / Relevance
+- RadarPlanner
+- TV Signal Generation V1
+- Block Affinity
+- LiveZapping
+- ProgramarTV
+- Persistence V1
+- Guest Auth
+- Universal Test Pack
+
+Archivo:
+YOUAPP_IP_SNAPSHOT_V1.zip
+
+SHA-256:
+0502BE57641F112FB4B224872ACA7A26428BA9E3BCF2E2447665186724D080F6
+
+SNAPSHOT V1.1
+Fecha: 30/08/2026
+
+Git tag:
+youapp-core-v1 (congelado)
+
+Descripción:
+Inclusión de capturas de interfaz (UI) conectando el motor lógico con su expresión visual.
+
+Incluye:
+- Todo V1
+- Capturas de Pantalla (HOME, BUSCAR_IA, HACEME_UNA_TV, LIVE_ZAPPING, PROGRAMAR_TV, SEARCH_LAB, MI_SIGNAL)
+
+Archivo:
+YOUAPP_IP_SNAPSHOT_V1_1.zip
+
+SHA-256:
+3BFFBC0C18E0613A37A89C4C3893E49EAF430154950118C20721CDCA2BF81594

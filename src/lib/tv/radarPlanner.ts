@@ -14,22 +14,42 @@ export function evaluateCoverage(request: SignalRequest, meshCandidates: Content
   const coveredConcepts = new Set<string>();
   let totalDurationSec = 0;
 
-  const expectedConcepts = request.subQueries.map(sq => sq.query);
+  const expectedConcepts = request.subQueries.map(sq => {
+    return sq.query
+      .replace(/documental explicacion/ig, '')
+      .replace(/historia de/ig, '')
+      .replace(/curiosidades de/ig, '')
+      .replace(/descubrimientos arqueológicos de/ig, '')
+      .replace(/documental/ig, '')
+      .replace(/[.,]/g, '')
+      .trim();
+  }).filter(c => c.length > 0);
 
-  const fullTitles = meshCandidates.map(c => c.title.toLowerCase()).join(' ');
+  const fullTitles = meshCandidates.map(c => c.title.toLowerCase() + ' ' + (c.description || '').toLowerCase()).join(' ');
 
   if (fullTitles.includes(request.mainTopic.toLowerCase())) {
     mainTopicCovered = true;
   }
 
-  for (const concept of expectedConcepts) {
+  for (let i = 0; i < expectedConcepts.length; i++) {
+    const concept = expectedConcepts[i];
+    // use the original query as key for missingConcepts
+    const originalQuery = request.subQueries[i].query;
+    
     if (fullTitles.includes(concept.toLowerCase())) {
-      coveredConcepts.add(concept);
+      coveredConcepts.add(originalQuery);
+    } else {
+      // Si la frase completa no está, chequear por palabras clave individuales (ignorar stop words cortas)
+      const words = concept.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const coveredWordsCount = words.filter(w => fullTitles.includes(w)).length;
+      if (words.length > 0 && coveredWordsCount >= Math.ceil(words.length / 2)) {
+        coveredConcepts.add(originalQuery);
+      }
     }
   }
 
   for (const c of meshCandidates) {
-    totalDurationSec += c.durationSec || 0;
+    totalDurationSec += c.durationSeconds || 0;
   }
 
   const targetDurationSec = (request.durationTargetMin || 60) * 60;
@@ -66,7 +86,18 @@ export function chooseRadarQuery(request: SignalRequest, coverage: CoverageAnaly
   }
 
   if (coverage.missingConcepts.length > 0) {
-    queryTokens.push(...coverage.missingConcepts);
+    const cleanedConcepts = coverage.missingConcepts.map(c => {
+      return c
+        .replace(/documental explicacion/ig, '')
+        .replace(/historia de/ig, '')
+        .replace(/curiosidades de/ig, '')
+        .replace(/descubrimientos arqueológicos de/ig, '')
+        .replace(/documental/ig, '')
+        .replace(/[.,]/g, '') // remove punctuation
+        .trim();
+    }).filter(c => c.length > 0);
+    
+    queryTokens.push(...cleanedConcepts);
     if (!reason) reason = 'subconcepts_missing';
   }
 
@@ -81,7 +112,13 @@ export function chooseRadarQuery(request: SignalRequest, coverage: CoverageAnaly
   }
 
   // Deduplicate and join
-  const query = Array.from(new Set(queryTokens)).join(' ').trim();
+  let query = Array.from(new Set(queryTokens)).join(' ').trim();
+  
+  // Superficial normalization: multiple spaces -> one, remove dangling punctuation, collapse spaces
+  query = query.replace(/[.,;:!?]+\s+/g, ' ')
+               .replace(/[.,;:!?]+$/g, '')
+               .replace(/\s{2,}/g, ' ')
+               .trim();
 
   return {
     query,

@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
+@import './styles/youapp-tokens.css';
+@import './styles/youapp-tv.css';
+
 :root {
   /* Premium Dark Theme Colors */
   --bg-primary: #0a0a0f;

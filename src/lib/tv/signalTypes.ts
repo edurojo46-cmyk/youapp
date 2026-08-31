@@ -75,6 +75,9 @@ export interface CustomSignal {
   updated_at: string;
   radarConsumed?: number;
   independentSemanticCoverage?: number;
+  semanticCoverage?: number;
+  trace?: any;
+  understandingRequest?: any;
   
   schedule: ScheduleBlock[];
 }

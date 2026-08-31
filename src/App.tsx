@@ -15,6 +15,7 @@ import MobileRemote from './pages/MobileRemote';
 import MyAlgorithm from './pages/MyAlgorithm';
 import CreateSignal from './pages/CreateSignal';
 import ProgramarTV from './pages/ProgramarTV';
+import MiSenal1 from './pages/MiSenal1';
 import MyLists from './pages/MyLists';
 import MyMoments from './pages/MyMoments';
 import ShareTarget from './pages/ShareTarget';
@@ -63,9 +64,9 @@ function App() {
       const sharedUrl = params.get('url') || params.get('text');
       if (sharedUrl) {
         // Redirigir a la ruta interna de share manteniendo los params
-        const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "#/share" + window.location.search;
+        const newUrl = window.location.protocol + "//" + window.location.host + "/share" + window.location.search;
         window.history.replaceState(null, '', newUrl);
-        window.location.reload(); // Forzar recarga limpia en el HashRouter
+        window.location.reload(); // Forzar recarga limpia
       }
     }
   }, []);
@@ -92,6 +93,7 @@ function App() {
         <Route path="/create-signal" element={<DashboardRoute><CreateSignal /></DashboardRoute>} />
         {/* Nueva Vista de Programar TV (Mockup idéntico) - Sin DesktopLayout para barra superior limpia */}
         <Route path="/programartv" element={<ProtectedRoute><ProgramarTV /></ProtectedRoute>} />
+        <Route path="/misenal1" element={<ProtectedRoute><MiSenal1 /></ProtectedRoute>} />
         <Route path="/my-lists" element={<DashboardRoute><MyLists /></DashboardRoute>} />
         {/* Nueva Ruta de Momentos */}
         <Route path="/moments" element={<DashboardRoute><MyMoments /></DashboardRoute>} />

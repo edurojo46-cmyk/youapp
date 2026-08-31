@@ -90,14 +90,24 @@ export function parseSignalPrompt(prompt: string): SignalRequest {
     freshness: "evergreen"
   });
 
+  // Determine if this is a deep dive (sobre) or multitematic (con)
+  const isDeepDive = normalized.includes('sobre');
+
   // Deep dive blocks based on other parts
   for (let i = 1; i < parts.length; i++) {
     const part = parts[i];
     const isPartFresh = FRESHNESS_KEYWORDS.some(k => part.includes(k));
     
+    let subQueryText = part;
+    if (isDeepDive) {
+      subQueryText = isPartFresh ? `noticias recientes sobre ${mainTopic}` : `${part} de ${mainTopic}`;
+    } else {
+      subQueryText = isPartFresh ? `noticias recientes sobre ${part}` : part;
+    }
+    
     subQueries.push({
       id: `sq-${Date.now()}-${i + 1}`,
-      query: isPartFresh ? `noticias recientes sobre ${mainTopic}` : `${part} de ${mainTopic}`,
+      query: subQueryText,
       role: isPartFresh ? "news" : "deep_dive",
       intentHint: isPartFresh ? "NEWS" : (isHistory ? "HISTORY" : "UNKNOWN"),
       parentContext: mainTopic,

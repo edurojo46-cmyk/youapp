@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSignalStore } from '../lib/tv/signalStore';
 import { getDraftSignal } from '../lib/tv/draftStore';
-import SmartTVPlayer from '../lib/tv/playback/SmartTVPlayer';
+import SmartTVPlayer from '../lib/tv/playback/SmartTVPlayer'; // DEPRECATED: Keep for rollback
+import { YouAppPlayer } from '../components/player/YouAppPlayer';
+import type { PlaybackItem } from '../lib/player/playerTypes';
 import { ChevronLeft, ChevronRight, SkipForward, XCircle, Sparkles, Tv } from 'lucide-react';
 
 export default function DynamicLiveZapping() {
@@ -87,11 +89,18 @@ export default function DynamicLiveZapping() {
       {/* PLAYER AREA */}
       <div style={{ flex: 1, position: 'relative' }}>
         {currentBlock ? (
-          <SmartTVPlayer 
-            key={currentBlock.id} // Force remount on block change
-            block={currentBlock} 
-            onEnded={() => handleEnded(currentBlock.id)} 
-            onError={(err) => handleError(currentBlock.id, err)} 
+          <YouAppPlayer
+            key={currentBlock.id}
+            item={{
+              blockId: currentBlock.id,
+              provider: currentBlock.contentItem.provider as any,
+              providerContentId: currentBlock.contentItem.providerId || currentBlock.contentItem.id,
+              playbackUrl: currentBlock.contentItem.videoUrl,
+              title: currentBlock.contentItem.title,
+              durationSec: currentBlock.durationSec
+            }}
+            onEnded={() => handleEnded(currentBlock.id)}
+            onError={(err) => handleError(currentBlock.id, err)}
           />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>

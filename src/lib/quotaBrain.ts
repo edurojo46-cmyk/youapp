@@ -64,7 +64,8 @@ export async function requestSearch(params: SearchRequest): Promise<SearchPermis
 
   try {
     // En desarrollo siempre damos presupuesto para no bloquear pruebas E2E
-    if (import.meta.env.DEV) {
+    // En desarrollo siempre damos presupuesto para no bloquear pruebas E2E, EXCEPTO en SMOKE_LIVE
+    if (import.meta.env.DEV && import.meta.env.VITE_SMOKE_LIVE !== 'true') {
       budgetRemaining = 1000;
     } else {
       budgetRemaining = await getBudgetRemaining();
@@ -165,17 +166,18 @@ export async function reportSearchResult(requestId: string, params: {
 
 // ── Consultar presupuesto restante ────────────────────────────────────────
 export async function getBudgetRemaining(): Promise<number> {
-  if (import.meta.env.DEV) return 1000;
+  if (import.meta.env.DEV && import.meta.env.VITE_SMOKE_LIVE !== 'true') return 1000;
   try {
     const today = new Date().toISOString().split('T')[0];
     const { data } = await supabase
-      .from('quota_daily')
-      .select('searches_used, internal_budget')
+      .from('youtube_quota_daily')
+      .select('used, daily_limit')
       .eq('date', today)
+      .eq('bucket', 'organic') // Asumimos organic por defecto para client-side
       .maybeSingle();
 
     if (!data) return EFFECTIVE_BUDGET;
-    return Math.max(0, (data.internal_budget || INTERNAL_BUDGET) - EMERGENCY_RESERVE - (data.searches_used || 0));
+    return Math.max(0, (data.daily_limit || INTERNAL_BUDGET) - (data.used || 0));
   } catch {
     return EFFECTIVE_BUDGET; // optimista si no podemos consultar
   }
@@ -185,17 +187,31 @@ export async function getBudgetRemaining(): Promise<number> {
 export async function getDailySummary() {
   const today = new Date().toISOString().split('T')[0];
   const { data } = await supabase
-    .from('quota_daily')
+    .from('youtube_quota_daily')
     .select('*')
-    .eq('date', today)
-    .maybeSingle();
+    .eq('date', today);
 
-  return data || {
+  if (!data || data.length === 0) {
+    return {
+      date: today,
+      searches_used: 0,
+      searches_denied: 0,
+      searches_avoided: 0,
+      internal_budget: INTERNAL_BUDGET,
+      google_limit: 100,
+    };
+  }
+
+  // Sum all buckets for a total picture
+  const totalUsed = data.reduce((acc, row) => acc + (row.used || 0), 0);
+  const totalLimit = data.reduce((acc, row) => acc + (row.daily_limit || 0), 0);
+
+  return {
     date: today,
-    searches_used: 0,
-    searches_denied: 0,
-    searches_avoided: 0,
-    internal_budget: INTERNAL_BUDGET,
+    searches_used: totalUsed,
+    searches_denied: 0, // deprecado client-side, ver quota_events
+    searches_avoided: 0, // deprecado client-side
+    internal_budget: totalLimit,
     google_limit: 100,
   };
 }
@@ -238,12 +254,9 @@ async function logSearchAttempt(params: {
       budget_remaining: params.budgetRemaining,
     });
 
-    // Actualizar resumen diario
-    if (params.authorized) {
-      await supabase.rpc('quota_increment', { p_column: 'searches_used' });
-    } else {
-      await supabase.rpc('quota_increment', { p_column: 'searches_denied' });
-    }
+    // El resumen diario ya no se incrementa acá manualmente para 'searches_used'
+    // porque la Edge Function lo hace atómicamente en youtube_quota_daily mediante reserve_youtube_search.
+    // Solo registramos el intento en quota_events.
 
     if (import.meta.env.DEV) {
       const emoji = params.authorized ? '🔭' : '🚫';

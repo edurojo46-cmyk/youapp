@@ -208,6 +208,101 @@ Responde SOLO con JSON válido:
   };
 }
 
+// ── 4. YOU4 MOMENTS — Semantic Video Segmentation ─────────────────────────────
+async function generateYou4Moments(
+  video: any,
+  apiKey: string
+): Promise<any> {
+  // Pass YouTube URL if it's YouTube
+  let urlPart = '';
+  if (video.provider === 'youtube') {
+    urlPart = `URL del video de YouTube: https://www.youtube.com/watch?v=${video.providerContentId}\n\n`;
+  }
+
+  const prompt = `Eres el motor de Video Understanding de YouApp. Analiza este video completo.
+Selecciona exactamente 4 momentos que permitan entender su recorrido.
+
+Cada momento debe:
+- representar una idea distinta;
+- tener un timestamp real del video;
+- respetar el orden cronológico;
+- estar suficientemente separado de los demás;
+- tener un título breve;
+- tener un resumen de una oración.
+
+No inventes información que no esté presente en el video.
+
+${urlPart}Video:
+- Título: "${video.title}"
+- Descripción: "${(video.description || '').slice(0, 1500)}"
+- Duración: ${video.durationSec} segundos
+
+Responde con exactamente este JSON:
+{
+  "videoSummary": "Resumen general del video en 2-3 oraciones...",
+  "moments": [
+    {
+      "startSec": 10,
+      "endSec": 60,
+      "title": "Primer momento",
+      "summary": "Resumen de este momento."
+    },
+    ... (debes incluir exactamente 4 elementos en esta lista)
+  ]
+}`;
+
+  const raw = await callGemini(prompt, apiKey, 2000);
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('Invalid JSON from Gemini for YOU4 Moments');
+
+  return JSON.parse(jsonMatch[0]);
+}
+
+function validateSemanticMoments(parsed: any, durationSec: number): { valid: boolean; confidence: number; error?: string } {
+  if (!parsed || !parsed.moments || !Array.isArray(parsed.moments) || parsed.moments.length !== 4) {
+    return { valid: false, confidence: 0, error: 'Debe contener exactamente 4 momentos.' };
+  }
+  
+  if (!parsed.videoSummary || typeof parsed.videoSummary !== 'string') {
+    return { valid: false, confidence: 0, error: 'Falta videoSummary.' };
+  }
+
+  const m = parsed.moments;
+  const minSeparation = durationSec > 180 ? Math.max(10, durationSec * 0.1) : 5; // ~10% de separación, mín 5s
+
+  let confidence = 100;
+
+  for (let i = 0; i < 4; i++) {
+    const mi = m[i];
+    if (typeof mi.startSec !== 'number' || typeof mi.endSec !== 'number') {
+      return { valid: false, confidence: 0, error: `Tiempos inválidos en momento ${i+1}.` };
+    }
+    if (!mi.title || !mi.summary) {
+      return { valid: false, confidence: 0, error: `Título o resumen vacío en momento ${i+1}.` };
+    }
+    if (mi.startSec < 0 || mi.startSec >= durationSec) {
+      return { valid: false, confidence: 0, error: `startSec fuera de rango en momento ${i+1}.` };
+    }
+    if (mi.startSec >= mi.endSec) {
+      return { valid: false, confidence: 0, error: `startSec mayor que endSec en momento ${i+1}.` };
+    }
+    
+    // Cronología
+    if (i > 0) {
+      const prev = m[i-1];
+      if (mi.startSec <= prev.startSec) {
+        return { valid: false, confidence: 0, error: `Orden cronológico roto en momento ${i+1}.` };
+      }
+      if (mi.startSec - prev.startSec < minSeparation) {
+        confidence -= 10; // Penalizamos si están muy pegados
+        if (confidence < 50) return { valid: false, confidence: 0, error: `Separación insuficiente en momento ${i+1}.` };
+      }
+    }
+  }
+
+  return { valid: true, confidence };
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default {
   fetch: async (req: Request) => {
@@ -220,7 +315,7 @@ export default {
       const { action, video_id, question, candidate_ids } = body;
 
       if (!action) {
-        return new Response(JSON.stringify({ error: 'action required: summary | you4 | ask_video' }), {
+        return new Response(JSON.stringify({ error: 'action required: summary | you4 | ask_video | you4_moments' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -326,6 +421,104 @@ export default {
         return new Response(JSON.stringify({ success: true, action, result }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
+      }
+
+      // ── 4. YOU4 Moments (Semantic) ───────────────────────────────────────────
+      if (action === 'you4_moments') {
+        const { provider, providerContentId, videoUrl, title, description, durationSec } = body;
+        if (!provider || !providerContentId) {
+          return new Response(JSON.stringify({ error: 'provider and providerContentId required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        
+        const contentKey = `${provider}:${providerContentId}`;
+        const analysisVersion = 'you4_semantic_v1';
+        
+        // 1. Deduplication Check via video_analysis_jobs
+        const { data: job, error: jobErr } = await supabase
+          .from('video_analysis_jobs')
+          .select('*')
+          .eq('content_key', contentKey)
+          .eq('analysis_type', 'you4_moments')
+          .eq('analysis_version', analysisVersion)
+          .maybeSingle();
+
+        if (job && job.status === 'running') {
+          const startedAt = new Date(job.started_at).getTime();
+          // If running for more than 2 minutes, assume it's stuck and retry
+          if (Date.now() - startedAt < 120000) {
+             return new Response(JSON.stringify({ status: 'running', message: 'Analysis in progress by another worker.' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
+
+        // Upsert job to mark as running
+        await supabase.from('video_analysis_jobs').upsert({
+          content_key: contentKey,
+          analysis_type: 'you4_moments',
+          analysis_version: analysisVersion,
+          status: 'running',
+          started_at: new Date().toISOString()
+        }, { onConflict: 'content_key,analysis_type,analysis_version' });
+
+        try {
+          const parsed = await generateYou4Moments({
+            provider, providerContentId, videoUrl, title, description, durationSec
+          }, geminiKey);
+
+          const { valid, confidence, error: validationError } = validateSemanticMoments(parsed, durationSec || 0);
+
+          if (!valid) {
+            throw new Error(`Validation failed: ${validationError}`);
+          }
+
+          // Format for insertion
+          const momentsToInsert = parsed.moments.map((m: any, index: number) => ({
+            content_key: contentKey,
+            start_sec: m.startSec,
+            end_sec: m.endSec,
+            title: m.title,
+            summary: m.summary,
+            source: 'video_ai',
+            analysis_version: analysisVersion,
+            model: 'gemini-3.6-flash',
+            prompt_version: 'you4_video_prompt_v1',
+            confidence
+          }));
+
+          // Insert moments (clear old ones for this content key first if necessary, or just rely on UPSERT if ID was mapped, but we might just delete and insert)
+          await supabase.from('video_moments').delete().eq('content_key', contentKey);
+          const { error: insertError } = await supabase.from('video_moments').insert(momentsToInsert);
+          
+          if (insertError) throw new Error(`DB Insert Error: ${insertError.message}`);
+
+          // Update summary in youapp_index or atlas_video_features if needed
+          // For now, let's update youapp_index if it exists
+          await supabase.from('youapp_index')
+            .update({ description: parsed.videoSummary }) // Or save in a dedicated column, but we keep it simple
+            .eq('provider_content_id', providerContentId)
+            .eq('provider', provider);
+
+          // Mark job as completed
+          await supabase.from('video_analysis_jobs').update({
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          }).eq('content_key', contentKey).eq('analysis_type', 'you4_moments').eq('analysis_version', analysisVersion);
+
+          return new Response(JSON.stringify({ success: true, status: 'completed', moments: momentsToInsert, summary: parsed.videoSummary }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+
+        } catch (error: any) {
+          // Mark job as failed
+          await supabase.from('video_analysis_jobs').update({
+            status: 'failed',
+            error_code: error.message,
+            completed_at: new Date().toISOString()
+          }).eq('content_key', contentKey).eq('analysis_type', 'you4_moments').eq('analysis_version', analysisVersion);
+          
+          return new Response(JSON.stringify({ error: error.message, status: 'failed' }), {
+            status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
       }
 
       return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {

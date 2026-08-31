@@ -11,7 +11,7 @@ function calculateEntityCentrality(item: ContentItem, entities: any[], intentDat
   const channelLower = (item.channelTitle || '').toLowerCase();
   
   for (const entityObj of entities) {
-    const e = entityObj.name.toLowerCase();
+    const e = (entityObj.name || entityObj.canonical || '').toLowerCase();
     
     // exact entity in title
     if (titleLower === e) {
@@ -48,7 +48,7 @@ function calculateEntityCentrality(item: ContentItem, entities: any[], intentDat
   // Peripheral/context-only mention penalty
   if (titleLower.includes('+') || titleLower.includes('vs') || titleLower.split(',').length > 3) {
     // If it's a list of many things, it's less central
-    if (!titleLower.startsWith(entities[0].name.toLowerCase())) {
+    if (!titleLower.startsWith((entities[0].name || entities[0].canonical || '').toLowerCase())) {
       centrality -= 20;
     }
   }

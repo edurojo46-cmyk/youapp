@@ -1,64 +1,213 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSignalStore } from '../lib/tv/signalStore';
 import { generateSurpriseBlock } from '../lib/tv/surpriseGenerator';
-import { ThumbnailWithFallback } from '../components/ThumbnailWithFallback';
-import { 
-  Bell, Search, Mic, Sparkles, Maximize, Play, Volume2, 
-  Settings, Maximize2, Bookmark, Clock, Info, Plus, PlayCircle, Radio,
-  GripVertical, MoreHorizontal, MoreVertical, X, RotateCcw, Layers
-} from 'lucide-react';
+import { YouAppPlayer, type YouAppPlayerHandle } from '../components/player/YouAppPlayer';
+import { YOU4Cards } from '../components/player/YOU4Cards';
+import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
+import { YouRing } from '../components/player/YouRing';
+import type { VideoMoment } from '../lib/moments/momentTypes';
+import { getMomentsForVideo, requestSemanticAnalysis } from '../lib/moments/momentEngine';
+import { logAudienceEvent } from '../lib/player/telemetry/playerEvents';
+import { Sparkles } from 'lucide-react';
+
+import { ProgramarTVLayout } from '../components/tv/ProgramarTVLayout';
+import { SignalTimeline } from '../components/tv/SignalTimeline';
+import { ChosenForYou } from '../components/tv/ChosenForYou';
+import { DirectorCard } from '../components/tv/DirectorCard';
+import { PlayerActionBar } from '../components/tv/PlayerActionBar';
+import { SignalStatusBar } from '../components/tv/SignalStatusBar';
 
 export default function ProgramarTV() {
   const navigate = useNavigate();
-  const { activeSignal, reorder, remove, insert, currentBlockId, currentBlockIndex } = useSignalStore();
+  const { activeSignal, remove, insert, currentBlockIndex, setSignal, next, previous, reorder } = useSignalStore();
 
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [isGeneratingSurprise, setIsGeneratingSurprise] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Fallback if no signal
-  if (!activeSignal) {
-    return (
-      <div style={{ background: '#0f172a', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-        <h2>No hay señal activa</h2>
-        <button onClick={() => navigate('/create-signal')} style={{ marginTop: 20, padding: '10px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
-          Crear Señal
-        </button>
-      </div>
-    );
-  }
+  // YOU4 State
+  type YOU4ViewMode = 'single' | 'mosaic';
+  const [viewMode, setViewMode] = useState<YOU4ViewMode>('single');
+  const playerRef = useRef<YouAppPlayerHandle>(null);
+  const [moments, setMoments] = useState<VideoMoment[]>([]);
+  const [isFallbackMoments, setIsFallbackMoments] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [activeMomentId, setActiveMomentId] = useState<string | undefined>();
+  
+  const currentBlock = activeSignal?.schedule[currentBlockIndex] || null;
+  const currentBlockIdRef = useRef<string | null>(null);
 
-  // Logic for Drag & Drop Reordering
-  const handleDragStart = (e: React.DragEvent, idx: number) => {
-    setDraggedIdx(idx);
-    e.dataTransfer.effectAllowed = "move";
+  useEffect(() => {
+    currentBlockIdRef.current = currentBlock?.id || null;
+  }, [currentBlock?.id]);
+
+  // Fallback / Demo auto-load
+  useEffect(() => {
+    if (!activeSignal) {
+      const MOCK_SIGNAL = {
+        id: 'mock-signal-1',
+        name: 'Señal de Prueba (Demo)',
+        prompt: 'Demostración de Programar TV',
+        visibility: 'private' as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        schedule: [
+          {
+            id: 'block-1',
+            position: 0,
+            startOffsetSec: 0,
+            durationSec: 596,
+            topic: 'Documental',
+            role: 'opening' as const,
+            contentItem: {
+              id: 'aqz-KE-bpKQ',
+              providerId: 'aqz-KE-bpKQ',
+              type: 'video' as const,
+              provider: 'youtube' as const,
+              title: 'Big Buck Bunny (Cortometraje)',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600',
+              videoUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+              channelName: 'Blender Foundation',
+              channelId: 'blender',
+              isLive: false,
+              isVerified: true
+            }
+          },
+          {
+            id: 'block-2',
+            position: 1,
+            startOffsetSec: 596,
+            durationSec: 653,
+            topic: 'Naturaleza',
+            role: 'deep_dive' as const,
+            contentItem: {
+              id: 'TLkA0RELQ1g',
+              providerId: 'TLkA0RELQ1g',
+              type: 'video' as const,
+              provider: 'youtube' as const,
+              title: 'Elephants Dream',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600',
+              videoUrl: 'https://www.youtube.com/watch?v=TLkA0RELQ1g',
+              channelName: 'Blender Foundation',
+              channelId: 'blender',
+              isLive: false,
+              isVerified: true
+            }
+          }
+        ]
+      };
+      setSignal(MOCK_SIGNAL as any);
+    }
+  }, [activeSignal, setSignal]);
+
+  const fetchMoments = async (actualDuration: number) => {
+    if (!currentBlock || actualDuration <= 0) return;
+    try {
+      const res = await getMomentsForVideo({
+        blockId: currentBlock.id,
+        provider: currentBlock.contentItem.provider as any,
+        providerContentId: currentBlock.contentItem.providerId || currentBlock.contentItem.id,
+        durationSec: actualDuration,
+        title: currentBlock.contentItem.title
+      });
+      setMoments(res.moments || []);
+      setIsFallbackMoments(res.isFallback);
+    } catch (error) {
+      console.error("Failed to fetch moments", error);
+      setMoments([]);
+      setIsFallbackMoments(true);
+    }
+    setActiveMomentId(undefined); // reset
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+  useEffect(() => {
+    setViewMode('single');
+    setIsAnalyzing(false);
+    if (currentBlock && currentBlock.durationSec > 0) {
+      fetchMoments(currentBlock.durationSec);
+    } else {
+      setMoments([]);
+    }
+  }, [currentBlock?.id]);
+
+  const handleMomentClick = (moment: VideoMoment, index: number) => {
+    if (!currentBlock) return;
+    
+    setViewMode('single');
+    setActiveMomentId(moment.id);
+    
+    setTimeout(() => {
+      if (!playerRef.current) return;
+      const actualDuration = playerRef.current.getDuration();
+      let safeSeekSec = moment.startSec;
+      if (actualDuration > 0) {
+        safeSeekSec = Math.min(moment.startSec, actualDuration - 1);
+      }
+      playerRef.current.seek(safeSeekSec);
+      playerRef.current.unmute();
+      playerRef.current.play();
+      setIsPlaying(true);
+    }, 100);
+    
+    logAudienceEvent({
+      type: 'you4_moment_selected',
+      blockId: currentBlock.id,
+      payload: {
+        contentKey: moment.contentKey,
+        momentIndex: index,
+        startSec: moment.startSec,
+        source: moment.source
+      }
+    });
   };
 
-  const handleDrop = (e: React.DragEvent, idx: number) => {
-    e.preventDefault();
-    if (draggedIdx === null || draggedIdx === idx) return;
-    reorder(draggedIdx, idx);
-    setDraggedIdx(null);
+  const handleOpenMosaic = async () => {
+    setViewMode('mosaic');
+    
+    if (isFallbackMoments && !isAnalyzing && currentBlock) {
+      const requestedBlockId = currentBlock.id;
+      setIsAnalyzing(true);
+      
+      try {
+        const analyzed = await requestSemanticAnalysis({
+          blockId: currentBlock.id,
+          provider: currentBlock.contentItem.provider as any,
+          providerContentId: currentBlock.contentItem.providerId || currentBlock.contentItem.id,
+          durationSec: currentBlock.durationSec,
+          title: currentBlock.contentItem.title
+        });
+        
+        // Race condition protection
+        if (currentBlockIdRef.current !== requestedBlockId) {
+          return;
+        }
+
+        if (analyzed && analyzed.length === 4) {
+          setMoments(analyzed);
+          setIsFallbackMoments(false);
+        } else {
+          // AI analysis failed or timed out
+          alert("Aviso: El análisis semántico por Inteligencia Artificial falló o demoró demasiado. Se utilizarán tiempos estándar de prueba (fallback) para el mosaico.");
+        }
+      } catch (err) {
+        console.error('Semantic analysis failed', err);
+        alert("Aviso: Error de conexión con el motor de IA. Se utilizarán tiempos estándar de prueba (fallback).");
+      } finally {
+        if (currentBlockIdRef.current === requestedBlockId) {
+          setIsAnalyzing(false);
+        }
+      }
+    }
   };
 
-  const handleRemove = (blockId: string) => {
-    remove(blockId);
-  };
-
-  const handleSurprise = async (afterIndex: number) => {
-    if (isGeneratingSurprise) return;
+  const handleSurprise = async () => {
+    if (isGeneratingSurprise || !activeSignal || !currentBlock) return;
     setIsGeneratingSurprise(true);
     
     try {
-      const surprise = await generateSurpriseBlock(activeSignal, afterIndex);
+      const surprise = await generateSurpriseBlock(activeSignal, currentBlockIndex);
       if (surprise) {
-        insert(surprise, afterIndex);
-        console.log('[TV Telemetry] surprise_inserted');
+        insert(surprise, currentBlockIndex);
       } else {
         alert("No encontramos una buena sorpresa en este momento.");
       }
@@ -69,523 +218,162 @@ export default function ProgramarTV() {
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
-    return `${m}:${s.toString().padStart(2, '0')}`;
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      playerRef.current?.pause();
+      setIsPlaying(false);
+    } else {
+      playerRef.current?.play();
+      setIsPlaying(true);
+    }
   };
 
-  const formatOffset = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h > 0) return `+${h}h ${m}m`;
-    return `+${m}m`;
+  const handleNext = () => next();
+  const handlePrevious = () => previous();
+  const handleDirector = () => {
+    alert("Modo Director activo. Aquí podríamos abrir un modal con controles avanzados.");
   };
 
-  return (
-    <div className="ptv-layout fade-in">
-      {/* ── TOP NAV ── */}
-      <nav className="ptv-topnav">
-        <div className="ptv-logo">
-          Y O U A P P <span style={{ color: '#2563eb', marginLeft: '6px' }}>T V</span>
-        </div>
-        
-        <div className="ptv-nav-links">
-          <button onClick={() => navigate('/')}>Inicio</button>
-          <button className="active">Programar TV</button>
-          <button onClick={() => navigate('/create-signal')}>Mi señal</button>
-        </div>
+  if (!activeSignal) {
+    return <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--you-bg)', minHeight: '100vh' }}>Cargando señal...</div>;
+  }
 
-        <div className="ptv-user-section">
-          <div className="icon-btn"><Bell size={20} /></div>
-          <div className="user-avatar">
-            <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="User" />
-          </div>
-        </div>
-      </nav>
+  // Calculate signal progress for YouRing
+  const totalSeconds = activeSignal.schedule.reduce((acc, b) => acc + b.durationSec, 0);
+  const elapsedSeconds = activeSignal.schedule.slice(0, currentBlockIndex).reduce((acc, b) => acc + b.durationSec, 0);
+  const signalProgress = totalSeconds > 0 ? (elapsedSeconds / totalSeconds) * 100 : 0;
 
-      {/* ── MAIN CONTENT ── */}
-      <div className="ptv-main">
-        {/* SIDEBAR: TV Preview & Actions */}
-        <aside className="ptv-sidebar">
-          
-          <div className="ptv-preview-container">
-            <div className="ptv-preview-screen">
-               {/* Current video thumb */}
-               {activeSignal.schedule[currentBlockIndex] && (
-                 <img src={activeSignal.schedule[currentBlockIndex].contentItem.thumbnailUrl || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=600'} alt="Playing" />
-               )}
-               <div className="ptv-preview-overlay">
-                 <div className="live-badge">EN VIVO</div>
-                 <div className="bottom-info">
-                   <div className="playing-title">
-                     {activeSignal.schedule[currentBlockIndex]?.contentItem.title}
-                   </div>
-                 </div>
-               </div>
-            </div>
-            
-            <button className="ptv-play-btn" onClick={() => navigate(`/live-zapping?signal=${activeSignal.id}`)}>
-              <Play size={20} /> VOLVER A TV
-            </button>
-          </div>
-          
-          <div className="ptv-signal-info">
-            <h2>{activeSignal.name}</h2>
-            <div className="ptv-tags">
-              {activeSignal.prompt.split(',').slice(0,3).map(tag => (
-                <span key={tag} className="tag">{tag.trim()}</span>
-              ))}
-            </div>
-            <div className="ptv-stats">
-              <div className="stat">
-                <Clock size={16} />
-                <span>{Math.round(activeSignal.schedule.reduce((acc, b) => acc + b.durationSec, 0) / 60)} min totales</span>
+  const stage = (
+    <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 'var(--you-radius-lg)', overflow: 'hidden', boxShadow: 'var(--you-shadow)', background: '#000' }}>
+      {currentBlock ? (
+        viewMode === 'mosaic' && moments.length >= 4 ? (
+          <div style={{ position: 'absolute', inset: 0 }}>
+            <MosaicPlayerGrid 
+              moments={moments}
+              currentBlock={currentBlock}
+              onSelect={handleMomentClick}
+              thumbnailFallbackUrl={currentBlock.contentItem.thumbnailUrl}
+            />
+            {isAnalyzing && (
+              <div style={{ position: 'absolute', bottom: '80px', left: '50%', transform: 'translateX(-50%)', zIndex: 9000, background: 'rgba(14, 12, 28, 0.9)', padding: '10px 20px', borderRadius: '24px', color: '#00f0ff', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 20px rgba(0, 240, 255, 0.5)', border: '1px solid rgba(0, 240, 255, 0.3)', backdropFilter: 'blur(8px)' }}>
+                <Sparkles size={16} className="pulse-anim" /> ✦ Analizando video...
               </div>
-              <div className="stat">
-                <Layers size={16} />
-                <span>{activeSignal.schedule.length} bloques</span>
-              </div>
-            </div>
+            )}
+            {/* YouRing over Mosaic */}
+            <YouRing 
+              playing={isPlaying}
+              signalProgress={signalProgress}
+              onPlayPause={handlePlayPause}
+              onNext={handleNext}
+              onPrevious={handlePrevious}
+              onSurprise={handleSurprise}
+              onDirector={handleDirector}
+              isMosaic={true}
+              onExitMosaic={() => setViewMode('single')}
+            />
           </div>
-          
-          <div className="ptv-brain-card">
-            <Sparkles size={20} color="#a855f7" />
-            <div className="brain-text">
-              <h3>Modo Director Activo</h3>
-              <p>Arrastra los bloques para reordenarlos. El tiempo se ajustará automáticamente.</p>
-            </div>
-          </div>
-
-        </aside>
-
-        {/* CENTER CONTENT: Playlist Editor */}
-        <div className="ptv-editor">
-          
-          <div className="editor-header">
-            <div className="eh-left">
-              <h2>Programación</h2>
-              <span className="eh-subtitle">Modificá tu grilla en tiempo real</span>
-            </div>
-          </div>
-
-          <div className="editor-list">
-            {activeSignal.schedule.map((item, index) => {
-              const isPlaying = index === currentBlockIndex;
-              const isPast = index < currentBlockIndex;
-              
-              return (
-                <div 
-                  key={item.id}
-                  className={`editor-item ${isPlaying ? 'playing' : ''} ${isPast ? 'past' : ''} ${draggedIdx === index ? 'dragging' : ''}`}
-                  draggable={!isPast}
-                  onDragStart={(e) => handleDragStart(e, index)}
-                  onDragOver={handleDragOver}
-                  onDrop={(e) => handleDrop(e, index)}
-                >
-                  <div className="ei-drag-handle">
-                    {!isPast ? <GripVertical size={20} color="#64748b" /> : <div style={{width: 20}}></div>}
-                  </div>
-                  
-                  <div className="ei-time">
-                    {formatOffset(item.startOffsetSec)}
-                  </div>
-                  
-                  <div className="ei-thumb">
-                    <ThumbnailWithFallback 
-                      src={item.contentItem.thumbnailUrl || ''} 
-                      candidates={item.contentItem.thumbnailCandidates}
-                      alt={item.contentItem.title} 
-                    />
-                    {isPlaying && <div className="now-playing-overlay"><PlayCircle size={24} color="white" /></div>}
-                  </div>
-                  
-                  <div className="ei-info">
-                    <h3>{item.contentItem.title}</h3>
-                    <div className="ei-meta">
-                      <span className="ei-channel">{item.contentItem.channelName || 'TV'}</span>
-                      <span className="ei-dot">•</span>
-                      <span className="ei-tag">{item.role}</span>
-                      <span className="ei-dot">•</span>
-                      <span className="ei-duration">{formatTime(item.durationSec)}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="ei-actions">
-                    {!isPast && (
-                      <>
-                        <button className="action-btn" title="Sorpréndeme aquí" onClick={() => handleSurprise(index)}>
-                          <Sparkles size={18} />
-                        </button>
-                        <button className="action-btn remove" onClick={() => handleRemove(item.id)}>
-                          <X size={18} />
-                        </button>
-                      </>
-                    )}
-                  </div>
+        ) : (
+          <div style={{ position: 'absolute', inset: 0 }}>
+            <YouAppPlayer
+              ref={playerRef}
+              item={{
+                blockId: currentBlock.id,
+                provider: currentBlock.contentItem.provider as any,
+                providerContentId: currentBlock.contentItem.providerId || currentBlock.contentItem.id,
+                playbackUrl: currentBlock.contentItem.videoUrl,
+                title: currentBlock.contentItem.title,
+                durationSec: currentBlock.durationSec
+              }}
+              onEnded={() => next()}
+              onError={(err) => console.error(err)}
+              onReady={(duration) => {
+                // If duration is unknown, or differs by more than 10 seconds from what we had,
+                // re-calculate moments using the real duration to ensure accuracy.
+                if (
+                  !currentBlock?.durationSec || 
+                  currentBlock.durationSec <= 0 || 
+                  Math.abs(duration - currentBlock.durationSec) > 10
+                ) {
+                  fetchMoments(duration);
+                }
+              }}
+            />
+            {/* Player Overlays */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(to right, rgba(0,0,0,0.4) 0%, transparent 40%), linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 20%, transparent 80%, rgba(0,0,0,0.6) 100%)' }}>
+              <div style={{ position: 'absolute', top: 24, left: 32 }}>
+                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px', fontWeight: 600, letterSpacing: '1px', marginBottom: '8px' }}>AHORA</div>
+                <h2 style={{ color: 'white', fontSize: '32px', fontWeight: 800, margin: 0, textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>{currentBlock.topic}</h2>
+                <div style={{ color: 'white', fontSize: '14px', fontWeight: 500, marginTop: '8px', opacity: 0.9 }}>
+                  {Math.round(currentBlock.durationSec / 60)} MIN • {currentBlock.contentItem.title}
                 </div>
-              )
-            })}
-            
+              </div>
+            </div>
+
+            {/* YouRing Overlay */}
+            <YouRing 
+              playing={isPlaying}
+              signalProgress={signalProgress}
+              onPlayPause={handlePlayPause}
+              onNext={handleNext}
+              onPrevious={handlePrevious}
+              onSurprise={handleSurprise}
+              onDirector={handleDirector}
+              isMosaic={false}
+            />
           </div>
+        )
+      ) : (
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--you-text-secondary)' }}>
+          Cargando señal...
+        </div>
+      )}
+    </div>
+  );
+
+  const intelligence = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <YOU4Cards 
+        moments={moments} 
+        onMomentClick={handleMomentClick}
+        onOpenMosaic={handleOpenMosaic}
+        activeMomentId={activeMomentId}
+        thumbnailFallbackUrl={currentBlock?.contentItem.thumbnail}
+      />
+      <div style={{ display: 'flex', gap: '24px' }}>
+        <div style={{ flex: 1 }}>
+          <ChosenForYou currentBlock={currentBlock} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <DirectorCard 
+            onRemove={() => {
+              if (currentBlock) remove(currentBlock.id);
+            }}
+            onSurprise={handleSurprise}
+          />
         </div>
       </div>
-
-      <style>{`
-        /* Minimalist styles for ProgramarTV */
-        .ptv-layout {
-          background-color: #0f172a;
-          min-height: 100vh;
-          color: white;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        .ptv-topnav {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px 32px;
-          background: #1e293b;
-          border-bottom: 1px solid #334155;
-        }
-
-        .ptv-logo {
-          font-weight: 900;
-          letter-spacing: 2px;
-          font-size: 18px;
-        }
-
-        .ptv-nav-links {
-          display: flex;
-          gap: 24px;
-        }
-
-        .ptv-nav-links button {
-          background: none;
-          border: none;
-          color: #94a3b8;
-          font-size: 15px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: 0.2s;
-        }
-
-        .ptv-nav-links button:hover { color: white; }
-        .ptv-nav-links button.active { color: white; font-weight: 700; border-bottom: 2px solid #2563eb; padding-bottom: 4px; }
-
-        .ptv-user-section {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-
-        .icon-btn { color: #94a3b8; cursor: pointer; }
-        .icon-btn:hover { color: white; }
-
-        .user-avatar img {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          border: 2px solid #334155;
-        }
-
-        .ptv-main {
-          display: flex;
-          flex: 1;
-          overflow: hidden;
-        }
-
-        .ptv-sidebar {
-          width: 380px;
-          background: #1e293b;
-          padding: 32px;
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-          border-right: 1px solid #334155;
-        }
-
-        .ptv-preview-container {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .ptv-preview-screen {
-          width: 100%;
-          aspect-ratio: 16/9;
-          background: #000;
-          border-radius: 12px;
-          overflow: hidden;
-          position: relative;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        .ptv-preview-screen img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          opacity: 0.8;
-        }
-
-        .ptv-preview-overlay {
-          position: absolute;
-          inset: 0;
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 40%, rgba(0,0,0,0.8) 100%);
-        }
-
-        .live-badge {
-          background: #ef4444;
-          color: white;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 10px;
-          font-weight: 800;
-          width: fit-content;
-        }
-
-        .playing-title {
-          font-size: 16px;
-          font-weight: 700;
-          line-height: 1.3;
-        }
-
-        .ptv-play-btn {
-          width: 100%;
-          background: #2563eb;
-          color: white;
-          border: none;
-          padding: 14px;
-          border-radius: 8px;
-          font-size: 15px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-
-        .ptv-play-btn:hover { background: #1d4ed8; }
-
-        .ptv-signal-info h2 {
-          margin: 0 0 12px;
-          font-size: 22px;
-          font-weight: 800;
-        }
-
-        .ptv-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-bottom: 16px;
-        }
-
-        .ptv-tags .tag {
-          background: #334155;
-          padding: 4px 10px;
-          border-radius: 6px;
-          font-size: 12px;
-          color: #cbd5e1;
-          font-weight: 500;
-        }
-
-        .ptv-stats {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-        }
-
-        .stat {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #94a3b8;
-          font-size: 14px;
-        }
-
-        .ptv-brain-card {
-          background: rgba(168, 85, 247, 0.1);
-          border: 1px solid rgba(168, 85, 247, 0.2);
-          border-radius: 12px;
-          padding: 20px;
-          display: flex;
-          gap: 16px;
-          margin-top: auto;
-        }
-
-        .brain-text h3 {
-          margin: 0 0 4px;
-          font-size: 14px;
-          color: #e9d5ff;
-        }
-
-        .brain-text p {
-          margin: 0;
-          font-size: 12px;
-          color: #c084fc;
-          line-height: 1.5;
-        }
-
-        .ptv-editor {
-          flex: 1;
-          padding: 40px;
-          overflow-y: auto;
-        }
-
-        .editor-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: 32px;
-        }
-
-        .eh-left h2 {
-          margin: 0 0 8px;
-          font-size: 28px;
-          font-weight: 800;
-        }
-
-        .eh-subtitle {
-          color: #94a3b8;
-          font-size: 15px;
-        }
-
-        .editor-list {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .editor-item {
-          display: flex;
-          align-items: center;
-          background: #1e293b;
-          border: 1px solid #334155;
-          border-radius: 12px;
-          padding: 16px;
-          gap: 20px;
-          transition: 0.2s;
-        }
-
-        .editor-item.dragging {
-          opacity: 0.5;
-          border: 1px dashed #2563eb;
-        }
-
-        .editor-item.playing {
-          border-color: #2563eb;
-          background: rgba(37, 99, 235, 0.1);
-        }
-        
-        .editor-item.past {
-          opacity: 0.5;
-          filter: grayscale(0.5);
-        }
-
-        .ei-drag-handle {
-          cursor: grab;
-        }
-
-        .ei-time {
-          font-family: monospace;
-          font-size: 16px;
-          font-weight: 700;
-          color: #cbd5e1;
-          width: 80px;
-        }
-
-        .ei-thumb {
-          width: 140px;
-          height: 78px;
-          border-radius: 8px;
-          overflow: hidden;
-          position: relative;
-        }
-
-        .ei-thumb img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .now-playing-overlay {
-          position: absolute;
-          inset: 0;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .ei-info {
-          flex: 1;
-        }
-
-        .ei-info h3 {
-          margin: 0 0 8px;
-          font-size: 16px;
-          font-weight: 600;
-          line-height: 1.3;
-        }
-
-        .ei-meta {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 13px;
-          color: #94a3b8;
-        }
-
-        .ei-tag {
-          background: #334155;
-          padding: 2px 6px;
-          border-radius: 4px;
-          color: white;
-          font-size: 11px;
-          text-transform: uppercase;
-        }
-
-        .ei-actions {
-          display: flex;
-          gap: 8px;
-        }
-
-        .action-btn {
-          background: #0f172a;
-          border: 1px solid #334155;
-          color: #94a3b8;
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: 0.2s;
-        }
-
-        .action-btn:hover {
-          background: #334155;
-          color: white;
-        }
-
-        .action-btn.remove:hover {
-          background: #ef4444;
-          border-color: #ef4444;
-        }
-
-      `}</style>
     </div>
+  );
+
+  return (
+    <>
+      <ProgramarTVLayout
+      stage={stage}
+      intelligence={intelligence}
+      timeline={<SignalTimeline schedule={activeSignal.schedule} currentIndex={currentBlockIndex} onReorder={reorder} />}
+      actions={<PlayerActionBar />}
+      status={<SignalStatusBar />}
+    />
+    <style>{`
+      @keyframes pulse {
+        0% { opacity: 0.5; }
+        50% { opacity: 1; text-shadow: 0 0 10px #00f0ff; }
+        100% { opacity: 0.5; }
+      }
+      .pulse-anim {
+        animation: pulse 1.5s infinite ease-in-out;
+      }
+    `}</style>
+    </>
   );
 }

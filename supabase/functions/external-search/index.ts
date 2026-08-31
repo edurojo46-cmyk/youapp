@@ -254,10 +254,14 @@ export default {
           `&key=${apiKey}`
         ].join('');
 
+        console.log(`[YouTube API] Request started for query: "${query}"`);
         const res = await fetch(searchUrl, { signal: AbortSignal.timeout(8000) });
+
+        console.log(`[YouTube API] HTTP Status: ${res.status}`);
 
         if (!res.ok) {
           const errBody = await res.text();
+          console.error(`[YouTube API] Error Code: ${res.status}`, errBody);
           // Log el error en quota_events para auditoría
           await logEvent(supabase, {
             requestId: decision.requestId,
@@ -274,6 +278,9 @@ export default {
         const data = await res.json();
         const latencyMs = Date.now() - startTime;
         const items = (data.items || []).map(normalizeYouTubeResult);
+        
+        console.log(`[YouTube API] Items count: ${items.length}`);
+        console.log(`[YouTube API] Quota reserved: true, Quota committed: true`);
 
         // Actualizar evento con resultados reales
         await supabase
@@ -312,10 +319,15 @@ export default {
         return new Response(JSON.stringify({
           items,
           quota: {
+            radarPlanned: true,
+            quotaReserved: true,
+            requestExecuted: true,
+            httpStatus: res.status,
+            itemsCount: items.length,
+            quotaConsumed: true,
             authorized: true,
             requestId: decision.requestId,
             opportunityScore: decision.opportunityScore,
-            budgetRemaining: decision.budgetRemaining - 1,
           }
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

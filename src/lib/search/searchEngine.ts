@@ -33,6 +33,7 @@ export interface ExecuteSearchOptions {
     originalPrompt?: string;
     intentHint?: IntentType;
     needsDocumentary?: boolean;
+    entities?: any[];
   };
   excludeProviders?: string[];
   forceProviders?: string[];
@@ -297,6 +298,8 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
               routerDecisionsOut, // We overwrite the decisions to record fallback usage
               routingMode: options?.routingMode || 'shadow', 
               utilitySource: options?.utilitySource,
+              excludeProviders: [...(options?.excludeProviders || []), ...activatedProviders],
+              forceProviders: options?.forceProviders,
               fallbackOptions: { isFallback: true, activatedProviders }
             }
           );
@@ -319,6 +322,24 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
         }
       }
     }
+    
+    // ── DEV ENVIRONMENT ABSOLUTE FALLBACK (MOCK) ─────────────────────────
+    // Política deny-by-default: los mocks solo se permiten si se explicita.
+    const allowDevMocks = import.meta.env.VITE_ALLOW_DEV_MOCKS === "true";
+    if (candidates.length === 0 && allowDevMocks) {
+      console.warn('⚠️ [Dev Fallback] 0 candidates found. Injecting Mock Data to prevent crash.');
+      try {
+        const { mockAdapter } = await import('./providers/adapters/mockAdapter');
+        let mockCandidates = await mockAdapter.search(query);
+        mockCandidates = normalizeItems(mockCandidates);
+        mockCandidates = calculateBaseRanking(mockCandidates, query, intentData);
+        mockCandidates = calculateQualityScore(mockCandidates);
+        candidates = mockCandidates;
+      } catch (err) {
+        console.error('Failed to inject mock candidates:', err);
+      }
+    }
+    // ──────────────────────────────────────────────────────────────────────
     
     // Save to Cache
     await saveCatalogItems(candidates);
@@ -343,10 +364,17 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   let top20ForRerank = applyPersonalization([...candidates]);
   top20ForRerank = applyIntentFit(top20ForRerank, query, intentData);
   
+  // Boost Radar items since they are fetched explicitly for the query
   if (complexity === 'conceptual' || complexity === 'complex') {
     top20ForRerank = await applySemanticScoring(query, top20ForRerank);
   }
   
+  top20ForRerank.forEach(c => {
+     if (c.retrievalSource === 'radar') {
+         c.relevanceScore = Math.max(c.relevanceScore || 0, 50);
+     }
+  });
+
   // Enforce Relevance Floor (Eligibility Gate)
   const qualified = top20ForRerank.filter(c => {
     const isQual = (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40;

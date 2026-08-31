@@ -11,6 +11,7 @@ export default function CreateSignal() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
+  const [errorState, setErrorState] = useState<string | null>(null);
 
   const SUGGESTIONS = [
     'Historia', 'Ciencia', 'Noticias', 'Música', 'Deportes', 'Tecnología', 'Sorpréndeme ✨'
@@ -21,13 +22,14 @@ export default function CreateSignal() {
     
     // Clear old state before starting
     clearDraftSignals();
+    setErrorState(null);
     
     setIsGenerating(true);
     setGenerationStep(0);
     
     // Simulate generation steps for UX
     const stepInterval = setInterval(() => {
-      setGenerationStep(prev => prev + 1);
+      setGenerationStep(prev => prev < 2 ? prev + 1 : 2);
     }, 1500);
 
     try {
@@ -57,7 +59,8 @@ export default function CreateSignal() {
     } catch (err) {
       clearInterval(stepInterval);
       setIsGenerating(false);
-      alert("Hubo un error armando tu TV. Intentalo de nuevo.");
+      const errorMessage = err instanceof Error ? err.message : "Error desconocido";
+      setErrorState(`No pudimos armar tu programación. Parece que no se encontró suficiente contenido sobre esto o falló la conexión con la base de datos (${errorMessage}). Por favor, intentá con otro tema o verificá tu conexión.`);
       console.error(err);
     }
   };
@@ -183,6 +186,12 @@ export default function CreateSignal() {
           >
             CREAR MI SEÑAL
           </button>
+          
+          {errorState && (
+            <div style={{ marginTop: 24, padding: 16, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: 12, color: '#fca5a5', fontSize: 14, textAlign: 'center' }} className="fade-in">
+              {errorState}
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ textAlign: 'center', maxWidth: 400 }} className="fade-in">

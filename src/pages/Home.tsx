@@ -1,32 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, Tv, Grid, Radio, Plus, Play, Brain, BarChart2, Bookmark,
   SplitSquareHorizontal, Film, GraduationCap, List, PlaySquare, Star, User, Calendar, Mic, Settings,
-  SkipBack, Pause, SkipForward, Maximize
+  SkipBack, Pause, SkipForward, Maximize, Bell, Sparkles, ChevronRight, ChevronLeft, MonitorPlay, Video, Music, Heart, Clock
 } from 'lucide-react';
-import AddVideoModal from '../components/AddVideoModal';
-import { INITIAL_SCHEDULE } from './CreateSignal';
+import { YOUTUBE_VIDEO_POOLS } from '../lib/youtube';
+import { UNIVERSAL_CATALOG } from '../lib/universalChannels';
+import { useStore } from '../store/useStore';
 
 const HUD_ITEMS = [
-  { id: 'inicio', icon: Maximize, label: 'CUADRADO', sub: 'Cambiar formato del video.', color: '#60a5fa', action: 'toggleSquare', route: '/' },
-  { id: 'algoritmo', icon: Brain, label: 'MI ALGORITMO', sub: 'Personalizá cómo te recomienda.', color: '#c084fc', route: '/my-algorithm' },
-  { id: 'tendencias', icon: BarChart2, label: 'TENDENCIAS', sub: 'Lo más relevante ahora.', color: '#f59e0b', route: '/trending' },
-  { id: 'momentos', icon: Bookmark, label: 'MOMENTOS', sub: 'Guardá y reviví lo mejor.', color: '#fcd34d', route: '/moments' },
-  { id: 'you4', icon: Grid, label: 'YOU4', sub: 'Cuatro perspectivas. Un mismo tema.', color: '#4ade80', route: '/quad' },
-  { id: 'comparar', icon: SplitSquareHorizontal, label: 'COMPARAR', sub: 'Varios videos en paralelo.', color: '#22d3ee', route: '/compare' },
-  { id: 'director', icon: Film, label: 'YOU DIRECTOR', sub: 'IA que crea tu experiencia.', color: '#818cf8', route: '/director' },
-  { id: 'aprender', icon: GraduationCap, label: 'APRENDER', sub: 'Rutas de aprendizaje por nivel.', color: '#d946ef', route: '/learn' },
-  { id: 'listas', icon: List, label: 'LISTAS', sub: 'Tus listas y colecciones.', color: '#f472b6', route: '/my-lists' },
-  { id: 'ia', icon: Brain, label: 'IA ASISTENTE', sub: 'Tu guía inteligente en YouApp.', color: '#3b82f6', route: '/assistant' },
-  { id: 'canales', icon: PlaySquare, label: 'CANALES', sub: 'Canales temáticos 24/7.', color: '#06b6d4', route: '/channels' },
-  { id: 'curadores', icon: Star, label: 'CURADORES', sub: 'Las mejores selecciones temáticas.', color: '#10b981', route: '/curators' },
-  { id: 'creadores', icon: User, label: 'CREADORES', sub: 'Seguí, descubrí y apoyá creadores.', color: '#fbbf24', route: '/creators' },
-  { id: 'envivo', icon: Radio, label: 'EN VIVO', sub: 'En vivo y próximos eventos.', color: '#ef4444', route: '/live' },
-  { id: 'programacion', icon: Calendar, label: 'PROGRAMACIÓN', sub: 'Organizá tu TV por día y hora.', color: '#f43f5e', route: '/program' },
-  { id: 'misenal', icon: Tv, label: 'MI SEÑAL', sub: 'Tu programación personalizada.', color: '#ec4899', route: '/create-signal' },
-  { id: 'youselect', icon: Star, label: 'YOU SELECT', sub: 'Los 20 mejores sobre cualquier tema.', color: '#a855f7', route: '/select' },
-  { id: 'buscar', icon: Search, label: 'BUSCAR', sub: 'Encontrá los mejores videos con IA.', color: '#0ea5e9', route: '/search' }
+  { id: 'agrandar', icon: Maximize, label: 'Agrandar', route: '/programartv' },
+  { id: 'buscar', icon: Search, label: 'Buscar', route: '/search' },
+  { id: 'misenal', icon: Bookmark, label: 'Mi Señal', route: '/create-signal' },
+  { id: 'programacion', icon: Calendar, label: 'Programación', route: '/program' },
+  { id: 'envivo', icon: Radio, label: 'En Vivo', route: '/live' },
+  { id: 'algoritmo', icon: Brain, label: 'Mi Algoritmo', route: '/my-algorithm' },
+  { id: 'remote', icon: Tv, label: 'You Remote', route: '/remote' },
+  { id: 'listas', icon: List, label: 'Listas', route: '/my-lists' },
+  { id: 'momentos', icon: Clock, label: 'Momentos', route: '/moments' },
+  { id: 'favoritos', icon: Heart, label: 'Favoritos', route: '/favorites' },
 ];
 
 function HomeIcon(props: any) {
@@ -40,1129 +33,1014 @@ function HomeIcon(props: any) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const [showAddModal, setShowAddModal] = useState(false);
+  const { user } = useStore();
+  
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [isPlayingInOrb, setIsPlayingInOrb] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [realProgress, setRealProgress] = useState(0);
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [isSquare, setIsSquare] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const controlsTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const mediaRef = useRef<HTMLAudioElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseMove = () => {
-    if (!isSquare) return;
-    setShowControls(true);
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(() => {
-      setShowControls(false);
-    }, 1000);
-  };
-
-  const videoSources = [
-    "/background.mp4",
-    "/video2.mp4",
-    "/video3.mp4"
-  ];
-  const videoThumbnails = [
-    "https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?w=800&q=80",
-    "https://images.unsplash.com/photo-1573164713988-8665fc963095?w=800&q=80",
-    "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=800&q=80"
-  ];
-
-  // Hacer la barra de progreso "real" (gira con el tiempo) y manejar la barra espaciadora
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      const now = new Date();
-      // Simulamos que el progreso es el porcentaje de los segundos del minuto actual (da una vuelta cada minuto)
-      const secProgress = now.getSeconds() / 60;
-      setRealProgress(secProgress);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  React.useEffect(() => {
-    if (videoRef.current) {
-      if (isPaused) {
-        videoRef.current.pause();
-      } else {
-        videoRef.current.play().catch(()=>{});
-      }
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      const scrollAmount = clientWidth * 0.8;
+      scrollRef.current.scrollTo({
+        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
+        behavior: 'smooth'
+      });
     }
-  }, [isPaused, currentVideoIndex]);
-
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault(); // Evitar que la página haga scroll
-        if (isPlayingInOrb) {
-          setIsPaused(prev => !prev);
-        } else {
-          setIsPlayingInOrb(true);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlayingInOrb]);
-
-  const handleNextVideo = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setCurrentVideoIndex((prev) => (prev + 1) % videoSources.length);
   };
 
-  const handlePrevVideo = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    setCurrentVideoIndex((prev) => (prev - 1 + videoSources.length) % videoSources.length);
+  // Video properties for Nature theme
+  const audioSource = ""; // Eliminado para evitar 403 y conflictos de AbortError cruzado
+  const videoSource = "https://assets.mixkit.co/videos/preview/mixkit-beautiful-mountain-landscape-with-a-river-4235-large.mp4"; // Bright Mountain Video
+
+  const handlePlay = () => {
+    setIsPlaying(true);
+    if (audioSource && mediaRef.current) {
+      mediaRef.current.play().catch(e => console.warn("Audio autoplay blocked:", e));
+    }
   };
 
-  const currentSignalSlot = INITIAL_SCHEDULE[currentVideoIndex % INITIAL_SCHEDULE.length];
-  const radius = 280; // Radio del círculo
+  const handleTimeUpdate = () => {
+    if (mediaRef.current) {
+      const p = (mediaRef.current.currentTime / mediaRef.current.duration) * 100;
+      setProgress(isNaN(p) ? 0 : p);
+    }
+  };
 
   return (
-    <div className="hud-home-container">
-      {/* ── TOP BAR ── */}
-      <header className="hud-topbar">
-        <div className="hud-logo">
-          <h1>YouApp <span>TV</span></h1>
-          <p>TU MUNDO EN UN SOLO CÍRCULO</p>
+    <div className="home-layout">
+      {/* ── TOP NAV ── */}
+      <nav className="home-navbar">
+        <div className="logo-area">
+          <span className="logo-you">Y O U</span>
+          <span className="logo-app">A P P</span>
+          <span className="logo-tv">T V</span>
         </div>
         
-        <div className="hud-search">
-          <Search size={18} className="search-icon" />
-          <input type="text" placeholder="¿Qué querés ver?" />
-          <Mic size={18} className="mic-icon" />
+        <div className="nav-links">
+          <button className="nav-link active" onClick={() => navigate('/')}>Inicio</button>
+          <button className="nav-link" onClick={() => navigate('/search')}>Explorar</button>
+          <button className="nav-link" onClick={() => navigate('/live')}>En Vivo</button>
+          <button className="nav-link" onClick={() => navigate('/my-algorithm')}>Mi Señal</button>
         </div>
 
-        <div className="hud-top-actions">
-          <div className="hud-you-select-toggle">
-            <Star size={14} className="star-icon" />
-            <div className="toggle-text">
-              <span>YOU SELECT</span>
-              <small>Solo lo mejor</small>
-            </div>
-            <div className="toggle-switch active"></div>
-          </div>
-          
-          <button 
-            className="hud-add-video-btn" 
-            style={{ background: 'var(--neon-purple)' }}
-            onClick={() => navigate('/lab/search')}
-          >
-            <Star size={16} fill="currentColor" /> LAB
+        <div className="user-area">
+          <button className="icon-btn">
+            <Bell size={20} />
           </button>
-          
-          <button className="hud-add-video-btn" onClick={() => setShowAddModal(true)}>
-            <Plus size={16} /> AGREGAR VIDEO
-          </button>
-          
-          <div className="hud-user">
-            <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Edu" />
-            <div className="user-text">
-              <span>Hola, Edu</span>
-              <small>Tu TV. Tus reglas.</small>
-            </div>
-          </div>
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} alt="Profile" className="avatar" />
+          ) : (
+            <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Profile" className="avatar" />
+          )}
         </div>
-      </header>
+      </nav>
 
-      {/* ── DIAL CENTRAL ── */}
-      <main 
-        className={`hud-main-dial ${isSquare ? 'you-frame-active' : ''}`}
-        onMouseMove={handleMouseMove}
-        onClick={handleMouseMove}
-        onTouchStart={handleMouseMove}
-        onMouseLeave={() => isSquare && setShowControls(false)}
-      >
-        <div className={`dial-wrapper ${isSquare ? 'square-mode' : ''}`}>
-          {/* Fondo Espacial Central con Video */}
-          <div className="dial-center-orb">
-            <div className="orb-bg">
-              <video 
-                key={currentVideoIndex} // Fuerza recarga al cambiar de canal
-                src={videoSources[currentVideoIndex]}
-                poster={videoThumbnails[currentVideoIndex]}
-                className="orb-bg-video"
-                autoPlay
-                muted={!isPlayingInOrb}
-                loop
-                playsInline
-                ref={videoRef}
-              />
-            </div>
+      {/* ── SEARCH BAR ── */}
+      <div className="home-search-container">
+        <div className="search-input-wrapper">
+          <Search size={20} className="search-icon" />
+          <input 
+            type="text" 
+            placeholder="¿Qué querés ver hoy?" 
+            className="search-input"
+          />
+          <button className="btn-ai-search" onClick={() => navigate('/search')}>
+            <Sparkles size={16} /> Buscar con IA
+          </button>
+        </div>
+      </div>
+
+      {/* ── MAIN MIDDLE SECTION ── */}
+      <div className="home-middle-section">
+        
+        <div className="left-welcome" style={{ visibility: 'hidden' }}>
+          {/* Espaciador para mantener el aro centrado */}
+        </div>
+
+        {/* ── DIAL (ARO) ── */}
+        <div className="center-dial">
+          <div className="dial-wrapper">
             
-            {!isPlayingInOrb && (
-              <div className="orb-content">
-                <button className="orb-play-btn" onClick={() => {
-                  setIsPlayingInOrb(true);
-                  if (videoRef.current) {
-                    videoRef.current.muted = false;
-                    videoRef.current.play().catch(()=>{});
-                  }
-                }}>
-                  <Play size={48} fill="currentColor" />
-                </button>
-                <div className="orb-info">
-                  <h3>{currentSignalSlot.video.title}</h3>
-                  <p>{currentSignalSlot.video.channel.toUpperCase()} · {currentSignalSlot.video.duration}</p>
-                  <div className="orb-badges">
-                    <span>4K</span>
-                    <span>HDR</span>
-                  </div>
-                  
-                  <div className="orb-media-controls">
-                    <button onClick={handlePrevVideo}><SkipBack size={20} fill="currentColor" /></button>
-                    <button onClick={(e) => { e.stopPropagation(); setIsPaused(!isPaused); }}>
-                      {isPaused ? <Play size={28} fill="currentColor" /> : <Pause size={28} fill="currentColor" />}
-                    </button>
-                    <button onClick={handleNextVideo}><SkipForward size={20} fill="currentColor" /></button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Circular Progress Ring (Estilo YOU RING) */}
-          <div className="circular-progress-container" style={{ '--progress': realProgress } as React.CSSProperties}>
-            <svg width="610" height="610" viewBox="0 0 610 610" className="progress-svg">
-              <defs>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
-                  <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
-                </filter>
-              </defs>
-              {/* Pista de fondo */}
-              <circle cx="305" cy="305" r="295" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
-              {/* Barra de progreso luminosa */}
-              <circle 
-                cx="305" cy="305" r="295" 
-                fill="none" stroke="#0ea5e9" strokeWidth="3"
-                strokeLinecap="round"
-                filter="url(#glow)"
-                className="progress-arc"
-              />
-            </svg>
-            <div className="progress-dot-wrapper">
-              <div className="progress-dot" />
-            </div>
-            
-            {/* Tiempos */}
-            <div className="progress-text left-text">{currentSignalSlot.timeStart}</div>
-            <div className="progress-text right-text">{currentSignalSlot.timeEnd}</div>
-          </div>
-
-          {/* El Aro Físico (Thick Ring) y sus divisiones */}
-          <div className="dial-physical-ring">
-            {/* Divisiones (Spokes) matemáticas para el aro */}
-            {Array.from({ length: 18 }).map((_, i) => {
-              // Desfasamos 10 grados para que los iconos caigan justo en medio
-              const angleDeg = -70 + (i * 20);
-              return (
-                <div 
-                  key={`spoke-${i}`} 
-                  className="dial-spoke"
-                  style={{ transform: `rotate(${angleDeg}deg)` }}
-                />
-              );
-            })}
-          </div>
-
-          {/* Anillo de Segmentos y Textos */}
-          <div className="dial-ring" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: isSquare ? 'none' : 'block' }}>
-            {HUD_ITEMS.map((item, index) => {
-              // 18 items -> 20 grados cada uno
-              const angleDeg = -90 + (index * 20);
-              const angleRad = (angleDeg * Math.PI) / 180;
-              
-              // Radio exacto del centro del borde físico (337px)
-              const ringRadius = 337;
-              // Usamos coordenadas relativas al centro 0,0 para que CSS calc() maneje el centro
-              const x = Math.cos(angleRad) * ringRadius;
-              const y = Math.sin(angleRad) * ringRadius;
-
-              return (
-                <React.Fragment key={item.id}>
-                  {/* Icono interactivo asentado sobre el aro */}
+            {/* El Aro Físico (10 segmentos) */}
+            <div className="dial-physical-ring">
+              {Array.from({ length: 10 }).map((_, i) => {
+                // 10 segmentos = 36 grados cada uno
+                // Desfasamos la mitad (18 grados) para que el ícono quede en el centro del segmento
+                const angleDeg = -90 + 18 + (i * 36);
+                return (
                   <div 
+                    key={`spoke-${i}`} 
+                    className="dial-spoke"
+                    style={{ transform: `rotate(${angleDeg}deg)` }}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Anillo de Íconos y Textos */}
+            <div className="dial-ring">
+              {HUD_ITEMS.map((item, index) => {
+                // 10 items -> 36 grados cada uno
+                const angleDeg = -90 + (index * 36);
+                const angleRad = (angleDeg * Math.PI) / 180;
+                
+                // Radio exacto del centro del borde físico
+                const ringRadius = 315;
+                const x = Math.cos(angleRad) * ringRadius;
+                const y = Math.sin(angleRad) * ringRadius;
+
+                // Adjust rotation for text so it faces up or reads nicely
+                // For simplicity, we just keep icons upright
+                return (
+                  <div 
+                    key={item.id}
                     className="dial-segment-icon"
                     style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
                   >
                     <button 
-                      className={`dial-icon-btn ${hoveredItem === item.id ? 'active' : ''}`}
-                      style={{ '--clr': item.color } as React.CSSProperties}
+                      className={`dial-icon-btn ${hoveredItem === item.id || item.id === 'inicio' ? 'active' : ''}`}
                       onMouseEnter={() => setHoveredItem(item.id)}
                       onMouseLeave={() => setHoveredItem(null)}
-                      onClick={() => {
-                        if (item.action === 'toggleSquare') {
-                          setIsSquare(!isSquare);
-                        } else {
-                          navigate(item.route);
-                        }
-                      }}
+                      onClick={() => navigate(item.route)}
                     >
-                      <item.icon size={32} />
-                      {/* Opcional: mostrar un tooltip al pasar el cursor si no hay texto fijo */}
-                      <span className="dial-tooltip">{item.label}</span>
+                      <item.icon size={28} strokeWidth={1.5} className="ring-icon" />
+                      <span className="ring-label">{item.label}</span>
                     </button>
                   </div>
-                </React.Fragment>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
 
-          {/* ── YOU FRAME UI ── */}
-          {isSquare && (
-            <div className={`you-frame-ui ${showControls ? '' : 'hidden'}`}>
-              <div className="frame-border-glow"></div>
+            {/* Center Orb (Video Player) */}
+            <div className="dial-center-orb">
+              <svg className="circular-progress-svg" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="49" className="progress-bg" />
+                <circle 
+                  cx="50" cy="50" r="49" 
+                  className="progress-value" 
+                  style={{ strokeDashoffset: 307.8 - (307.8 * progress) / 100 }} 
+                />
+              </svg>
               
-              {/* Top Controls */}
-              <div className="frame-top-bar">
-                <div className="frame-stat">
-                  <div className="stat-circle"></div>
-                  <div className="stat-text">
-                    <span>PROGRESO</span>
-                    <small>15:00 / 30:00</small>
-                  </div>
-                </div>
+              <div className="orb-bg">
+                <iframe 
+                  className="orb-bg-video"
+                  src="https://www.youtube.com/embed/BHACKCNDMW8?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&loop=1&playlist=BHACKCNDMW8"
+                  allow="autoplay; encrypted-media"
+                  style={{ width: '150%', height: '150%', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', border: 'none' }}
+                />
+                <audio 
+                  ref={mediaRef}
+                  src={audioSource}
+                  onTimeUpdate={handleTimeUpdate}
+                  onEnded={() => setIsPlaying(false)}
+                />
                 
-                <button className="frame-minimize-btn" onClick={() => setIsSquare(false)}>
-                  <div className="minimize-dots"></div>
-                </button>
-
-                <div className="frame-stat right">
-                  <div className="stat-text">
-                    <span>PRÓXIMO</span>
-                    <small>19:30</small>
+                <div className={`orb-overlay ${isPlaying ? 'playing' : ''}`}>
+                  {!isPlaying ? (
+                    <button className="orb-play-btn" onClick={handlePlay}>
+                      <Play size={40} fill="currentColor" />
+                    </button>
+                  ) : (
+                    <button className="orb-play-btn hidden" onClick={() => {
+                      mediaRef.current?.pause();
+                      setIsPlaying(false);
+                    }}>
+                      <Pause size={40} fill="currentColor" />
+                    </button>
+                  )}
+                  
+                  <div className="orb-info-bottom">
+                    <h3>Naturaleza Relajante</h3>
+                    <p>En Vivo · Sonidos Ambientales</p>
+                    <div className="progress-times">
+                      <span>{Math.floor((mediaRef.current?.currentTime || 0) / 60)}:{(Math.floor(mediaRef.current?.currentTime || 0) % 60).toString().padStart(2, '0')}</span>
+                      <span>{Math.floor((mediaRef.current?.duration || 0) / 60) || 0}:{(Math.floor(mediaRef.current?.duration || 0) % 60 || 0).toString().padStart(2, '0')}</span>
+                    </div>
                   </div>
-                  <div className="stat-icon"><SkipForward size={16} /></div>
                 </div>
               </div>
-
-              {/* Glowing Progress Line at the bottom of the frame */}
-              <div className="frame-progress-line">
-                 <div className="frame-progress-fill" style={{ width: `${realProgress * 100}%` }}></div>
-              </div>
-
-              {/* Left Edge Controls */}
-              <div className="frame-edge left">
-                <button className="frame-edge-btn" onClick={() => navigate('/moments')}>
-                  <Bookmark size={20} color="#fcd34d" />
-                  <span>MOMENTO</span>
-                </button>
-                <button className="frame-edge-btn" onClick={() => navigate('/search')}>
-                  <Search size={20} color="#0ea5e9" />
-                  <span>BUSCAR</span>
-                </button>
-              </div>
-
-              {/* Right Edge Controls */}
-              <div className="frame-edge right">
-                <button className="frame-edge-btn" onClick={() => navigate('/live')}>
-                  <Radio size={20} color="#ef4444" />
-                  <span>EN VIVO</span>
-                </button>
-                <button className="frame-edge-btn" onClick={() => navigate('/my-lists')}>
-                  <List size={20} color="#f472b6" />
-                  <span>LISTAS</span>
-                </button>
-              </div>
-
-              {/* Bottom Edge Controls */}
-              <div className="frame-edge bottom">
-                <button className="frame-edge-btn horizontal" onClick={() => navigate('/my-algorithm')}>
-                  <Brain size={20} color="#c084fc" />
-                  <span>MI ALGORITMO</span>
-                </button>
-                <button className="frame-edge-btn horizontal" onClick={() => {}}>
-                  <Settings size={20} color="#22d3ee" />
-                  <span>YOU REMOTE</span>
-                </button>
-              </div>
             </div>
-          )}
 
-          {/* ── YOU FRAME SIDEBAR (YouTube Style) ── */}
-          {isSquare && (
-            <div className="you-frame-sidebar">
-              <h3>En tu Señal</h3>
-              <div className="sidebar-video-list">
-                {INITIAL_SCHEDULE.map((slot, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`sidebar-video-item ${currentVideoIndex === idx ? 'playing' : ''}`}
-                    onClick={() => {
-                       setCurrentVideoIndex(idx);
-                       setIsPlayingInOrb(true);
-                       if (videoRef.current) {
-                          videoRef.current.muted = false;
-                          videoRef.current.play().catch(()=>{});
-                       }
-                    }}
-                  >
-                    <div className="sidebar-thumb-wrapper">
-                      <img src={videoThumbnails[idx % videoThumbnails.length]} alt={slot.video.title} />
-                      <span className="sidebar-duration">{slot.video.duration}</span>
-                      {currentVideoIndex === idx && (
-                        <div className="sidebar-playing-overlay">
-                           <div className="playing-bars">
-                              <span/><span/><span/>
-                           </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="sidebar-video-info">
-                      <h4>{slot.video.title}</h4>
-                      <p>{slot.video.channel}</p>
-                      <small>{slot.timeStart} - {slot.timeEnd}</small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* ── BOTTOM CONTROL BAR ── */}
-      <footer className="hud-bottom-bar">
-        <div className="hud-pill-btn">
-          <div className="pill-icon"><Star size={20} /></div>
-          <div className="pill-text">
-            <span>MI DÍA</span>
-            <small>Tu resumen inteligente.</small>
           </div>
         </div>
 
-        <button className="hud-mega-play" onClick={() => navigate('/live')}>
-          <Play size={28} fill="currentColor" />
-          <span>PLAY MI TV</span>
-        </button>
-
-        <div className="hud-pill-btn right">
-          <div className="pill-text">
-            <span>TU TIEMPO VALE</span>
-            <small>Mejores videos. Mejores personas.</small>
-          </div>
-          <div className="pill-icon"><Settings size={20} /></div>
+        <div className="right-card-area">
+           <div className="floating-ia-card">
+              <div className="card-header">
+                <Sparkles size={20} className="text-blue" /> 
+                <div className="card-titles">
+                   <h4>IA</h4>
+                   <span>Tu asistente inteligente</span>
+                </div>
+              </div>
+              <p>Descubrí contenido<br/>hecho para vos.</p>
+              <ChevronRight size={20} className="card-chevron" />
+           </div>
         </div>
-      </footer>
 
-      {showAddModal && <AddVideoModal onClose={() => setShowAddModal(false)} />}
+      </div>
 
-      {/* ── STYLES ── */}
+      {/* ── BOTTOM GRID SECTION ── */}
+      <div className="home-bottom-grid">
+        {/* Col 1 */}
+        <div className="grid-col col-segui-viendo">
+          <div className="section-header">
+            <h3>Seguí viendo</h3>
+            <ChevronRight size={16} className="text-gray" />
+          </div>
+          {(() => {
+            const vid = YOUTUBE_VIDEO_POOLS.ciencia[1] || YOUTUBE_VIDEO_POOLS.musica[4];
+            return (
+              <div 
+                className="video-card-unified" 
+                onClick={() => navigate(`/ai-summary/yt-${vid.id}`)}
+              >
+                <div className="img-wrapper">
+                  <img src={`https://i.ytimg.com/vi/${vid.id}/hqdefault.jpg`} alt={vid.title} />
+                  <span className="time-badge">{vid.duration}</span>
+                </div>
+                <div className="card-info">
+                  <h4>{vid.title}</h4>
+                  <p>{vid.author} · {vid.time}</p>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* Col 2 */}
+        <div className="grid-col col-tu-programacion">
+          <div className="section-header">
+            <h3>Tu programación</h3>
+            <ChevronRight size={16} className="text-gray" />
+          </div>
+          <div className="program-list-card">
+            {UNIVERSAL_CATALOG.slice(0, 3).map((ch, idx) => (
+              <div 
+                key={ch.id} 
+                className={`program-item ${idx === 0 ? 'active' : ''}`}
+                onClick={() => navigate(`/ai-summary/yt-${ch.videoId || ch.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
+                 {idx === 0 && <div className="active-indicator"></div>}
+                 <span className="prog-time">{idx === 0 ? 'AHORA' : `${21 + idx}:00`}</span>
+                 <div className="prog-info">
+                   <h4 style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '150px' }}>{ch.currentVideoTitle || ch.name}</h4>
+                   <p>{ch.name}</p>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Col 3 */}
+        <div className="grid-col col-explorar">
+          <div className="section-header">
+            <h3>Explorar</h3>
+            <ChevronRight size={16} className="text-gray" />
+          </div>
+          <div className="explore-list">
+             <button className="explore-btn" onClick={() => navigate('/search')}><Film size={18} className="text-gray"/> <span>Películas</span> <ChevronRight size={16} className="arrow"/></button>
+             <button className="explore-btn" onClick={() => navigate('/search')}><MonitorPlay size={18} className="text-gray"/> <span>Series</span> <ChevronRight size={16} className="arrow"/></button>
+             <button className="explore-btn" onClick={() => navigate('/search')}><Video size={18} className="text-gray"/> <span>Documentales</span> <ChevronRight size={16} className="arrow"/></button>
+             <button className="explore-btn" onClick={() => navigate('/search')}><Music size={18} className="text-gray"/> <span>Música</span> <ChevronRight size={16} className="arrow"/></button>
+          </div>
+        </div>
+
+        {/* Col 4 */}
+        <div className="grid-col col-recomendado">
+          <div className="section-header">
+            <h3>Recomendado para vos</h3>
+            <div className="carousel-controls" style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => scroll('left')} 
+                style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+              >
+                <ChevronLeft size={16} className="text-gray" />
+              </button>
+              <button 
+                onClick={() => scroll('right')}
+                style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+              >
+                <ChevronRight size={16} className="text-gray" />
+              </button>
+            </div>
+          </div>
+          <div className="horizontal-scroll" ref={scrollRef} style={{ scrollBehavior: 'smooth' }}>
+            {Object.values(YOUTUBE_VIDEO_POOLS).flat().slice(0, 15).map((vid, i) => (
+              <div 
+                key={`${vid.id}-${i}`} 
+                className="video-card-unified"
+                onClick={() => navigate(`/ai-summary/yt-${vid.id}`)}
+                style={{ minWidth: '180px' }}
+              >
+                 <div className="img-wrapper">
+                   <img src={`https://i.ytimg.com/vi/${vid.id}/hqdefault.jpg`} alt={vid.title} />
+                   <span className="time-badge">{vid.duration}</span>
+                 </div>
+                 <div className="card-info">
+                    <h4>{vid.title}</h4>
+                    <p>{vid.author}</p>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <style>{`
-        .hud-home-container {
+        /* NEUMORPHIC / SKEUOMORPHIC LIGHT THEME */
+        .home-layout {
           min-height: 100vh;
-          background: #020202; /* Deep black space background */
-          color: white;
+          background: #e2e8f0; /* Subtle light gray-blue background */
+          background: radial-gradient(circle at 50% -20%, #f1f5f9, #cbd5e1);
+          color: #1e293b;
           display: flex;
           flex-direction: column;
-          font-family: 'Inter', system-ui, sans-serif;
-          overflow: hidden;
-          position: relative;
+          font-family: 'Outfit', system-ui, sans-serif;
+          overflow-x: hidden;
+          padding-bottom: 40px;
         }
 
-        /* Subtle background glow */
-        .hud-home-container::before {
-          content: '';
-          position: absolute;
-          top: 50%; left: 50%;
-          transform: translate(-50%, -50%);
-          width: 800px; height: 800px;
-          background: radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(0,0,0,0) 70%);
-          z-index: 0;
-          pointer-events: none;
-        }
-
-        /* ── TOPBAR ── */
-        .hud-topbar {
+        /* ── NAVBAR ── */
+        .home-navbar {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 24px 40px;
-          z-index: 10;
+          padding: 24px 48px;
         }
 
-        .hud-logo h1 {
-          margin: 0;
-          font-size: 1.8rem;
+        .logo-area {
+          display: flex;
+          gap: 6px;
+          font-size: 1.2rem;
           font-weight: 800;
-          letter-spacing: 1px;
+          letter-spacing: 4px;
         }
-        .hud-logo h1 span { color: #3b82f6; }
-        .hud-logo p {
-          margin: 4px 0 0 0;
-          font-size: 0.7rem;
-          letter-spacing: 2px;
-          color: #9ca3af;
+        .logo-tv { color: #3b82f6; }
+
+        .nav-links {
+          display: flex;
+          gap: 32px;
+        }
+        .nav-link {
+          background: none;
+          border: none;
+          color: #64748b;
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          position: relative;
+          padding-bottom: 8px;
+        }
+        .nav-link.active {
+          color: #0f172a;
+          font-weight: 600;
+        }
+        .nav-link.active::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 10%;
+          width: 80%;
+          height: 3px;
+          background: #3b82f6;
+          border-radius: 3px;
         }
 
-        .hud-search {
+        .user-area {
           display: flex;
           align-items: center;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 30px;
-          padding: 10px 20px;
-          width: 400px;
-          backdrop-filter: blur(10px);
+          gap: 20px;
         }
-        .hud-search input {
+        .icon-btn {
+          background: none;
+          border: none;
+          color: #64748b;
+          cursor: pointer;
+          display: flex;
+        }
+        .avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        /* ── SEARCH BAR ── */
+        .home-search-container {
+          display: flex;
+          justify-content: center;
+          margin-top: 10px;
+          margin-bottom: 20px;
+        }
+        .search-input-wrapper {
+          display: flex;
+          align-items: center;
+          background: #f8fafc;
+          border-radius: 99px;
+          padding: 6px 6px 6px 20px;
+          width: 600px;
+          box-shadow: 
+            inset 0 2px 4px rgba(0,0,0,0.02),
+            0 4px 10px rgba(0,0,0,0.05),
+            0 0 0 1px rgba(255,255,255,0.7);
+        }
+        .search-icon { color: #94a3b8; }
+        .search-input {
+          flex: 1;
           background: transparent;
           border: none;
-          color: white;
-          width: 100%;
           padding: 0 16px;
+          font-size: 1rem;
+          color: #334155;
           outline: none;
-          font-size: 0.95rem;
         }
-        .hud-search .search-icon, .hud-search .mic-icon { color: #9ca3af; }
-
-        .hud-top-actions {
-          display: flex;
-          align-items: center;
-          gap: 24px;
-        }
-
-        .hud-you-select-toggle {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          background: rgba(255,255,255,0.05);
-          padding: 8px 16px;
-          border-radius: 30px;
-        }
-        .hud-you-select-toggle .star-icon { color: #60a5fa; }
-        .toggle-text span { display: block; font-size: 0.8rem; font-weight: 700; }
-        .toggle-text small { color: #9ca3af; font-size: 0.65rem; }
-        .toggle-switch {
-          width: 36px; height: 20px;
-          background: rgba(255,255,255,0.2);
-          border-radius: 20px;
-          position: relative;
-        }
-        .toggle-switch.active { background: #3b82f6; }
-        .toggle-switch::after {
-          content: ''; position: absolute;
-          width: 16px; height: 16px;
-          background: white; border-radius: 50%;
-          top: 2px; left: 2px;
-          transition: 0.3s;
-        }
-        .toggle-switch.active::after { transform: translateX(16px); }
-
-        .hud-add-video-btn {
+        .search-input::placeholder { color: #94a3b8; }
+        
+        .btn-ai-search {
           display: flex;
           align-items: center;
           gap: 8px;
-          background: rgba(139, 92, 246, 0.2);
-          color: #c4b5fd;
-          border: 1px solid rgba(139, 92, 246, 0.5);
+          background: #eff6ff;
+          color: #2563eb;
+          border: 1px solid #bfdbfe;
+          border-radius: 99px;
           padding: 10px 20px;
-          border-radius: 30px;
-          font-weight: 700;
-          font-size: 0.85rem;
+          font-weight: 600;
+          font-size: 0.9rem;
           cursor: pointer;
-          transition: all 0.3s;
+          transition: all 0.2s;
         }
-        .hud-add-video-btn:hover {
-          background: rgba(139, 92, 246, 0.4);
-          transform: translateY(-2px);
-          box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+        .btn-ai-search:hover {
+          background: #dbeafe;
         }
 
-        .hud-user {
+        /* ── MIDDLE SECTION ── */
+        .home-middle-section {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0 60px;
+          margin-top: 20px;
+          position: relative;
+        }
+
+        .left-welcome {
+          flex: 1;
+          max-width: 300px;
+          z-index: 10;
+        }
+        .left-welcome h2 {
+          font-size: 2.5rem;
+          font-weight: 700;
+          line-height: 1.1;
+          color: #334155;
+          margin-bottom: 16px;
+        }
+        .left-welcome p {
+          font-size: 1.1rem;
+          color: #64748b;
+          line-height: 1.4;
+          margin-bottom: 24px;
+        }
+        .btn-outline-ai {
           display: flex;
           align-items: center;
           gap: 12px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          padding: 12px 24px;
+          border-radius: 99px;
+          font-weight: 600;
+          color: #475569;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          transition: all 0.2s;
         }
-        .hud-user img {
-          width: 40px; height: 40px;
-          border-radius: 50%;
-          border: 2px solid rgba(255,255,255,0.2);
+        .btn-outline-ai:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.08);
         }
-        .user-text span { display: block; font-weight: 600; font-size: 0.9rem; }
-        .user-text small { color: #9ca3af; font-size: 0.75rem; }
+        .text-blue { color: #3b82f6; }
 
-        /* ── DIAL CENTRAL ── */
-        .hud-main-dial {
-          flex: 1;
+        /* ── CENTER DIAL (SKEUOMORPHIC RING) ── */
+        .center-dial {
+          flex: 2;
           display: flex;
-          align-items: center;
           justify-content: center;
-          z-index: 10;
+          align-items: center;
+          position: relative;
         }
 
         .dial-wrapper {
           position: relative;
-          width: 900px;
-          height: 900px;
+          width: 680px;
+          height: 680px;
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0; /* Evitar que se comprima y se vuelva ovalado */
         }
 
-        /* Center Orb */
-        .dial-center-orb {
-          width: 580px;
-          height: 580px;
-          left: calc(50% - 290px);
-          top: calc(50% - 290px);
-          border-radius: 50%;
-          position: absolute;
-          z-index: 5;
-          padding: 10px;
-          background: conic-gradient(from 0deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.02) 100%);
-          box-shadow: inset 0 0 40px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.3);
-          animation: spin-slow 20s linear infinite;
-        }
-        .dial-center-orb > * { animation: spin-slow-reverse 20s linear infinite; }
-
-        .dial-wrapper.square-mode .dial-center-orb {
-          border-radius: 24px;
-          animation: none;
-          transform: rotate(0deg);
-        }
-        .dial-wrapper.square-mode .dial-center-orb > * {
-          animation: none;
-          transform: rotate(0deg);
-        }
-        .dial-wrapper.square-mode .orb-bg {
-          border-radius: 16px;
-        }
-
-        @keyframes spin-slow { 100% { transform: rotate(360deg); } }
-        @keyframes spin-slow-reverse { 100% { transform: rotate(-360deg); } }
-
-        .orb-bg {
-          position: absolute;
-          inset: 15px;
-          border-radius: 50%;
-          background: transparent;
-          opacity: 1;
-          z-index: 1;
-          border: 2px solid rgba(255,255,255,0.1);
-          overflow: hidden;
-        }
-        .orb-bg-video {
-          position: absolute;
-          top: 0; left: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          pointer-events: none;
-          opacity: 1;
-          z-index: 1;
-        }
-
-        .orb-content {
-          position: absolute;
-          inset: 10px;
-          z-index: 2;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-        }
-
-        .orb-play-btn {
-          width: 80px; height: 80px;
-          border-radius: 50%;
-          background: rgba(255,255,255,0.1);
-          border: 1px solid rgba(255,255,255,0.3);
-          color: white;
-          display: flex; align-items: center; justify-content: center;
-          backdrop-filter: blur(5px);
-          cursor: pointer;
-          transition: all 0.3s;
-          margin-bottom: 40px;
-        }
-        .orb-play-btn:hover {
-          background: rgba(255,255,255,0.2);
-          transform: scale(1.1);
-          box-shadow: 0 0 30px rgba(255,255,255,0.3);
-        }
-
-        .orb-info h3 { margin: 0 0 8px 0; font-size: 1rem; font-weight: 700; letter-spacing: 1px; text-shadow: 0 2px 10px rgba(0,0,0,0.8); text-transform: uppercase; }
-        .orb-info p { margin: 0 0 12px 0; font-size: 0.75rem; color: #cbd5e1; letter-spacing: 1px; }
-        .orb-badges { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
-        .orb-badges span {
-          background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-          padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 600;
-        }
-
-        .orb-media-controls {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 32px;
-          margin-top: 10px;
-        }
-        .orb-media-controls button {
-          background: none; border: none; color: white; cursor: pointer;
-          opacity: 0.8; transition: all 0.2s;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .orb-media-controls button:hover { opacity: 1; transform: scale(1.1); text-shadow: 0 0 10px white; }
-
-        /* CIRCULAR PROGRESS RING */
-        .circular-progress-container {
-          position: absolute;
-          width: 610px;
-          height: 610px;
-          left: calc(50% - 305px);
-          top: calc(50% - 305px);
-          z-index: 6;
-          pointer-events: none;
-          --progress: 0.42;
-          --circumference: 1853.53;
-          --offset: calc(var(--circumference) * (1 - var(--progress)));
-        }
-        .progress-svg {
-          transform: rotate(180deg);
-        }
-        .progress-arc {
-          stroke-dasharray: var(--circumference);
-          stroke-dashoffset: var(--offset);
-          transition: stroke-dashoffset 0.5s ease;
-        }
-        .progress-dot-wrapper {
-          position: absolute;
-          width: 590px; height: 590px;
-          top: 10px; left: 10px;
-          border-radius: 50%;
-          transform: rotate(calc(180deg + (var(--progress) * 360deg)));
-        }
-        .progress-dot {
-          position: absolute;
-          top: calc(50% - 4px);
-          right: -4px;
-          width: 8px; height: 8px;
-          border-radius: 50%;
-          background: #0ea5e9;
-          box-shadow: 0 0 8px #0ea5e9, 0 0 15px #0ea5e9, 0 0 20px #fff;
-        }
-        .progress-text {
-          position: absolute;
-          top: 50%;
-          transform: translateY(-50%);
-          font-size: 0.8rem;
-          font-weight: 700;
-          color: #9ca3af;
-          letter-spacing: 1px;
-        }
-        .progress-text.left-text { left: -45px; }
-        .progress-text.right-text { right: -45px; }
-
-
-        /* El Aro Físico */
+        /* The Metallic Outer Ring */
         .dial-physical-ring {
           position: absolute;
           box-sizing: border-box;
-          width: 720px;
-          height: 720px;
-          left: calc(50% - 360px);
-          top: calc(50% - 360px);
+          width: 100%;
+          height: 100%;
           border-radius: 50%;
-          border: 46px solid rgba(15, 15, 20, 0.7);
-          box-shadow: inset 0 0 30px rgba(0,0,0,0.8), 0 0 30px rgba(0,0,0,0.6);
-          backdrop-filter: blur(10px);
+          border: 50px solid #f8fafc;
+          box-shadow: 
+            inset 0 4px 10px rgba(0,0,0,0.05), /* Inner shadow */
+            inset 0 -4px 10px rgba(255,255,255,1), /* Inner highlight */
+            0 20px 40px rgba(0,0,0,0.1), /* Outer drop shadow */
+            0 0 0 1px rgba(255,255,255,0.8), /* Outer crisp edge */
+            inset 0 0 0 1px rgba(226,232,240,0.8); /* Inner crisp edge */
+          background: linear-gradient(135deg, #ffffff, #e2e8f0); /* Metallic gradient */
           z-index: 1;
         }
-        .dial-physical-ring::before {
-          content: ''; position: absolute; inset: -46px;
-          border-radius: 50%; border: 3px solid rgba(255,255,255,0.3);
-        }
-        .dial-physical-ring::after {
-          content: ''; position: absolute; inset: 0px;
-          border-radius: 50%; border: 3px solid rgba(255,255,255,0.25);
-        }
+
+        /* The dividers for the 10 segments */
         .dial-spoke {
           position: absolute;
-          top: -46px; left: calc(50% - 3px);
-          width: 6px; height: 46px;
-          background: rgba(255,255,255,0.4);
-          transform-origin: center 360px;
+          top: -50px; left: calc(50% - 1px);
+          width: 2px; height: 50px;
+          background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(0,0,0,0.05));
+          transform-origin: center 340px; /* 680/2 */
           z-index: 2;
         }
 
-        /* Ring Items */
+        /* The icons placed on the ring */
         .dial-ring {
           position: absolute;
-          width: 100%; height: 100%;
+          width: 100%;
+          height: 100%;
+          z-index: 5;
           pointer-events: none;
-          z-index: 10;
         }
 
         .dial-segment-icon {
           position: absolute;
           transform: translate(-50%, -50%);
           pointer-events: auto;
-          width: 80px; height: 80px;
         }
 
         .dial-icon-btn {
-          width: 100%; height: 100%;
-          border-radius: 12px;
           background: transparent;
           border: none;
-          color: var(--clr);
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
           cursor: pointer;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          color: #64748b;
+          transition: all 0.2s;
+        }
+        .dial-icon-btn .ring-icon {
+          color: #475569;
+          transition: color 0.2s;
+        }
+        .dial-icon-btn .ring-label {
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: #64748b;
+          opacity: 0.8;
+          white-space: nowrap;
+        }
+        
+        .dial-icon-btn.active .ring-icon,
+        .dial-icon-btn:hover .ring-icon {
+          color: #3b82f6; /* Blue accent */
+        }
+        .dial-icon-btn.active .ring-label,
+        .dial-icon-btn:hover .ring-label {
+          color: #3b82f6;
+          opacity: 1;
+        }
+        .dial-icon-btn.active {
           position: relative;
         }
-
-        .dial-icon-btn:hover, .dial-icon-btn.active {
-          transform: scale(1.1);
-          text-shadow: 0 0 10px var(--clr);
-        }
-        /* Glow indicator underneath */
-        .dial-icon-btn:hover::after, .dial-icon-btn.active::after {
-          content: ''; position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%);
-          width: 20px; height: 3px; background: var(--clr); border-radius: 2px;
-          box-shadow: 0 0 10px var(--clr);
-        }
-
-        .dial-tooltip {
+        /* Top blue dash for active "Inicio" like in mockup */
+        .dial-icon-btn.active::before {
+          content: '';
           position: absolute;
-          top: -30px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          letter-spacing: 1px;
-          white-space: nowrap;
+          top: -15px;
+          width: 20px;
+          height: 4px;
+          background: #3b82f6;
+          border-radius: 4px;
+        }
+
+        /* Center Video Player (Orb) */
+        .dial-center-orb {
+          width: 560px;
+          height: 560px;
+          border-radius: 50%;
+          position: absolute;
+          z-index: 10;
+          background: #0f172a;
+          box-shadow: 
+            0 10px 30px rgba(0,0,0,0.3),
+            inset 0 2px 5px rgba(255,255,255,0.2);
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .orb-bg {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          overflow: hidden;
+        }
+        .orb-bg-video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        
+        /* Dark gradient overlay at bottom for text readability */
+        .orb-overlay {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.15) 100%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
           color: white;
-          background: rgba(0,0,0,0.8);
-          padding: 4px 12px;
-          border-radius: 12px;
-          border: 1px solid var(--clr);
-          box-shadow: 0 0 10px var(--clr);
+          transition: background 0.3s;
+          border-radius: 50%; /* Keep overlay constrained to circle */
+        }
+        .orb-overlay.playing {
+          background: linear-gradient(to bottom, rgba(0,0,0,0) 80%, rgba(0,0,0,0.8) 100%);
+        }
+
+        .orb-play-btn {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          background: rgba(255,255,255,0.15);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(255,255,255,0.3);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s;
+          margin-bottom: 20px;
+        }
+        .orb-play-btn:hover {
+          background: rgba(255,255,255,0.25);
+          transform: scale(1.05);
+        }
+        .orb-play-btn.hidden {
           opacity: 0;
-          pointer-events: none;
-          transform: translateY(10px);
-          transition: all 0.3s;
         }
-
-        .dial-icon-btn:hover .dial-tooltip {
+        .orb-play-btn.hidden:hover {
           opacity: 1;
-          transform: translateY(0);
         }
 
+        .orb-info-bottom {
+          position: absolute;
+          bottom: 40px;
+          width: 70%;
+          text-align: center;
+        }
+        .orb-info-bottom h3 {
+          font-size: 1.3rem;
+          font-weight: 700;
+          margin: 0;
+        }
+        .orb-info-bottom p {
+          font-size: 0.85rem;
+          color: #cbd5e1;
+          margin: 4px 0 16px 0;
+        }
 
-        /* ── BOTTOM BAR ── */
-        .hud-bottom-bar {
+        .progress-times {
           display: flex;
           justify-content: center;
-          align-items: center;
-          gap: 60px;
-          padding: 30px;
+          gap: 12px;
+          font-size: 0.75rem;
+          color: #94a3b8;
+          font-variant-numeric: tabular-nums;
+        }
+
+        /* Circular Progress SVG */
+        .circular-progress-svg {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          transform: rotate(-90deg);
+          z-index: 15;
+          pointer-events: none;
+        }
+        .progress-bg {
+          fill: none;
+          stroke: transparent;
+        }
+        .progress-value {
+          fill: none;
+          stroke: #3b82f6;
+          vector-effect: non-scaling-stroke;
+          stroke-width: 3px;
+          stroke-linecap: round;
+          stroke-dasharray: 308;
+          transition: stroke-dashoffset 0.1s linear;
+        }
+
+
+        /* ── RIGHT FLOATING CARD ── */
+        .right-card-area {
+          flex: 1;
+          max-width: 300px;
+          display: flex;
+          justify-content: flex-end;
           z-index: 10;
         }
-
-        .hud-pill-btn {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid rgba(255,255,255,0.1);
-          padding: 8px 24px 8px 8px;
-          border-radius: 40px;
-          backdrop-filter: blur(10px);
-          cursor: pointer;
-          transition: 0.2s;
-        }
-        .hud-pill-btn.right {
-          padding: 8px 8px 8px 24px;
-        }
-        .hud-pill-btn:hover { background: rgba(255,255,255,0.08); }
-        
-        .pill-icon {
-          width: 48px; height: 48px; border-radius: 50%;
-          background: rgba(255,255,255,0.1);
-          display: flex; align-items: center; justify-content: center;
-        }
-        .pill-text span { display: block; font-size: 0.85rem; font-weight: 700; letter-spacing: 1px; }
-        .pill-text small { color: #9ca3af; font-size: 0.7rem; }
-        .hud-pill-btn.right .pill-text { text-align: right; }
-
-        .hud-mega-play {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          width: 120px; height: 120px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, rgba(10,10,15,0.8) 100%);
-          border: 2px solid #3b82f6;
-          color: white;
-          box-shadow: 0 0 30px rgba(59,130,246,0.4), inset 0 0 20px rgba(59,130,246,0.2);
-          cursor: pointer;
-          transition: all 0.3s;
-        }
-        .hud-mega-play:hover {
-          transform: translateY(-5px) scale(1.05);
-          box-shadow: 0 10px 40px rgba(59,130,246,0.6), inset 0 0 30px rgba(59,130,246,0.4);
-          background: radial-gradient(circle, rgba(59,130,246,0.4) 0%, rgba(10,10,15,0.9) 100%);
-        }
-        .hud-mega-play span {
-          font-size: 0.8rem; font-weight: 800; letter-spacing: 1px;
-        }
-
-        /* ── YOU FRAME MODE OVERRIDES ── */
-        .hud-main-dial.you-frame-active {
-          position: fixed;
-          top: 0; left: 0; width: 100vw; height: 100vh;
-          background: #020202; /* Fondo negro sólido para tapar todo */
-          z-index: 9999;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .hud-main-dial.you-frame-active .dial-wrapper {
-          width: 95vw;
-          height: 85vh;
-          transform: none !important;
-          margin-top: 0 !important;
-          display: grid;
-          grid-template-columns: 1fr 380px;
-          grid-template-rows: 100%;
-          gap: 24px;
-        }
-        .hud-main-dial.you-frame-active .dial-center-orb {
-          grid-area: 1 / 1;
-          width: 100% !important;
-          height: 100% !important;
-          left: 0 !important;
-          top: 0 !important;
-          border-radius: 24px !important;
-          padding: 0 !important; /* Quitar padding para que coincida exacto con el borde glow */
-          background: none;
-          box-shadow: none;
-          position: relative !important;
-        }
-        .hud-main-dial.you-frame-active .orb-bg {
-          border-radius: 16px !important;
-        }
-        .hud-main-dial.you-frame-active .circular-progress-container,
-        .hud-main-dial.you-frame-active .dial-physical-ring,
-        .hud-main-dial.you-frame-active .dial-ring {
-          display: none !important;
-        }
-        
-        /* YOU FRAME UI (Overlaps with video in Grid) */
-        .you-frame-ui {
-          grid-area: 1 / 1;
-          position: relative; pointer-events: none; z-index: 20;
-          display: flex; flex-direction: column;
-          width: 100%; height: 100%;
-          transition: opacity 0.5s ease;
-          opacity: 1;
-        }
-        .you-frame-ui.hidden {
-          opacity: 0;
-        }
-        .frame-border-glow {
-          position: absolute; inset: 0;
-          border-radius: 24px;
-          border: 2px solid transparent;
-          background: linear-gradient(135deg, rgba(59,130,246,0.6), rgba(168,85,247,0.6)) border-box;
-          -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-          box-shadow: 0 0 30px rgba(168,85,247,0.2), inset 0 0 20px rgba(59,130,246,0.2);
-        }
-
-        .frame-top-bar {
-          position: absolute; top: -1px; left: 0; right: 0;
-          display: flex; justify-content: space-between; align-items: flex-start;
-          padding: 0 40px; pointer-events: none;
-        }
-        
-        .frame-stat {
-          display: flex; align-items: center; gap: 10px;
-          background: #0a0a0f; padding: 10px 20px;
-          border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;
-          border: 1px solid rgba(255,255,255,0.1);
-          border-top: none;
-        }
-        .stat-circle { width: 14px; height: 14px; border: 2px solid #0ea5e9; border-radius: 50%; box-shadow: 0 0 8px #0ea5e9; }
-        .stat-text { display: flex; flex-direction: column; }
-        .stat-text span { font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.5); letter-spacing: 1px; }
-        .stat-text small { font-size: 0.8rem; font-weight: 600; color: white; }
-        .frame-stat.right { border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
-        
-        .frame-progress-line {
-          position: absolute; bottom: 0; left: 0; right: 0;
-          height: 4px; background: rgba(255,255,255,0.15);
-          border-bottom-left-radius: 24px; border-bottom-right-radius: 24px;
-          overflow: hidden; pointer-events: none; z-index: 30;
-        }
-        .frame-progress-fill {
-          height: 100%; background: #0ea5e9;
-          box-shadow: 0 0 10px #0ea5e9;
-          transition: width 1s linear;
-        }
-
-        .frame-minimize-btn {
-          pointer-events: auto;
-          background: #0a0a0f; padding: 15px 30px;
-          border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
-          border: 1px solid rgba(255,255,255,0.1); border-top: none;
-          cursor: pointer; transition: 0.2s;
-        }
-        .frame-minimize-btn:hover { background: rgba(255,255,255,0.05); }
-        .minimize-dots {
-          display: flex; gap: 4px;
-        }
-        .minimize-dots::before, .minimize-dots::after, .minimize-dots {
-          content: ''; width: 4px; height: 4px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 5px #22d3ee;
-        }
-
-        .frame-edge {
-          position: absolute; pointer-events: auto;
-          display: flex; background: #0a0a0f;
-          border: 1px solid rgba(255,255,255,0.1);
-        }
-        .frame-edge.left {
-          top: 50%; left: -1px; transform: translateY(-50%);
-          flex-direction: column; border-left: none;
-          border-top-right-radius: 16px; border-bottom-right-radius: 16px;
-        }
-        .frame-edge.right {
-          top: 50%; right: -1px; transform: translateY(-50%);
-          flex-direction: column; border-right: none;
-          border-top-left-radius: 16px; border-bottom-left-radius: 16px;
-        }
-        .frame-edge.bottom {
-          bottom: -1px; left: 50%; transform: translateX(-50%);
-          border-bottom: none; border-top-left-radius: 16px; border-top-right-radius: 16px;
-        }
-
-        .frame-edge-btn {
-          background: transparent; border: none; color: white;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 20px 15px; gap: 8px; cursor: pointer; transition: 0.2s;
-        }
-        .frame-edge-btn:hover { background: rgba(255,255,255,0.05); }
-        .frame-edge-btn span { font-size: 0.6rem; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.7); }
-        .frame-edge-btn.horizontal { flex-direction: row; padding: 15px 30px; }
-
-
-        /* ── YOU FRAME SIDEBAR ── */
-        .you-frame-sidebar {
-          grid-area: 1 / 2;
-          background: rgba(10,10,15,0.7);
-          border-radius: 24px;
-          border: 1px solid rgba(255,255,255,0.1);
+        .floating-ia-card {
+          background: #ffffff;
+          border-radius: 20px;
           padding: 24px;
+          width: 260px;
+          box-shadow: 
+            0 10px 30px rgba(0,0,0,0.04),
+            0 1px 3px rgba(0,0,0,0.02);
+          border: 1px solid rgba(255,255,255,0.8);
+          position: relative;
+        }
+        .card-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .card-titles h4 {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
+        .card-titles span {
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+        .floating-ia-card p {
+          font-size: 0.95rem;
+          line-height: 1.4;
+          margin: 0;
+        }
+        .card-chevron {
+          position: absolute;
+          bottom: 24px;
+          right: 24px;
+          color: #94a3b8;
+        }
+
+        /* ── BOTTOM GRID ── */
+        .home-bottom-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 24px;
+          padding: 40px 60px;
+          margin-top: 40px;
+          width: 100%;
+        }
+        .grid-col {
+          min-width: 0;
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          overflow-y: auto;
         }
-        .you-frame-sidebar h3 {
-          font-size: 1.2rem; margin: 0; color: white;
-          padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        .sidebar-video-list {
-          display: flex; flex-direction: column; gap: 16px;
-        }
-        .sidebar-video-item {
-          display: flex; gap: 12px; cursor: pointer; padding: 8px; border-radius: 12px;
-          transition: 0.2s;
-        }
-        .sidebar-video-item:hover {
-          background: rgba(255,255,255,0.05);
-        }
-        .sidebar-video-item.playing {
-          background: rgba(59,130,246,0.1);
-          border: 1px solid rgba(59,130,246,0.3);
-        }
-        .sidebar-thumb-wrapper {
-          position: relative; width: 120px; height: 68px; flex-shrink: 0;
-          border-radius: 8px; overflow: hidden;
-        }
-        .sidebar-thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-        .sidebar-duration {
-          position: absolute; bottom: 4px; right: 4px;
-          background: rgba(0,0,0,0.8); color: white; font-size: 0.6rem;
-          padding: 2px 4px; border-radius: 4px; font-weight: 600;
-        }
-        .sidebar-playing-overlay {
-          position: absolute; inset: 0; background: rgba(0,0,0,0.5);
-          display: flex; align-items: center; justify-content: center;
-        }
-        .playing-bars { display: flex; gap: 3px; align-items: flex-end; height: 16px; }
-        .playing-bars span {
-          width: 3px; background: #0ea5e9; border-radius: 2px;
-          animation: bounce 1s infinite ease-in-out;
-        }
-        .playing-bars span:nth-child(1) { height: 60%; animation-delay: 0s; }
-        .playing-bars span:nth-child(2) { height: 100%; animation-delay: 0.2s; }
-        .playing-bars span:nth-child(3) { height: 80%; animation-delay: 0.4s; }
         
-        .sidebar-video-info { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
-        .sidebar-video-info h4 { font-size: 0.85rem; margin: 0; color: white; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-        .sidebar-video-info p { font-size: 0.75rem; margin: 0; color: #9ca3af; }
-        .sidebar-video-info small { font-size: 0.65rem; color: #3b82f6; }
+        .section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+        }
+        .section-header h3 {
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: #475569;
+          margin: 0;
+        }
+        .text-gray { color: #94a3b8; }
 
-        @keyframes bounce {
-          0%, 100% { transform: scaleY(0.5); }
-          50% { transform: scaleY(1); }
+        /* Unified Video Card */
+        .video-card-unified {
+          background: #ffffff;
+          border-radius: 12px;
+          overflow: hidden;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+          border: 1px solid rgba(255,255,255,0.8);
+          cursor: pointer;
+          transition: transform 0.2s, box-shadow 0.2s;
+          display: flex;
+          flex-direction: column;
+        }
+        .video-card-unified:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+        .video-card-unified .img-wrapper {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+        }
+        .video-card-unified .img-wrapper img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .video-card-unified .time-badge {
+          position: absolute;
+          bottom: 8px; right: 8px;
+          background: rgba(0,0,0,0.8);
+          color: white;
+          padding: 4px 6px;
+          border-radius: 6px;
+          font-size: 0.7rem;
+          font-weight: 600;
+        }
+        .video-card-unified .card-info {
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+        }
+        .video-card-unified .card-info h4 {
+          margin: 0 0 4px 0;
+          font-size: 0.95rem;
+          color: #1e293b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .video-card-unified .card-info p {
+          margin: 0;
+          font-size: 0.8rem;
+          color: #64748b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        /* RESPONSIVE SCALING */
-        @media (max-width: 1200px) {
-          .dial-wrapper { transform: scale(0.85); }
-          .hud-topbar { padding: 20px; }
-          .hud-search { width: 300px; }
+        /* Tu Programación */
+        .program-list-card {
+          background: #ffffff;
+          border-radius: 20px;
+          padding: 16px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+          border: 1px solid rgba(255,255,255,0.8);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
         }
-        @media (max-width: 900px) {
-          .dial-wrapper { transform: scale(0.65); }
-          .hud-search { display: none; }
-          .hud-you-select-toggle { display: none; }
-          .hud-bottom-bar { gap: 20px; transform: scale(0.8); }
+        .program-item {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 8px;
+          border-radius: 12px;
+          transition: background 0.2s;
+          position: relative;
+        }
+        .program-item:hover {
+          background: #f8fafc;
+        }
+        .program-item.active {
+          background: #eff6ff;
+        }
+        .active-indicator {
+          position: absolute;
+          left: -4px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 4px;
+          height: 24px;
+          background: #3b82f6;
+          border-radius: 4px;
+        }
+        .prog-time {
+          font-weight: 700;
+          color: #3b82f6;
+          font-size: 0.9rem;
+          min-width: 44px;
+        }
+        .prog-info h4 {
+          margin: 0 0 2px 0;
+          font-size: 0.9rem;
+          color: #1e293b;
+        }
+        .prog-info p {
+          margin: 0;
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+
+        /* Explorar */
+        .explore-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .explore-btn {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          background: #ffffff;
+          border: 1px solid rgba(255,255,255,0.8);
+          padding: 16px 20px;
+          border-radius: 16px;
+          font-size: 0.95rem;
+          font-weight: 500;
+          color: #334155;
+          cursor: pointer;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+          transition: all 0.2s;
+        }
+        .explore-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .explore-btn .arrow {
+          margin-left: auto;
+        }
+
+        /* Recomendado para vos (Horizontal scroll) */
+        .horizontal-scroll {
+          display: flex;
+          gap: 16px;
+          overflow-x: auto;
+          padding-bottom: 20px;
+          scrollbar-width: none;
+        }
+        .horizontal-scroll::-webkit-scrollbar {
+          display: none;
+        }
+
+        /* ── MOBILE RESPONSIVENESS ── */
+        @media (max-width: 768px) {
+          .home-navbar {
+            padding: 16px 20px;
+          }
+          .nav-links {
+            display: none; /* Ocultar links en mobile */
+          }
+          .home-search-container {
+            padding: 0 20px;
+          }
+          .search-input-wrapper {
+            width: 100%;
+          }
+          .home-middle-section {
+            flex-direction: column;
+            padding: 0 20px;
+            gap: 40px;
+          }
+          .left-welcome {
+            max-width: 100%;
+            text-align: center;
+          }
+          .left-welcome .btn-outline-ai {
+            margin: 0 auto;
+          }
           
-          /* YOU FRAME Mobile Layout */
-          .hud-main-dial.you-frame-active .dial-wrapper {
-             grid-template-columns: 1fr;
-             grid-template-rows: auto 1fr;
-             height: 100vh;
-             max-height: 100vh;
-             width: 100vw;
-             border-radius: 0;
+          /* Escalar el aro central dinámicamente según el ancho de la pantalla */
+          .center-dial {
+            width: 100%;
+            overflow: visible;
           }
-          .hud-main-dial.you-frame-active .dial-center-orb {
-             height: 35vh !important;
+          .dial-wrapper {
+            transform: scale(0.48);
+            margin-top: -176px;
+            margin-bottom: -176px;
           }
-          .you-frame-sidebar {
-             grid-area: 2 / 1;
-             border-radius: 24px 24px 0 0;
-             border: none; border-top: 1px solid rgba(255,255,255,0.1);
+
+          .right-card-area {
+            max-width: 100%;
+            justify-content: center;
           }
-        }
-        @media (max-width: 600px) {
-          .hud-topbar { padding: 5px 15px; }
-          .hud-logo h1 { font-size: 1rem; }
-          .hud-logo p { display: none; }
-          .hud-add-video-btn { padding: 6px 12px; }
-          .hud-add-video-btn svg { width: 14px; height: 14px; }
-          .hud-user img { width: 30px; height: 30px; }
-          .hud-user .user-text { display: none; }
-          .hud-main-dial { align-items: flex-start; }
-          .dial-wrapper { 
-            transform: scale(0.54) translateY(80px); 
-            transform-origin: top center; 
-            margin-top: 20px; 
+          
+          .home-bottom-grid {
+            grid-template-columns: 1fr;
+            padding: 20px;
+            gap: 40px;
+            width: 100%;
+            overflow-x: hidden;
           }
-          .hud-bottom-bar { flex-direction: column; gap: 10px; padding: 10px; margin-top: -20px; }
-          .hud-mega-play { width: 80px; height: 80px; }
-          .hud-mega-play span { font-size: 0.6rem; }
-          .hud-add-video-btn span { display: none; }
         }
       `}</style>
     </div>

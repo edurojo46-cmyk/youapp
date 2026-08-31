@@ -41,7 +41,8 @@ export class SupabaseProvider implements SearchProvider {
           provider: v.provider || 'unknown',
           discoveryMethod: 'user-submitted',
           discoveredAt: v.created_at || new Date().toISOString()
-        }
+        },
+        retrievalSource: 'atlas'
       }));
     } catch (e) {
        return [];

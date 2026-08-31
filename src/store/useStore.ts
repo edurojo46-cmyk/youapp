@@ -237,7 +237,15 @@ export const useStore = create<AppState>((set) => {
         if (session?.user) {
           set({ user: { id: session.user.id, email: session.user.email }, loading: false });
         } else {
-          set({ user: null, loading: false });
+          // If no session, create an anonymous guest session
+          supabase.auth.signInAnonymously().then(({ data, error }) => {
+            if (error || !data.user) {
+              console.error('Anonymous sign-in failed:', error);
+              set({ user: null, loading: false });
+            } else {
+              set({ user: { id: data.user.id, email: undefined }, loading: false });
+            }
+          });
         }
       });
       supabase.auth.onAuthStateChange((_event, session) => {

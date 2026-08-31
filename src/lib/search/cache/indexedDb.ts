@@ -33,7 +33,7 @@ interface YouAppDB extends DBSchema {
   };
 }
 
-const DB_NAME = 'youapp-db';
+const DB_NAME = 'youapp-db-v5';
 const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<YouAppDB>> | null = null;

@@ -14,9 +14,18 @@ import EmbedChannel from './pages/EmbedChannel';
 import MobileRemote from './pages/MobileRemote';
 import MyAlgorithm from './pages/MyAlgorithm';
 import CreateSignal from './pages/CreateSignal';
+import ProgramarTV from './pages/ProgramarTV';
 import MyLists from './pages/MyLists';
 import MyMoments from './pages/MyMoments';
 import ShareTarget from './pages/ShareTarget';
+import SeedManager from './pages/SeedManager';
+import RankingTest from './pages/RankingTest';
+import SearchTestLab from './pages/SearchTestLab';
+import PipelineDebugger from './pages/PipelineDebugger';
+import { ProviderIntelligence } from './components/telemetry/ProviderIntelligence';
+import AiSummary from './pages/AiSummary';
+import ControlCenter from './pages/ControlCenter';
+import Player from './pages/Player';
 import { useStore } from './store/useStore';
 
 import DesktopLayout from './components/DesktopLayout';
@@ -81,15 +90,31 @@ function App() {
         <Route path="/search" element={<DashboardRoute><ChannelSearch /></DashboardRoute>} />
         <Route path="/my-algorithm" element={<DashboardRoute><MyAlgorithm /></DashboardRoute>} />
         <Route path="/create-signal" element={<DashboardRoute><CreateSignal /></DashboardRoute>} />
+        {/* Nueva Vista de Programar TV (Mockup idéntico) - Sin DesktopLayout para barra superior limpia */}
+        <Route path="/programartv" element={<ProtectedRoute><ProgramarTV /></ProtectedRoute>} />
         <Route path="/my-lists" element={<DashboardRoute><MyLists /></DashboardRoute>} />
         {/* Nueva Ruta de Momentos */}
         <Route path="/moments" element={<DashboardRoute><MyMoments /></DashboardRoute>} />
         <Route path="/channels-search" element={<DashboardRoute><ChannelSearch /></DashboardRoute>} />
         <Route path="/program" element={<DashboardRoute><SearchAndProgram /></DashboardRoute>} />
+        <Route path="/player" element={<ProtectedRoute><Player /></ProtectedRoute>} />
         <Route path="/trending" element={<DashboardRoute><div style={{padding:'2rem'}}>Tendencias (Próximamente)</div></DashboardRoute>} />
         
         {/* Herramienta de Laboratorio para evaluar el Search Engine */}
         <Route path="/lab/search" element={<DashboardRoute><SearchLab /></DashboardRoute>} />
+        <Route path="/lab/ranking" element={<DashboardRoute><RankingTest /></DashboardRoute>} />
+        <Route path="/lab/search-test" element={<SearchTestLab />} />
+        <Route path="/lab/pipeline" element={<PipelineDebugger />} />
+        <Route path="/lab/intelligence" element={<ProviderIntelligence />} />
+        
+        {/* Herramienta Interna de Ingestión */}
+        <Route path="/seed-manager" element={<DashboardRoute><SeedManager /></DashboardRoute>} />
+        
+        {/* Panel de Control de Cuota / Admin */}
+        <Route path="/admin/control-center" element={<DashboardRoute><ControlCenter /></DashboardRoute>} />
+        
+        {/* Nueva página Resumen IA */}
+        <Route path="/ai-summary/:id" element={<ProtectedRoute><AiSummary /></ProtectedRoute>} />
         
         {/* Ruta para capturar enlaces compartidos */}
         <Route path="/share" element={<ProtectedRoute><ShareTarget /></ProtectedRoute>} />
@@ -97,8 +122,10 @@ function App() {
 
       <style>{`
         .app-layout {
-          min-height: 100vh;
+          height: 100vh;
           width: 100%;
+          overflow-y: auto;
+          overflow-x: hidden;
           background: radial-gradient(circle at 50% 0%, var(--bg-secondary), var(--bg-primary) 70%);
         }
       `}</style>

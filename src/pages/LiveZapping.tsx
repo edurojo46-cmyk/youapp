@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import DynamicLiveZapping from './DynamicLiveZapping';
 
 import { 
   ChevronLeft, Moon, Tv, Star, Volume2, VolumeX, 
@@ -58,6 +59,15 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Route to dynamic TV if signal parameter is present
+  const isDynamicSignal = useMemo(() => {
+    return new URLSearchParams(location.search).has('signal');
+  }, [location.search]);
+
+  if (isDynamicSignal) {
+    return <DynamicLiveZapping />;
+  }
+
   const [allChannels, setAllChannels] = useState<any[]>(() => {
     try {
       const rawPayload = localStorage.getItem('youapp_tune_channel_payload');
@@ -69,7 +79,8 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       }
       const saved = JSON.parse(localStorage.getItem('youapp_saved_custom_channels') || '[]');
       if (Array.isArray(saved) && saved.length > 0) {
-        return [...saved, ...VERIFIED_24_7_LIVE_CHANNELS];
+        const validSaved = saved.filter((c: any) => c && c.videoUrl && !c.videoUrl.includes('background.mp4'));
+        return [...validSaved, ...VERIFIED_24_7_LIVE_CHANNELS];
       }
     } catch {}
     return VERIFIED_24_7_LIVE_CHANNELS;
@@ -241,7 +252,6 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       if (rawPayload) {
         const payload = JSON.parse(rawPayload);
         if (payload && payload.videoUrl) {
-          localStorage.removeItem('youapp_tune_channel_payload');
           setAllChannels(prev => [payload, ...prev.filter(c => c.id !== payload.id && c.videoUrl !== payload.videoUrl)]);
           setFilteredChannels(prev => [payload, ...prev.filter(c => c.id !== payload.id && c.videoUrl !== payload.videoUrl)]);
           setActiveIndex(0);
@@ -434,12 +444,22 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
         const video = currentProg?.videos;
         if (!video) return null;
 
-        const rawId = (video.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '');
+        let videoUrl = video.videoUrl || '';
+        
+        // Intercept broken listType=search URLs from old localStorage cache
+        if (videoUrl.includes('listType=search')) {
+          videoUrl = 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+        }
+        
+        if (!videoUrl || (!videoUrl.includes('.mp4') && !videoUrl.includes('vimeo.com') && !videoUrl.includes('youtube.com/embed'))) {
+          const rawId = (video.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '');
+          videoUrl = `https://www.youtube.com/embed/${rawId}`;
+        }
 
         return {
           ...ch,
           viewerCount: Math.floor(Math.random() * 800) + 120,
-          videoUrl: `https://www.youtube.com/embed/${rawId}`,
+          videoUrl: videoUrl,
           currentVideoTitle: video.title || ch.name || 'Transmisión en vivo 24/7',
           initialOffset: offsetSec,
           programmingList: progs

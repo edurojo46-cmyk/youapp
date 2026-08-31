@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Blind Judge UI</title>
+  <style>
+    body { font-family: sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #1a1a1a; color: #fff; }
+    .card { background: #2a2a2a; border-radius: 8px; padding: 15px; margin-bottom: 20px; display: flex; gap: 15px; }
+    .thumb { width: 160px; height: 90px; background: #444; object-fit: cover; border-radius: 4px; }
+    .info { flex: 1; }
+    h3 { margin: 0 0 10px 0; font-size: 16px; }
+    p { margin: 0 0 5px 0; font-size: 14px; color: #ccc; }
+    .meta { font-size: 12px; color: #888; }
+    .buttons { display: flex; gap: 10px; align-items: center; }
+    button { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-2 { background: #4CAF50; color: white; }
+    .btn-1 { background: #FF9800; color: white; }
+    .btn-0 { background: #F44336; color: white; }
+    .done { background: #444; color: #aaa; text-align: center; padding: 40px; border-radius: 8px; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    #query { font-size: 24px; font-weight: bold; color: #4fc3f7; }
+    .candidate-count { color: #888; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h2>Current Query:</h2>
+      <div id="query">Loading...</div>
+    </div>
+    <div id="progress"></div>
+  </div>
+  
+  <div id="container"></div>
+
+  <script>
+    let pool = [];
+    let judgments = new Set();
+    
+    async function load() {
+      const res = await fetch('/data');
+      const data = await res.json();
+      pool = data.pool;
+      judgments = new Set(data.judgments.map(j => j.queryId + '|' + j.contentKey));
+      render();
+    }
+    
+    async function rate(queryId, contentKey, score) {
+      await fetch('/judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ queryId, contentKey, relevance: score })
+      });
+      judgments.add(queryId + '|' + contentKey);
+      render();
+    }
+
+    function render() {
+      const currentQuery = pool.find(q => {
+        return q.candidates.some(c => !judgments.has(q.queryId + '|' + c.id));
+      });
+      
+      if (!currentQuery) {
+        document.getElementById('query').innerHTML = 'All Done! 🎉';
+        document.getElementById('container').innerHTML = '<div class="done">All queries have been judged. You can close this window.</div>';
+        document.getElementById('progress').innerHTML = '';
+        return;
+      }
+      
+      document.getElementById('query').innerText = '"' + currentQuery.query + '"';
+      
+      const unjudgedCount = currentQuery.candidates.filter(c => !judgments.has(currentQuery.queryId + '|' + c.id)).length;
+      document.getElementById('progress').innerText = unjudgedCount + ' remaining for this query';
+      
+      const container = document.getElementById('container');
+      container.innerHTML = '';
+      
+      currentQuery.candidates.forEach(c => {
+        const isJudged = judgments.has(currentQuery.queryId + '|' + c.id);
+        if (isJudged) return;
+        
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
+          <img src="${c.thumbnail || ''}" class="thumb" onerror="this.style.display='none'" />
+          <div class="info">
+            <h3>${c.title}</h3>
+            <p>${c.description || 'Sin descripción'}</p>
+            <div class="meta">Fecha: ${c.date} | Duración: ${c.duration}</div>
+          </div>
+          <div class="buttons">
+            <button class="btn-2" onclick="rate('${currentQuery.queryId}', '${c.id}', 2)">[2] Relevante</button>
+            <button class="btn-1" onclick="rate('${currentQuery.queryId}', '${c.id}', 1)">[1] Parcial</button>
+            <button class="btn-0" onclick="rate('${currentQuery.queryId}', '${c.id}', 0)">[0] Irrelevante</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+    
+    load();
+  </script>
+</body>
+</html>

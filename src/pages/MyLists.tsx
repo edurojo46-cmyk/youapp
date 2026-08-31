@@ -20,7 +20,10 @@ export default function MyLists() {
   }, []);
 
   const handlePlayChannel = (channel: UniversalChannel) => {
-    setActiveChannel(channel.id);
+    // Escribir el canal completo como payload para que LiveZapping lo sintonice directamente
+    // (solo setActiveChannel no funciona para canales guardados que no están en el catálogo principal)
+    localStorage.setItem('youapp_tune_channel_payload', JSON.stringify(channel));
+    localStorage.setItem('youapp_active_channel_id', channel.id);
     navigate('/live');
   };
 

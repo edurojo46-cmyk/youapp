@@ -4,8 +4,9 @@ import {
   Search, X, Plus, Check, Loader2, ListVideo, Sparkles,
   Clock, TrendingUp, ChevronLeft, Play, LayoutGrid,
   List, Mic, ArrowUpLeft, Trash2, MicOff, SlidersHorizontal,
-  ExternalLink, Eye, Share2, CheckCircle2, Tv, Radio
+  ExternalLink, Eye, Share2, CheckCircle2, Tv, Radio, Brain
 } from 'lucide-react';
+
 import { searchYouTube, fetchPlaylistVideos, extractPlaylistId, fetchYouTubeLiveSuggestions } from '../lib/youtube';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
@@ -230,10 +231,20 @@ export default function SearchAndProgram() {
     return list;
   }, [results, activeFilter, sortBy]);
 
-  // Canal destacado en la cabecera si existe
   const topChannel = useMemo(() => {
     return results.find(r => r.channelInfo)?.channelInfo || null;
   }, [results]);
+
+  const playVideo = (video: any) => {
+    if (video.attributionId) {
+      import('../lib/search/learnOnValue').then(({ recordValueSignal }) => {
+        recordValueSignal({ attributionId: video.attributionId, event: 'clicked', contentId: video.id || video.videoId });
+      });
+      navigate(`/player?id=${video.videoId || video.id}&aid=${video.attributionId}`);
+    } else {
+      navigate(`/player?id=${video.videoId || video.id}`);
+    }
+  };
 
   const handleProgram = (video: any) => {
     setSelectedVideo(video);
@@ -613,10 +624,10 @@ export default function SearchAndProgram() {
                         <div
                           className="sp-thumb-wrap"
                           style={{ backgroundImage: `url(${video.thumbnail})` }}
-                          onClick={() => setPreviewVideo(video)}
+                          onClick={() => playVideo(video)}
                         >
                           <div className="sp-thumb-overlay">
-                            <button className="sp-play-preview" onClick={e => { e.stopPropagation(); setPreviewVideo(video); }}>
+                            <button className="sp-play-preview" onClick={e => { e.stopPropagation(); playVideo(video); }}>
                               <Play size={22} fill="white" />
                             </button>
                           </div>
@@ -635,7 +646,7 @@ export default function SearchAndProgram() {
                             <div className="sp-video-text-content">
                               <h3
                                 className="sp-video-title"
-                                onClick={() => setPreviewVideo(video)}
+                                onClick={() => playVideo(video)}
                                 dangerouslySetInnerHTML={{ __html: video.title }}
                               />
                               <p className="sp-video-meta">
@@ -651,9 +662,22 @@ export default function SearchAndProgram() {
                           <div className="sp-card-actions">
                             <button
                               className="sp-btn-preview-link"
-                              onClick={() => setPreviewVideo(video)}
+                              onClick={() => playVideo(video)}
                             >
                               <Play size={13} fill="currentColor" /> Ver Video
+                            </button>
+                            <button
+                              className="sp-btn-ai-summary"
+                              onClick={() => navigate(`/ai-summary/${video.videoId}`, {
+                                state: {
+                                  title: video.title?.replace(/<[^>]+>/g, '') || '',
+                                  description: video.description || '',
+                                  thumbnail: video.thumbnail || '',
+                                  author: video.author || ''
+                                }
+                              })}
+                            >
+                              <Brain size={13} /> Resumen IA
                             </button>
                             <button
                               className="sp-program-btn"
@@ -1316,6 +1340,23 @@ export default function SearchAndProgram() {
           transition: background 0.18s, transform 0.15s;
         }
         .sp-program-btn:hover { background: #60baff; transform: scale(1.03); }
+
+        .sp-btn-ai-summary {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(79, 70, 229, 0.15);
+          color: #818cf8;
+          border: 1px solid rgba(79, 70, 229, 0.3);
+          padding: 7px 12px;
+          border-radius: 18px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+          font-family: inherit;
+        }
+        .sp-btn-ai-summary:hover { background: rgba(79, 70, 229, 0.3); color: #a5b4fc; border-color: rgba(79,70,229,0.5); transform: scale(1.03); }
 
         /* ─── Home State ───────────────────────────────────────────────────── */
         .sp-home-state {

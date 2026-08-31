@@ -52,9 +52,10 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
   };
 
   const isHome = location.pathname === '/';
+  const isSearch = location.pathname === '/search';
 
   return (
-    <div className="dl-wrapper">
+    <div className={`dl-wrapper${isSearch ? ' is-search' : ''}`}>
       {/* LEFT SIDEBAR */}
       {!isHome && (
         <aside className="dl-sidebar-left">
@@ -150,7 +151,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           </header>
         )}
 
-        <div className="dl-content-scroll" style={{ padding: isHome ? '0' : '32px', overflowX: 'hidden' }}>
+        <div className="dl-content-scroll" style={{ padding: isHome || isSearch ? '0' : '32px', overflowX: 'hidden', overflowY: isSearch ? 'auto' : undefined }}>
           {children}
         </div>
       </main>
@@ -284,6 +285,42 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           background: #050505;
           position: relative;
         }
+        .dl-wrapper.is-search {
+          background: #f0f2f5;
+        }
+        .dl-wrapper.is-search .dl-sidebar-left,
+        .dl-wrapper.is-search .dl-sidebar-right {
+          background: #ffffff;
+          border-color: #e5e7eb;
+        }
+        .dl-wrapper.is-search .dl-topbar {
+          background: #ffffff;
+          border-bottom-color: #e5e7eb;
+        }
+        .dl-wrapper.is-search .dl-nav-item { color: #374151; }
+        .dl-wrapper.is-search .dl-nav-item:hover { color: #1a1a2e; background: #f3f4f6; }
+        .dl-wrapper.is-search .dl-nav-item.active { background: #eff6ff; color: #3b82f6; }
+        .dl-wrapper.is-search .dl-logo { color: #1a1a2e; }
+        .dl-wrapper.is-search .dl-search-container {
+          background: #f3f4f6;
+          border-color: #e5e7eb;
+        }
+        .dl-wrapper.is-search .dl-search-container input { color: #1a1a2e; }
+        .dl-wrapper.is-search .dl-search-container input::placeholder { color: #9ca3af; }
+        .dl-wrapper.is-search .dl-search-icon { color: #9ca3af; }
+        .dl-wrapper.is-search .dl-profile-dropdown span { color: #1a1a2e; }
+        .dl-wrapper.is-search .dl-btn-primary { border-color: #e5e7eb; color: #374151; }
+        .dl-wrapper.is-search .dl-btn-icon { color: #374151; }
+        .dl-wrapper.is-search .dl-btn-icon:hover { background: #f3f4f6; }
+        .dl-wrapper.is-search .dl-algo-card,
+        .dl-wrapper.is-search .dl-right-section,
+        .dl-wrapper.is-search .dl-section-header h3,
+        .dl-wrapper.is-search .dl-rec-info h4 { color: #1a1a2e; }
+        .dl-wrapper.is-search .dl-algo-val { color: #374151; }
+        .dl-wrapper.is-search .dl-radar-section { background: #f9fafb; border-color: #e5e7eb; }
+        .dl-wrapper.is-search .dl-radar-btn { background: #eff6ff; color: #3b82f6; }
+        .dl-wrapper.is-search .dl-btn-secondary { background: #f3f4f6; border-color: #e5e7eb; color: #3b82f6; }
+        .dl-wrapper.is-search .dl-badge { background: #dbeafe; color: #3b82f6; }
 
         .dl-mobile-nav {
           display: none;

@@ -1,0 +1,158 @@
+**Progreso: 39 / 152 consultas clasificadas.**
+
+# Estado de Clasificación (Gold Set)
+
+Aquí tienes la lista completa de las 152 consultas y su estado actual:
+
+- [x] cortometraje argentino
+- [ ] corto de animación independiente
+- [x] cine experimental latinoamericano
+- [x] documental de arquitectura
+- [ ] portfolio director de fotografía
+- [x] indie film trailer
+- [ ] vfx breakdown reel
+- [x] stop motion short
+- [x] festival de cine cannes ganador
+- [x] student film project
+- [x] discurso Perón 1945
+- [ ] noticiero argentino años 60
+- [x] segunda guerra mundial archivo
+- [ ] alunizaje 1969 imágenes originales
+- [ ] entrevista histórica Borges
+- [x] caída del muro de berlín 1989
+- [x] primer mundial de fútbol 1930
+- [x] martin luther king i have a dream 1963
+- [x] titanic hundimiento noticias 1912
+- [ ] revolución industrial documental antiguo
+- [ ] dólar hoy argentina
+- [ ] elecciones presidenciales resultados hoy
+- [ ] últimas noticias inteligencia artificial
+- [ ] incendio en cordoba ahora
+- [ ] clima en buenos aires fin de semana
+- [ ] guerra ucrania rusia ultimas noticias
+- [ ] paro de transporte hoy
+- [x] bitcoin precio actual
+- [ ] mercado libre acciones hoy
+- [ ] novedades formula 1
+- [x] Taylor Swift
+- [x] Lionel Messi
+- [x] Albert Einstein biografía
+- [x] Cómo funciona un motor de combustión
+- [ ] Receta de milanesa napolitana
+- [ ] Mejores rutinas de gimnasio
+- [x] Historia de Roma antigua
+- [x] The Beatles grandes éxitos
+- [x] Evolución humana documental
+- [x] Fundamentos de programación en Python
+- [ ] ibai llanos directo
+- [x] league of legends worlds live
+- [x] minecraft speedrun
+- [ ] valorant champions tour
+- [x] gta v roleplay
+- [x] torneo de ajedrez en vivo
+- [ ] csgo major grand final
+- [x] elden ring boss guide
+- [x] game awards live stream
+- [x] super mario bros speedrun mundial
+- [ ] restauración de muebles antiguos
+- [ ] reparar reloj de bolsillo viejo
+- [ ] inflación argentina último dato
+- [ ] dólar blue hoy
+- [ ] últimas noticias economía argentina
+- [ ] mercados financieros hoy
+- [ ] bitcoin noticias hoy
+- [ ] inteligencia artificial últimas noticias
+- [ ] nuevas medidas económicas argentina
+- [ ] clima político argentina hoy
+- [ ] conflicto Rusia Ucrania últimas noticias
+- [ ] noticias Medio Oriente hoy
+- [ ] tecnología novedades esta semana
+- [ ] bolsa de Nueva York hoy
+- [ ] elecciones próximas en Argentina
+- [ ] precio petróleo hoy
+- [ ] mercado inmobiliario argentina actualidad
+- [ ] últimas noticias de la NASA
+- [ ] novedades medicina esta semana
+- [ ] fútbol argentino noticias hoy
+- [x] Diego Maradona
+- [x] Lionel Scaloni
+- [x] Mercedes Sosa
+- [x] Charly García
+- [ ] Luis Alberto Spinetta
+- [x] Jorge Luis Borges
+- [x] Julio Cortázar
+- [x] Albert Einstein
+- [x] Marie Curie
+- [x] Steve Jobs
+- [x] Christopher Nolan
+- [ ] Quentin Tarantino
+- [ ] Adele
+- [ ] Freddie Mercury
+- [ ] Cristiano Ronaldo
+- [ ] Michael Jordan
+- [ ] Revolución de Mayo 1810
+- [ ] independencia argentina 1816
+- [ ] batalla de San Lorenzo 1813
+- [ ] bombardeo Plaza de Mayo 1955
+- [ ] retorno de Perón 1972
+- [ ] Argentina Mundial 1978
+- [ ] guerra de Malvinas 1982
+- [ ] recuperación democracia argentina 1983
+- [ ] revolucion francesa 1789
+- [ ] llegada del hombre a la Luna 1969
+- [ ] crisis de los misiles de Cuba 1962
+- [ ] atentados 11 de septiembre 2001
+- [ ] primera guerra mundial archivos
+- [ ] desembarco de Normandía 1944
+- [ ] Woodstock 1969
+- [ ] Juegos Olímpicos México 1968
+- [ ] cortometraje de ciencia ficción latinoamericano
+- [ ] cine experimental argentino
+- [ ] cortos de animación independiente
+- [ ] documental arquitectura moderna
+- [ ] documental fotografía callejera
+- [ ] videoclips experimentales
+- [ ] cortometraje stop motion de terror
+- [ ] cortometraje sin diálogo
+- [ ] documental de montaña Patagonia
+- [ ] cine documental social latinoamericano
+- [ ] stop motion independiente
+- [ ] cortometraje premiado festival de cine
+- [ ] documental sobre diseño gráfico
+- [ ] film ensayo experimental
+- [ ] animación 3D artística independiente
+- [ ] documental de tango Buenos Aires
+- [ ] aprender Python desde cero
+- [ ] curso introducción inteligencia artificial
+- [ ] cómo funciona una red neuronal
+- [ ] aprender edición de video
+- [ ] tutorial fotografía para principiantes
+- [ ] cómo hacer un podcast profesional
+- [ ] aprender guitarra acordes básicos
+- [ ] explicación sencilla física cuántica
+- [ ] historia económica argentina explicada
+- [ ] cómo programar una aplicación web
+- [ ] aprender inglés conversación
+- [ ] curso de marketing digital
+- [ ] cómo editar audio profesional
+- [ ] introducción a astronomía
+- [ ] streaming de ajedrez en vivo
+- [ ] torneo esports en vivo
+- [ ] campeonato Counter Strike live
+- [ ] speedrun videojuegos en vivo
+- [ ] desarrollo de videojuegos streaming
+- [ ] charla tecnología en vivo
+- [ ] música electrónica live set
+- [ ] programación en vivo coding
+- [ ] conferencia científica en vivo
+- [ ] entrevista deportiva en vivo
+- [ ] jaguar
+- [ ] mercurio
+- [ ] matrix
+- [ ] python
+- [ ] apple
+- [ ] java
+- [ ] river
+- [ ] boca
+- [ ] jordan
+- [ ] saturno

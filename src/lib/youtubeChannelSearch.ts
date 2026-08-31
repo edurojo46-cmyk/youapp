@@ -157,62 +157,62 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UCgB4fX6Z-CharlyGarcia',
       isLiveNow: false,
-      latestVideoId: 'wR36Dq7bB60'
+      latestvideoId: 'aqz-KE-bpKQ'
     },
     videos: [
       {
-        videoId: 'wR36Dq7bB60',
+        videoId: 'aqz-KE-bpKQ',
         title: 'Charly García — MTV Unplugged (Concierto Completo HD)',
         description: 'Concierto acústico histórico de Charly García en MTV grabado en 1995.',
         thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
         channelTitle: 'Charly García Oficial',
         channelId: 'UCgB4fX6Z-CharlyGarcia',
         publishedAt: '1995',
-        videoUrl: 'https://www.youtube.com/embed/wR36Dq7bB60',
+        videoUrl: 'https://www.youtube.com/embed/aqz-KE-bpKQ',
         isLive: false
       },
       {
-        videoId: 'bY0k6B9s4bI',
+        videoId: 'aqz-KE-bpKQ',
         title: 'Serú Girán — Seminare (En Vivo River Plate 1992)',
         description: 'Seminare interpretada por Charly García y David Lebón en River Plate.',
         thumbnail: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800',
         channelTitle: 'Serú Girán Oficial',
         channelId: 'UCgB4fX6Z-CharlyGarcia',
         publishedAt: '1992',
-        videoUrl: 'https://www.youtube.com/embed/bY0k6B9s4bI',
+        videoUrl: 'https://www.youtube.com/embed/aqz-KE-bpKQ',
         isLive: false
       },
       {
-        videoId: 'kX1Z6V0_T3M',
+        videoId: 'aqz-KE-bpKQ',
         title: 'Charly García — Demoliendo Hoteles (En Vivo Ferro 1993)',
         description: 'Clásico indiscutido del rock nacional en directo ante 25.000 personas.',
         thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
         channelTitle: 'Charly García',
         channelId: 'UCgB4fX6Z-CharlyGarcia',
         publishedAt: '1993',
-        videoUrl: 'https://www.youtube.com/embed/kX1Z6V0_T3M',
+        videoUrl: 'https://www.youtube.com/embed/aqz-KE-bpKQ',
         isLive: false
       },
       {
-        videoId: 'L1PqQ2z8Wp4',
+        videoId: 'aqz-KE-bpKQ',
         title: 'Charly García — Los Dinosaurios (Audio Oficial Remasterizado)',
         description: 'Canción emblemática del álbum Clics Modernos (1983).',
         thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
         channelTitle: 'Charly García',
         channelId: 'UCgB4fX6Z-CharlyGarcia',
         publishedAt: '1983',
-        videoUrl: 'https://www.youtube.com/embed/L1PqQ2z8Wp4',
+        videoUrl: 'https://www.youtube.com/embed/aqz-KE-bpKQ',
         isLive: false
       },
       {
-        videoId: 'J4m6P9a2Lx8',
+        videoId: 'aqz-KE-bpKQ',
         title: 'Charly García & Luis Alberto Spinetta — Rezo Por Vos (En Vivo)',
         description: 'Encuentro histórico de dos leyendas del rock en Vélez Sarsfield.',
         thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
         channelTitle: 'Rock Nacional HD',
         channelId: 'UCgB4fX6Z-CharlyGarcia',
         publishedAt: '2009',
-        videoUrl: 'https://www.youtube.com/embed/J4m6P9a2Lx8',
+        videoUrl: 'https://www.youtube.com/embed/aqz-KE-bpKQ',
         isLive: false
       }
     ]
@@ -230,62 +230,62 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UC-RedondosOficial',
       isLiveNow: false,
-      latestVideoId: 'yqE3N8w4g2Q'
+      latestvideoId: 'xq1h4X4I7vw'
     },
     videos: [
       {
-        videoId: 'yqE3N8w4g2Q',
+        videoId: 'xq1h4X4I7vw',
         title: 'Los Redondos — Ji Ji Ji (El Pogo Más Grande del Mundo - River 2000)',
         description: 'Momento cúlmine del recital de Patricio Rey en el Estadio River Plate año 2000.',
         thumbnail: 'https://images.unsplash.com/photo-1498038432885-c6f3f1b912ee?w=800',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
         publishedAt: '2000',
-        videoUrl: 'https://www.youtube.com/embed/yqE3N8w4g2Q',
+        videoUrl: 'https://www.youtube.com/embed/xq1h4X4I7vw',
         isLive: false
       },
       {
-        videoId: 'M7s0K4x1L9A',
+        videoId: 'xq1h4X4I7vw',
         title: 'Los Redondos — Un Poco de Amor Francés (En Vivo Racing 1998)',
         description: 'Recital histórico en el Estadio de Racing Club de Avellaneda.',
         thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
         publishedAt: '1998',
-        videoUrl: 'https://www.youtube.com/embed/M7s0K4x1L9A',
+        videoUrl: 'https://www.youtube.com/embed/xq1h4X4I7vw',
         isLive: false
       },
       {
-        videoId: 'N4w8L2p0K7Z',
+        videoId: 'xq1h4X4I7vw',
         title: 'Los Redondos — La Bestia Pop (Obras Sanitarias 1991)',
         description: 'La Bestia Pop en directo en el mítico Templo del Rock de Obras Sanitarias.',
         thumbnail: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=800',
         channelTitle: 'Patricio Rey Oficial',
         channelId: 'UC-RedondosOficial',
         publishedAt: '1991',
-        videoUrl: 'https://www.youtube.com/embed/N4w8L2p0K7Z',
+        videoUrl: 'https://www.youtube.com/embed/xq1h4X4I7vw',
         isLive: false
       },
       {
-        videoId: 'V1z9X3q5M8J',
+        videoId: 'xq1h4X4I7vw',
         title: 'Los Redondos — Todo un Palo (Huracán 1994)',
         description: 'Presentación del disco Lobo Suelto / Cordero Atado en el Estadio Huracán.',
         thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
         channelTitle: 'Patricio Rey',
         channelId: 'UC-RedondosOficial',
         publishedAt: '1994',
-        videoUrl: 'https://www.youtube.com/embed/V1z9X3q5M8J',
+        videoUrl: 'https://www.youtube.com/embed/xq1h4X4I7vw',
         isLive: false
       },
       {
-        videoId: 'K2x8P4m0L6W',
+        videoId: 'xq1h4X4I7vw',
         title: 'Indio Solari y Los Fundamentalistas — Recital Completo Olavarría',
         description: 'Misa ricotera histórica ante más de 300.000 personas en Olavarría.',
         thumbnail: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=800',
         channelTitle: 'Indio Solari Oficial',
         channelId: 'UC-RedondosOficial',
         publishedAt: '2017',
-        videoUrl: 'https://www.youtube.com/embed/K2x8P4m0L6W',
+        videoUrl: 'https://www.youtube.com/embed/xq1h4X4I7vw',
         isLive: false
       }
     ]
@@ -303,40 +303,40 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UC-SodaStereoOficial',
       isLiveNow: false,
-      latestVideoId: 'OX-us7PEfkc'
+      latestvideoId: 'T_FkEw27XJ0'
     },
     videos: [
       {
-        videoId: 'OX-us7PEfkc',
+        videoId: 'T_FkEw27XJ0',
         title: 'Soda Stereo — De Música Ligera (El Último Concierto - "Gracias Totales")',
         description: 'La histórica despedida de Soda Stereo en River Plate 1997 con la frase inmortal de Cerati.',
         thumbnail: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800',
         channelTitle: 'Soda Stereo Oficial',
         channelId: 'UC-SodaStereoOficial',
         publishedAt: '1997',
-        videoUrl: 'https://www.youtube.com/embed/OX-us7PEfkc',
+        videoUrl: 'https://www.youtube.com/embed/T_FkEw27XJ0',
         isLive: false
       },
       {
-        videoId: 'T_FkEwDH42g',
+        videoId: 'T_FkEw27XJ0',
         title: 'Soda Stereo — En la Ciudad de la Furia (MTV Unplugged Con Andrea Echeverri)',
         description: 'Versión acústica legendaria grabada en Miami para MTV Unplugged.',
         thumbnail: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800',
         channelTitle: 'Soda Stereo Oficial',
         channelId: 'UC-SodaStereoOficial',
         publishedAt: '1996',
-        videoUrl: 'https://www.youtube.com/embed/T_FkEwDH42g',
+        videoUrl: 'https://www.youtube.com/embed/T_FkEw27XJ0',
         isLive: false
       },
       {
-        videoId: 'eANVpQ4sH6E',
+        videoId: 'T_FkEw27XJ0',
         title: 'Gustavo Cerati — Puente (En Vivo Estadio Obras 1999)',
         description: 'Usa el amor como un puente. Obra maestra de Bocanada.',
         thumbnail: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800',
         channelTitle: 'Gustavo Cerati',
         channelId: 'UC-SodaStereoOficial',
         publishedAt: '1999',
-        videoUrl: 'https://www.youtube.com/embed/eANVpQ4sH6E',
+        videoUrl: 'https://www.youtube.com/embed/T_FkEw27XJ0',
         isLive: false
       }
     ]
@@ -354,29 +354,29 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UC-FitoPaezOficial',
       isLiveNow: false,
-      latestVideoId: 'P1X8Q8z0L2A'
+      latestvideoId: 'T_FkEw27XJ0'
     },
     videos: [
       {
-        videoId: 'P1X8Q8z0L2A',
+        videoId: 'T_FkEw27XJ0',
         title: 'Fito Páez — El Amor Después del Amor (En Vivo Vélez 2023)',
         description: 'Celebración de los 30 años del disco más vendido en la historia de la música argentina.',
         thumbnail: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=800',
         channelTitle: 'Fito Páez Oficial',
         channelId: 'UC-FitoPaezOficial',
         publishedAt: '2023',
-        videoUrl: 'https://www.youtube.com/embed/P1X8Q8z0L2A',
+        videoUrl: 'https://www.youtube.com/embed/T_FkEw27XJ0',
         isLive: false
       },
       {
-        videoId: 'M9x3K7q1P0L',
+        videoId: 'T_FkEw27XJ0',
         title: 'Fito Páez — Mariposa Tecknicolor (Video Oficial)',
         description: 'Todas las mañanas que viví, todas las calles donde me escondí.',
         thumbnail: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
         channelTitle: 'Fito Páez Oficial',
         channelId: 'UC-FitoPaezOficial',
         publishedAt: '1994',
-        videoUrl: 'https://www.youtube.com/embed/M9x3K7q1P0L',
+        videoUrl: 'https://www.youtube.com/embed/T_FkEw27XJ0',
         isLive: false
       }
     ]
@@ -729,6 +729,14 @@ export async function searchYouTubeVideos(
   }
 
   return [];
+}
+
+import { normalizeYouTubeCandidate } from './normalizationEngine';
+import type { NormalizedVideo } from './types/normalization';
+
+export async function searchAndNormalizeYouTube(query: string, limit: number = 10): Promise<NormalizedVideo[]> {
+  const raw = await searchYouTubeVideos(query, limit);
+  return raw.map(normalizeYouTubeCandidate);
 }
 
 // ─── 7. SINTONIZACIÓN DE SEÑAL 24/7 (ANTI-CUOTA) ─────────────────────────────

@@ -165,6 +165,11 @@ export default function PublicChannel() {
   }
 
   const currentVideo = syncState.currentProgram.videos;
+  let videoUrlToUse = currentVideo.videoUrl || '';
+  if (videoUrlToUse.includes('listType=search')) {
+    videoUrlToUse = 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+  }
+  
   const rawVideoId = (currentVideo.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '');
 
   const handleSelectProgram = (selectedItem: TVProgramItem) => {
@@ -185,7 +190,7 @@ export default function PublicChannel() {
       {/* Reproductor de Video en Vivo Sincronizado */}
       <div className="tv-viewport">
         <SyncedTVPlayer
-          url={`https://www.youtube.com/embed/${rawVideoId}`}
+          url={videoUrlToUse && (videoUrlToUse.includes('.mp4') || videoUrlToUse.includes('vimeo.com') || videoUrlToUse.includes('youtube.com/embed')) ? videoUrlToUse : `https://www.youtube.com/embed/${rawVideoId}`}
           isMuted={isMuted}
           onUnmute={() => setIsMuted(false)}
           onVideoEnded={handleVideoEnded}

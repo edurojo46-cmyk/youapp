@@ -3,21 +3,22 @@ import { executeSearch } from '../lib/search/searchEngine';
 import type { ContentItem } from '../lib/search/types';
 import { Play, Check, X, RefreshCw, BarChart } from 'lucide-react';
 
+import type { QueryUnderstanding } from '../lib/search/intentDetector';
+
 const TEST_QUERIES = [
-  "Historia Argentina",
-  "Perón",
-  "mejores documentales del espacio",
-  "aprender inteligencia artificial",
-  "Cerati en vivo",
-  "entrevista Borges",
-  "economía argentina",
-  "física cuántica para principiantes"
+  "historia de entre rios",
+  "historia",
+  "noticias IA",
+  "River Plate",
+  "GTA 6",
+  "historia de la inteligencia artificial"
 ];
 
 interface TestResult {
   query: string;
   items: ContentItem[];
   latency: number;
+  intent?: QueryUnderstanding;
   ratings: Record<string, number>; // id -> rating (2: Excellent, 1: Acceptable, 0: Bad)
 }
 
@@ -35,12 +36,15 @@ export default function SearchLab() {
     for (const q of TEST_QUERIES) {
       const start = Date.now();
       // forceExternal = true to bypass cache and really test retrieval
-      const searchRes = await executeSearch(q, true);
+      const searchRes = await executeSearch(q, { 
+        forceExternal: true
+      });
       
       newResults.push({
         query: q,
         items: searchRes.all.slice(0, 20),
         latency: Date.now() - start,
+        intent: searchRes.intentData,
         ratings: {}
       });
       setResults([...newResults]);
@@ -162,6 +166,19 @@ export default function SearchLab() {
                 <h2>Resultados para "{currentTest.query}"</h2>
                 <span style={{ background: 'rgba(0,0,0,0.5)', padding: '0.3rem 0.6rem', borderRadius: '4px', fontSize: '0.85rem' }}>Latencia: {currentTest.latency}ms</span>
               </div>
+              
+              {currentTest.intent && (
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: '#10b981' }}>🧠 Query Understanding V2.1</h4>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div><span style={{ opacity: 0.7 }}>Primary:</span> <strong>{currentTest.intent.primaryIntent}</strong></div>
+                    {currentTest.intent.secondaryIntent && <div><span style={{ opacity: 0.7 }}>Secondary:</span> <strong>{currentTest.intent.secondaryIntent}</strong></div>}
+                    <div><span style={{ opacity: 0.7 }}>Topic:</span> <strong>{currentTest.intent.topic || 'N/A'}</strong></div>
+                    <div><span style={{ opacity: 0.7 }}>Entities:</span> <strong>{currentTest.intent.entities.length > 0 ? currentTest.intent.entities.join(', ') : 'None'}</strong></div>
+                    <div><span style={{ opacity: 0.7 }}>Confidence:</span> <strong>{currentTest.intent.confidence}%</strong></div>
+                  </div>
+                </div>
+              )}
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {currentTest.items.map((item, idx) => {

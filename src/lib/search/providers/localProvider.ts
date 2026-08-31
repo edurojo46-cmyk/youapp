@@ -42,7 +42,8 @@ export class LocalProvider implements SearchProvider {
     const directVideos = matchedMega.videos.map((v: any) => ({
       ...v,
       provider: v.provider || 'youtube',
-      source: { provider: 'youtube', discoveryMethod: 'local-catalog', discoveredAt: new Date().toISOString() }
+      source: { provider: 'youtube', discoveryMethod: 'local-catalog', discoveredAt: new Date().toISOString() },
+      retrievalSource: 'local'
     }));
     
     return directVideos as ContentItem[];

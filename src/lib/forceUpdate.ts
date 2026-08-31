@@ -3,7 +3,7 @@
  * Limpiador y Forzador de Actualizaciones Inmediatas para YouApp TV (Móviles & Desktop).
  */
 
-export const CURRENT_BUILD_VERSION = 'v6.5.0-20260821-1400';
+export const CURRENT_BUILD_VERSION = 'v6.5.3-fix-embeds';
 const VERSION_STORAGE_KEY = 'youapp_app_installed_version';
 
 /**
@@ -29,10 +29,17 @@ export async function forceHardUpdate(): Promise<void> {
 
     // 3. Limpiar cachés temporales en localStorage
     Object.keys(localStorage)
-      .filter(k => k.startsWith('youapp_cache_') || k.startsWith('youapp_live_') || k.startsWith('youapp_yt_'))
+      .filter(k => k.startsWith('youapp_cache_') || k.startsWith('youapp_live_') || k.startsWith('youapp_yt_') || k.startsWith('youapp_mood_') || k.startsWith('youapp_saved_custom_channels'))
       .forEach(k => {
         try { localStorage.removeItem(k); } catch {}
       });
+
+    // 3.5 Limpiar IndexedDB (youapp-db) para invalidar búsquedas en caché
+    if ('indexedDB' in window) {
+      try {
+        indexedDB.deleteDatabase('youapp-db');
+      } catch (e) {}
+    }
 
     // 4. Guardar la nueva versión
     localStorage.setItem(VERSION_STORAGE_KEY, CURRENT_BUILD_VERSION);

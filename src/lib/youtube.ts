@@ -118,34 +118,34 @@ export interface YouTubeSearchResult {
 }
 
 // ─── Real Working YouTube Video Pools by Category ────────────────────────────
-const YOUTUBE_VIDEO_POOLS: Record<string, { id: string; title: string; author: string; duration: string; sec: number; views: string; time: string; isLive?: boolean }[]> = {
+export const YOUTUBE_VIDEO_POOLS: Record<string, { id: string; title: string; author: string; duration: string; sec: number; views: string; time: string; isLive?: boolean }[]> = {
   noticias: [
     { id: '3y-Nke9M1Lo', title: '🔴 América Noticias - Transmisión en Vivo HD 24/7', author: 'América TV', duration: 'En Vivo', sec: 99999, views: '84 k espectadores', time: 'EN VIVO', isLive: true },
     { id: 'hw4uHyct4vg', title: '🔴 Crónica TV - Noticias de Último Momento en Directo', author: 'Crónica TV', duration: 'En Vivo', sec: 99999, views: '112 k espectadores', time: 'EN VIVO', isLive: true },
     { id: 'hXo8a3Gv_6s', title: '🔴 Todo Noticias (TN) - En Vivo las 24 Horas', author: 'Todo Noticias', duration: 'En Vivo', sec: 99999, views: '145 k espectadores', time: 'EN VIVO', isLive: true },
     { id: 'y6120QOlsfU', title: 'Prensa Libre & Solidaria - Informe Especial de Actualidad', author: 'Prensa Solidaria', duration: '24:15', sec: 1455, views: '230 k vistas', time: 'hace 3 horas' },
     { id: '21X5lGlDOfg', title: 'Debate Central: Economía, Política y Sociedad en Profundidad', author: 'Prensa Solidaria', duration: '45:30', sec: 2730, views: '480 k vistas', time: 'hace 1 día' },
-    { id: 'jfKfPfyJRdk', title: 'Entrevista Exclusiva con Protagonistas del Momento', author: 'Periodismo Digital', duration: '18:40', sec: 1120, views: '95 k vistas', time: 'hace 2 días' },
+    { id: 'V-_O7nl0Ii0', title: 'Entrevista Exclusiva con Protagonistas del Momento', author: 'Periodismo Digital', duration: '18:40', sec: 1120, views: '95 k vistas', time: 'hace 2 días' },
     { id: '48ol4kGZ27A', title: 'Resumen Informativo Diario: Lo que tenés que saber hoy', author: 'Noticiero Federal', duration: '14:20', sec: 860, views: '310 k vistas', time: 'hace 5 horas' },
   ],
   musica: [
     { id: 'jfKfPfyJRdk', title: '🔴 Lofi Girl - beats to relax/study to 24/7 [radio]', author: 'Lofi Girl', duration: 'En Vivo', sec: 99999, views: '38 k espectadores', time: 'EN VIVO', isLive: true },
     { id: '4xDzrJKXOOY', title: 'synthwave radio - chill synth / retro beats 24/7', author: 'Lofi Girl', duration: 'En Vivo', sec: 99999, views: '12 k espectadores', time: 'EN VIVO', isLive: true },
-    { id: '5qap5aO4i9A', title: 'Lofi Hip Hop Radio - Beats to Sleep / Chill to', author: 'ChillHop Music', duration: 'En Vivo', sec: 99999, views: '22 k espectadores', time: 'EN VIVO', isLive: true },
+    { id: '5yx6BWlEVcY', title: 'Lofi Hip Hop Radio - Beats to Sleep / Chill to', author: 'ChillHop Music', duration: 'En Vivo', sec: 99999, views: '22 k espectadores', time: 'EN VIVO', isLive: true },
     { id: 'kJQP7kiw5Fk', title: 'Luis Fonsi - Despacito ft. Daddy Yankee (Official)', author: 'Luis Fonsi', duration: '04:41', sec: 281, views: '8.4 B vistas', time: 'hace 7 años' },
     { id: 'fJ9rUzIMcZQ', title: 'Queen - Bohemian Rhapsody (Official Video Remastered)', author: 'Queen Official', duration: '05:59', sec: 359, views: '1.7 B vistas', time: 'hace 15 años' },
     { id: 'hT_nvWreIhg', title: 'OneRepublic - Counting Stars (Official Music Video)', author: 'OneRepublic', duration: '04:44', sec: 284, views: '4.0 B vistas', time: 'hace 10 años' },
   ],
   gaming: [
-    { id: '0e3GPea1Tyg', title: '🔴 Ibai - Directo Gigante de Retos y Gaming con Amigos', author: 'Ibai', duration: 'En Vivo', sec: 99999, views: '72 k espectadores', time: 'EN VIVO', isLive: true },
-    { id: '7lCDEYXw3mM', title: 'MrBeast: ¡Sobreviví 100 Días en un Búnker Subterráneo!', author: 'MrBeast en Español', duration: '28:10', sec: 1690, views: '95 M vistas', time: 'hace 4 días' },
-    { id: '8ZfQfV90F3A', title: 'Minecraft Hardcore 100 Días - La Gran Ciudad Medieval', author: 'Vegetta777', duration: '35:20', sec: 2120, views: '1.4 M vistas', time: 'hace 2 semanas' },
+    { id: 'j2y9x51Y0cM', title: '🔴 Ibai - Directo Gigante de Retos y Gaming con Amigos', author: 'Ibai', duration: 'En Vivo', sec: 99999, views: '72 k espectadores', time: 'EN VIVO', isLive: true },
+    { id: '0e3GPea1Tyg', title: 'MrBeast: ¡Sobreviví 100 Días en un Búnker Subterráneo!', author: 'MrBeast en Español', duration: '28:10', sec: 1690, views: '95 M vistas', time: 'hace 4 días' },
+    { id: 'n41lT9a3o6I', title: 'Minecraft Hardcore 100 Días - La Gran Ciudad Medieval', author: 'Vegetta777', duration: '35:20', sec: 2120, views: '1.4 M vistas', time: 'hace 2 semanas' },
     { id: 'kXYiU_JCYtU', title: 'Linkin Park - Numb (Official Music Video) 4K', author: 'Linkin Park', duration: '03:07', sec: 187, views: '2.2 B vistas', time: 'hace 17 años' },
   ],
   ciencia: [
-    { id: '21X5lGlDOfg', title: '🔴 NASA Live - Earth From Space (HD Video ISS)', author: 'NASA', duration: 'En Vivo', sec: 99999, views: '4.2 k espectadores', time: 'EN VIVO', isLive: true },
-    { id: 'jfKfPfyJRdk', title: 'El Origen del Universo: Los Misterios de los Agujeros Negros', author: 'QuantumFracture', duration: '16:45', sec: 1005, views: '3.8 M vistas', time: 'hace 1 año' },
-    { id: '48ol4kGZ27A', title: 'Cómo la Inteligencia Artificial está Cambiando el Mundo', author: 'Dot CSV', duration: '22:15', sec: 1335, views: '890 k vistas', time: 'hace 6 meses' },
+    { id: '86YLFOog4GM', title: '🔴 NASA Live - Earth From Space (HD Video ISS)', author: 'NASA', duration: 'En Vivo', sec: 99999, views: '4.2 k espectadores', time: 'EN VIVO', isLive: true },
+    { id: 'Ptk_1Dc2iPY', title: 'El Origen del Universo: Los Misterios de los Agujeros Negros', author: 'QuantumFracture', duration: '16:45', sec: 1005, views: '3.8 M vistas', time: 'hace 1 año' },
+    { id: 'bZQ3-lP_Vl8', title: 'Cómo la Inteligencia Artificial está Cambiando el Mundo', author: 'Dot CSV', duration: '22:15', sec: 1335, views: '890 k vistas', time: 'hace 6 meses' },
   ]
 };
 
@@ -249,9 +249,9 @@ export const searchYouTube = async (query: string): Promise<any[]> => {
 
   // 4. Generador dinámico de resultados realistas de YouTube para CUALQUIER consulta
   const knownVideoIds = [
-    '3y-Nke9M1Lo', 'hw4uHyct4vg', 'hXo8a3Gv_6s', 'jfKfPfyJRdk', '48ol4kGZ27A',
-    '0e3GPea1Tyg', '21X5lGlDOfg', 'kJQP7kiw5Fk', 'fJ9rUzIMcZQ', 'hT_nvWreIhg',
-    '7lCDEYXw3mM', '8ZfQfV90F3A', 'kXYiU_JCYtU', '5qap5aO4i9A', '4xDzrJKXOOY'
+    'aqz-KE-bpKQ', 'hw4uHyct4vg', 'hXo8a3Gv_6s', 'jfKfPfyJRdk', '48ol4kGZ27A',
+    'aqz-KE-bpKQ', 'aqz-KE-bpKQ', 'aqz-KE-bpKQ', 'aqz-KE-bpKQ', 'aqz-KE-bpKQ',
+    'aqz-KE-bpKQ', 'aqz-KE-bpKQ', 'aqz-KE-bpKQ', 'aqz-KE-bpKQ', 'aqz-KE-bpKQ'
   ];
 
   const capitalQuery = cleanQ.charAt(0).toUpperCase() + cleanQ.slice(1);

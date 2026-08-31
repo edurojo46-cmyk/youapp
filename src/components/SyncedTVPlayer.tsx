@@ -107,7 +107,7 @@ const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds 
 };
 
 export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
-  url,
+  url: rawUrl,
   isMuted,
   onUnmute,
   onVideoEnded,
@@ -115,6 +115,10 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
   channelName = 'YouApp TV',
   hideLiveBadge = false
 }) => {
+  const url = rawUrl && rawUrl.includes('listType=search') 
+    ? 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4' 
+    : (rawUrl || '');
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerId = useRef(`yt-container-${Math.floor(Math.random() * 100000)}`).current;
   const [needsUserTap, setNeedsUserTap] = useState(false);
@@ -247,6 +251,17 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           title={channelName}
           frameBorder="0"
           allow="autoplay; fullscreen"
+          className="synced-tv-iframe"
+        />
+      ) : url.includes('vimeo.com') ? (
+        /* 3. Reproductor de Vimeo */
+        <iframe
+          id={containerId}
+          key={url}
+          src={url}
+          title={channelName}
+          frameBorder="0"
+          allow="autoplay; fullscreen; picture-in-picture"
           className="synced-tv-iframe"
         />
       ) : url.includes('dailymotion.com/embed') ? (

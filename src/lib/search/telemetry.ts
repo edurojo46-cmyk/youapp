@@ -4,6 +4,8 @@ export type SearchEventName =
   | 'search_started'
   | 'cache_hit'
   | 'cache_miss'
+  | 'query_memory_hit'
+  | 'query_memory_miss'
   | 'supabase_hit'
   | 'external_search_started'
   | 'external_search_completed'
@@ -33,6 +35,7 @@ interface SearchEventPayload {
   success?: boolean;
   error_code?: string;
   cache_source?: string;
+  traffic_class?: 'organic' | 'benchmark' | 'synthetic';
 }
 
 let eventQueue: any[] = [];

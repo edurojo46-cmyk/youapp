@@ -150,6 +150,9 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   const complexity = determineQueryComplexity(query);
   let overview: AiOverview | undefined = undefined;
 
+  const providerStatuses: Record<string, { status: string; results: number }> = {};
+  const routerDecisionsOut = { decisions: [] as any[] };
+
   const acquisitionStats = { atlas: 0, videoMesh: 0, vimeo: 0, dailymotion: 0, radar: 0, publisher: 0, webDiscover: 0, unknown: 0, other: 0 };
   const updateAcquisitionStats = (items: ContentItem[]) => {
     items.forEach(c => {
@@ -238,8 +241,6 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       t = Date.now();
       const controller = new AbortController();
       let externalCandidates: ContentItem[] = [];
-      const providerStatuses: Record<string, { status: string; results: number }> = {};
-      const routerDecisionsOut = { decisions: [] as any[] };
       try {
         // Discovery uses capability router inside externalSearch
         externalCandidates = await externalSearch.search(query, [], {
@@ -466,17 +467,18 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   if (import.meta.env.DEV) {
     const isFromIndexedDb = pool !== null;
     const isFromAtlas = acquisitionStats.atlas > 0;
-    const youtubeCalled = typeof providerStatuses !== 'undefined' && !!providerStatuses['youtube'];
-    const youtubeResults = (typeof providerStatuses !== 'undefined' && providerStatuses['youtube']?.results) || 0;
-    const quotaConsumed = youtubeCalled && youtubeResults > 0 ? 100 : 0;
+    const youtubeResults = (providerStatuses['youtube']?.results) || acquisitionStats.radar || 0;
+    const youtubeCalled = !!providerStatuses['youtube'] || acquisitionStats.radar > 0;
+    const quotaSearches = (youtubeCalled && youtubeResults > 0) ? 1 : 0;
+    const estimatedGoogleUnits = quotaSearches * 100;
 
-    console.groupCollapsed(`💰 [DiscoveryEconomy] "${query.rawQuery}" — Quota: ${quotaConsumed} units | Path: ${activePath.toUpperCase()}`);
+    console.groupCollapsed(`💰 [DiscoveryEconomy] "${query.rawQuery}" — Path: ${activePath.toUpperCase()} | Radar: ${youtubeCalled && youtubeResults > 0 ? `EXECUTED (1 search ≈ 100 u, +${youtubeResults} absorbed)` : 'SKIPPED (0 u)'}`);
     console.log('Query:', query.rawQuery);
     console.log('Sources:', {
       ramCache: false,
       indexedDb: isFromIndexedDb,
       atlas: isFromAtlas,
-      youtubeRadar: youtubeCalled
+      youtubeRadar: youtubeCalled && youtubeResults > 0
     });
     console.log('Candidates:', {
       totalReturned: allWithDebug.length,
@@ -485,9 +487,11 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     });
     console.log('Radar Execution:', {
       planned: activePath === 'discovery',
-      executed: youtubeCalled,
-      blockedBy: activePath === 'fast' ? 'fast_path_gate' : (youtubeCalled ? 'none' : 'router_or_recency_guard'),
-      quotaConsumed
+      executed: youtubeCalled && youtubeResults > 0,
+      quotaSearches: quotaSearches,
+      estimatedGoogleUnits: estimatedGoogleUnits,
+      absorbedCount: acquisitionStats.radar,
+      blockedBy: activePath === 'fast' ? 'fast_path_gate' : (youtubeCalled && youtubeResults > 0 ? 'none' : 'router_or_recency_guard')
     });
     console.groupEnd();
   }

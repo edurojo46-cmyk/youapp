@@ -48,7 +48,7 @@ interface ExtractedVideo {
 function isSafeUrl(urlStr: string): boolean {
   try {
     const parsed = new URL(urlStr);
-    if (parsed.protocol !== 'https:') return false;
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
     const host = parsed.hostname.toLowerCase();
     
     // SSRF Guard
@@ -82,6 +82,10 @@ function extractDailymotionId(str: string): string | null {
 function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: string, publisherName: string): ExtractedVideo[] {
   const map = new Map<string, ExtractedVideo>();
 
+  // Extraer título del artículo si existe
+  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const pageTitle = titleMatch ? titleMatch[1].replace(/\s*\|\s*Página12.*$/i, '').trim() : '';
+
   // 1. JSON-LD VideoObject
   const scriptRegex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let sMatch;
@@ -102,12 +106,13 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
             map.set(key, {
               provider,
               providerContentId: id,
-              title: obj.name || obj.headline || '',
+              title: obj.name || obj.headline || pageTitle || '',
               description: obj.description || '',
               thumbnailUrl: Array.isArray(obj.thumbnailUrl) ? obj.thumbnailUrl[0] : obj.thumbnailUrl,
               videoUrl: embedUrl || obj.url,
               publishedAt: obj.uploadDate || obj.datePublished,
               articleUrl,
+              articleTitle: pageTitle,
               publisherCode,
               publisherName,
               discoveryMethod: 'publisher_embed',
@@ -135,10 +140,11 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
         map.set(key, {
           provider,
           providerContentId: id,
-          title: '',
+          title: pageTitle,
           videoUrl: ytId ? `https://www.youtube.com/watch?v=${ytId}` : vimeoId ? `https://vimeo.com/${vimeoId}` : `https://www.dailymotion.com/video/${dmId}`,
           thumbnailUrl: ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : undefined,
           articleUrl,
+          articleTitle: pageTitle,
           publisherCode,
           publisherName,
           discoveryMethod: 'publisher_embed',
@@ -170,10 +176,11 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
         map.set(key, {
           provider,
           providerContentId: id,
-          title: '',
+          title: pageTitle,
           videoUrl: isYt ? `https://www.youtube.com/watch?v=${id}` : isVimeo ? `https://vimeo.com/${id}` : `https://www.dailymotion.com/video/${id}`,
           thumbnailUrl: isYt ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined,
           articleUrl,
+          articleTitle: pageTitle,
           publisherCode,
           publisherName,
           discoveryMethod: 'publisher_embed',
@@ -198,29 +205,98 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const query = (body?.query || '').trim();
-    const publisherFilter = body?.publisherFilter;
+    const publisherFilter = body?.publisherFilter || 'pagina12';
+    const targetUrl = body?.url || body?.articleUrl;
 
-    if (!query || typeof query !== 'string') {
-      return new Response(JSON.stringify({ ok: false, error: 'Query is required', videos: [] }), {
+    if (!query && !targetUrl) {
+      return new Response(JSON.stringify({ ok: false, error: 'Query or url is required', videos: [] }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     const videos: ExtractedVideo[] = [];
-    const stats = {
-      pagesFetched: 0,
-      extractedRaw: 0,
-      uniqueVideos: 0,
-      qualifiedVideos: 0
+    let pagesFetched = 0;
+    const fetchHeaders = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8'
     };
+
+    // 1. Si se pasó una URL directa
+    if (targetUrl && isSafeUrl(targetUrl)) {
+      try {
+        const resp = await fetch(targetUrl, { headers: fetchHeaders, signal: AbortSignal.timeout(8000) });
+        if (resp.ok) {
+          pagesFetched++;
+          const html = await resp.text();
+          const extracted = parseVideosFromHtml(html, targetUrl, publisherFilter, 'Página/12');
+          videos.push(...extracted);
+        }
+      } catch (err) {
+        console.warn(`[PublisherDiscovery] Error fetching direct url ${targetUrl}:`, err);
+      }
+    }
+
+    // 2. Si se pasó una búsqueda de Página/12
+    if (videos.length === 0 && (publisherFilter === 'pagina12' || publisherFilter === 'all')) {
+      try {
+        const searchUrl = `https://www.pagina12.com.ar/buscador?q=${encodeURIComponent(query)}`;
+        const resp = await fetch(searchUrl, { headers: fetchHeaders, signal: AbortSignal.timeout(8000) });
+        
+        if (resp.ok) {
+          pagesFetched++;
+          const html = await resp.text();
+          
+          // Extraer videos directamente de la página de resultados
+          const directVideos = parseVideosFromHtml(html, searchUrl, 'pagina12', 'Página/12');
+          videos.push(...directVideos);
+
+          // Buscar links a artículos
+          const articleRegex = /href=["'](https:\/\/www\.pagina12\.com\.ar\/\d+-[^"']+)["']/gi;
+          const articleLinks = new Set<string>();
+          let aMatch;
+          while ((aMatch = articleRegex.exec(html)) !== null && articleLinks.size < 3) {
+            articleLinks.add(aMatch[1]);
+          }
+
+          // Fetch de los primeros 2 artículos
+          for (const link of articleLinks) {
+            if (videos.length >= 3) break;
+            try {
+              const artResp = await fetch(link, { headers: fetchHeaders, signal: AbortSignal.timeout(6000) });
+              if (artResp.ok) {
+                pagesFetched++;
+                const artHtml = await artResp.text();
+                const artVideos = parseVideosFromHtml(artHtml, link, 'pagina12', 'Página/12');
+                videos.push(...artVideos);
+              }
+            } catch {}
+          }
+        }
+      } catch (err) {
+        console.warn('[PublisherDiscovery] Error searching pagina12:', err);
+      }
+    }
+
+    const uniqueMap = new Map<string, ExtractedVideo>();
+    for (const v of videos) {
+      const key = `${v.provider}:${v.providerContentId}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, v);
+      }
+    }
+    const uniqueVideos = Array.from(uniqueMap.values());
 
     return new Response(JSON.stringify({
       ok: true,
-      videos,
+      publisher: publisherFilter,
+      videos: uniqueVideos,
       stats: {
-        ...stats,
-        uniqueVideos: videos.length
+        pagesFetched,
+        extractedRaw: videos.length,
+        uniqueVideos: uniqueVideos.length,
+        qualifiedVideos: uniqueVideos.length
       }
     }), {
       status: 200,

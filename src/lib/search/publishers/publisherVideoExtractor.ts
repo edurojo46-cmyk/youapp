@@ -19,7 +19,7 @@ export interface ExtractedPublisherVideo {
   publisherCode: string;
   publisherName: string;
   discoveryMethod: 'publisher_embed' | 'publisher_feed' | 'publisher_sitemap';
-  extractionMethod: 'iframe' | 'video_object' | 'video_sitemap' | 'rss' | 'open_graph' | 'twitter_player';
+  extractionMethod: 'iframe' | 'video_object' | 'video_sitemap' | 'rss' | 'open_graph' | 'twitter_player' | 'explicit_link';
 }
 
 // ── 1. Extracción de YouTube ───────────────────────────────────────────────
@@ -267,7 +267,7 @@ export function extractExplicitVideoLinks(html: string, articleUrl: string, publ
         publisherCode: publisher.code,
         publisherName: publisher.name,
         discoveryMethod: 'publisher_embed',
-        extractionMethod: 'iframe', // canonical embed mapping
+        extractionMethod: 'explicit_link',
       });
     }
   }

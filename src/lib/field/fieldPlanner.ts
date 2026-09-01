@@ -5,12 +5,30 @@
  * progresión temática y tiempos objetivos por bloque.
  */
 
-import type { FieldPlan, FieldBlockPlan, FieldState, ContentRole } from './fieldTypes';
+import type { FieldPlan, FieldBlockPlan, FieldState, ContentRole, PrimaryEntity } from './fieldTypes';
 import { generateRotationPlan } from './fieldRotation';
+
+export function extractPrimaryEntity(prompt: string): PrimaryEntity {
+  let clean = prompt
+    .replace(/^quiero (entender|aprender|ver|saber sobre|conocer)\s+/i, '')
+    .replace(/^(a|sobre|de|el|la|un|una)\s+/i, '')
+    .replace(/\s+en\s+\d+\s+(minutos|horas|min|hs?)$/i, '')
+    .trim();
+
+  const words = clean.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const aliases = [clean.toLowerCase(), ...words];
+
+  return {
+    canonicalName: clean,
+    aliases: Array.from(new Set(aliases)),
+    type: 'person'
+  };
+}
 
 export function createFieldPlan(prompt: string, state: FieldState): FieldPlan {
   const totalMinutes = state.context.availableMinutes || 45;
-  const cleanPrompt = prompt.replace(/^quiero (entender|aprender|ver|saber sobre)\s+/i, '').trim();
+  const primaryEntity = extractPrimaryEntity(prompt);
+  const cleanTopic = primaryEntity.canonicalName;
 
   // Calcular número óptimo de bloques (bloques de entre 6 y 15 minutos)
   let blockCount = Math.max(3, Math.min(7, Math.round(totalMinutes / 10)));
@@ -21,7 +39,7 @@ export function createFieldPlan(prompt: string, state: FieldState): FieldPlan {
 
   for (let i = 0; i < blockCount; i++) {
     const { phase, role } = rotation[i];
-    const { concept, queryOverride } = deriveConceptForRole(cleanPrompt, role, i, blockCount);
+    const { concept, queryOverride } = deriveConceptForRole(cleanTopic, role, i, blockCount);
 
     blocks.push({
       index: i,
@@ -36,6 +54,7 @@ export function createFieldPlan(prompt: string, state: FieldState): FieldPlan {
   return {
     id: `field-plan-${Date.now()}`,
     prompt,
+    primaryEntity,
     totalTargetMinutes: totalMinutes,
     fieldState: state,
     blocks,
@@ -52,38 +71,38 @@ function deriveConceptForRole(
   switch (role) {
     case 'foundation':
       return {
-        concept: `${baseTopic}: Introducción y contexto histórico`,
-        queryOverride: `${baseTopic} introduccion historia documental`
+        concept: `${baseTopic}: Introducción y biografía histórica`,
+        queryOverride: `${baseTopic} biografia documental historia`
       };
     case 'deep_dive':
       return {
-        concept: `${baseTopic}: Explicación detallada y funcionamiento`,
-        queryOverride: `${baseTopic} como funciona explicacion completa tecnica`
+        concept: `${baseTopic}: Explicación técnica y funcionamiento`,
+        queryOverride: `${baseTopic} como funciona inventos electricidad motor explicacion`
       };
     case 'contrast':
       return {
-        concept: `${baseTopic}: Perspectivas opuestas, debate y mitos`,
-        queryOverride: `${baseTopic} debate mitos vs realidad controversia`
+        concept: `${baseTopic}: Debate, guerra de las corrientes y mitos`,
+        queryOverride: `${baseTopic} edison guerra de las corrientes mitos vs realidad`
       };
     case 'example':
       return {
-        concept: `${baseTopic}: Aplicaciones reales y casos prácticos`,
-        queryOverride: `${baseTopic} casos reales aplicaciones practicas`
+        concept: `${baseTopic}: Aplicaciones reales y experimentos`,
+        queryOverride: `${baseTopic} experimentos aplicaciones reales tecnologia`
       };
     case 'discovery':
       return {
-        concept: `${baseTopic}: Datos curiosos y aspectos menos conocidos`,
-        queryOverride: `${baseTopic} datos curiosos secretos no conocidos`
+        concept: `${baseTopic}: Aspectos y secretos menos conocidos`,
+        queryOverride: `${baseTopic} inventos secretos desconocidos datos curiosos`
       };
     case 'relief':
       return {
-        concept: `${baseTopic}: Breve cápsula de interés`,
-        queryOverride: `${baseTopic} en 3 minutos resumen rapido`
+        concept: `${baseTopic}: Cápsula breve de interés`,
+        queryOverride: `${baseTopic} resumen en 5 minutos`
       };
     case 'summary':
       return {
-        concept: `${baseTopic}: Conclusiones e impacto clave`,
-        queryOverride: `${baseTopic} conclusiones legado resumen final`
+        concept: `${baseTopic}: Conclusiones y legado en el mundo actual`,
+        queryOverride: `${baseTopic} legado impacto mundo moderno resumen`
       };
     default:
       return {

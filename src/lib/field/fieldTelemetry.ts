@@ -5,22 +5,33 @@
  * - Field Satisfaction Score
  * - Redundancy Rate
  * - Knowledge Progression Rate
+ * - Field Coherence Score (Continuidad de entidad + afinidad temática)
+ * - Duration Adherence Rate (Tolerancia temporal frente al presupuesto)
  */
 
 import type { FieldSessionEvent, FieldSatisfactionMetrics, FieldPlan } from './fieldTypes';
 
-export function calculateFieldSatisfaction(events: FieldSessionEvent[], plan: FieldPlan): FieldSatisfactionMetrics {
+export function calculateFieldSatisfaction(
+  events: FieldSessionEvent[],
+  plan: FieldPlan,
+  totalActualMinutes?: number
+): FieldSatisfactionMetrics {
+  const targetMinutes = plan.totalTargetMinutes || 45;
+  const actualMinutes = totalActualMinutes || targetMinutes;
+
   if (events.length === 0) {
     return {
       completionRate: 0,
       valueScore: 0,
       redundancyRate: 0,
       knowledgeProgressionRate: 100,
+      fieldCoherenceScore: 90,
+      durationAdherenceRate: 100,
       overallSatisfaction: 50
     };
   }
 
-  // 1. Completion Rate (% promedio de visualización de los bloques planificados)
+  // 1. Completion Rate (% promedio de visualización de los bloques)
   const avgWatchPct = events.reduce((acc, e) => acc + (e.watchPercentage || 0), 0) / events.length;
   const completionRate = Math.min(100, Math.round(avgWatchPct * 100));
 
@@ -44,12 +55,31 @@ export function calculateFieldSatisfaction(events: FieldSessionEvent[], plan: Fi
   }
   const knowledgeProgressionRate = Math.round((progressionMatches / Math.max(1, events.length)) * 100);
 
-  // 5. Overall Satisfaction
+  // 5. Duration Adherence Rate (Objetivo 45 min ± 15%)
+  const deviation = Math.abs(actualMinutes - targetMinutes) / targetMinutes;
+  const durationAdherenceRate = Math.max(0, Math.min(100, Math.round(100 - deviation * 120)));
+
+  // 6. Field Coherence Score (Continuidad de entidad y compatibilidad temática)
+  let coherencePoints = 0;
+  for (const block of plan.blocks) {
+    if (block.allocatedCandidate) {
+      const text = `${block.allocatedCandidate.title} ${block.allocatedCandidate.description || ''}`.toLowerCase();
+      const hasEntity = plan.primaryEntity.aliases.some(a => text.includes(a));
+      if (hasEntity) coherencePoints += 20;
+    } else {
+      coherencePoints += 15;
+    }
+  }
+  const fieldCoherenceScore = Math.min(100, Math.round((coherencePoints / Math.max(1, plan.blocks.length * 20)) * 100));
+
+  // 7. Overall Satisfaction Ponderada (Evita que el completion oculte incoherencias)
   const overallSatisfaction = Math.round(
-    completionRate * 0.40 +
-    valueScore * 0.30 +
-    knowledgeProgressionRate * 0.20 +
-    (100 - redundancyRate) * 0.10
+    completionRate * 0.25 +
+    valueScore * 0.20 +
+    fieldCoherenceScore * 0.25 +
+    knowledgeProgressionRate * 0.15 +
+    durationAdherenceRate * 0.10 +
+    (100 - redundancyRate) * 0.05
   );
 
   return {
@@ -57,6 +87,8 @@ export function calculateFieldSatisfaction(events: FieldSessionEvent[], plan: Fi
     valueScore,
     redundancyRate,
     knowledgeProgressionRate,
+    fieldCoherenceScore,
+    durationAdherenceRate,
     overallSatisfaction
   };
 }

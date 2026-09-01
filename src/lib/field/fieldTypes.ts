@@ -70,13 +70,32 @@ export interface FieldBlockPlan {
   allocatedCandidate?: ContentItem;
 }
 
+export interface PrimaryEntity {
+  canonicalName: string;
+  aliases: string[];
+  type: 'person' | 'topic' | 'historical_event' | 'science' | 'culture';
+}
+
 export interface FieldPlan {
   id: string;
   prompt: string;
+  primaryEntity: PrimaryEntity;
   totalTargetMinutes: number;
   fieldState: FieldState;
   blocks: FieldBlockPlan[];
   estimatedProgression: string[];
+}
+
+export interface BlockEvaluation {
+  candidateId: string;
+  title: string;
+  blockAffinity: number;        // 0-100
+  entityContinuity: number;     // 0-100
+  roleCompatibility: number;    // 0-100
+  durationFitness: number;      // 0-100
+  fieldFitScore: number;        // 0-100
+  isEligible: boolean;
+  rejectReason?: string;
 }
 
 export interface FieldSessionEvent {
@@ -94,7 +113,9 @@ export interface FieldSessionEvent {
 export interface FieldSatisfactionMetrics {
   completionRate: number;
   valueScore: number;
-  redundancyRate: number;          // % de bloques con solapamiento conceptual > 70% (objetivo: < 15%)
-  knowledgeProgressionRate: number;// Nivel de cumplimiento del arco básico → profundo → contraste (0-100)
-  overallSatisfaction: number;     // 0.0 - 100.0
+  redundancyRate: number;           // % de bloques con solapamiento conceptual > 70% (objetivo: < 15%)
+  knowledgeProgressionRate: number; // Nivel de cumplimiento del arco básico → profundo → contraste (0-100)
+  fieldCoherenceScore: number;      // Continuidad de entidad + afinidad de bloque (0-100)
+  durationAdherenceRate: number;    // Precisión frente a targetMinutes (0-100)
+  overallSatisfaction: number;      // 0.0 - 100.0
 }

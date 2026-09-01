@@ -1,4 +1,4 @@
-﻿YOUAPP — IP SNAPSHOT HISTORY
+YOUAPP — IP SNAPSHOT HISTORY
 
 SNAPSHOT V1
 Fecha: 30/08/2026
@@ -46,3 +46,29 @@ YOUAPP_IP_SNAPSHOT_V1_1.zip
 
 SHA-256:
 3BFFBC0C18E0613A37A89C4C3893E49EAF430154950118C20721CDCA2BF81594
+
+SNAPSHOT V2
+Fecha: 01/09/2026
+
+Git tag:
+youapp-streaming-mvp-v1
+
+Commit:
+45fec1c
+
+Descripción:
+Capa Multiplataforma de Streaming MVP V1, Streaming Graph, Smart Bar Contextual y Player Event Bridge.
+
+Incluye:
+- Smart Bar Contextual & Player Event Bridge con PlaybackState unificado y tracking en tiempo real
+- Streaming Graph (streaming_titles, streaming_availability con trazabilidad de origen AR)
+- User Multi-Platform Suite (user_streaming_services, user_library multi-tipo, user_streaming_activity)
+- Experiencias de Interfaz: Mi Plataforma (/mi-plataforma), Explorar (/explorar), Ficha de Detalle (/streaming/:type/:id)
+- Modal Mis Plataformas y Modal Dónde Verla con jerarquía de valor (Suscripción > Alquiler > Compra)
+
+Archivo:
+YOUAPP_IP_SNAPSHOT_V2.zip
+
+SHA-256:
+2D2E58CF65AB81B3C198E146B90CB488C43D9610623700BAFDB35CA98FBC31C4
+

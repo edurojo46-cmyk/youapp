@@ -38,8 +38,10 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
 
 ## V2 — YouApp Streaming MVP & Smart Bar
 - **Fecha:** 2026-09-01
+- **Commit:** `45fec1c`
 - **Git Tag:** `youapp-streaming-mvp-v1`
 - **Archivo:** `YOUAPP_IP_SNAPSHOT_V2.zip`
+- **SHA256:** `2D2E58CF65AB81B3C198E146B90CB488C43D9610623700BAFDB35CA98FBC31C4`
 - **Estado:** ORIGINAL — CONGELADO / NO MODIFICAR
 
 ### Cambios & Nuevas Capacidades desde V1:

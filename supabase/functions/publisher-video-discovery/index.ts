@@ -240,42 +240,47 @@ serve(async (req) => {
 
     // 2. Si se pasó una búsqueda de Página/12
     if (videos.length === 0 && (publisherFilter === 'pagina12' || publisherFilter === 'all')) {
-      try {
-        const searchUrl = `https://www.pagina12.com.ar/buscador?q=${encodeURIComponent(query)}`;
-        const resp = await fetch(searchUrl, { headers: fetchHeaders, signal: AbortSignal.timeout(8000) });
-        
-        if (resp.ok) {
-          pagesFetched++;
-          const html = await resp.text();
-          
-          // Extraer videos directamente de la página de resultados
-          const directVideos = parseVideosFromHtml(html, searchUrl, 'pagina12', 'Página/12');
-          videos.push(...directVideos);
+      const endpointsToTry = [
+        `https://www.pagina12.com.ar/buscar?q=${encodeURIComponent(query)}`,
+        `https://www.pagina12.com.ar/el-pais/`
+      ];
 
-          // Buscar links a artículos
-          const articleRegex = /href=["'](https:\/\/www\.pagina12\.com\.ar\/\d+-[^"']+)["']/gi;
-          const articleLinks = new Set<string>();
-          let aMatch;
-          while ((aMatch = articleRegex.exec(html)) !== null && articleLinks.size < 3) {
-            articleLinks.add(aMatch[1]);
-          }
+      for (const endpoint of endpointsToTry) {
+        if (videos.length > 0) break;
+        try {
+          const resp = await fetch(endpoint, { headers: fetchHeaders, signal: AbortSignal.timeout(8000) });
+          if (resp.ok) {
+            pagesFetched++;
+            const html = await resp.text();
+            
+            // Extraer videos directamente de la página
+            const directVideos = parseVideosFromHtml(html, endpoint, 'pagina12', 'Página/12');
+            videos.push(...directVideos);
 
-          // Fetch de los primeros 2 artículos
-          for (const link of articleLinks) {
-            if (videos.length >= 3) break;
-            try {
-              const artResp = await fetch(link, { headers: fetchHeaders, signal: AbortSignal.timeout(6000) });
-              if (artResp.ok) {
-                pagesFetched++;
-                const artHtml = await artResp.text();
-                const artVideos = parseVideosFromHtml(artHtml, link, 'pagina12', 'Página/12');
-                videos.push(...artVideos);
-              }
-            } catch {}
+            // Extraer enlaces a artículos (formato /\d{4}\/\d{2}\/\d{2}\/slug/)
+            const articleLinks = new Set<string>();
+            const linkRegex = /href=["'](\/\d{4}\/\d{2}\/\d{2}\/[^"']+)["']/gi;
+            let m;
+            while ((m = linkRegex.exec(html)) !== null && articleLinks.size < 3) {
+              articleLinks.add(`https://www.pagina12.com.ar${m[1]}`);
+            }
+
+            for (const link of articleLinks) {
+              if (videos.length >= 3) break;
+              try {
+                const artResp = await fetch(link, { headers: fetchHeaders, signal: AbortSignal.timeout(6000) });
+                if (artResp.ok) {
+                  pagesFetched++;
+                  const artHtml = await artResp.text();
+                  const artVideos = parseVideosFromHtml(artHtml, link, 'pagina12', 'Página/12');
+                  videos.push(...artVideos);
+                }
+              } catch {}
+            }
           }
+        } catch (err) {
+          console.warn(`[PublisherDiscovery] Error searching endpoint ${endpoint}:`, err);
         }
-      } catch (err) {
-        console.warn('[PublisherDiscovery] Error searching pagina12:', err);
       }
     }
 

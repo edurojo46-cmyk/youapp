@@ -27,9 +27,9 @@ export function extractYouTubeId(urlOrEmbed: string): string | null {
   if (!urlOrEmbed) return null;
   // Match youtube.com/embed/ID, youtube-nocookie.com/embed/ID, youtu.be/ID, youtube.com/watch?v=ID
   const patterns = [
-    /(?:youtube(?:-nocookie)?\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
-    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/
+    /(?:youtube(?:-nocookie)?\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{8,16})/,
+    /youtube\.com\/v\/([a-zA-Z0-9_-]{8,16})/,
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{8,16})/
   ];
 
   for (const pattern of patterns) {
@@ -56,7 +56,7 @@ export function extractDailymotionId(urlOrEmbed: string): string | null {
 // ── 4. Extracción de IFRAME / Embeds Explícitos ─────────────────────────────
 export function extractIframeEmbeds(html: string, articleUrl: string, publisher: { code: string; name: string }): ExtractedPublisherVideo[] {
   const results: ExtractedPublisherVideo[] = [];
-  const iframeRegex = /<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  const iframeRegex = /<iframe\b[^>]*?\bsrc=["']([^"']+)["'][^>]*>/gi;
   let match;
 
   while ((match = iframeRegex.exec(html)) !== null) {

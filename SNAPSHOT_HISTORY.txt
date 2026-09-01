@@ -97,3 +97,31 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
    - Aprobación con $\ge 8$ candidatos y Top 5 de alta relevancia sin exigir umbrales artificiales.
 4. **Telemetría Estructurada `[DiscoveryEconomy]`:**
    - Registro en tiempo real de fuentes (RAM, IndexedDB, Atlas, Radar), estado de guardas y balance de cuota consumida.
+
+---
+
+## V4 — Publisher Video Discovery V1 & Fast Path Post-Eligibility Audit
+- **Fecha:** 2026-09-01
+- **Git Tag:** `youapp-publisher-discovery-v1-live-validated`
+- **Estado:** LIVE VALIDATED ✅ — CONGELADO / NO MODIFICAR 🧊
+
+### Principio Fundamental:
+> **WEB → VIDEO → ATLAS — NO YOUTUBE SEARCH REQUIRED**
+> *"Descubrir y absorber videos reproducibles desde medios de comunicación, feeds RSS y archivos públicos antes de activar Radar."*
+
+### Regla de Invariante Arquitectónico:
+> `atlasRetrieved` nunca puede decidir por sí solo el Fast Path. Sólo `atlasQualified` ($Q \ge 60 \land R \ge 40$) + consistencia del Top 5 pueden aprobar el paso rápido.
+
+### Validaciones Superadas:
+1. **Blindaje SSRF Multi-Hop (Gate 1):** PASS ✅ (Bloqueo de localhost, IPs privadas y redirects no autorizados).
+2. **Prueba Negativa / Fallback (Gate 2):** PASS ✅ (Si calificados $< 8$, la calidad manda y CapabilityRouter queda disponible).
+3. **Extracción y Absorción en Atlas (Gate 3):** PASS ✅ (Extracción determinista de TV Pública / Encuentro y guardado en `publisher_video_provenance`).
+4. **Auditoría Post-Eligibility de Fast Path:** PASS ✅ (Caso en vivo `"cortometraje"`: 30 recuperados $\rightarrow$ 29 calificados $Q \ge 60, R \ge 40$ $\rightarrow$ 1 descartado $R=17.5$ $\rightarrow$ Fast Path aprobado con 0 cuota).
+
+### Nuevas Capacidades:
+1. **Free Discovery Stage (Nivel 0 Pre-Router):**
+   - Extractor 100% determinista (iframes, VideoObject JSON-LD, RSS media, OpenGraph).
+2. **Tabla de Procedencia Múltiple (`publisher_video_provenance`):**
+   - Mapeo de múltiples fuentes descubridoras para un único contenido canónico en `youapp_index`.
+3. **Telemetría Transparente en `[DiscoveryEconomy]`:**
+   - Desglose explícito de `atlasRetrieved`, `atlasQualified` y `eligibilityDropped`.

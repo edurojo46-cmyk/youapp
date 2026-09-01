@@ -110,6 +110,11 @@ export interface FieldSessionEvent {
   timestamp: number;
 }
 
+export type DurationAdherenceStatus =
+  | 'OPTIMAL_SOFT_WINDOW'         // <= 15% deviation
+  | 'ACCEPTABLE_WITHIN_HARD_LIMIT' // <= 20% deviation
+  | 'OUT_OF_BOUNDS';              // > 20% deviation
+
 export interface FieldSatisfactionMetrics {
   completionRate: number;
   valueScore: number;
@@ -117,5 +122,7 @@ export interface FieldSatisfactionMetrics {
   knowledgeProgressionRate: number; // Nivel de cumplimiento del arco básico → profundo → contraste (0-100)
   fieldCoherenceScore: number;      // Continuidad de entidad + afinidad de bloque (0-100)
   durationAdherenceRate: number;    // Precisión frente a targetMinutes (0-100)
+  durationDeviationPercentage: number;
+  durationStatus: DurationAdherenceStatus;
   overallSatisfaction: number;      // 0.0 - 100.0
 }

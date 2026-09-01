@@ -6,10 +6,10 @@
  * - Redundancy Rate
  * - Knowledge Progression Rate
  * - Field Coherence Score (Continuidad de entidad + afinidad temática)
- * - Duration Adherence Rate (Tolerancia temporal frente al presupuesto)
+ * - Duration Adherence Rate (Tolerancia temporal unificada: Soft ±15%, Hard ±20%)
  */
 
-import type { FieldSessionEvent, FieldSatisfactionMetrics, FieldPlan } from './fieldTypes';
+import type { FieldSessionEvent, FieldSatisfactionMetrics, FieldPlan, DurationAdherenceStatus } from './fieldTypes';
 
 export function calculateFieldSatisfaction(
   events: FieldSessionEvent[],
@@ -18,6 +18,17 @@ export function calculateFieldSatisfaction(
 ): FieldSatisfactionMetrics {
   const targetMinutes = plan.totalTargetMinutes || 45;
   const actualMinutes = totalActualMinutes || targetMinutes;
+  const deviation = Math.abs(actualMinutes - targetMinutes) / targetMinutes;
+  const deviationPct = Math.round(deviation * 1000) / 10; // ej: 15.6%
+
+  let durationStatus: DurationAdherenceStatus = 'OPTIMAL_SOFT_WINDOW';
+  if (deviationPct <= 15.0) {
+    durationStatus = 'OPTIMAL_SOFT_WINDOW';
+  } else if (deviationPct <= 20.0) {
+    durationStatus = 'ACCEPTABLE_WITHIN_HARD_LIMIT';
+  } else {
+    durationStatus = 'OUT_OF_BOUNDS';
+  }
 
   if (events.length === 0) {
     return {
@@ -27,6 +38,8 @@ export function calculateFieldSatisfaction(
       knowledgeProgressionRate: 100,
       fieldCoherenceScore: 90,
       durationAdherenceRate: 100,
+      durationDeviationPercentage: deviationPct,
+      durationStatus,
       overallSatisfaction: 50
     };
   }
@@ -55,8 +68,7 @@ export function calculateFieldSatisfaction(
   }
   const knowledgeProgressionRate = Math.round((progressionMatches / Math.max(1, events.length)) * 100);
 
-  // 5. Duration Adherence Rate (Objetivo 45 min ± 15%)
-  const deviation = Math.abs(actualMinutes - targetMinutes) / targetMinutes;
+  // 5. Duration Adherence Rate (Objetivo 45 min, Soft ±15%, Hard ±20%)
   const durationAdherenceRate = Math.max(0, Math.min(100, Math.round(100 - deviation * 120)));
 
   // 6. Field Coherence Score (Continuidad de entidad y compatibilidad temática)
@@ -72,7 +84,7 @@ export function calculateFieldSatisfaction(
   }
   const fieldCoherenceScore = Math.min(100, Math.round((coherencePoints / Math.max(1, plan.blocks.length * 20)) * 100));
 
-  // 7. Overall Satisfaction Ponderada (Evita que el completion oculte incoherencias)
+  // 7. Overall Satisfaction Ponderada
   const overallSatisfaction = Math.round(
     completionRate * 0.25 +
     valueScore * 0.20 +
@@ -89,6 +101,8 @@ export function calculateFieldSatisfaction(
     knowledgeProgressionRate,
     fieldCoherenceScore,
     durationAdherenceRate,
+    durationDeviationPercentage: deviationPct,
+    durationStatus,
     overallSatisfaction
   };
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Search, Plus, Sparkles, Youtube, Link as LinkIcon, Check, Film, Tv } from 'lucide-react';
+import { X, Search, Plus, Sparkles, Video, Link as LinkIcon, Check, Film, Tv } from 'lucide-react';
 import type { ScheduleBlock } from '../../lib/tv/signalTypes';
 import { supabase } from '../../lib/supabase';
 import { extractYouTubeId } from '../../lib/search/publishers/publisherVideoExtractor';
@@ -261,7 +261,7 @@ export function AddSignalContentModal({
               <div className="input-group">
                 <label>URL o ID del Video</label>
                 <div className="input-wrap">
-                  <Youtube size={18} className="input-icon" />
+                  <Video size={18} className="input-icon" />
                   <input 
                     type="text" 
                     placeholder="https://www.youtube.com/watch?v=..."

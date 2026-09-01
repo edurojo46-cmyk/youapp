@@ -138,3 +138,25 @@ export function isAllowedPublisherUrl(urlString: string): boolean {
     return false;
   }
 }
+
+export function identifyPublisherFromUrl(urlString: string): PublisherSource | null {
+  try {
+    const hostname = new URL(urlString).hostname
+      .toLowerCase()
+      .replace(/^www\./, '');
+
+    for (const publisher of Object.values(PUBLISHER_REGISTRY)) {
+      if (
+        publisher.domains.some((domain) => {
+          const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
+          return hostname === normalizedDomain || hostname.endsWith(`.${normalizedDomain}`);
+        })
+      ) {
+        return publisher;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

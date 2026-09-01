@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+};
 
 const ALLOWED_PUBLISHER_DOMAINS = [
   'tvpublica.com.ar',
@@ -17,7 +22,9 @@ const ALLOWED_PUBLISHER_DOMAINS = [
   'clarin.com',
   'www.clarin.com',
   'pagina12.com.ar',
-  'www.pagina12.com.ar'
+  'www.pagina12.com.ar',
+  'revistaanfibia.com',
+  'www.revistaanfibia.com'
 ];
 
 interface ExtractedVideo {
@@ -55,7 +62,7 @@ function isSafeUrl(urlStr: string): boolean {
 
 function extractYouTubeId(str: string): string | null {
   if (!str) return null;
-  const match = str.match(/(?:youtube(?:-nocookie)?\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/);
+  const match = str.match(/(?:youtube(?:-nocookie)?\.com\/embed\/|youtu\.be\/|youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{8,16})/);
   return match ? match[1] : null;
 }
 
@@ -105,7 +112,7 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
   }
 
   // 2. IFRAME Embeds
-  const iframeRegex = /<iframe[^>]+src=["']([^"']+)["'][^>]*>/gi;
+  const iframeRegex = /<iframe\b[^>]*?\bsrc=["']([^"']+)["'][^>]*>/gi;
   let iMatch;
   while ((iMatch = iframeRegex.exec(html)) !== null) {
     const src = iMatch[1];
@@ -137,13 +144,19 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders,
+    });
   }
 
   try {
-    const { query, limit = 20 } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const query = body?.query || '';
+    const limit = body?.limit || 20;
+
     if (!query || typeof query !== 'string') {
-      return new Response(JSON.stringify({ error: 'Query is required' }), {
+      return new Response(JSON.stringify({ ok: false, error: 'Query is required', videos: [] }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -157,19 +170,21 @@ serve(async (req) => {
       qualifiedVideos: 0
     };
 
-    // Return empty results gracefully for queries without active web feeds
+    // Responde estructuradamente
     return new Response(JSON.stringify({
+      ok: true,
       videos,
       stats: {
         ...stats,
         uniqueVideos: videos.length
       }
     }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ ok: false, error: error.message || String(error), videos: [] }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });

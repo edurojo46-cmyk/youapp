@@ -291,12 +291,10 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
           candidates = calculateQualityScore(candidates);
           latencies.quality += (Date.now() - t);
         }
-      }
-    }
 
-      // ── FASE DE GENERAL FALLBACK (Post-Routing) ─────────────────────────────────
-      // Evaluamos si los candidatos cualificados son insuficientes
-      const qualifiedCandidates = candidates.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40);
+        // ── FASE DE GENERAL FALLBACK (Post-Routing) ─────────────────────────────────
+        // Evaluamos si los candidatos cualificados son insuficientes
+        const qualifiedCandidates = candidates.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40);
       
       if (qualifiedCandidates.length < 5 && activePath !== 'discovery_free') {
         if (import.meta.env.DEV) console.log('⚠️ [Fallback] Insufficient qualified candidates. Triggering fallback providers.');
@@ -343,6 +341,7 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
         }
       }
     }
+  }
     
     // ── DEV ENVIRONMENT ABSOLUTE FALLBACK (MOCK) ─────────────────────────
     // Política deny-by-default: los mocks solo se permiten si se explicita.

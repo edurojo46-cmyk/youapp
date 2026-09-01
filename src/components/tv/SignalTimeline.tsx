@@ -9,9 +9,10 @@ interface SignalTimelineProps {
   schedule: ScheduleBlock[];
   currentIndex: number;
   onReorder: (dragIndex: number, dropIndex: number) => void;
+  onAddClick?: () => void;
 }
 
-export function SignalTimeline({ schedule, currentIndex, onReorder }: SignalTimelineProps) {
+export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }: SignalTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -122,7 +123,7 @@ export function SignalTimeline({ schedule, currentIndex, onReorder }: SignalTime
             </div>
           ))}
           
-          <div className="tl-add-card">
+          <div className="tl-add-card" onClick={onAddClick} role="button" tabIndex={0} style={{ cursor: 'pointer' }}>
             <Plus size={20} color="var(--you-text-secondary)" />
             <span>Agregar<br/>contenido</span>
           </div>

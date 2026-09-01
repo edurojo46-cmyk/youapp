@@ -18,6 +18,8 @@ import { ChosenForYou } from '../components/tv/ChosenForYou';
 import { DirectorCard } from '../components/tv/DirectorCard';
 import { PlayerActionBar } from '../components/tv/PlayerActionBar';
 import { SignalStatusBar } from '../components/tv/SignalStatusBar';
+import { AddSignalContentModal } from '../components/tv/AddSignalContentModal';
+import type { ScheduleBlock } from '../lib/tv/signalTypes';
 
 export default function ProgramarTV() {
   const navigate = useNavigate();
@@ -28,6 +30,7 @@ export default function ProgramarTV() {
   const setIsAnalyzingYOU4 = usePlayerStore(state => state.setIsAnalyzingYOU4);
 
   const [isGeneratingSurprise, setIsGeneratingSurprise] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // YOU4 State
   type YOU4ViewMode = 'single' | 'mosaic';
@@ -362,28 +365,48 @@ export default function ProgramarTV() {
     </div>
   );
 
+  const handleAddBlock = (newBlock: ScheduleBlock) => {
+    const lastPos = (activeSignal?.schedule.length || 1) - 1;
+    insert(newBlock, lastPos);
+  };
+
   return (
     <>
       <ProgramarTVLayout
         stage={stage}
         intelligence={intelligence}
-        timeline={<SignalTimeline schedule={activeSignal?.schedule || []} currentIndex={currentBlockIndex} onReorder={reorder} />}
+        timeline={
+          <SignalTimeline 
+            schedule={activeSignal?.schedule || []} 
+            currentIndex={currentBlockIndex} 
+            onReorder={reorder}
+            onAddClick={() => setIsAddModalOpen(true)}
+          />
+        }
         actions={<PlayerActionBar />}
         status={<SignalStatusBar />}
         isPlaying={isPlaying}
         onPlayPause={handlePlayPause}
         signalName={activeSignal?.name || 'Mi Señal Personal'}
       />
-    <style>{`
-      @keyframes pulse {
-        0% { opacity: 0.5; }
-        50% { opacity: 1; text-shadow: 0 0 10px #00f0ff; }
-        100% { opacity: 0.5; }
-      }
-      .pulse-anim {
-        animation: pulse 1.5s infinite ease-in-out;
-      }
-    `}</style>
+
+      <AddSignalContentModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAddBlock={handleAddBlock}
+        existingCount={activeSignal?.schedule.length || 0}
+      />
+
+      <style>{`
+        @keyframes pulse {
+          0% { opacity: 0.5; }
+          50% { opacity: 1; text-shadow: 0 0 10px #00f0ff; }
+          100% { opacity: 0.5; }
+        }
+        .pulse-anim {
+          animation: pulse 1.5s infinite ease-in-out;
+        }
+      `}</style>
     </>
   );
 }

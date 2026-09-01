@@ -241,6 +241,40 @@ export function extractRSSMediaItems(xmlText: string, publisher: { code: string;
   return results;
 }
 
+// ── 7.5. Extracción de Enlaces Explícitos (a href o texto suelto) ───────────
+export function extractExplicitVideoLinks(html: string, articleUrl: string, publisher: { code: string; name: string }): ExtractedPublisherVideo[] {
+  const results: ExtractedPublisherVideo[] = [];
+  const linkPatterns = [
+    /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{8,16})/gi,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{8,16})/gi,
+    /(?:https?:\/\/)?(?:player\.)?vimeo\.com\/(?:video\/)?([0-9]{6,12})/gi
+  ];
+
+  for (const pattern of linkPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      const id = match[1];
+      const isYt = pattern.source.includes('youtu');
+      const provider = isYt ? 'youtube' : 'vimeo';
+
+      results.push({
+        provider,
+        providerContentId: id,
+        title: '',
+        videoUrl: isYt ? `https://www.youtube.com/watch?v=${id}` : `https://vimeo.com/${id}`,
+        thumbnailUrl: isYt ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined,
+        articleUrl,
+        publisherCode: publisher.code,
+        publisherName: publisher.name,
+        discoveryMethod: 'publisher_embed',
+        extractionMethod: 'iframe', // canonical embed mapping
+      });
+    }
+  }
+
+  return results;
+}
+
 // ── 8. Orquestador de Extracción con Jerarquía y Deduplicación ─────────────
 export function extractVideosFromHtmlPage(html: string, articleUrl: string, publisher: { code: string; name: string }): ExtractedPublisherVideo[] {
   // 1. Extraer por JSON-LD (Mayor riqueza de metadatos)
@@ -252,6 +286,9 @@ export function extractVideosFromHtmlPage(html: string, articleUrl: string, publ
   // 3. Extraer por OpenGraph
   const ogVideos = extractOpenGraphVideo(html, articleUrl, publisher);
 
+  // 4. Extraer por Enlaces Explícitos (links cortos youtu.be o directos)
+  const linkVideos = extractExplicitVideoLinks(html, articleUrl, publisher);
+
   // Combinar y deduplicar por (provider, providerContentId)
   const map = new Map<string, ExtractedPublisherVideo>();
 
@@ -260,7 +297,7 @@ export function extractVideosFromHtmlPage(html: string, articleUrl: string, publ
   const articleTitle = titleMatch ? titleMatch[1].replace(/ - [^-]+$/, '').trim() : '';
 
   // Insertar en orden de menor a mayor prioridad para que el más confiable sobreescriba
-  for (const v of [...ogVideos, ...iframeVideos, ...jsonLdVideos]) {
+  for (const v of [...linkVideos, ...ogVideos, ...iframeVideos, ...jsonLdVideos]) {
     const key = `${v.provider}:${v.providerContentId}`;
     const existing = map.get(key);
     

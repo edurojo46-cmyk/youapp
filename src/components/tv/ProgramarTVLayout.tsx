@@ -11,6 +11,7 @@ interface ProgramarTVLayoutProps {
   status: React.ReactNode;
   isPlaying?: boolean;
   onPlayPause?: () => void;
+  signalName?: string;
 }
 
 export function ProgramarTVLayout({
@@ -20,7 +21,8 @@ export function ProgramarTVLayout({
   actions,
   status,
   isPlaying,
-  onPlayPause
+  onPlayPause,
+  signalName = 'Mi Señal Personal'
 }: ProgramarTVLayoutProps) {
   const navigate = useNavigate();
 
@@ -40,7 +42,7 @@ export function ProgramarTVLayout({
           </div>
           <div style={{ width: '1px', height: '24px', background: 'var(--you-border)' }}></div>
           <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--you-text)' }}>
-            Mi Señal <span style={{ color: 'var(--you-blue-vivid)', margin: '0 8px' }}>•</span> <span style={{ color: 'var(--you-text-secondary)', fontWeight: 400 }}>Historia de Roma</span>
+            Mi Señal <span style={{ color: 'var(--you-blue-vivid)', margin: '0 8px' }}>•</span> <span style={{ color: 'var(--you-text-secondary)', fontWeight: 400 }}>{signalName}</span>
           </div>
         </div>
         

@@ -64,13 +64,25 @@ export function SignalTimeline({ schedule, currentIndex, onReorder }: SignalTime
         </div>
         <div className="tl-line-container">
           <div className="tl-line"></div>
-          {schedule.slice(0, 4).map((b, idx) => {
+          {schedule.map((b, idx) => {
             const isCurrent = idx === currentIndex;
-            // Mock times for visual matching
-            const mockTimes = ['08:00', '08:42', '09:03', '09:35'];
+            const leftPercent = schedule.length > 1 
+              ? (idx / (schedule.length - 1)) * 80 + 10 
+              : 50;
+
+            const formatOffset = (sec: number) => {
+              const startHour = 8;
+              const totalMins = Math.floor(sec / 60);
+              const h = (startHour + Math.floor(totalMins / 60)) % 24;
+              const m = totalMins % 60;
+              return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            };
+
             return (
-              <div key={b.id} className="tl-point-wrapper" style={{ left: `${idx * 30 + 10}%` }}>
-                <div className={`tl-time ${isCurrent ? 'current' : ''}`}>{mockTimes[idx] || '10:00'}</div>
+              <div key={b.id} className="tl-point-wrapper" style={{ left: `${leftPercent}%` }}>
+                <div className={`tl-time ${isCurrent ? 'current' : ''}`}>
+                  {formatOffset(b.startOffsetSec || 0)}
+                </div>
                 <div className={`tl-point ${isCurrent ? 'current' : ''}`}></div>
               </div>
             );

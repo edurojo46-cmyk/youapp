@@ -44,83 +44,62 @@ export default function ProgramarTV() {
     currentBlockIdRef.current = currentBlock?.id || null;
   }, [currentBlock?.id]);
 
-  // Fallback / Demo auto-load with Nature Series
+  // Auto-load 2 real default videos if signal is empty
   useEffect(() => {
-    if (!activeSignal || activeSignal.id === 'mock-signal-1') {
-      const NATURE_SIGNAL = {
-        id: 'nature-signal-4k',
-        name: 'Señal: Naturaleza Salvaje & Océanos 4K',
-        prompt: 'Documentales de Naturaleza en 4K UHD',
+    if (!activeSignal || !activeSignal.schedule || activeSignal.schedule.length === 0) {
+      const DEFAULT_2_VIDEOS_SIGNAL = {
+        id: 'user-signal-1',
+        name: 'Mi Señal Personal',
+        prompt: 'Programación de Mi Señal',
         visibility: 'private' as const,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         schedule: [
           {
-            id: 'block-nature-1',
+            id: 'block-1',
             position: 0,
             startOffsetSec: 0,
-            durationSec: 3000,
-            topic: 'Selvas y Bosques Tropicales',
+            durationSec: 596,
+            topic: 'Cortometraje',
             role: 'opening' as const,
             contentItem: {
-              id: 'EngW7tLk6R8',
-              providerId: 'EngW7tLk6R8',
+              id: 'aqz-KE-bpKQ',
+              providerId: 'aqz-KE-bpKQ',
               type: 'video' as const,
               provider: 'youtube' as const,
-              title: 'Our Planet: Selvas y Bosques Tropicales (4K UHD)',
-              thumbnailUrl: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=800',
-              videoUrl: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
-              channelName: 'Our Planet / Netflix',
-              channelId: 'netflix',
+              title: 'Big Buck Bunny (Cortometraje)',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600',
+              videoUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+              channelName: 'Blender Foundation',
+              channelId: 'blender',
               isLive: false,
               isVerified: true
             }
           },
           {
-            id: 'block-nature-2',
+            id: 'block-2',
             position: 1,
-            startOffsetSec: 3000,
-            durationSec: 2940,
-            topic: 'Aguas Costeras y Arrecifes',
+            startOffsetSec: 596,
+            durationSec: 653,
+            topic: 'Animación',
             role: 'deep_dive' as const,
             contentItem: {
-              id: 'r9PeYPHdpNo',
-              providerId: 'r9PeYPHdpNo',
+              id: 'TLkA0RELQ1g',
+              providerId: 'TLkA0RELQ1g',
               type: 'video' as const,
               provider: 'youtube' as const,
-              title: 'Our Planet: Aguas Costeras y Vida Marina (4K UHD)',
-              thumbnailUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
-              videoUrl: 'https://www.youtube.com/watch?v=r9PeYPHdpNo',
-              channelName: 'Our Planet / Netflix',
-              channelId: 'netflix',
-              isLive: false,
-              isVerified: true
-            }
-          },
-          {
-            id: 'block-nature-3',
-            position: 2,
-            startOffsetSec: 5940,
-            durationSec: 3180,
-            topic: 'Mundos Helados',
-            role: 'deep_dive' as const,
-            contentItem: {
-              id: 'cTQ3Ko9ZKg8',
-              providerId: 'cTQ3Ko9ZKg8',
-              type: 'video' as const,
-              provider: 'youtube' as const,
-              title: 'Our Planet: Mundos Helados y Vida Ártica (4K UHD)',
-              thumbnailUrl: 'https://images.unsplash.com/photo-1517824806704-9040b037703b?w=800',
-              videoUrl: 'https://www.youtube.com/watch?v=cTQ3Ko9ZKg8',
-              channelName: 'Our Planet / Netflix',
-              channelId: 'netflix',
+              title: 'Elephants Dream',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600',
+              videoUrl: 'https://www.youtube.com/watch?v=TLkA0RELQ1g',
+              channelName: 'Blender Foundation',
+              channelId: 'blender',
               isLive: false,
               isVerified: true
             }
           }
         ]
       };
-      setSignal(NATURE_SIGNAL as any);
+      setSignal(DEFAULT_2_VIDEOS_SIGNAL as any);
     }
   }, [activeSignal, setSignal]);
 
@@ -386,14 +365,15 @@ export default function ProgramarTV() {
   return (
     <>
       <ProgramarTVLayout
-      stage={stage}
-      intelligence={intelligence}
-      timeline={<SignalTimeline schedule={activeSignal.schedule} currentIndex={currentBlockIndex} onReorder={reorder} />}
-      actions={<PlayerActionBar />}
-      status={<SignalStatusBar />}
-      isPlaying={isPlaying}
-      onPlayPause={handlePlayPause}
-    />
+        stage={stage}
+        intelligence={intelligence}
+        timeline={<SignalTimeline schedule={activeSignal?.schedule || []} currentIndex={currentBlockIndex} onReorder={reorder} />}
+        actions={<PlayerActionBar />}
+        status={<SignalStatusBar />}
+        isPlaying={isPlaying}
+        onPlayPause={handlePlayPause}
+        signalName={activeSignal?.name || 'Mi Señal Personal'}
+      />
     <style>{`
       @keyframes pulse {
         0% { opacity: 0.5; }

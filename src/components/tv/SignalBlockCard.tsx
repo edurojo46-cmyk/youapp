@@ -13,11 +13,13 @@ export function SignalBlockCard({
   isCurrent,
   isPast
 }: SignalBlockCardProps) {
+  const thumb = block.contentItem.thumbnailUrl || (block.contentItem as any).thumbnail || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=200&q=80';
+
   return (
     <div className={`tl-card ${isCurrent ? 'active' : ''} ${isPast ? 'past' : ''}`}>
       <div 
         className="tl-card-thumb"
-        style={{ backgroundImage: `url(${block.contentItem.thumbnail || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?w=200&q=80'})` }}
+        style={{ backgroundImage: `url(${thumb})` }}
       />
       
       <div className="tl-card-content">

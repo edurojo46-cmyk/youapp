@@ -216,25 +216,39 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     candidates = calculateQualityScore(candidates);
     latencies.quality = Date.now() - t;
 
-    // Phase 6: FAST PATH GATE (Adaptive Atlas Coverage Check)
+    // Phase 6: FAST PATH GATE (Post-Eligibility Atlas Coverage Check)
     t = Date.now();
     
+    const atlasRawCount = candidates.length;
+    const qualityPassedCount = candidates.filter(c => (c.qualityScore || 0) >= 60).length;
+    const relevancePassedCount = candidates.filter(c => (c.relevanceScore || 0) >= 40).length;
+    const qualifiedAtlasCandidates = candidates.filter(
+      c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40
+    );
+
     // Provisional sorting by youScore to check Top 5 guardrail
-    const provisionalTop = [...candidates].sort((a, b) => (b.youScore || 0) - (a.youScore || 0));
+    const provisionalTop = [...qualifiedAtlasCandidates].sort((a, b) => (b.youScore || 0) - (a.youScore || 0));
     const top5 = provisionalTop.slice(0, 5);
-    const top5HasNoLowRelevance = top5.length >= 1 && top5.every(c => (c.relevanceScore || 0) >= 40);
+    const top5Consistent = top5.length >= 1 && top5.every(c => (c.relevanceScore || 0) >= 40);
 
-    const strongCandidates = candidates.filter(c => (c.qualityScore || 0) >= 50 && (c.relevanceScore || 0) >= 30);
-    const hasEnoughVolume = candidates.length >= 8;
-    const hasEnoughStrong = strongCandidates.length >= 5;
-
-    const fastPathReady = (hasEnoughVolume && hasEnoughStrong && top5HasNoLowRelevance) || candidates.length >= 25;
+    const hasEnoughQualifiedVolume = qualifiedAtlasCandidates.length >= 8;
+    const fastPathReady = hasEnoughQualifiedVolume && top5Consistent;
     latencies.fastPathEvaluation = Date.now() - t;
 
     if (fastPathReady && !forceExternal) {
       activePath = 'fast';
-      if (import.meta.env.DEV) console.log(`⚡ [Fast Path] Gate passed (${candidates.length} candidates in Atlas). Skipping external search.`);
+      if (import.meta.env.DEV) {
+        console.log(`⚡ [Fast Path] Gate PASSED`);
+        console.log(`  Atlas raw:          ${atlasRawCount}`);
+        console.log(`  Quality passed:     ${qualityPassedCount}`);
+        console.log(`  Relevance passed:   ${relevancePassedCount}`);
+        console.log(`  Qualified (Q60/R40):${qualifiedAtlasCandidates.length}`);
+        console.log(`  Top5 consistent:    ${top5Consistent}`);
+      }
     } else {
+      if (import.meta.env.DEV) {
+        console.log(`⚡ [Fast Path] Gate FAILED (Qualified: ${qualifiedAtlasCandidates.length}/8, Top5: ${top5Consistent}). Proceeding to Free Discovery.`);
+      }
       // ── FREE DISCOVERY STAGE (Nivel 0: Publishers, RSS, Sitemaps, Archivos) ──
       const { runFreeDiscoveryStage } = await import('./freeDiscovery/freeDiscoveryStage');
       const freeDiscovery = await runFreeDiscoveryStage(query, candidates, intentData, options);
@@ -494,6 +508,9 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       youtubeRadar: youtubeCalled && youtubeResults > 0
     });
     console.log('Candidates:', {
+      atlasRetrieved: isFromAtlas ? (acquisitionStats.atlas + (acquisitionStats.videoMesh || 0)) : 0,
+      atlasQualified: qualifiedCount,
+      eligibilityDropped: (qualityDrop || 0) + (relevanceDrop || 0),
       totalReturned: allWithDebug.length,
       fromAtlasOrLocal: acquisitionStats.atlas + acquisitionStats.videoMesh,
       fromPublishers: acquisitionStats.publisher,

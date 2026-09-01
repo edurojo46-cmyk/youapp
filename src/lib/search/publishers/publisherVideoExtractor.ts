@@ -247,7 +247,9 @@ export function extractExplicitVideoLinks(html: string, articleUrl: string, publ
   const linkPatterns = [
     /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{8,16})/gi,
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{8,16})/gi,
-    /(?:https?:\/\/)?(?:player\.)?vimeo\.com\/(?:video\/)?([0-9]{6,12})/gi
+    /(?:https?:\/\/)?(?:player\.)?vimeo\.com\/(?:video\/)?([0-9]{6,12})/gi,
+    /(?:https?:\/\/)?(?:www\.)?dailymotion\.com\/video\/([a-zA-Z0-9]+)/gi,
+    /(?:https?:\/\/)?(?:www\.)?dai\.ly\/([a-zA-Z0-9]+)/gi
   ];
 
   for (const pattern of linkPatterns) {
@@ -255,13 +257,14 @@ export function extractExplicitVideoLinks(html: string, articleUrl: string, publ
     while ((match = pattern.exec(html)) !== null) {
       const id = match[1];
       const isYt = pattern.source.includes('youtu');
-      const provider = isYt ? 'youtube' : 'vimeo';
+      const isVimeo = pattern.source.includes('vimeo');
+      const provider = isYt ? 'youtube' : isVimeo ? 'vimeo' : 'dailymotion';
 
       results.push({
         provider,
         providerContentId: id,
         title: '',
-        videoUrl: isYt ? `https://www.youtube.com/watch?v=${id}` : `https://vimeo.com/${id}`,
+        videoUrl: isYt ? `https://www.youtube.com/watch?v=${id}` : isVimeo ? `https://vimeo.com/${id}` : `https://www.dailymotion.com/video/${id}`,
         thumbnailUrl: isYt ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined,
         articleUrl,
         publisherCode: publisher.code,

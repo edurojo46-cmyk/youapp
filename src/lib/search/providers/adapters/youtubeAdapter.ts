@@ -51,11 +51,12 @@ export class YouTubeAdapter implements ExternalAdapter {
 
       const items = (data.items || []) as ContentItem[];
       
-      // 3. Registrar los resultados devueltos (para telemetría)
+      // 3. Registrar los resultados devueltos (para telemetría y recency guard)
       const latencyMs = Date.now() - startTime;
       await reportSearchResult(permission.requestId, {
         resultsReceived: items.length,
-        latencyMs
+        latencyMs,
+        query: query.rawQuery
       });
       
       // Aseguramos que la fuente de descubrimiento sea la correcta

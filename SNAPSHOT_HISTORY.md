@@ -61,3 +61,38 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
    - **Ficha de Detalle (`/streaming/:type/:id`):** Ficha técnica cinematográfica con desglose de disponibilidad en Argentina y enlaces seguros.
    - **Modal Mis Plataformas:** Selector limpio sin credenciales para optimizar el catálogo sin costos adicionales.
    - **Modal Dónde Verla:** Jerarquía de valor (Tu Suscripción $\rightarrow$ Otras Suscripciones $\rightarrow$ Alquiler/Compra).
+
+---
+
+## V3 — YouApp Knowledge Reuse V1
+- **Fecha:** 2026-09-01
+- **Git Tag:** `youapp-knowledge-reuse-v1-live-validated`
+- **Archivo:** `YOUAPP_IP_SNAPSHOT_V3.zip`
+- **Estado:** LIVE VALIDATED ✅ — CONGELADO / NO MODIFICAR 🧊
+
+### Principio Fundamental:
+> **SEARCH ONCE → ABSORB → REMEMBER → REUSE**
+> *"Cada búsqueda Radar exitosa y correctamente absorbida construye conocimiento reutilizable en YouApp."*
+
+### Validaciones Superadas:
+- **CandidatePool / IndexedDB Local Reuse:** PASS
+- **Browser Reload / F5 Persistence:** PASS
+- **Atlas Pure Recovery (`youapp_index` sin RAM ni IndexedDB):** PASS
+- **Novel Query Learning & Absorption (`"spinetta jade"`):** PASS (40 videos absorbidos en 1ª consulta)
+- **Repeated Query Quota Delta = 0:** PASS (2ª consulta ejecutó Fast Path 100% Atlas con 0 cuota backend)
+
+### Caso Gold de Validación en Vivo:
+- **Query:** `"spinetta jade"`
+  - **1ª Búsqueda (Inédita):** Atlas = 0 $\rightarrow$ Radar = 1 (~100 u) $\rightarrow$ 40 videos absorbidos en `youapp_index`.
+  - **2ª Búsqueda (Sin Caché):** Atlas = 40 $\rightarrow$ Fast Path $\rightarrow$ Radar = 0 $\rightarrow$ **Cuota = 0 u**.
+
+### Nuevas Capacidades & Defensas de Economía:
+1. **Radar Recency Guard Inteligente (`quotaBrain.ts`):**
+   - Cooldown de 6 horas para consultas generales y 1 hora para noticias/actualidad.
+   - Condicionado a la existencia efectiva de candidatos reutilizables (`hasKnowledge > 0`).
+2. **Normalización Canónica de Consultas:**
+   - Limpieza de acentos, símbolos y espacios redundantes para reutilización semántica compartida.
+3. **Calibración de Fast Path Adaptativo (`searchEngine.ts`):**
+   - Aprobación con $\ge 8$ candidatos y Top 5 de alta relevancia sin exigir umbrales artificiales.
+4. **Telemetría Estructurada `[DiscoveryEconomy]`:**
+   - Registro en tiempo real de fuentes (RAM, IndexedDB, Atlas, Radar), estado de guardas y balance de cuota consumida.

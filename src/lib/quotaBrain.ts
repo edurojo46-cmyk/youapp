@@ -53,6 +53,59 @@ export interface SearchPermission {
   opportunityScore?: number;
 }
 
+// ── Radar Recency Guard (Ahorro de Cuota / Cooldown Inteligente) ───────────
+const RADAR_CACHE_KEY = 'youapp_radar_recent_searches';
+const COOLDOWN_HOURS_GENERAL = 6;
+const COOLDOWN_HOURS_FRESH = 1;
+
+export function normalizeCanonicalKey(query: string): string {
+  return query
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove accents
+    .replace(/[^a-z0-9\s]/g, ' ')   // remove symbols
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function getRadarQueryCooldownInfo(query: string, freshnessNeed?: number, atlasCandidateCount?: number): { inCooldown: boolean; ageMinutes: number } {
+  try {
+    const raw = localStorage.getItem(RADAR_CACHE_KEY);
+    if (!raw) return { inCooldown: false, ageMinutes: 0 };
+    const history: Record<string, number> = JSON.parse(raw);
+    const cKey = normalizeCanonicalKey(query);
+    const lastTimestamp = history[cKey];
+    if (!lastTimestamp) return { inCooldown: false, ageMinutes: 0 };
+
+    const cooldownMs = (freshnessNeed && freshnessNeed > 70)
+      ? COOLDOWN_HOURS_FRESH * 3600 * 1000
+      : COOLDOWN_HOURS_GENERAL * 3600 * 1000;
+
+    const elapsed = Date.now() - lastTimestamp;
+    const ageMinutes = Math.round(elapsed / (60 * 1000));
+
+    // Solo denegar si efectivamente tenemos conocimiento previo en Atlas o cobertura > 0
+    const hasKnowledge = typeof atlasCandidateCount === 'number' ? atlasCandidateCount > 0 : true;
+
+    return {
+      inCooldown: elapsed < cooldownMs && hasKnowledge,
+      ageMinutes
+    };
+  } catch {
+    return { inCooldown: false, ageMinutes: 0 };
+  }
+}
+
+export function recordRadarQueryExecution(query: string) {
+  try {
+    const cKey = normalizeCanonicalKey(query);
+    const raw = localStorage.getItem(RADAR_CACHE_KEY);
+    const history: Record<string, number> = raw ? JSON.parse(raw) : {};
+    history[cKey] = Date.now();
+    localStorage.setItem(RADAR_CACHE_KEY, JSON.stringify(history));
+  } catch {}
+}
+
 // ── Función principal: pedir permiso para buscar ───────────────────────────
 export async function requestSearch(params: SearchRequest): Promise<SearchPermission> {
   const requestId = crypto.randomUUID();
@@ -63,7 +116,22 @@ export async function requestSearch(params: SearchRequest): Promise<SearchPermis
   let opportunityScore: number | undefined;
 
   try {
-    // En desarrollo siempre damos presupuesto para no bloquear pruebas E2E
+    // 0. RADAR RECENCY GUARD: Evitar quemar cuota en queries ya consultadas recientemente SI Atlas tiene cobertura
+    const cooldownInfo = getRadarQueryCooldownInfo(params.query, params.freshnessNeed, params.atlasCoverage);
+    if (params.caller === 'SearchEngine' && cooldownInfo.inCooldown) {
+      if (import.meta.env.DEV) {
+        console.log(`🛡️ [QuotaBrain] Radar Recency Guard activo para "${params.query}" (ejecutado hace ${cooldownInfo.ageMinutes} min). Cuota evitada (servir desde Atlas).`);
+      }
+      authorized = false;
+      denialReason = `radar_recency_cooldown (consultado hace ${cooldownInfo.ageMinutes}m, servir desde Atlas)`;
+      return {
+        authorized: false,
+        requestId,
+        reason: denialReason,
+        budgetRemaining: await getBudgetRemaining()
+      };
+    }
+
     // En desarrollo siempre damos presupuesto para no bloquear pruebas E2E, EXCEPTO en SMOKE_LIVE
     if (import.meta.env.DEV && import.meta.env.VITE_SMOKE_LIVE !== 'true') {
       budgetRemaining = 1000;
@@ -150,8 +218,12 @@ export async function logSearchAvoided(params: {
 export async function reportSearchResult(requestId: string, params: {
   resultsReceived: number;
   latencyMs?: number;
+  query?: string;
 }) {
   try {
+    if (params.query) {
+      recordRadarQueryExecution(params.query);
+    }
     await supabase
       .from('quota_events')
       .update({

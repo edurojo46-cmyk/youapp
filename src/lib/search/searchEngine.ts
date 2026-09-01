@@ -166,11 +166,19 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     });
   };
 
-  if (!forceExternal && false) {
-    pool = await getCandidatePool(query.normalizedQuery);
-    if (pool) {
-      const cachedIds = pool.candidates.map(c => c.contentId);
-      candidates = await getCatalogItems(cachedIds);
+  if (!forceExternal) {
+    try {
+      pool = await getCandidatePool(query.normalizedQuery);
+      if (pool && pool.candidates && pool.candidates.length > 0) {
+        const cachedIds = pool.candidates.map(c => c.contentId);
+        candidates = await getCatalogItems(cachedIds);
+        if (candidates.length > 0) {
+          activePath = 'fast';
+          if (import.meta.env.DEV) console.log(`⚡ [Fast Path] Loaded ${candidates.length} candidates from CandidatePool cache for "${query.normalizedQuery}"`);
+        }
+      }
+    } catch {
+      // ignore
     }
   }
 
@@ -205,23 +213,24 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     candidates = calculateQualityScore(candidates);
     latencies.quality = Date.now() - t;
 
-    // Phase 6: FAST PATH GATE
+    // Phase 6: FAST PATH GATE (Adaptive Atlas Coverage Check)
     t = Date.now();
     
     // Provisional sorting by youScore to check Top 5 guardrail
     const provisionalTop = [...candidates].sort((a, b) => (b.youScore || 0) - (a.youScore || 0));
     const top5 = provisionalTop.slice(0, 5);
-    const top5HasNoLowRelevance = top5.length >= 1 && top5.every(c => (c.relevanceScore || 0) >= 50);
+    const top5HasNoLowRelevance = top5.length >= 1 && top5.every(c => (c.relevanceScore || 0) >= 40);
 
-    const hasEnoughVolume = candidates.length >= 30;
-    const hasEnoughStrong = candidates.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40).length >= 24;
+    const strongCandidates = candidates.filter(c => (c.qualityScore || 0) >= 50 && (c.relevanceScore || 0) >= 30);
+    const hasEnoughVolume = candidates.length >= 8;
+    const hasEnoughStrong = strongCandidates.length >= 5;
 
-    const fastPathReady = hasEnoughVolume && hasEnoughStrong && top5HasNoLowRelevance;
+    const fastPathReady = (hasEnoughVolume && hasEnoughStrong && top5HasNoLowRelevance) || candidates.length >= 25;
     latencies.fastPathEvaluation = Date.now() - t;
 
     if (fastPathReady && !forceExternal) {
       activePath = 'fast';
-      if (import.meta.env.DEV) console.log('⚡ [Fast Path] Gate passed. Skipping external search.');
+      if (import.meta.env.DEV) console.log(`⚡ [Fast Path] Gate passed (${candidates.length} candidates in Atlas). Skipping external search.`);
     } else {
       activePath = 'discovery';
       if (import.meta.env.DEV) console.log('🌐 [Discovery Path] Gate failed. Calling external providers.');
@@ -453,12 +462,50 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     attributionId: crypto.randomUUID()
   }));
 
-  trackSearchEvent('search_completed', {
-    request_id: requestId,
-    query_normalized: query.normalizedQuery,
-    latency_ms: latencies.total,
-    traffic_class: options?.trafficClass || 'organic',
-  });
+  // ── Telemetría DiscoveryEconomy (Consola de Ahorro de Cuota) ───────────────
+  if (import.meta.env.DEV) {
+    const isFromIndexedDb = pool !== null;
+    const isFromAtlas = acquisitionStats.atlas > 0;
+    const youtubeCalled = typeof providerStatuses !== 'undefined' && !!providerStatuses['youtube'];
+    const youtubeResults = (typeof providerStatuses !== 'undefined' && providerStatuses['youtube']?.results) || 0;
+    const quotaConsumed = youtubeCalled && youtubeResults > 0 ? 100 : 0;
+
+    console.groupCollapsed(`💰 [DiscoveryEconomy] "${query.rawQuery}" — Quota: ${quotaConsumed} units | Path: ${activePath.toUpperCase()}`);
+    console.log('Query:', query.rawQuery);
+    console.log('Sources:', {
+      ramCache: false,
+      indexedDb: isFromIndexedDb,
+      atlas: isFromAtlas,
+      youtubeRadar: youtubeCalled
+    });
+    console.log('Candidates:', {
+      totalReturned: allWithDebug.length,
+      fromAtlasOrLocal: acquisitionStats.atlas + acquisitionStats.videoMesh,
+      fromYouTubeRadar: acquisitionStats.radar
+    });
+    console.log('Radar Execution:', {
+      planned: activePath === 'discovery',
+      executed: youtubeCalled,
+      blockedBy: activePath === 'fast' ? 'fast_path_gate' : (youtubeCalled ? 'none' : 'router_or_recency_guard'),
+      quotaConsumed
+    });
+    console.groupEnd();
+  }
+
+  // Asynchronously save candidate pool to local IndexedDB for near-instant / zero-quota repeats
+  if (allWithDebug.length > 0) {
+    Promise.resolve().then(async () => {
+      try {
+        await saveCatalogItems(allWithDebug);
+        await saveCandidatePool({
+          normalizedQuery: query.normalizedQuery,
+          candidates: allWithDebug.map(c => ({ contentId: c.id, youScore: c.youScore || 0 })),
+          expiresAt: Date.now() + 6 * 3600 * 1000, // 6h TTL
+          createdAt: Date.now()
+        });
+      } catch {}
+    });
+  }
   
   // ── Stage 8.4 & 8.5B-3.3: Provider Telemetry Logging & Impressions ──
   Promise.resolve().then(async () => {

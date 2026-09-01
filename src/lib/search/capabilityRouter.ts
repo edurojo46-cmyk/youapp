@@ -248,7 +248,9 @@ export function routerScore(provider: string, capabilities: QueryCapabilities): 
   let finalScore = Math.round(score / 100);  // normalizar a 0-100
   
   if (provider === 'youtube') {
-    if (process.env.YOUTUBE_OFF === 'true') {
+    const isYoutubeOff = (typeof process !== 'undefined' && process.env?.YOUTUBE_OFF === 'true') ||
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_YOUTUBE_OFF === 'true');
+    if (isYoutubeOff) {
       return 0;
     }
     return Math.max(50, 20 + finalScore); // Asegurar que YouTube siempre alcance el umbral (40)

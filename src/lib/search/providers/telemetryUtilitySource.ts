@@ -62,10 +62,12 @@ export class TelemetryUtilitySource implements ProviderUtilitySource {
 
       // Force fallback for benchmark/local
       try {
-        const seedPath = path.join(process.cwd(), 'telemetry_seed.json');
-        if (fs.existsSync(seedPath)) {
-          telemetryData = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
-          console.log(`[TelemetryUtilitySource] Loaded ${telemetryData.length} records from seed`);
+        if (typeof process !== 'undefined' && process.cwd && typeof fs !== 'undefined' && fs.existsSync) {
+          const seedPath = path.join(process.cwd(), 'telemetry_seed.json');
+          if (fs.existsSync(seedPath)) {
+            telemetryData = JSON.parse(fs.readFileSync(seedPath, 'utf-8'));
+            console.log(`[TelemetryUtilitySource] Loaded ${telemetryData.length} records from seed`);
+          }
         }
       } catch (e) {
         // ignore

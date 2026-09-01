@@ -1,0 +1,140 @@
+import { openDB } from 'idb';
+import type { DBSchema, IDBPDatabase } from 'idb';
+import type { ContentItem, CandidatePool } from '../types';
+
+interface YouAppDB extends DBSchema {
+  cache: {
+    key: string;
+    value: {
+      key: string;
+      value: any;
+      expiresAt: number;
+    };
+  };
+  catalog: {
+    key: string;
+    value: ContentItem;
+    indexes: {
+      'by-provider': string;
+    };
+  };
+  candidate_pool: {
+    key: string;
+    value: CandidatePool;
+  };
+  embeddings: {
+    key: string;
+    value: {
+      id: string;
+      vector: number[];
+      model: string;
+      updatedAt: number;
+    };
+  };
+}
+
+const DB_NAME = 'youapp-db-v5';
+const DB_VERSION = 2;
+
+let dbPromise: Promise<IDBPDatabase<YouAppDB>> | null = null;
+
+export async function getDb() {
+  if (!dbPromise) {
+    dbPromise = openDB<YouAppDB>(DB_NAME, DB_VERSION, {
+      upgrade(db, oldVersion, newVersion, transaction) {
+        if (oldVersion < 1) {
+          db.createObjectStore('cache', { keyPath: 'key' });
+          const catalogStore = db.createObjectStore('catalog', { keyPath: 'id' });
+          catalogStore.createIndex('by-provider', 'provider');
+        }
+        if (oldVersion < 2) {
+          if (!db.objectStoreNames.contains('candidate_pool')) {
+            db.createObjectStore('candidate_pool', { keyPath: 'normalizedQuery' });
+          }
+          if (!db.objectStoreNames.contains('embeddings')) {
+            db.createObjectStore('embeddings', { keyPath: 'id' });
+          }
+          if (db.objectStoreNames.contains('search_cache' as any)) {
+            db.deleteObjectStore('search_cache' as any);
+          }
+        }
+      }
+    });
+  }
+  return dbPromise;
+}
+
+export async function getCandidatePool(query: string): Promise<CandidatePool | null> {
+  try {
+    const db = await getDb();
+    const pool = await db.get('candidate_pool', query);
+    if (pool && pool.expiresAt > Date.now()) {
+      return pool;
+    }
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+  }
+  return null;
+}
+
+export async function saveCandidatePool(pool: CandidatePool) {
+  try {
+    const db = await getDb();
+    await db.put('candidate_pool', pool);
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+  }
+}
+
+export async function getCatalogItems(ids: string[]): Promise<ContentItem[]> {
+  try {
+    const db = await getDb();
+    const tx = db.transaction('catalog', 'readonly');
+    const store = tx.objectStore('catalog');
+    const items = await Promise.all(ids.map(id => store.get(id)));
+    return items.filter(Boolean) as ContentItem[];
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+    return [];
+  }
+}
+
+export async function saveCatalogItems(items: ContentItem[]) {
+  try {
+    const db = await getDb();
+    const tx = db.transaction('catalog', 'readwrite');
+    const store = tx.objectStore('catalog');
+    for (const item of items) {
+      store.put(item);
+    }
+    await tx.done;
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+  }
+}
+
+export async function getCache<T>(key: string): Promise<T | null> {
+  try {
+    const db = await getDb();
+    const cached = await db.get('cache', key);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.value as T;
+    }
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+  }
+  return null;
+}
+
+export async function setCache<T>(key: string, value: T, ttlMs: number) {
+  try {
+    const db = await getDb();
+    await db.put('cache', {
+      key,
+      value,
+      expiresAt: Date.now() + ttlMs
+    });
+  } catch (error) {
+    console.error("IndexedDB Error:", error);
+  }
+}

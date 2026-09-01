@@ -18,7 +18,8 @@ import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChanne
 import { executeSearch } from '../lib/search/searchEngine';
 import { fetchYouTubeAutocomplete } from '../lib/search/queryEngine';
 import type { ContentItem } from '../lib/search/types';
-import { resolveChannelPlayable, type YTChannelResult } from '../lib/youtubeChannelSearch';
+import { searchYouTubeChannels, resolveChannelPlayable, type YTChannelResult } from '../lib/youtubeChannelSearch';
+import { streamingRepository } from '../lib/streaming/streamingRepository';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
 
@@ -105,7 +106,73 @@ export default function ChannelSearch() {
     }
     const currentSearchId = ++searchRaceRef.current;
     try {
-      const searchData = await executeSearch(trimmed);
+      let searchData = await executeSearch(trimmed);
+      
+      // Si el motor devuelve 0 resultados (ej. fast path vacío o edge offline), consultar fallback multi-fuente
+      if (!searchData.all || searchData.all.length === 0) {
+        const [ytChannels, streamingResults] = await Promise.all([
+          searchYouTubeChannels(trimmed, 15).catch(() => []),
+          streamingRepository.searchCatalog({ query: trimmed }).catch(() => [])
+        ]);
+
+        const qLower = trimmed.toLowerCase();
+        const catalogChannels = UNIVERSAL_CATALOG.filter(ch => 
+          ch.name.toLowerCase().includes(qLower) ||
+          ch.description.toLowerCase().includes(qLower) ||
+          ch.tags?.some(t => t.toLowerCase().includes(qLower))
+        );
+
+        const mappedChannels: ContentItem[] = [
+          ...catalogChannels.map(ch => ({
+            id: ch.id,
+            type: 'channel' as const,
+            title: ch.name,
+            channelTitle: ch.name,
+            channelId: ch.channelId || ch.id,
+            description: ch.description,
+            thumbnail: ch.avatarUrl || ch.thumbnail,
+            avatarUrl: ch.avatarUrl,
+            videoUrl: ch.videoUrl,
+            provider: ch.provider || 'youtube',
+            isLive: ch.isLive,
+            retrievalSource: 'universal-catalog'
+          })),
+          ...ytChannels.map(ch => ({
+            id: ch.channelId,
+            type: 'channel' as const,
+            title: ch.name,
+            channelTitle: ch.name,
+            channelId: ch.channelId,
+            description: ch.description,
+            thumbnail: ch.avatarUrl,
+            avatarUrl: ch.avatarUrl,
+            channelUrl: ch.channelUrl,
+            provider: 'youtube',
+            isVerified: ch.isVerified,
+            retrievalSource: 'youtube-channels'
+          }))
+        ];
+
+        const mappedStreaming: ContentItem[] = streamingResults.map(st => ({
+          id: st.id,
+          type: st.type === 'series' ? 'channel' as const : 'video' as const,
+          title: st.title,
+          channelTitle: st.primaryProvider.toUpperCase(),
+          description: st.description || '',
+          thumbnail: st.posterUrl,
+          durationText: st.durationText,
+          provider: st.primaryProvider,
+          retrievalSource: 'streaming-graph'
+        }));
+
+        searchData = {
+          all: [...mappedChannels, ...mappedStreaming],
+          videos: mappedStreaming.filter(s => s.type === 'video'),
+          channels: mappedChannels,
+          trace: {} as any
+        };
+      }
+
       if (searchRaceRef.current !== currentSearchId) return;
       setResults(searchData);
       setIsLiveSearch(true);
@@ -269,7 +336,7 @@ export default function ChannelSearch() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const displayItems = [...results.channels, ...results.videos].slice(0, 12);
+  const displayItems = (results.all && results.all.length > 0 ? results.all : [...results.channels, ...results.videos]).slice(0, 24);
 
   const fallbackThumbs = [
     'https://images.unsplash.com/photo-1522674705398-51903ee7a52c?w=400&q=80',

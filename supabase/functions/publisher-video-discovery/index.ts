@@ -21,6 +21,7 @@ const ALLOWED_PUBLISHER_DOMAINS = [
   'www.lanacion.com.ar',
   'clarin.com',
   'www.clarin.com',
+  'inmuebles.clarin.com',
   'pagina12.com.ar',
   'www.pagina12.com.ar',
   'revistaanfibia.com',
@@ -41,7 +42,7 @@ interface ExtractedVideo {
   publisherCode: string;
   publisherName: string;
   discoveryMethod: 'publisher_embed' | 'publisher_feed' | 'publisher_sitemap';
-  extractionMethod: 'iframe' | 'video_object' | 'video_sitemap' | 'rss' | 'open_graph';
+  extractionMethod: 'iframe' | 'video_object' | 'video_sitemap' | 'rss' | 'open_graph' | 'explicit_link';
 }
 
 function isSafeUrl(urlStr: string): boolean {
@@ -50,7 +51,7 @@ function isSafeUrl(urlStr: string): boolean {
     if (parsed.protocol !== 'https:') return false;
     const host = parsed.hostname.toLowerCase();
     
-    // SSRF Block
+    // SSRF Guard
     if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('10.') || host.startsWith('192.168.') || host.startsWith('172.')) {
       return false;
     }
@@ -72,6 +73,12 @@ function extractVimeoId(str: string): string | null {
   return match ? match[1] : null;
 }
 
+function extractDailymotionId(str: string): string | null {
+  if (!str) return null;
+  const match = str.match(/(?:dailymotion\.com\/embed\/video\/|dai\.ly\/|dailymotion\.com\/video\/)([a-zA-Z0-9]+)/);
+  return match ? match[1] : null;
+}
+
 function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: string, publisherName: string): ExtractedVideo[] {
   const map = new Map<string, ExtractedVideo>();
 
@@ -87,9 +94,10 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
           const embedUrl = obj.embedUrl || obj.contentUrl || '';
           const ytId = extractYouTubeId(embedUrl);
           const vimeoId = extractVimeoId(embedUrl);
-          const id = ytId || vimeoId || obj.url;
+          const dmId = extractDailymotionId(embedUrl);
+          const id = ytId || vimeoId || dmId || obj.url;
           if (id) {
-            const provider = ytId ? 'youtube' : vimeoId ? 'vimeo' : 'publisher';
+            const provider = ytId ? 'youtube' : vimeoId ? 'vimeo' : dmId ? 'dailymotion' : 'publisher';
             const key = `${provider}:${id}`;
             map.set(key, {
               provider,
@@ -118,16 +126,17 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
     const src = iMatch[1];
     const ytId = extractYouTubeId(src);
     const vimeoId = extractVimeoId(src);
-    if (ytId || vimeoId) {
-      const provider = ytId ? 'youtube' : 'vimeo';
-      const id = ytId || vimeoId!;
+    const dmId = extractDailymotionId(src);
+    if (ytId || vimeoId || dmId) {
+      const provider = ytId ? 'youtube' : vimeoId ? 'vimeo' : 'dailymotion';
+      const id = ytId || vimeoId || dmId!;
       const key = `${provider}:${id}`;
       if (!map.has(key)) {
         map.set(key, {
           provider,
           providerContentId: id,
           title: '',
-          videoUrl: ytId ? `https://www.youtube.com/watch?v=${ytId}` : `https://vimeo.com/${vimeoId}`,
+          videoUrl: ytId ? `https://www.youtube.com/watch?v=${ytId}` : vimeoId ? `https://vimeo.com/${vimeoId}` : `https://www.dailymotion.com/video/${dmId}`,
           thumbnailUrl: ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : undefined,
           articleUrl,
           publisherCode,
@@ -139,10 +148,46 @@ function parseVideosFromHtml(html: string, articleUrl: string, publisherCode: st
     }
   }
 
+  // 3. Enlaces explícitos
+  const linkPatterns = [
+    /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{8,16})/gi,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{8,16})/gi,
+    /(?:https?:\/\/)?(?:player\.)?vimeo\.com\/(?:video\/)?([0-9]{6,12})/gi,
+    /(?:https?:\/\/)?(?:www\.)?dailymotion\.com\/video\/([a-zA-Z0-9]+)/gi,
+    /(?:https?:\/\/)?(?:www\.)?dai\.ly\/([a-zA-Z0-9]+)/gi
+  ];
+
+  for (const pattern of linkPatterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      const id = match[1];
+      const isYt = pattern.source.includes('youtu');
+      const isVimeo = pattern.source.includes('vimeo');
+      const provider = isYt ? 'youtube' : isVimeo ? 'vimeo' : 'dailymotion';
+      const key = `${provider}:${id}`;
+
+      if (!map.has(key)) {
+        map.set(key, {
+          provider,
+          providerContentId: id,
+          title: '',
+          videoUrl: isYt ? `https://www.youtube.com/watch?v=${id}` : isVimeo ? `https://vimeo.com/${id}` : `https://www.dailymotion.com/video/${id}`,
+          thumbnailUrl: isYt ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : undefined,
+          articleUrl,
+          publisherCode,
+          publisherName,
+          discoveryMethod: 'publisher_embed',
+          extractionMethod: 'explicit_link'
+        });
+      }
+    }
+  }
+
   return Array.from(map.values());
 }
 
 serve(async (req) => {
+  // Preflight CORS 204
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -152,8 +197,8 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const query = body?.query || '';
-    const limit = body?.limit || 20;
+    const query = (body?.query || '').trim();
+    const publisherFilter = body?.publisherFilter;
 
     if (!query || typeof query !== 'string') {
       return new Response(JSON.stringify({ ok: false, error: 'Query is required', videos: [] }), {
@@ -170,7 +215,6 @@ serve(async (req) => {
       qualifiedVideos: 0
     };
 
-    // Responde estructuradamente
     return new Response(JSON.stringify({
       ok: true,
       videos,

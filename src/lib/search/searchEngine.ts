@@ -235,59 +235,70 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       activePath = 'fast';
       if (import.meta.env.DEV) console.log(`⚡ [Fast Path] Gate passed (${candidates.length} candidates in Atlas). Skipping external search.`);
     } else {
-      activePath = 'discovery';
-      if (import.meta.env.DEV) console.log('🌐 [Discovery Path] Gate failed. Calling external providers.');
-      
-      t = Date.now();
-      const controller = new AbortController();
-      let externalCandidates: ContentItem[] = [];
-      try {
-        // Discovery uses capability router inside externalSearch
-        externalCandidates = await externalSearch.search(query, [], {
-          signal: controller.signal,
-          intent: intentData,
-          providerStatuses,
-          routerDecisionsOut,
-          routingMode: options?.routingMode || 'shadow',
-          utilitySource: options?.utilitySource,
-          excludeProviders: options?.excludeProviders,
-          forceProviders: options?.forceProviders,
-          fallbackOptions: { requestId }
-        });
-      } catch (err) {
-        console.error(err);
+      // ── FREE DISCOVERY STAGE (Nivel 0: Publishers, RSS, Sitemaps, Archivos) ──
+      const { runFreeDiscoveryStage } = await import('./freeDiscovery/freeDiscoveryStage');
+      const freeDiscovery = await runFreeDiscoveryStage(query, candidates, intentData, options);
+
+      candidates = freeDiscovery.candidates;
+
+      if (freeDiscovery.passed && !forceExternal) {
+        activePath = 'discovery_free';
+      } else {
+        activePath = 'discovery';
+        if (import.meta.env.DEV) console.log('🌐 [Discovery Path] Gate failed. Calling external providers via CapabilityRouter.');
+        
+        t = Date.now();
+        const controller = new AbortController();
+        let externalCandidates: ContentItem[] = [];
+        try {
+          // Discovery uses capability router inside externalSearch
+          externalCandidates = await externalSearch.search(query, [], {
+            signal: controller.signal,
+            intent: intentData,
+            providerStatuses,
+            routerDecisionsOut,
+            routingMode: options?.routingMode || 'shadow',
+            utilitySource: options?.utilitySource,
+            excludeProviders: options?.excludeProviders,
+            forceProviders: options?.forceProviders,
+            fallbackOptions: { requestId }
+          });
+        } catch (err) {
+          console.error(err);
+        }
+        latencies.providers = Date.now() - t;
+
+        if (externalCandidates.length > 0) {
+          updateAcquisitionStats(externalCandidates);
+          rawCandidateCount += externalCandidates.length;
+
+          t = Date.now();
+          externalCandidates = normalizeItems(externalCandidates);
+          latencies.normalize += (Date.now() - t);
+          
+          candidates = [...candidates, ...externalCandidates];
+          
+          t = Date.now();
+          candidates = deduplicateItems(candidates);
+          latencies.dedup += (Date.now() - t);
+          dedupCandidateCount = candidates.length;
+
+          t = Date.now();
+          candidates = calculateBaseRanking(candidates, query, intentData);
+          latencies.relevance += (Date.now() - t);
+          
+          t = Date.now();
+          candidates = calculateQualityScore(candidates);
+          latencies.quality += (Date.now() - t);
+        }
       }
-      latencies.providers = Date.now() - t;
-
-      if (externalCandidates.length > 0) {
-        updateAcquisitionStats(externalCandidates);
-        rawCandidateCount += externalCandidates.length;
-
-        t = Date.now();
-        externalCandidates = normalizeItems(externalCandidates);
-        latencies.normalize += (Date.now() - t);
-        
-        candidates = [...candidates, ...externalCandidates];
-        
-        t = Date.now();
-        candidates = deduplicateItems(candidates);
-        latencies.dedup += (Date.now() - t);
-        dedupCandidateCount = candidates.length;
-
-        t = Date.now();
-        candidates = calculateBaseRanking(candidates, query, intentData);
-        latencies.relevance += (Date.now() - t);
-        
-        t = Date.now();
-        candidates = calculateQualityScore(candidates);
-        latencies.quality += (Date.now() - t);
-      }
+    }
 
       // ── FASE DE GENERAL FALLBACK (Post-Routing) ─────────────────────────────────
       // Evaluamos si los candidatos cualificados son insuficientes
       const qualifiedCandidates = candidates.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40);
       
-      if (qualifiedCandidates.length < 5) {
+      if (qualifiedCandidates.length < 5 && activePath !== 'discovery_free') {
         if (import.meta.env.DEV) console.log('⚠️ [Fallback] Insufficient qualified candidates. Triggering fallback providers.');
         
         try {
@@ -467,10 +478,12 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   if (import.meta.env.DEV) {
     const isFromIndexedDb = pool !== null;
     const isFromAtlas = acquisitionStats.atlas > 0;
+    const isFromPublisher = acquisitionStats.publisher > 0;
     const youtubeResults = (providerStatuses['youtube']?.results) || acquisitionStats.radar || 0;
-    const youtubeCalled = !!providerStatuses['youtube'] || acquisitionStats.radar > 0;
+    const youtubeCalled = (!!providerStatuses['youtube'] || acquisitionStats.radar > 0) && activePath !== 'discovery_free';
     const quotaSearches = (youtubeCalled && youtubeResults > 0) ? 1 : 0;
     const estimatedGoogleUnits = quotaSearches * 100;
+    const radarAvoided = activePath === 'fast' || activePath === 'discovery_free';
 
     console.groupCollapsed(`💰 [DiscoveryEconomy] "${query.rawQuery}" — Path: ${activePath.toUpperCase()} | Radar: ${youtubeCalled && youtubeResults > 0 ? `EXECUTED (1 search ≈ 100 u, +${youtubeResults} absorbed)` : 'SKIPPED (0 u)'}`);
     console.log('Query:', query.rawQuery);
@@ -478,11 +491,13 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       ramCache: false,
       indexedDb: isFromIndexedDb,
       atlas: isFromAtlas,
+      publisherVideo: isFromPublisher,
       youtubeRadar: youtubeCalled && youtubeResults > 0
     });
     console.log('Candidates:', {
       totalReturned: allWithDebug.length,
       fromAtlasOrLocal: acquisitionStats.atlas + acquisitionStats.videoMesh,
+      fromPublishers: acquisitionStats.publisher,
       fromYouTubeRadar: acquisitionStats.radar
     });
     console.log('Radar Execution:', {
@@ -491,7 +506,8 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       quotaSearches: quotaSearches,
       estimatedGoogleUnits: estimatedGoogleUnits,
       absorbedCount: acquisitionStats.radar,
-      blockedBy: activePath === 'fast' ? 'fast_path_gate' : (youtubeCalled && youtubeResults > 0 ? 'none' : 'router_or_recency_guard')
+      blockedBy: activePath === 'fast' ? 'fast_path_gate' : (activePath === 'discovery_free' ? 'free_discovery_stage' : (youtubeCalled && youtubeResults > 0 ? 'none' : 'router_or_recency_guard')),
+      radarAvoided
     });
     console.groupEnd();
   }

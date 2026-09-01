@@ -1,0 +1,1057 @@
+import { ProviderUtilityContext, ProviderUtilitySource, ProviderUtilityRecord } from './src/lib/search/types';
+
+export class MockProviderUtilitySource implements ProviderUtilitySource {
+  getUtility(provider: string, context: ProviderUtilityContext): ProviderUtilityRecord | null {
+    // 1. Specialized: film / short_film
+    if (context.topicCluster === 'film' || context.contentFormat === 'short_film') {
+      if (provider === 'vimeo') return { learned_utility: 92, sample_size: 300 };
+      if (provider === 'youtube') return { learned_utility: 15, sample_size: 400 }; // Dynamic should drop YouTube for short films
+      if (provider === 'dailymotion') return { learned_utility: 10, sample_size: 200 }; // Dynamic should drop Dailymotion
+    }
+    
+    // 2. Historical: history
+    if (context.intent === 'historical' || context.topicCluster === 'history') {
+      if (provider === 'archive') return { learned_utility: 88, sample_size: 264 };
+      if (provider === 'youtube') return { learned_utility: 20, sample_size: 300 }; // Drop youtube
+      if (provider === 'vimeo') return { learned_utility: 85, sample_size: 150 }; // Activate vimeo (often low static for history)
+    }
+    
+    // 3. News: current
+    if (context.intent === 'news' && context.freshness === 'current') {
+      if (provider === 'publisher') return { learned_utility: 85, sample_size: 400 };
+      if (provider === 'dailymotion') return { learned_utility: 15, sample_size: 300 }; // Drop dailymotion
+      if (provider === 'archive') return { learned_utility: 5, sample_size: 100 }; // Drop archive
+    }
+    
+    // 4. Evergreen / Entity
+    if (context.intent === 'entity' || context.freshness === 'evergreen') {
+      if (provider === 'atlas') return { learned_utility: 95, sample_size: 500 };
+      if (provider === 'discover') return { learned_utility: 80, sample_size: 200 }; // Activate discover
+      if (provider === 'dailymotion') return { learned_utility: 15, sample_size: 150 }; // Drop dailymotion
+    }
+    
+    // 5. Gaming / Live
+    if (context.topicCluster === 'gaming' || context.contentFormat === 'live') {
+      if (provider === 'twitch') return { learned_utility: 90, sample_size: 150 };
+      if (provider === 'vimeo') return { learned_utility: 5, sample_size: 100 }; // Drop vimeo
+      if (provider === 'archive') return { learned_utility: 5, sample_size: 100 }; // Drop archive
+    }
+    
+    // Cold Start Examples
+    // If it's a completely unknown context or provider has 0/few samples
+    if (context.topicCluster === 'unknown_topic') {
+      if (provider === 'atlas') return { learned_utility: 0, sample_size: 0 };
+      if (provider === 'vimeo') return { learned_utility: 50, sample_size: 5 };
+      if (provider === 'archive') return { learned_utility: 90, sample_size: 50 }; // partial weight
+    }
+
+    return null;
+  }
+}
+
+// 50 determinist queries
+export const BENCHMARK_QUERIES = [
+  {
+    "query": "cortometraje argentino",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "short_film"
+  },
+  {
+    "query": "corto de animación independiente",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "short_film"
+  },
+  {
+    "query": "cine experimental latinoamericano",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "short_film"
+  },
+  {
+    "query": "documental de arquitectura",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "documentary"
+  },
+  {
+    "query": "portfolio director de fotografía",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "portfolio"
+  },
+  {
+    "query": "indie film trailer",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "short_film"
+  },
+  {
+    "query": "vfx breakdown reel",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "portfolio"
+  },
+  {
+    "query": "stop motion short",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "short_film"
+  },
+  {
+    "query": "festival de cine cannes ganador",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "short_film"
+  },
+  {
+    "query": "student film project",
+    "category": "specialized",
+    "expectedIntent": "SPECIALIZED",
+    "expectedTopic": "film",
+    "expectedFormat": "short_film"
+  },
+  {
+    "query": "discurso Perón 1945",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "noticiero argentino años 60",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "segunda guerra mundial archivo",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "alunizaje 1969 imágenes originales",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "entrevista histórica Borges",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "caída del muro de berlín 1989",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "primer mundial de fútbol 1930",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "martin luther king i have a dream 1963",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "titanic hundimiento noticias 1912",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "revolución industrial documental antiguo",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "query": "dólar hoy argentina",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "query": "elecciones presidenciales resultados hoy",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "query": "últimas noticias inteligencia artificial",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "recent"
+  },
+  {
+    "query": "incendio en cordoba ahora",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "query": "clima en buenos aires fin de semana",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "query": "guerra ucrania rusia ultimas noticias",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "recent"
+  },
+  {
+    "query": "paro de transporte hoy",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "query": "bitcoin precio actual",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "query": "mercado libre acciones hoy",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "query": "novedades formula 1",
+    "category": "news",
+    "expectedIntent": "NEWS",
+    "freshness": "recent"
+  },
+  {
+    "query": "Taylor Swift",
+    "category": "entity",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Lionel Messi",
+    "category": "entity",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Albert Einstein biografía",
+    "category": "entity",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Cómo funciona un motor de combustión",
+    "category": "entity",
+    "expectedIntent": "EDUCATION",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Receta de milanesa napolitana",
+    "category": "entity",
+    "expectedIntent": "EDUCATION",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Mejores rutinas de gimnasio",
+    "category": "entity",
+    "expectedIntent": "EDUCATION",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Historia de Roma antigua",
+    "category": "entity",
+    "expectedIntent": "EDUCATION",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "The Beatles grandes éxitos",
+    "category": "entity",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Evolución humana documental",
+    "category": "entity",
+    "expectedIntent": "EDUCATION",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "Fundamentos de programación en Python",
+    "category": "entity",
+    "expectedIntent": "EDUCATION",
+    "freshness": "evergreen"
+  },
+  {
+    "query": "ibai llanos directo",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedFormat": "live",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "league of legends worlds live",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedFormat": "live",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "minecraft speedrun",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "valorant champions tour",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedFormat": "live",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "gta v roleplay",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "torneo de ajedrez en vivo",
+    "category": "live",
+    "expectedIntent": "SPORTS",
+    "expectedFormat": "live"
+  },
+  {
+    "query": "csgo major grand final",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedFormat": "live",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "elden ring boss guide",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "game awards live stream",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedFormat": "live",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "super mario bros speedrun mundial",
+    "category": "live",
+    "expectedIntent": "GAMING",
+    "expectedTopic": "gaming"
+  },
+  {
+    "query": "restauración de muebles antiguos",
+    "category": "cold_start",
+    "expectedIntent": "EDUCATION",
+    "expectedTopic": "unknown_topic"
+  },
+  {
+    "query": "reparar reloj de bolsillo viejo",
+    "category": "cold_start",
+    "expectedIntent": "EDUCATION",
+    "expectedTopic": "unknown_topic"
+  },
+  {
+    "id": "Q053",
+    "query": "inflación argentina último dato",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q054",
+    "query": "dólar blue hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q055",
+    "query": "últimas noticias economía argentina",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q056",
+    "query": "mercados financieros hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q057",
+    "query": "bitcoin noticias hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q058",
+    "query": "inteligencia artificial últimas noticias",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q059",
+    "query": "nuevas medidas económicas argentina",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q060",
+    "query": "clima político argentina hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q061",
+    "query": "conflicto Rusia Ucrania últimas noticias",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q062",
+    "query": "noticias Medio Oriente hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q063",
+    "query": "tecnología novedades esta semana",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q064",
+    "query": "bolsa de Nueva York hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q065",
+    "query": "elecciones próximas en Argentina",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q066",
+    "query": "precio petróleo hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q067",
+    "query": "mercado inmobiliario argentina actualidad",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q068",
+    "query": "últimas noticias de la NASA",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q069",
+    "query": "novedades medicina esta semana",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q070",
+    "query": "fútbol argentino noticias hoy",
+    "category": "news_current",
+    "expectedIntent": "NEWS",
+    "freshness": "current"
+  },
+  {
+    "id": "Q071",
+    "query": "Diego Maradona",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q072",
+    "query": "Lionel Scaloni",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q073",
+    "query": "Mercedes Sosa",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q074",
+    "query": "Charly García",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q075",
+    "query": "Luis Alberto Spinetta",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q076",
+    "query": "Jorge Luis Borges",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q077",
+    "query": "Julio Cortázar",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q078",
+    "query": "Albert Einstein",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q079",
+    "query": "Marie Curie",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q080",
+    "query": "Steve Jobs",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q081",
+    "query": "Christopher Nolan",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q082",
+    "query": "Quentin Tarantino",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q083",
+    "query": "Adele",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q084",
+    "query": "Freddie Mercury",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q085",
+    "query": "Cristiano Ronaldo",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q086",
+    "query": "Michael Jordan",
+    "category": "entity_evergreen",
+    "expectedIntent": "ENTITY",
+    "freshness": "evergreen"
+  },
+  {
+    "id": "Q087",
+    "query": "Revolución de Mayo 1810",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q088",
+    "query": "independencia argentina 1816",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q089",
+    "query": "batalla de San Lorenzo 1813",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q090",
+    "query": "bombardeo Plaza de Mayo 1955",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q091",
+    "query": "retorno de Perón 1972",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q092",
+    "query": "Argentina Mundial 1978",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q093",
+    "query": "guerra de Malvinas 1982",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q094",
+    "query": "recuperación democracia argentina 1983",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q095",
+    "query": "revolucion francesa 1789",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q096",
+    "query": "llegada del hombre a la Luna 1969",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q097",
+    "query": "crisis de los misiles de Cuba 1962",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q098",
+    "query": "atentados 11 de septiembre 2001",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q099",
+    "query": "primera guerra mundial archivos",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q100",
+    "query": "desembarco de Normandía 1944",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q101",
+    "query": "Woodstock 1969",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q102",
+    "query": "Juegos Olímpicos México 1968",
+    "category": "historical",
+    "expectedIntent": "HISTORY",
+    "expectedTopic": "history"
+  },
+  {
+    "id": "Q103",
+    "query": "cortometraje de ciencia ficción latinoamericano",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "short_film",
+    "expectedTopic": "film"
+  },
+  {
+    "id": "Q104",
+    "query": "cine experimental argentino",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED"
+  },
+  {
+    "id": "Q105",
+    "query": "cortos de animación independiente",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "short_film",
+    "expectedTopic": "film"
+  },
+  {
+    "id": "Q106",
+    "query": "documental arquitectura moderna",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "documentary"
+  },
+  {
+    "id": "Q107",
+    "query": "documental fotografía callejera",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "documentary"
+  },
+  {
+    "id": "Q108",
+    "query": "videoclips experimentales",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED"
+  },
+  {
+    "id": "Q109",
+    "query": "cortometraje stop motion de terror",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "short_film",
+    "expectedTopic": "film"
+  },
+  {
+    "id": "Q110",
+    "query": "cortometraje sin diálogo",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "short_film",
+    "expectedTopic": "film"
+  },
+  {
+    "id": "Q111",
+    "query": "documental de montaña Patagonia",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "documentary"
+  },
+  {
+    "id": "Q112",
+    "query": "cine documental social latinoamericano",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "documentary"
+  },
+  {
+    "id": "Q113",
+    "query": "stop motion independiente",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED"
+  },
+  {
+    "id": "Q114",
+    "query": "cortometraje premiado festival de cine",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "short_film",
+    "expectedTopic": "film"
+  },
+  {
+    "id": "Q115",
+    "query": "documental sobre diseño gráfico",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "documentary"
+  },
+  {
+    "id": "Q116",
+    "query": "film ensayo experimental",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "short_film",
+    "expectedTopic": "film"
+  },
+  {
+    "id": "Q117",
+    "query": "animación 3D artística independiente",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "short_film",
+    "expectedTopic": "film"
+  },
+  {
+    "id": "Q118",
+    "query": "documental de tango Buenos Aires",
+    "category": "specialized_audiovisual",
+    "expectedIntent": "SPECIALIZED",
+    "expectedFormat": "documentary"
+  },
+  {
+    "id": "Q119",
+    "query": "aprender Python desde cero",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q120",
+    "query": "curso introducción inteligencia artificial",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q121",
+    "query": "cómo funciona una red neuronal",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q122",
+    "query": "aprender edición de video",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q123",
+    "query": "tutorial fotografía para principiantes",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q124",
+    "query": "cómo hacer un podcast profesional",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q125",
+    "query": "aprender guitarra acordes básicos",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q126",
+    "query": "explicación sencilla física cuántica",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q127",
+    "query": "historia económica argentina explicada",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q128",
+    "query": "cómo programar una aplicación web",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q129",
+    "query": "aprender inglés conversación",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q130",
+    "query": "curso de marketing digital",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q131",
+    "query": "cómo editar audio profesional",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q132",
+    "query": "introducción a astronomía",
+    "category": "education_tutorial",
+    "expectedIntent": "EDUCATION"
+  },
+  {
+    "id": "Q133",
+    "query": "streaming de ajedrez en vivo",
+    "category": "live_gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q134",
+    "query": "torneo esports en vivo",
+    "category": "live_gaming",
+    "expectedIntent": "GAMING",
+    "expectedTopic": "gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q135",
+    "query": "campeonato Counter Strike live",
+    "category": "live_gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q136",
+    "query": "speedrun videojuegos en vivo",
+    "category": "live_gaming",
+    "expectedIntent": "GAMING",
+    "expectedTopic": "gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q137",
+    "query": "desarrollo de videojuegos streaming",
+    "category": "live_gaming",
+    "expectedIntent": "GAMING",
+    "expectedTopic": "gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q138",
+    "query": "charla tecnología en vivo",
+    "category": "live_gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q139",
+    "query": "música electrónica live set",
+    "category": "live_gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q140",
+    "query": "programación en vivo coding",
+    "category": "live_gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q141",
+    "query": "conferencia científica en vivo",
+    "category": "live_gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q142",
+    "query": "entrevista deportiva en vivo",
+    "category": "live_gaming",
+    "expectedFormat": "live"
+  },
+  {
+    "id": "Q143",
+    "query": "jaguar",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q144",
+    "query": "mercurio",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q145",
+    "query": "matrix",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q146",
+    "query": "python",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q147",
+    "query": "apple",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q148",
+    "query": "java",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q149",
+    "query": "river",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q150",
+    "query": "boca",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q151",
+    "query": "jordan",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  },
+  {
+    "id": "Q152",
+    "query": "saturno",
+    "category": "difficult_ambiguous",
+    "ambiguity": true
+  }
+];

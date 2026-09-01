@@ -1,0 +1,34 @@
+{
+  "name": "YouApp TV",
+  "short_name": "YouApp",
+  "description": "La televisión del futuro. Canales en vivo 24/7 desde tu celular.",
+  "start_url": "/#/live",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#05070c",
+  "theme_color": "#6366f1",
+  "lang": "es",
+  "categories": ["entertainment", "video"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false,
+  "share_target": {
+    "action": "/share",
+    "method": "GET",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+/* src/styles/youapp-tokens.css */
+:root {
+  --you-bg: #f5f7f9;
+  --you-surface: #ffffff;
+  --you-surface-solid: #ffffff;
+
+  --you-text: #1a202c;
+  --you-text-secondary: #718096;
+  --you-text-tertiary: #a0aec0;
+
+  --you-blue: #2b6cb0;
+  --you-blue-soft: #ebf8ff;
+  --you-blue-vivid: #3182ce;
+
+  --you-border: #e2e8f0;
+
+  --you-radius-lg: 24px;
+  --you-radius-md: 16px;
+  --you-radius-sm: 12px;
+  
+  --you-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+  --you-shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.03);
+
+  --you-transition: 0.2s ease-out;
+}

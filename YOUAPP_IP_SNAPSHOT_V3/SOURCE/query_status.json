@@ -1,0 +1,610 @@
+[
+  {
+    "query": "cortometraje argentino",
+    "done": true
+  },
+  {
+    "query": "corto de animación independiente",
+    "done": false
+  },
+  {
+    "query": "cine experimental latinoamericano",
+    "done": true
+  },
+  {
+    "query": "documental de arquitectura",
+    "done": true
+  },
+  {
+    "query": "portfolio director de fotografía",
+    "done": false
+  },
+  {
+    "query": "indie film trailer",
+    "done": true
+  },
+  {
+    "query": "vfx breakdown reel",
+    "done": false
+  },
+  {
+    "query": "stop motion short",
+    "done": true
+  },
+  {
+    "query": "festival de cine cannes ganador",
+    "done": true
+  },
+  {
+    "query": "student film project",
+    "done": true
+  },
+  {
+    "query": "discurso Perón 1945",
+    "done": true
+  },
+  {
+    "query": "noticiero argentino años 60",
+    "done": false
+  },
+  {
+    "query": "segunda guerra mundial archivo",
+    "done": true
+  },
+  {
+    "query": "alunizaje 1969 imágenes originales",
+    "done": false
+  },
+  {
+    "query": "entrevista histórica Borges",
+    "done": false
+  },
+  {
+    "query": "caída del muro de berlín 1989",
+    "done": true
+  },
+  {
+    "query": "primer mundial de fútbol 1930",
+    "done": true
+  },
+  {
+    "query": "martin luther king i have a dream 1963",
+    "done": true
+  },
+  {
+    "query": "titanic hundimiento noticias 1912",
+    "done": true
+  },
+  {
+    "query": "revolución industrial documental antiguo",
+    "done": false
+  },
+  {
+    "query": "dólar hoy argentina",
+    "done": false
+  },
+  {
+    "query": "elecciones presidenciales resultados hoy",
+    "done": false
+  },
+  {
+    "query": "últimas noticias inteligencia artificial",
+    "done": false
+  },
+  {
+    "query": "incendio en cordoba ahora",
+    "done": false
+  },
+  {
+    "query": "clima en buenos aires fin de semana",
+    "done": false
+  },
+  {
+    "query": "guerra ucrania rusia ultimas noticias",
+    "done": false
+  },
+  {
+    "query": "paro de transporte hoy",
+    "done": false
+  },
+  {
+    "query": "bitcoin precio actual",
+    "done": true
+  },
+  {
+    "query": "mercado libre acciones hoy",
+    "done": false
+  },
+  {
+    "query": "novedades formula 1",
+    "done": false
+  },
+  {
+    "query": "Taylor Swift",
+    "done": true
+  },
+  {
+    "query": "Lionel Messi",
+    "done": true
+  },
+  {
+    "query": "Albert Einstein biografía",
+    "done": true
+  },
+  {
+    "query": "Cómo funciona un motor de combustión",
+    "done": true
+  },
+  {
+    "query": "Receta de milanesa napolitana",
+    "done": false
+  },
+  {
+    "query": "Mejores rutinas de gimnasio",
+    "done": false
+  },
+  {
+    "query": "Historia de Roma antigua",
+    "done": true
+  },
+  {
+    "query": "The Beatles grandes éxitos",
+    "done": true
+  },
+  {
+    "query": "Evolución humana documental",
+    "done": true
+  },
+  {
+    "query": "Fundamentos de programación en Python",
+    "done": true
+  },
+  {
+    "query": "ibai llanos directo",
+    "done": false
+  },
+  {
+    "query": "league of legends worlds live",
+    "done": true
+  },
+  {
+    "query": "minecraft speedrun",
+    "done": true
+  },
+  {
+    "query": "valorant champions tour",
+    "done": false
+  },
+  {
+    "query": "gta v roleplay",
+    "done": true
+  },
+  {
+    "query": "torneo de ajedrez en vivo",
+    "done": true
+  },
+  {
+    "query": "csgo major grand final",
+    "done": false
+  },
+  {
+    "query": "elden ring boss guide",
+    "done": true
+  },
+  {
+    "query": "game awards live stream",
+    "done": true
+  },
+  {
+    "query": "super mario bros speedrun mundial",
+    "done": true
+  },
+  {
+    "query": "restauración de muebles antiguos",
+    "done": false
+  },
+  {
+    "query": "reparar reloj de bolsillo viejo",
+    "done": false
+  },
+  {
+    "query": "inflación argentina último dato",
+    "done": false
+  },
+  {
+    "query": "dólar blue hoy",
+    "done": false
+  },
+  {
+    "query": "últimas noticias economía argentina",
+    "done": false
+  },
+  {
+    "query": "mercados financieros hoy",
+    "done": false
+  },
+  {
+    "query": "bitcoin noticias hoy",
+    "done": false
+  },
+  {
+    "query": "inteligencia artificial últimas noticias",
+    "done": false
+  },
+  {
+    "query": "nuevas medidas económicas argentina",
+    "done": false
+  },
+  {
+    "query": "clima político argentina hoy",
+    "done": false
+  },
+  {
+    "query": "conflicto Rusia Ucrania últimas noticias",
+    "done": false
+  },
+  {
+    "query": "noticias Medio Oriente hoy",
+    "done": false
+  },
+  {
+    "query": "tecnología novedades esta semana",
+    "done": false
+  },
+  {
+    "query": "bolsa de Nueva York hoy",
+    "done": false
+  },
+  {
+    "query": "elecciones próximas en Argentina",
+    "done": false
+  },
+  {
+    "query": "precio petróleo hoy",
+    "done": false
+  },
+  {
+    "query": "mercado inmobiliario argentina actualidad",
+    "done": false
+  },
+  {
+    "query": "últimas noticias de la NASA",
+    "done": false
+  },
+  {
+    "query": "novedades medicina esta semana",
+    "done": false
+  },
+  {
+    "query": "fútbol argentino noticias hoy",
+    "done": false
+  },
+  {
+    "query": "Diego Maradona",
+    "done": true
+  },
+  {
+    "query": "Lionel Scaloni",
+    "done": true
+  },
+  {
+    "query": "Mercedes Sosa",
+    "done": true
+  },
+  {
+    "query": "Charly García",
+    "done": true
+  },
+  {
+    "query": "Luis Alberto Spinetta",
+    "done": false
+  },
+  {
+    "query": "Jorge Luis Borges",
+    "done": true
+  },
+  {
+    "query": "Julio Cortázar",
+    "done": true
+  },
+  {
+    "query": "Albert Einstein",
+    "done": true
+  },
+  {
+    "query": "Marie Curie",
+    "done": true
+  },
+  {
+    "query": "Steve Jobs",
+    "done": true
+  },
+  {
+    "query": "Christopher Nolan",
+    "done": true
+  },
+  {
+    "query": "Quentin Tarantino",
+    "done": false
+  },
+  {
+    "query": "Adele",
+    "done": false
+  },
+  {
+    "query": "Freddie Mercury",
+    "done": false
+  },
+  {
+    "query": "Cristiano Ronaldo",
+    "done": false
+  },
+  {
+    "query": "Michael Jordan",
+    "done": false
+  },
+  {
+    "query": "Revolución de Mayo 1810",
+    "done": false
+  },
+  {
+    "query": "independencia argentina 1816",
+    "done": false
+  },
+  {
+    "query": "batalla de San Lorenzo 1813",
+    "done": false
+  },
+  {
+    "query": "bombardeo Plaza de Mayo 1955",
+    "done": false
+  },
+  {
+    "query": "retorno de Perón 1972",
+    "done": false
+  },
+  {
+    "query": "Argentina Mundial 1978",
+    "done": false
+  },
+  {
+    "query": "guerra de Malvinas 1982",
+    "done": false
+  },
+  {
+    "query": "recuperación democracia argentina 1983",
+    "done": false
+  },
+  {
+    "query": "revolucion francesa 1789",
+    "done": false
+  },
+  {
+    "query": "llegada del hombre a la Luna 1969",
+    "done": false
+  },
+  {
+    "query": "crisis de los misiles de Cuba 1962",
+    "done": false
+  },
+  {
+    "query": "atentados 11 de septiembre 2001",
+    "done": false
+  },
+  {
+    "query": "primera guerra mundial archivos",
+    "done": false
+  },
+  {
+    "query": "desembarco de Normandía 1944",
+    "done": false
+  },
+  {
+    "query": "Woodstock 1969",
+    "done": false
+  },
+  {
+    "query": "Juegos Olímpicos México 1968",
+    "done": false
+  },
+  {
+    "query": "cortometraje de ciencia ficción latinoamericano",
+    "done": false
+  },
+  {
+    "query": "cine experimental argentino",
+    "done": false
+  },
+  {
+    "query": "cortos de animación independiente",
+    "done": false
+  },
+  {
+    "query": "documental arquitectura moderna",
+    "done": false
+  },
+  {
+    "query": "documental fotografía callejera",
+    "done": false
+  },
+  {
+    "query": "videoclips experimentales",
+    "done": false
+  },
+  {
+    "query": "cortometraje stop motion de terror",
+    "done": false
+  },
+  {
+    "query": "cortometraje sin diálogo",
+    "done": false
+  },
+  {
+    "query": "documental de montaña Patagonia",
+    "done": false
+  },
+  {
+    "query": "cine documental social latinoamericano",
+    "done": false
+  },
+  {
+    "query": "stop motion independiente",
+    "done": false
+  },
+  {
+    "query": "cortometraje premiado festival de cine",
+    "done": false
+  },
+  {
+    "query": "documental sobre diseño gráfico",
+    "done": false
+  },
+  {
+    "query": "film ensayo experimental",
+    "done": false
+  },
+  {
+    "query": "animación 3D artística independiente",
+    "done": false
+  },
+  {
+    "query": "documental de tango Buenos Aires",
+    "done": false
+  },
+  {
+    "query": "aprender Python desde cero",
+    "done": false
+  },
+  {
+    "query": "curso introducción inteligencia artificial",
+    "done": false
+  },
+  {
+    "query": "cómo funciona una red neuronal",
+    "done": false
+  },
+  {
+    "query": "aprender edición de video",
+    "done": false
+  },
+  {
+    "query": "tutorial fotografía para principiantes",
+    "done": false
+  },
+  {
+    "query": "cómo hacer un podcast profesional",
+    "done": false
+  },
+  {
+    "query": "aprender guitarra acordes básicos",
+    "done": false
+  },
+  {
+    "query": "explicación sencilla física cuántica",
+    "done": false
+  },
+  {
+    "query": "historia económica argentina explicada",
+    "done": false
+  },
+  {
+    "query": "cómo programar una aplicación web",
+    "done": false
+  },
+  {
+    "query": "aprender inglés conversación",
+    "done": false
+  },
+  {
+    "query": "curso de marketing digital",
+    "done": false
+  },
+  {
+    "query": "cómo editar audio profesional",
+    "done": false
+  },
+  {
+    "query": "introducción a astronomía",
+    "done": false
+  },
+  {
+    "query": "streaming de ajedrez en vivo",
+    "done": false
+  },
+  {
+    "query": "torneo esports en vivo",
+    "done": false
+  },
+  {
+    "query": "campeonato Counter Strike live",
+    "done": false
+  },
+  {
+    "query": "speedrun videojuegos en vivo",
+    "done": false
+  },
+  {
+    "query": "desarrollo de videojuegos streaming",
+    "done": false
+  },
+  {
+    "query": "charla tecnología en vivo",
+    "done": false
+  },
+  {
+    "query": "música electrónica live set",
+    "done": false
+  },
+  {
+    "query": "programación en vivo coding",
+    "done": false
+  },
+  {
+    "query": "conferencia científica en vivo",
+    "done": false
+  },
+  {
+    "query": "entrevista deportiva en vivo",
+    "done": false
+  },
+  {
+    "query": "jaguar",
+    "done": false
+  },
+  {
+    "query": "mercurio",
+    "done": false
+  },
+  {
+    "query": "matrix",
+    "done": false
+  },
+  {
+    "query": "python",
+    "done": false
+  },
+  {
+    "query": "apple",
+    "done": false
+  },
+  {
+    "query": "java",
+    "done": false
+  },
+  {
+    "query": "river",
+    "done": false
+  },
+  {
+    "query": "boca",
+    "done": false
+  },
+  {
+    "query": "jordan",
+    "done": false
+  },
+  {
+    "query": "saturno",
+    "done": false
+  }
+]

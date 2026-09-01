@@ -10,6 +10,7 @@ export type PlaybackItem = {
   startOffsetSec?: number;
   endOffsetSec?: number;
   muted?: boolean;
+  autoplay?: boolean;
 };
 
 export type PlaybackCapabilities = {
@@ -21,19 +22,26 @@ export type PlaybackCapabilities = {
   embedded: boolean;
 };
 
-export type PlayerEventType = 
+export type PlaybackState =
+  | 'idle'
   | 'ready'
-  | 'play'
-  | 'pause'
+  | 'buffering'
+  | 'playing'
+  | 'paused'
   | 'ended'
-  | 'error'
-  | 'unavailable'
-  | 'progress';
+  | 'error';
 
-export type PlayerEvent = {
-  type: PlayerEventType;
-  payload?: any;
-};
+export type PlayerEvent = 
+  | { type: 'ready' }
+  | { type: 'state'; state: PlaybackState }
+  | { type: 'play' }
+  | { type: 'pause' }
+  | { type: 'buffering' }
+  | { type: 'cued' }
+  | { type: 'ended' }
+  | { type: 'error'; payload?: any }
+  | { type: 'unavailable'; payload?: any }
+  | { type: 'progress'; payload?: { currentTime: number; duration: number; milestone?: number } };
 
 export type PlayerEventListener = (event: PlayerEvent) => void;
 

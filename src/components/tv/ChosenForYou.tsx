@@ -19,7 +19,9 @@ export function ChosenForYou({ currentBlock }: ChosenForYouProps) {
       </div>
 
       <p className="you-text-subtitle" style={{ fontSize: '12px', lineHeight: 1.5, marginBottom: '16px', color: 'var(--you-text)' }}>
-        {currentBlock.generationReason || `Introduce este tema antes del bloque siguiente.`}
+        {typeof currentBlock.generationReason === 'object' 
+          ? JSON.stringify(currentBlock.generationReason) 
+          : String(currentBlock.generationReason || 'Introduce este tema antes del bloque siguiente.')}
       </p>
 
       <div style={{ fontSize: '12px', color: 'var(--you-text-secondary)', marginBottom: '16px' }}>

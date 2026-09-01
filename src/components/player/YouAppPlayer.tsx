@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, forwardRef, useImperativeHandle } f
 import type { PlaybackItem } from '../../lib/player/playerTypes';
 import { PlayerController } from '../../lib/player/playerController';
 import { logAudienceEvent } from '../../lib/player/telemetry/playerEvents';
+import { usePlayerStore, type PlaybackStateType } from '../../store/usePlayerStore';
 
 export interface YouAppPlayerHandle {
   play(): Promise<void>;
@@ -17,21 +18,30 @@ interface YouAppPlayerProps {
   onEnded: () => void;
   onError: (err: any) => void;
   onReady?: (duration: number) => void;
+  onPlaybackStateChange?: (state: PlaybackStateType) => void;
 }
 
 export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
-  ({ item, onEnded, onError, onReady }, ref) => {
+  ({ item, onEnded, onError, onReady, onPlaybackStateChange }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const controllerRef = useRef<PlayerController | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // Store callbacks in refs to avoid effect re-runs
+    const callbacksRef = useRef({ onEnded, onError, onReady, onPlaybackStateChange });
+    useEffect(() => {
+      callbacksRef.current = { onEnded, onError, onReady, onPlaybackStateChange };
+    }, [onEnded, onError, onReady, onPlaybackStateChange]);
 
     useImperativeHandle(ref, () => ({
       async play() {
+        console.log('[YouAppPlayer] PLAY requested');
         await controllerRef.current?.play();
       },
       async pause() {
-        await controllerRef.current?.pause();
+        console.log('[YouAppPlayer] PAUSE requested');
+        await controllerRef.current?.pause('imperative_handle');
       },
       async seek(seconds: number) {
         let actualDuration = controllerRef.current?.getDuration() || 0;
@@ -52,6 +62,37 @@ export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
       }
     }));
 
+    // Sincronizar API y Estado de Bloque al Store
+    useEffect(() => {
+      usePlayerStore.getState().setPlayerApi({
+        play: async () => {
+          console.log('[YouAppPlayer.playerApi] PLAY requested');
+          await controllerRef.current?.play();
+        },
+        pause: async () => {
+          console.log('[YouAppPlayer.playerApi] PAUSE requested');
+          await controllerRef.current?.pause('playerApi');
+        },
+        seek: async (seconds: number) => {
+          let actualDuration = controllerRef.current?.getDuration() || 0;
+          let safeSeconds = seconds;
+          if (actualDuration > 0) safeSeconds = Math.min(seconds, actualDuration - 1);
+          await controllerRef.current?.seek(safeSeconds);
+        },
+        mute: async () => { await controllerRef.current?.mute(); },
+        unmute: async () => { await controllerRef.current?.unmute(); },
+        getDuration: () => controllerRef.current?.getDuration() || 0,
+      });
+
+      return () => {
+        usePlayerStore.getState().setPlayerApi(null);
+      };
+    }, []);
+
+    useEffect(() => {
+      usePlayerStore.getState().setCurrentBlock(item);
+    }, [item.blockId, item.providerContentId]); // avoid object reference infinite loops
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -60,30 +101,37 @@ export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
     const unsubscribe = controllerRef.current.subscribe((event) => {
       switch (event.type) {
         case 'ready':
-          // Auto-play is handled natively by the provider's autoplay: 1 parameter.
-          // Manually calling play() here immediately causes postMessage errors with YouTube when loading multiple iframes.
-          if (onReady) onReady(controllerRef.current?.getDuration() || 0);
+          console.log('[YouAppPlayer] READY event received');
+          if (callbacksRef.current.onReady) callbacksRef.current.onReady(controllerRef.current?.getDuration() || 0);
           break;
-        case 'play':
-          setIsPlaying(true);
-          logAudienceEvent({ type: 'block_started', blockId: item.blockId });
-          break;
-        case 'pause':
-          setIsPlaying(false);
+        case 'state':
+          console.log('[YouAppPlayer] STATE ->', event.state);
+          setIsPlaying(event.state === 'playing');
+          usePlayerStore.getState().setPlaybackState(event.state);
+          callbacksRef.current.onPlaybackStateChange?.(event.state);
+          if (event.state === 'playing') {
+            logAudienceEvent({ type: 'block_started', blockId: item.blockId });
+          }
           break;
         case 'ended':
+          usePlayerStore.getState().setPlaybackState('ended');
+          callbacksRef.current.onPlaybackStateChange?.('ended');
           logAudienceEvent({ type: 'block_completed', blockId: item.blockId });
-          onEnded();
+          callbacksRef.current.onEnded();
           break;
         case 'error':
         case 'unavailable':
+          usePlayerStore.getState().setPlaybackState('error');
+          callbacksRef.current.onPlaybackStateChange?.('error');
           setError(event.payload?.toString() || 'Playback Error');
           logAudienceEvent({ type: 'playback_error', blockId: item.blockId, payload: event.payload });
-          onError(event.payload);
+          callbacksRef.current.onError(event.payload);
           break;
         case 'progress':
           if (event.payload?.milestone) {
             logAudienceEvent({ type: `${event.payload.milestone}_percent` as any, blockId: item.blockId });
+          } else if (event.payload?.currentTime !== undefined) {
+            usePlayerStore.getState().setProgress(event.payload.currentTime, event.payload.duration);
           }
           break;
       }
@@ -91,7 +139,7 @@ export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
 
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        controllerRef.current?.pause();
+        controllerRef.current?.pause('visibility_hidden');
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -101,7 +149,7 @@ export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       controllerRef.current?.destroy();
     };
-  }, [onEnded, onError, onReady]); // item is handled in the next effect
+  }, []); // Run ONCE on mount, rely on callbacksRef for latest functions
 
   useEffect(() => {
     if (!item) return;
@@ -129,7 +177,7 @@ export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
         {/* Error Overlay */}
         {error && (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'red', zIndex: 10 }}>
-            <p>Error: {error}</p>
+            <p>Error: {typeof error === 'object' ? JSON.stringify(error) : String(error)}</p>
           </div>
         )}
         

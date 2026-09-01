@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Home, Tv, Search, Radio, List, Clock, Users, Grid, Crown, 
-  Bell, Plus, Sliders, PlayCircle, Bookmark, Star
+  Bell, Plus, Sliders, PlayCircle, Bookmark, Star, Compass
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import BottomNav from './BottomNav';
@@ -72,6 +72,9 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           </button>
           <button className={`dl-nav-item ${isActive('/search') ? 'active' : ''}`} onClick={() => navigate('/search')}>
             <Search size={20} /> Buscar
+          </button>
+          <button className={`dl-nav-item ${isActive('/explorar') || isActive('/mi-plataforma') ? 'active' : ''}`} onClick={() => navigate('/explorar')}>
+            <Compass size={20} /> Explorar
           </button>
           <button className={`dl-nav-item ${isActive('/live') ? 'active' : ''}`} onClick={() => navigate('/live')}>
             <Radio size={20} /> En vivo

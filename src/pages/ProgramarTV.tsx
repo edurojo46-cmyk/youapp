@@ -6,6 +6,7 @@ import { YouAppPlayer, type YouAppPlayerHandle } from '../components/player/YouA
 import { YOU4Cards } from '../components/player/YOU4Cards';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { YouRing } from '../components/player/YouRing';
+import { usePlayerStore } from '../store/usePlayerStore';
 import type { VideoMoment } from '../lib/moments/momentTypes';
 import { getMomentsForVideo, requestSemanticAnalysis } from '../lib/moments/momentEngine';
 import { logAudienceEvent } from '../lib/player/telemetry/playerEvents';
@@ -21,9 +22,12 @@ import { SignalStatusBar } from '../components/tv/SignalStatusBar';
 export default function ProgramarTV() {
   const navigate = useNavigate();
   const { activeSignal, remove, insert, currentBlockIndex, setSignal, next, previous, reorder } = useSignalStore();
+  const playbackState = usePlayerStore(state => state.playbackState);
+  const isPlaying = playbackState === 'playing';
+  const isAnalyzingYOU4 = usePlayerStore(state => state.isAnalyzingYOU4);
+  const setIsAnalyzingYOU4 = usePlayerStore(state => state.setIsAnalyzingYOU4);
 
   const [isGeneratingSurprise, setIsGeneratingSurprise] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   // YOU4 State
   type YOU4ViewMode = 'single' | 'mosaic';
@@ -31,7 +35,6 @@ export default function ProgramarTV() {
   const playerRef = useRef<YouAppPlayerHandle>(null);
   const [moments, setMoments] = useState<VideoMoment[]>([]);
   const [isFallbackMoments, setIsFallbackMoments] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [activeMomentId, setActiveMomentId] = useState<string | undefined>();
   
   const currentBlock = activeSignal?.schedule[currentBlockIndex] || null;
@@ -41,62 +44,83 @@ export default function ProgramarTV() {
     currentBlockIdRef.current = currentBlock?.id || null;
   }, [currentBlock?.id]);
 
-  // Fallback / Demo auto-load
+  // Fallback / Demo auto-load with Nature Series
   useEffect(() => {
-    if (!activeSignal) {
-      const MOCK_SIGNAL = {
-        id: 'mock-signal-1',
-        name: 'Señal de Prueba (Demo)',
-        prompt: 'Demostración de Programar TV',
+    if (!activeSignal || activeSignal.id === 'mock-signal-1') {
+      const NATURE_SIGNAL = {
+        id: 'nature-signal-4k',
+        name: 'Señal: Naturaleza Salvaje & Océanos 4K',
+        prompt: 'Documentales de Naturaleza en 4K UHD',
         visibility: 'private' as const,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         schedule: [
           {
-            id: 'block-1',
+            id: 'block-nature-1',
             position: 0,
             startOffsetSec: 0,
-            durationSec: 596,
-            topic: 'Documental',
+            durationSec: 3000,
+            topic: 'Selvas y Bosques Tropicales',
             role: 'opening' as const,
             contentItem: {
-              id: 'aqz-KE-bpKQ',
-              providerId: 'aqz-KE-bpKQ',
+              id: 'EngW7tLk6R8',
+              providerId: 'EngW7tLk6R8',
               type: 'video' as const,
               provider: 'youtube' as const,
-              title: 'Big Buck Bunny (Cortometraje)',
-              thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600',
-              videoUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
-              channelName: 'Blender Foundation',
-              channelId: 'blender',
+              title: 'Our Planet: Selvas y Bosques Tropicales (4K UHD)',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=800',
+              videoUrl: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
+              channelName: 'Our Planet / Netflix',
+              channelId: 'netflix',
               isLive: false,
               isVerified: true
             }
           },
           {
-            id: 'block-2',
+            id: 'block-nature-2',
             position: 1,
-            startOffsetSec: 596,
-            durationSec: 653,
-            topic: 'Naturaleza',
+            startOffsetSec: 3000,
+            durationSec: 2940,
+            topic: 'Aguas Costeras y Arrecifes',
             role: 'deep_dive' as const,
             contentItem: {
-              id: 'TLkA0RELQ1g',
-              providerId: 'TLkA0RELQ1g',
+              id: 'r9PeYPHdpNo',
+              providerId: 'r9PeYPHdpNo',
               type: 'video' as const,
               provider: 'youtube' as const,
-              title: 'Elephants Dream',
-              thumbnailUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600',
-              videoUrl: 'https://www.youtube.com/watch?v=TLkA0RELQ1g',
-              channelName: 'Blender Foundation',
-              channelId: 'blender',
+              title: 'Our Planet: Aguas Costeras y Vida Marina (4K UHD)',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800',
+              videoUrl: 'https://www.youtube.com/watch?v=r9PeYPHdpNo',
+              channelName: 'Our Planet / Netflix',
+              channelId: 'netflix',
+              isLive: false,
+              isVerified: true
+            }
+          },
+          {
+            id: 'block-nature-3',
+            position: 2,
+            startOffsetSec: 5940,
+            durationSec: 3180,
+            topic: 'Mundos Helados',
+            role: 'deep_dive' as const,
+            contentItem: {
+              id: 'cTQ3Ko9ZKg8',
+              providerId: 'cTQ3Ko9ZKg8',
+              type: 'video' as const,
+              provider: 'youtube' as const,
+              title: 'Our Planet: Mundos Helados y Vida Ártica (4K UHD)',
+              thumbnailUrl: 'https://images.unsplash.com/photo-1517824806704-9040b037703b?w=800',
+              videoUrl: 'https://www.youtube.com/watch?v=cTQ3Ko9ZKg8',
+              channelName: 'Our Planet / Netflix',
+              channelId: 'netflix',
               isLive: false,
               isVerified: true
             }
           }
         ]
       };
-      setSignal(MOCK_SIGNAL as any);
+      setSignal(NATURE_SIGNAL as any);
     }
   }, [activeSignal, setSignal]);
 
@@ -122,7 +146,7 @@ export default function ProgramarTV() {
 
   useEffect(() => {
     setViewMode('single');
-    setIsAnalyzing(false);
+    setIsAnalyzingYOU4(false);
     if (currentBlock && currentBlock.durationSec > 0) {
       fetchMoments(currentBlock.durationSec);
     } else {
@@ -146,7 +170,6 @@ export default function ProgramarTV() {
       playerRef.current.seek(safeSeekSec);
       playerRef.current.unmute();
       playerRef.current.play();
-      setIsPlaying(true);
     }, 100);
     
     logAudienceEvent({
@@ -164,9 +187,9 @@ export default function ProgramarTV() {
   const handleOpenMosaic = async () => {
     setViewMode('mosaic');
     
-    if (isFallbackMoments && !isAnalyzing && currentBlock) {
+    if (isFallbackMoments && !isAnalyzingYOU4 && currentBlock) {
       const requestedBlockId = currentBlock.id;
-      setIsAnalyzing(true);
+      setIsAnalyzingYOU4(true);
       
       try {
         const analyzed = await requestSemanticAnalysis({
@@ -194,7 +217,7 @@ export default function ProgramarTV() {
         alert("Aviso: Error de conexión con el motor de IA. Se utilizarán tiempos estándar de prueba (fallback).");
       } finally {
         if (currentBlockIdRef.current === requestedBlockId) {
-          setIsAnalyzing(false);
+          setIsAnalyzingYOU4(false);
         }
       }
     }
@@ -218,13 +241,15 @@ export default function ProgramarTV() {
     }
   };
 
-  const handlePlayPause = () => {
-    if (isPlaying) {
-      playerRef.current?.pause();
-      setIsPlaying(false);
+  const handlePlayPause = async () => {
+    const currentState = usePlayerStore.getState().playbackState;
+    console.log('[ProgramarTV] handlePlayPause clicked, real-time state:', currentState);
+    if (currentState === 'playing' || currentState === 'buffering') {
+      console.log('[ProgramarTV] -> invoking pause()');
+      await playerRef.current?.pause();
     } else {
-      playerRef.current?.play();
-      setIsPlaying(true);
+      console.log('[ProgramarTV] -> invoking play()');
+      await playerRef.current?.play();
     }
   };
 
@@ -254,7 +279,7 @@ export default function ProgramarTV() {
               onSelect={handleMomentClick}
               thumbnailFallbackUrl={currentBlock.contentItem.thumbnailUrl}
             />
-            {isAnalyzing && (
+            {isAnalyzingYOU4 && (
               <div style={{ position: 'absolute', bottom: '80px', left: '50%', transform: 'translateX(-50%)', zIndex: 9000, background: 'rgba(14, 12, 28, 0.9)', padding: '10px 20px', borderRadius: '24px', color: '#00f0ff', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 20px rgba(0, 240, 255, 0.5)', border: '1px solid rgba(0, 240, 255, 0.3)', backdropFilter: 'blur(8px)' }}>
                 <Sparkles size={16} className="pulse-anim" /> ✦ Analizando video...
               </div>
@@ -286,6 +311,9 @@ export default function ProgramarTV() {
               }}
               onEnded={() => next()}
               onError={(err) => console.error(err)}
+              onPlaybackStateChange={(state) => {
+                console.log('[ProgramarTV] PLAYER STATE ->', state);
+              }}
               onReady={(duration) => {
                 // If duration is unknown, or differs by more than 10 seconds from what we had,
                 // re-calculate moments using the real duration to ensure accuracy.
@@ -337,7 +365,7 @@ export default function ProgramarTV() {
         onMomentClick={handleMomentClick}
         onOpenMosaic={handleOpenMosaic}
         activeMomentId={activeMomentId}
-        thumbnailFallbackUrl={currentBlock?.contentItem.thumbnail}
+        thumbnailFallbackUrl={currentBlock?.contentItem.thumbnailUrl}
       />
       <div style={{ display: 'flex', gap: '24px' }}>
         <div style={{ flex: 1 }}>
@@ -363,6 +391,8 @@ export default function ProgramarTV() {
       timeline={<SignalTimeline schedule={activeSignal.schedule} currentIndex={currentBlockIndex} onReorder={reorder} />}
       actions={<PlayerActionBar />}
       status={<SignalStatusBar />}
+      isPlaying={isPlaying}
+      onPlayPause={handlePlayPause}
     />
     <style>{`
       @keyframes pulse {

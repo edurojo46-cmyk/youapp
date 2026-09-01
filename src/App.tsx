@@ -6,6 +6,8 @@ import LiveZapping from './pages/LiveZapping';
 import MixChannel from './pages/MixChannel';
 import SearchAndProgram from './pages/SearchAndProgram';
 import ChannelSearch from './pages/ChannelSearch';
+import { ToastHost } from './components/ui/ToastHost';
+import { ModalHost } from './components/ui/ModalHost';
 import ChannelProfile from './pages/ChannelProfile';
 import SearchLab from './pages/SearchLab';
 import Login from './pages/Login';
@@ -27,8 +29,10 @@ import { ProviderIntelligence } from './components/telemetry/ProviderIntelligenc
 import AiSummary from './pages/AiSummary';
 import ControlCenter from './pages/ControlCenter';
 import Player from './pages/Player';
+import MiPlataforma from './pages/streaming/MiPlataforma';
+import ExplorarStreaming from './pages/streaming/ExplorarStreaming';
+import StreamingDetail from './pages/streaming/StreamingDetail';
 import { useStore } from './store/useStore';
-
 import DesktopLayout from './components/DesktopLayout';
 
 // Protected Route Component
@@ -91,6 +95,11 @@ function App() {
         <Route path="/search" element={<DashboardRoute><ChannelSearch /></DashboardRoute>} />
         <Route path="/my-algorithm" element={<DashboardRoute><MyAlgorithm /></DashboardRoute>} />
         <Route path="/create-signal" element={<DashboardRoute><CreateSignal /></DashboardRoute>} />
+        {/* Nueva Capa Multiplataforma (Streaming MVP V1) */}
+        <Route path="/mi-plataforma" element={<ProtectedRoute><MiPlataforma /></ProtectedRoute>} />
+        <Route path="/explorar" element={<ProtectedRoute><ExplorarStreaming /></ProtectedRoute>} />
+        <Route path="/streaming/:type/:id" element={<ProtectedRoute><StreamingDetail /></ProtectedRoute>} />
+        
         {/* Nueva Vista de Programar TV (Mockup idéntico) - Sin DesktopLayout para barra superior limpia */}
         <Route path="/programartv" element={<ProtectedRoute><ProgramarTV /></ProtectedRoute>} />
         <Route path="/misenal1" element={<ProtectedRoute><MiSenal1 /></ProtectedRoute>} />
@@ -131,6 +140,9 @@ function App() {
           background: radial-gradient(circle at 50% 0%, var(--bg-secondary), var(--bg-primary) 70%);
         }
       `}</style>
+      
+      <ToastHost />
+      <ModalHost />
     </div>
   );
 }

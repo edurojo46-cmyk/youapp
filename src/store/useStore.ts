@@ -57,6 +57,20 @@ export interface AlgorithmProfile {
   lastUsed: string;
 }
 
+export type FollowedCreator = {
+  creatorId: string;
+  creatorName: string;
+  provider: string;
+};
+
+export type SavedContent = {
+  id: string; // contentId
+  type: 'video' | 'channel' | 'playlist' | 'signal' | 'you4';
+  title: string;
+  provider: string;
+  savedAt: string;
+};
+
 export interface SavedMoment {
   id: string;
   videoId: string;
@@ -90,6 +104,17 @@ interface AppState {
   savedMoments: SavedMoment[];
   addMoment: (moment: SavedMoment) => void;
   removeMoment: (id: string) => void;
+
+  // Universal Library & Creators
+  savedContent: SavedContent[];
+  saveContent: (content: SavedContent) => void;
+  unsaveContent: (id: string) => void;
+  isSaved: (id: string) => boolean;
+
+  followedCreators: FollowedCreator[];
+  followCreator: (creator: FollowedCreator) => void;
+  unfollowCreator: (creatorId: string) => void;
+  isFollowing: (creatorId: string) => boolean;
 
   initAuth: () => void;
   signOut: () => Promise<void>;
@@ -189,6 +214,8 @@ export const useStore = create<AppState>((set) => {
     activeAlgorithmId: initialActiveAlgo,
     
     savedMoments: initialMoments,
+    savedContent: [],
+    followedCreators: [],
 
     setUser: (user) => set({ user }),
     setActiveChannel: (id) => set({ activeChannelId: id }),
@@ -231,6 +258,36 @@ export const useStore = create<AppState>((set) => {
       }
       return { savedMoments: next };
     }),
+
+    saveContent: (content) => set(state => {
+      const next = [content, ...state.savedContent.filter(c => c.id !== content.id)];
+      // TODO: localStorage or Supabase sync for savedContent
+      return { savedContent: next };
+    }),
+
+    unsaveContent: (id) => set(state => ({
+      savedContent: state.savedContent.filter(c => c.id !== id)
+    })),
+
+    isSaved: (id) => {
+      const state = useStore.getState();
+      return state.savedContent.some(c => c.id === id);
+    },
+
+    followCreator: (creator) => set(state => {
+      const next = [creator, ...state.followedCreators.filter(c => c.creatorId !== creator.creatorId)];
+      // TODO: sync
+      return { followedCreators: next };
+    }),
+
+    unfollowCreator: (creatorId) => set(state => ({
+      followedCreators: state.followedCreators.filter(c => c.creatorId !== creatorId)
+    })),
+
+    isFollowing: (creatorId) => {
+      const state = useStore.getState();
+      return state.followedCreators.some(c => c.creatorId === creatorId);
+    },
 
     initAuth: () => {
       supabase.auth.getSession().then(({ data: { session } }) => {

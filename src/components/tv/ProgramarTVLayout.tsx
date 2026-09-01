@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
+import { SmartBar } from '../smartbar/SmartBar';
 
 interface ProgramarTVLayoutProps {
   stage: React.ReactNode;
@@ -8,6 +9,8 @@ interface ProgramarTVLayoutProps {
   timeline: React.ReactNode;
   actions: React.ReactNode;
   status: React.ReactNode;
+  isPlaying?: boolean;
+  onPlayPause?: () => void;
 }
 
 export function ProgramarTVLayout({
@@ -15,7 +18,9 @@ export function ProgramarTVLayout({
   intelligence,
   timeline,
   actions,
-  status
+  status,
+  isPlaying,
+  onPlayPause
 }: ProgramarTVLayoutProps) {
   const navigate = useNavigate();
 
@@ -53,9 +58,14 @@ export function ProgramarTVLayout({
 
       {/* MAIN CONTENT GRID */}
       <div className="you-tv-main">
-        {/* LEFT COLUMN: Player */}
-        <div className="you-tv-stage">
-          {stage}
+        {/* LEFT COLUMN: Player & SmartBar */}
+        <div className="player-smartbar-stack" style={{ display: 'flex', flexDirection: 'column', gap: '16px', minWidth: 0 }}>
+          <div className="you-tv-stage">
+            {stage}
+          </div>
+          <div style={{ position: 'sticky', bottom: '16px', zIndex: 10 }}>
+            <SmartBar isPlaying={isPlaying} onPlayPause={onPlayPause} />
+          </div>
         </div>
 
         {/* RIGHT COLUMN: Intelligence Rail */}

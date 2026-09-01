@@ -416,9 +416,10 @@ enabled = true
 enabled = true
 verify_jwt = false
 import_map = "./functions/external-search/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/external-search/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/external-search/*.html" ]
+
+[functions.publisher-video-discovery]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/publisher-video-discovery/index.ts"
+

@@ -68,7 +68,7 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
 - **Fecha:** 2026-09-01
 - **Git Tag:** `youapp-knowledge-reuse-v1-live-validated`
 - **Archivo:** `YOUAPP_IP_SNAPSHOT_V3.zip`
-- **SHA256:** `AD53B38B2A8225F2F2069A21629AE49E183FCBAB2E28DF9AEA86F2FED9265F92`
+- **SHA256:** `EA4053D46B82586018131B3440A1A67466149000AB082FCC715DECEB74DFA753`
 - **Estado:** LIVE VALIDATED ✅ — CONGELADO / NO MODIFICAR 🧊
 
 ### Principio Fundamental:

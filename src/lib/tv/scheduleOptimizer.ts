@@ -70,7 +70,7 @@ export function optimizeSchedule(
       }
       
       // Check constraints
-      const creator = item.channelName || 'unknown';
+      const creator = item.channelTitle || (item as any).channelName || 'unknown';
       const creatorCount = creatorCounts.get(creator) || 0;
       if (creatorCount >= opts.maxPerCreator) continue;
       
@@ -119,7 +119,7 @@ export function optimizeSchedule(
     rhythmIndex++;
     
     // Update trackers
-    const creator = chosen.item.channelName || 'unknown';
+    const creator = chosen.item.channelTitle || (chosen.item as any).channelName || 'unknown';
     creatorCounts.set(creator, (creatorCounts.get(creator) || 0) + 1);
     
     if (chosen.topic === lastTopic) {

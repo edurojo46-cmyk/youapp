@@ -35,18 +35,23 @@ export class VimeoAdapter implements ExternalAdapter {
       // Vimeo no pasa por QuotaBrain de YouTube — siempre procede
       // (el requestSearch de arriba es solo para telemetría de Atlas Coverage)
 
+      const targetQuery = options?.intent?.subject && options.intent.subject.length >= 3
+        ? options.intent.subject
+        : (query.rawQuery || query.normalizedQuery || '');
+
       const { data, error } = await (supabase.functions as any).invoke('vimeo-provider', {
         body: {
-          query: query.rawQuery,
+          query: targetQuery,
           limit: options?.limit || 20,
           sort: query.freshness === 'news' ? 'latest' : 'relevant',
           ingest: true  // guardar en youapp_index para Atlas
         },
+
         signal: options?.signal
       });
 
       if (error) {
-        if (import.meta.env.DEV) console.warn('[VimeoAdapter] Edge function error:', error.message);
+        if (import.meta.env?.DEV) console.warn('[VimeoAdapter] Edge function error:', error.message);
         if (options?.providerStatuses) {
           options.providerStatuses['vimeo'] = { status: 'provider_error', results: 0 };
         }
@@ -65,7 +70,7 @@ export class VimeoAdapter implements ExternalAdapter {
         if (options?.providerStatuses) {
           options.providerStatuses['vimeo'] = { status, results: 0 };
         }
-        if (import.meta.env.DEV) console.warn(`[VimeoAdapter] API Error (${status}):`, data?.error || code);
+        if (import.meta.env?.DEV) console.warn(`[VimeoAdapter] API Error (${status}):`, data?.error || code);
         return [];
       }
 
@@ -76,12 +81,26 @@ export class VimeoAdapter implements ExternalAdapter {
         return [];
       }
       
+      // Cheap Lexical Pre-Filter: si la búsqueda tiene conceptos requeridos ("teología", "liberación"), priorizar items relevantes
+      const reqConcepts = options?.intent?.requiredConcepts || [];
+      let rawItems = data.items;
+      if (reqConcepts.length >= 2) {
+        const filtered = rawItems.filter((i: any) => {
+          const t = (i.title || '').toLowerCase();
+          const d = (i.description || '').toLowerCase();
+          return reqConcepts.some(c => t.includes(c) || d.includes(c));
+        });
+        if (filtered.length > 0) {
+          rawItems = filtered;
+        }
+      }
+      
       if (options?.providerStatuses) {
-        options.providerStatuses['vimeo'] = { status: 'success', results: data.items.length };
+        options.providerStatuses['vimeo'] = { status: 'success', results: rawItems.length };
       }
 
       // Convertir a ContentItem (compatible con el ranking actual)
-      return data.items.map((item: any) => ({
+      return rawItems.map((item: any) => ({
         id: item.id,
         type: 'video' as const,
         title: item.title,
@@ -113,7 +132,7 @@ export class VimeoAdapter implements ExternalAdapter {
 
     } catch (e: any) {
       if (e.name === 'AbortError') throw e;
-      if (import.meta.env.DEV) console.warn('[VimeoAdapter] Exception:', e.message);
+      if (import.meta.env?.DEV) console.warn('[VimeoAdapter] Exception:', e.message);
       if (options?.providerStatuses && !options.providerStatuses['vimeo']) {
         options.providerStatuses['vimeo'] = { status: 'exception', results: 0 };
       }

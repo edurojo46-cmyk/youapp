@@ -91,8 +91,8 @@ export default function Home() {
           <button className="icon-btn">
             <Bell size={20} />
           </button>
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt="Profile" className="avatar" />
+          {(user as any)?.avatar_url ? (
+            <img src={(user as any).avatar_url} alt="Profile" className="avatar" />
           ) : (
             <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Profile" className="avatar" />
           )}

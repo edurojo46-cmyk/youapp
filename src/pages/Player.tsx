@@ -71,17 +71,17 @@ const Player: React.FC = () => {
 
       {/* Video Player */}
       <div style={{ width: '100%', height: '100%' }}>
-        <ReactPlayer
-          url={videoUrl}
-          width="100%"
-          height="100%"
-          playing
-          controls
-          onPlay={handlePlay}
-          onProgress={handleProgress}
-          onDuration={handleDuration}
-          onEnded={handleEnded}
-        />
+        {React.createElement(ReactPlayer as any, {
+          url: videoUrl,
+          width: '100%',
+          height: '100%',
+          playing: true,
+          controls: true,
+          onPlay: handlePlay,
+          onProgress: handleProgress,
+          onDuration: handleDuration,
+          onEnded: handleEnded
+        })}
       </div>
 
       {/* Feedback Overlay when ended */}

@@ -838,7 +838,7 @@ export default function SeedManager() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(resolverResults.length > 0 ? resolverResults : PENDING_150.map(p => ({ ...p, status: 'pending' as ResolveStatus }))).map((ch, idx) => {
+                  {(resolverResults.length > 0 ? resolverResults : PENDING_150.map(p => ({ ...p, status: 'pending' as ResolveStatus }))).map((ch: any, idx) => {
                     return (
                       <tr
                         key={idx}
@@ -857,7 +857,7 @@ export default function SeedManager() {
                         </td>
                         <td style={{ ...tdStyle, color: '#9ca3af' }}>{ch.handle || '—'}</td>
                         <td style={tdStyle}>
-                          <span style={{ background: tierBg[ch.tier], color: tierColor[ch.tier], padding: '2px 10px', borderRadius: '20px', fontWeight: 700, fontSize: '0.75rem' }}>
+                          <span style={{ background: (tierBg as any)[ch.tier] || '#333', color: (tierColor as any)[ch.tier] || '#fff', padding: '2px 10px', borderRadius: '20px', fontWeight: 700, fontSize: '0.75rem' }}>
                             {ch.tier}
                           </span>
                         </td>
@@ -870,7 +870,7 @@ export default function SeedManager() {
                         <td style={tdStyle}>
                           {ch.status === 'ambiguous' && ch.candidates && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {ch.candidates.map(cand => (
+                              {ch.candidates.map((cand: any) => (
                                 <div key={cand.channelId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '6px 10px', borderRadius: '6px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {cand.thumbnail && <img src={cand.thumbnail} alt="" style={{ width: 20, height: 20, borderRadius: '50%' }} />}

@@ -4,8 +4,11 @@ import type { ContentItem } from '../lib/search/types';
 import { Play, Check, X, RefreshCw, BarChart } from 'lucide-react';
 
 import type { QueryUnderstanding } from '../lib/search/intentDetector';
+import { ProviderBadge } from '../components/ui/ProviderBadge';
+
 
 const TEST_QUERIES = [
+  "filosofía aquí y ahora",
   "historia de entre rios",
   "historia",
   "noticias IA",
@@ -26,6 +29,8 @@ export default function SearchLab() {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<TestResult[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [bypassCandidatePool, setBypassCandidatePool] = useState(true);
+  const [bypassAtlas, setBypassAtlas] = useState(false);
 
   const runSuite = async () => {
     setIsRunning(true);
@@ -35,10 +40,12 @@ export default function SearchLab() {
     const newResults: TestResult[] = [];
     for (const q of TEST_QUERIES) {
       const start = Date.now();
-      // forceExternal = true to bypass cache and really test retrieval
       const searchRes = await executeSearch(q, { 
-        forceExternal: true
+        forceExternal: true,
+        bypassCandidatePool,
+        bypassAtlas
       });
+
       
       newResults.push({
         query: q,
@@ -189,9 +196,18 @@ export default function SearchLab() {
                       <div style={{ fontWeight: 'bold', opacity: 0.5, width: '25px' }}>#{idx + 1}</div>
                       <img src={item.thumbnail} alt="" style={{ width: '120px', height: '68px', objectFit: 'cover', borderRadius: '4px' }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <ProviderBadge
+                            provider={item.provider}
+                            publisherName={(item as any).publisherName || (item as any).publisher_name}
+                            retrievalSource={item.retrievalSource}
+                            size="xs"
+                          />
+                        </div>
                         <h4 style={{ margin: '0 0 0.25rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</h4>
                         <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.6 }}>{item.channelTitle} • YS: {item.youScore?.toFixed(1)} (Q: {item.qualityScore?.toFixed(0)} | R: {item.relevanceScore?.toFixed(0)})</p>
                       </div>
+
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         <button 
                           onClick={() => setRating(currentIndex, item.id, 2)}

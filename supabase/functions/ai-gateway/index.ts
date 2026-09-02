@@ -554,6 +554,25 @@ export default {
         }
       }
 
+      // ── 5. PLAN_DISCOVERY — Atlas Discovery AI Planner ─────────────────────
+      if (action === 'plan_discovery') {
+        const prompt = body.prompt;
+        if (!prompt) {
+          return new Response(JSON.stringify({ error: 'prompt required for plan_discovery' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        const raw = await callGemini(prompt, geminiKey, 1500);
+        const jsonMatch = raw.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('Invalid JSON returned from Gemini Planner');
+        }
+        const parsed = JSON.parse(jsonMatch[0]);
+        return new Response(JSON.stringify(parsed), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
       return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

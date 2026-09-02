@@ -186,7 +186,7 @@ const defaultMoments: SavedMoment[] = [
   }
 ];
 
-export const useStore = create<AppState>((set) => {
+export const useStore = create<AppState>((set, get) => {
   // Try to load initial state from localStorage safely
   let initialAlgos = defaultAlgorithms;
   let initialActiveAlgo = defaultAlgorithms[0].id;
@@ -269,9 +269,8 @@ export const useStore = create<AppState>((set) => {
       savedContent: state.savedContent.filter(c => c.id !== id)
     })),
 
-    isSaved: (id) => {
-      const state = useStore.getState();
-      return state.savedContent.some(c => c.id === id);
+    isSaved: (id: string): boolean => {
+      return get().savedContent.some((c: any) => c.id === id);
     },
 
     followCreator: (creator) => set(state => {
@@ -284,9 +283,8 @@ export const useStore = create<AppState>((set) => {
       followedCreators: state.followedCreators.filter(c => c.creatorId !== creatorId)
     })),
 
-    isFollowing: (creatorId) => {
-      const state = useStore.getState();
-      return state.followedCreators.some(c => c.creatorId === creatorId);
+    isFollowing: (creatorId: string): boolean => {
+      return get().followedCreators.some((c: any) => c.creatorId === creatorId);
     },
 
     initAuth: () => {

@@ -57,7 +57,7 @@ export function resolvePlayback(item: ContentItem): PlaybackResolution {
     }
   }
 
-  if (item.provider === 'archive' && item.videoUrl?.endsWith('.mp4')) {
+  if ((item.provider as string) === 'archive' && item.videoUrl?.endsWith('.mp4')) {
     return {
       mode: 'native',
       provider: 'archive',
@@ -81,7 +81,7 @@ export function resolvePlayback(item: ContentItem): PlaybackResolution {
   }
 
   // Publisher articles and external links
-  if (item.provider === 'publisher' || item.provider === 'discover') {
+  if ((item.provider as string) === 'publisher' || (item.provider as string) === 'discover') {
     return {
       mode: 'external',
       provider: item.provider,

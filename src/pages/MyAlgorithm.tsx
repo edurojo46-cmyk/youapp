@@ -133,7 +133,7 @@ export default function MyAlgorithm() {
   const [wizardStep, setWizardStep] = useState(1);
   const [wizardGoal, setWizardGoal] = useState('');
 
-  const activeAlgo = savedAlgorithms.find(a => a.id === activeAlgorithmId) || savedAlgorithms[0];
+  const activeAlgo = savedAlgorithms.find((a: any) => a.id === activeAlgorithmId) || savedAlgorithms[0];
 
   const handleUpdateActiveAlgo = (updates: Partial<AlgorithmProfile>) => {
     updateAlgorithm(activeAlgorithmId, updates);
@@ -390,7 +390,7 @@ export default function MyAlgorithm() {
             </div>
 
             <div className="catalog-list">
-              {savedAlgorithms.map(algo => (
+              {savedAlgorithms.map((algo: any) => (
                 <div 
                   key={algo.id} 
                   className={`catalog-card ${activeAlgorithmId === algo.id ? 'active' : ''}`}

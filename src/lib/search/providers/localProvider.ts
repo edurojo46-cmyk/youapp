@@ -1,52 +1,28 @@
 import type { SearchProvider, SearchOptions } from './index';
 import type { ContentItem, SearchQuery } from '../types';
-import { UNIVERSAL_CATALOG } from '../../universalChannels';
-// Mover MEGA_CATALOG_ITEMS a un archivo separado, pero por ahora podemos importarlo o definirlo aquí.
-import { getLevenshteinDistance } from '../queryEngine'; // Lo implementaremos pronto
+import { getCandidatePool, getCatalogItems } from '../cache/indexedDb';
 
-// Copiamos o importamos MEGA_CATALOG_ITEMS (aquí lo abstraemos para simplificar, 
-// idealmente debería moverse a un data/catalog.ts, pero lo pondremos directo para migración rápida)
-// El catálogo se simulará o cargará desde IndexedDB en producción.
-// Por ahora dejamos una lista vacía para que siempre vaya a Supabase o YouTube si no hay cache.
-const MEGA_CATALOG_ITEMS: any[] = [];
 export class LocalProvider implements SearchProvider {
   name = 'local';
 
-  async search(query: SearchQuery, options?: SearchOptions): Promise<ContentItem[]> {
-    const qLower = query.normalizedQuery;
-    
-    let matchedMega = null;
-    let bestMatchScore = Infinity;
+  async search(query: SearchQuery, _options?: SearchOptions): Promise<ContentItem[]> {
+    try {
+      const qNorm = query.normalizedQuery.toLowerCase().trim();
+      if (!qNorm) return [];
 
-    for (const item of MEGA_CATALOG_ITEMS) {
-      for (const kw of item.keywords) {
-        if (qLower.includes(kw) || kw.includes(qLower)) {
-          matchedMega = item;
-          bestMatchScore = 0;
-          break;
-        }
-        if (Math.abs(qLower.length - kw.length) <= 3) {
-          const distance = getLevenshteinDistance(qLower, kw);
-          const maxErrors = kw.length > 8 ? 3 : 2;
-          if (distance <= maxErrors && distance < bestMatchScore) {
-            bestMatchScore = distance;
-            matchedMega = item;
-          }
-        }
+      const pool = await getCandidatePool(qNorm);
+      if (pool && pool.candidates && pool.candidates.length > 0) {
+        const ids = pool.candidates.map(c => c.contentId);
+        const items = await getCatalogItems(ids);
+        return items.map(v => ({
+          ...v,
+          retrievalSource: 'cache' as const
+        }));
       }
-      if (bestMatchScore === 0) break;
+    } catch {
+      // Non-blocking
     }
-
-    if (!matchedMega) return [];
-
-    const directVideos = matchedMega.videos.map((v: any) => ({
-      ...v,
-      provider: v.provider || 'youtube',
-      source: { provider: 'youtube', discoveryMethod: 'local-catalog', discoveredAt: new Date().toISOString() },
-      retrievalSource: 'local'
-    }));
-    
-    return directVideos as ContentItem[];
+    return [];
   }
 }
 

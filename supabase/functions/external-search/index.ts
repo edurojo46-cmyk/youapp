@@ -133,7 +133,14 @@ async function logEvent(supabase: ReturnType<typeof createClient>, params: {
 
 // ── Normalizar resultado de YouTube a NormalizedVideo ───────────────────────
 function normalizeYouTubeResult(item: any) {
-  const videoId = item.id?.videoId || item.id;
+  const videoId = typeof item.id === 'string' 
+    ? item.id 
+    : (item.id?.videoId || (item.id?.kind === 'youtube#video' ? item.id?.videoId : null));
+
+  if (!videoId || typeof videoId !== 'string' || videoId.includes('[object')) {
+    return null;
+  }
+
   return {
     id: `yt_${videoId}`,
     provider: 'youtube' as const,
@@ -175,6 +182,7 @@ function normalizeYouTubeResult(item: any) {
     }
   };
 }
+
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default {
@@ -277,10 +285,13 @@ export default {
 
         const data = await res.json();
         const latencyMs = Date.now() - startTime;
-        const items = (data.items || []).map(normalizeYouTubeResult);
+        const items = (data.items || [])
+          .map(normalizeYouTubeResult)
+          .filter((item: any): item is NonNullable<typeof item> => item !== null && typeof item.providerContentId === 'string' && !item.providerContentId.includes('[object'));
         
-        console.log(`[YouTube API] Items count: ${items.length}`);
+        console.log(`[YouTube API] Valid video items count: ${items.length} (from ${data.items?.length || 0} raw results)`);
         console.log(`[YouTube API] Quota reserved: true, Quota committed: true`);
+
 
         // Actualizar evento con resultados reales
         await supabase

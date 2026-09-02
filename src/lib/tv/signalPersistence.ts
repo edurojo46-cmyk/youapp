@@ -46,7 +46,7 @@ export async function persistSignal(signal: CustomSignal): Promise<boolean> {
       start_offset_sec: block.startOffsetSec,
       duration_sec: block.durationSec,
       content_provider: block.contentItem.provider || 'youtube',
-      provider_content_id: block.contentItem.providerContentId || block.contentItem.id,
+      provider_content_id: (block.contentItem as any).providerContentId || block.contentItem.id,
       content_key: block.contentItem.id,
       title: block.contentItem.title,
       thumbnail_url: block.contentItem.thumbnail,

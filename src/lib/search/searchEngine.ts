@@ -22,6 +22,8 @@ import { autoRegisterChannel } from '../creatorGraph';
 
 export interface ExecuteSearchOptions {
   forceExternal?: boolean;
+  bypassCandidatePool?: boolean;
+  bypassAtlas?: boolean;
   signal?: AbortSignal;
   onProgress?: (update: SearchUpdate) => void;
   routingMode?: 'static' | 'shadow' | 'dynamic' | 'all';
@@ -38,6 +40,7 @@ export interface ExecuteSearchOptions {
   excludeProviders?: string[];
   forceProviders?: string[];
 }
+
 
 export interface SearchExecutionTrace {
   requestId: string;
@@ -130,7 +133,7 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   const intent = intentData.primaryIntent;
   latencies.intent = Date.now() - t;
   
-  if (import.meta.env.DEV) console.log(`🔎 [Query Understanding] "${query.rawQuery}"`, intentData);
+  if (import.meta.env?.DEV) console.log(`🔎 [Query Understanding] "${query.rawQuery}"`, intentData);
 
   t = Date.now();
   const memoryResult = !forceExternal
@@ -169,15 +172,22 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     });
   };
 
-  if (!forceExternal) {
+  const { exactWorkSearchGate } = await import('./exactWorkSearchGate');
+  const exactWorkDetection = exactWorkSearchGate.detectExactWork(query.rawQuery, intentData);
+
+  if (!forceExternal && !options?.bypassCandidatePool) {
     try {
       pool = await getCandidatePool(query.normalizedQuery);
       if (pool && pool.candidates && pool.candidates.length > 0) {
-        const cachedIds = pool.candidates.map(c => c.contentId);
-        candidates = await getCatalogItems(cachedIds);
-        if (candidates.length > 0) {
-          activePath = 'fast';
-          if (import.meta.env.DEV) console.log(`⚡ [Fast Path] Loaded ${candidates.length} candidates from CandidatePool cache for "${query.normalizedQuery}"`);
+        // Si es una ExactWork y el pool en caché tiene menos de 10 candidatos, refrescar desde Atlas físico
+        if (exactWorkDetection.isExactWork && pool.candidates.length < 10) {
+          pool = null;
+        } else {
+          const cachedIds = pool.candidates.map(c => c.contentId);
+          candidates = await getCatalogItems(cachedIds);
+          if (candidates.length > 0) {
+            if (import.meta.env?.DEV) console.log(`⚡ [CandidatePool Cache] Loaded ${candidates.length} candidates for "${query.normalizedQuery}"`);
+          }
         }
       }
     } catch {
@@ -185,137 +195,215 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     }
   }
 
-  if (!pool || candidates.length === 0) {
-    // Phase 1: Atlas / Local Retrieval
+  // Si no había CandidatePool o estaba vacío
+  if (!pool || candidates.length === 0 || options?.bypassCandidatePool) {
     t = Date.now();
-    const retrieval = await retrieveInternalCandidates(query, { signal: options?.signal });
-    candidates = retrieval.candidates;
-    latencies.atlas = Date.now() - t;
-    
-    rawCandidateCount = candidates.length;
-    updateAcquisitionStats(candidates);
-
-    // Phase 2: Normalize
-    t = Date.now();
-    candidates = normalizeItems(candidates);
-    latencies.normalize = Date.now() - t;
-
-    // Phase 3: Dedup
-    t = Date.now();
-    candidates = deduplicateItems(candidates);
-    latencies.dedup = Date.now() - t;
-    dedupCandidateCount = candidates.length;
-
-    // Phase 4: Cheap Relevance
-    t = Date.now();
-    candidates = calculateBaseRanking(candidates, query, intentData);
-    latencies.relevance = Date.now() - t;
-
-    // Phase 5: Quality
-    t = Date.now();
-    candidates = calculateQualityScore(candidates);
-    latencies.quality = Date.now() - t;
-
-    // Phase 6: FAST PATH GATE (Post-Eligibility Atlas Coverage Check)
-    t = Date.now();
-    
-    const atlasRawCount = candidates.length;
-    const qualityPassedCount = candidates.filter(c => (c.qualityScore || 0) >= 60).length;
-    const relevancePassedCount = candidates.filter(c => (c.relevanceScore || 0) >= 40).length;
-    const qualifiedAtlasCandidates = candidates.filter(
-      c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40
-    );
-
-    // Provisional sorting by youScore to check Top 5 guardrail
-    const provisionalTop = [...qualifiedAtlasCandidates].sort((a, b) => (b.youScore || 0) - (a.youScore || 0));
-    const top5 = provisionalTop.slice(0, 5);
-    const top5Consistent = top5.length >= 1 && top5.every(c => (c.relevanceScore || 0) >= 40);
-
-    const hasEnoughQualifiedVolume = qualifiedAtlasCandidates.length >= 8;
-    const fastPathReady = hasEnoughQualifiedVolume && top5Consistent;
-    latencies.fastPathEvaluation = Date.now() - t;
-
-    if (fastPathReady && !forceExternal) {
-      activePath = 'fast';
-      if (import.meta.env.DEV) {
-        console.log(`⚡ [Fast Path] Gate PASSED`);
-        console.log(`  Atlas raw:          ${atlasRawCount}`);
-        console.log(`  Quality passed:     ${qualityPassedCount}`);
-        console.log(`  Relevance passed:   ${relevancePassedCount}`);
-        console.log(`  Qualified (Q60/R40):${qualifiedAtlasCandidates.length}`);
-        console.log(`  Top5 consistent:    ${top5Consistent}`);
-      }
+    if (!options?.bypassAtlas) {
+      const retrieval = await retrieveInternalCandidates(query, { signal: options?.signal });
+      candidates = retrieval.candidates;
     } else {
-      if (import.meta.env.DEV) {
-        console.log(`⚡ [Fast Path] Gate FAILED (Qualified: ${qualifiedAtlasCandidates.length}/8, Top5: ${top5Consistent}). Proceeding to Free Discovery.`);
+      candidates = [];
+      if (import.meta.env?.DEV) console.log(`🔍 [Atlas Bypassed] Skipping internal Atlas retrieval for benchmark/test`);
+    }
+    latencies.atlas = Date.now() - t;
+  }
+
+  rawCandidateCount = candidates.length;
+  updateAcquisitionStats(candidates);
+
+  // Phase 2: Normalize
+  t = Date.now();
+  candidates = normalizeItems(candidates);
+  latencies.normalize = Date.now() - t;
+
+  // Phase 3: Dedup
+  t = Date.now();
+  candidates = deduplicateItems(candidates);
+  latencies.dedup = Date.now() - t;
+  dedupCandidateCount = candidates.length;
+
+  // Phase 4: Cheap Relevance
+  t = Date.now();
+  candidates = calculateBaseRanking(candidates, query, intentData);
+  latencies.relevance = Date.now() - t;
+
+  // Phase 5: Quality
+  t = Date.now();
+  candidates = calculateQualityScore(candidates);
+  latencies.quality = Date.now() - t;
+
+  // Phase 6: FAST PATH GATE (Graduated 3-Tier Early-Stop Strategy)
+  t = Date.now();
+  
+  let poolForFastPath = candidates;
+  if (exactWorkDetection.isExactWork) {
+    poolForFastPath = exactWorkSearchGate.filterAndDiversifyExactWorkCandidates(candidates, exactWorkDetection, 75);
+  }
+
+  const rawPoolCount = poolForFastPath.length;
+  const qualityPassedCount = poolForFastPath.filter(c => (c.qualityScore || 0) >= 60).length;
+  const relevancePassedCount = poolForFastPath.filter(c => (c.relevanceScore || 0) >= 40).length;
+  const qualifiedAtlasCandidates = poolForFastPath.filter(
+    c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40
+  );
+
+  // Provisional sorting by youScore to check Top 5 guardrail
+  const provisionalTop = [...qualifiedAtlasCandidates].sort((a, b) => (b.youScore || 0) - (a.youScore || 0));
+  const top5 = provisionalTop.slice(0, 5);
+  const top5Consistent = top5.length >= 1 && top5.every(c => (c.relevanceScore || 0) >= 40);
+
+  // ── Graduated 3-Tier Early-Stop Strategy ──────────────────────────────
+  // Cuando la query especifica Artista + Obra (ej. "calle 13 la perla", "soda stereo de musica ligera"),
+  // los tiers deben basarse estrictamente en entityWorkQualifiedCount (artista original + obra),
+  // NUNCA en covers o tributos que sólo coinciden con la obra.
+  const hasSpecificArtist = !!exactWorkDetection.canonicalEntity;
+  const effectiveFastPathCandidates = hasSpecificArtist
+    ? qualifiedAtlasCandidates.filter(c => (c as any).isExactEntityWork === true)
+    : qualifiedAtlasCandidates;
+
+  // Tier 1: >= 10 Entity+Work calificados -> STRONG FAST PATH (0ms externo)
+  // Tier 2: 6 - 9 Entity+Work calificados -> FAST PATH (Inmediato + Background Harvest)
+  // Tier 3: < 6 Entity+Work calificados  -> HYBRID DISCOVERY (Externo + Background Discovery AI)
+  const isStrongFastPath = effectiveFastPathCandidates.length >= 10 && top5Consistent;
+  const isFastPathWithBackgroundHarvest = effectiveFastPathCandidates.length >= 6 && effectiveFastPathCandidates.length < 10 && top5Consistent;
+  const fastPathReady = (isStrongFastPath || isFastPathWithBackgroundHarvest) && !forceExternal;
+
+  latencies.fastPathEvaluation = Date.now() - t;
+
+  if (fastPathReady) {
+    activePath = 'fast';
+
+    if (isFastPathWithBackgroundHarvest) {
+      // 6-9 resultados de artista+obra: responder de inmediato al usuario y lanzar misión en background
+      Promise.resolve().then(async () => {
+        try {
+          const { analyzeAtlasGap, enqueueDiscoveryMission } = await import('../atlasDiscoveryAI');
+          const gapRequest = analyzeAtlasGap({
+            query: rawQuery,
+            atlasResultCount: effectiveFastPathCandidates.length,
+            qualityQualifiedCount: effectiveFastPathCandidates.length,
+            relevanceQualifiedCount: effectiveFastPathCandidates.length,
+            coverageScore: effectiveFastPathCandidates.length / 10,
+            qualityScore: 1.0,
+            entities: [exactWorkDetection.canonicalEntity || ''],
+            works: [exactWorkDetection.canonicalWork || '']
+          });
+          if (gapRequest && gapRequest.gaps.length > 0) {
+            void enqueueDiscoveryMission(gapRequest);
+          }
+        } catch {}
+      });
+    }
+
+    if (import.meta.env?.DEV) {
+      console.log(`⚡ [Fast Path Tier ${isStrongFastPath ? '1 (Strong)' : '2 (Harvest Backfill)'}] Gate PASSED ${exactWorkDetection.isExactWork ? `[ExactWork: ${exactWorkDetection.canonicalWork}]` : ''}`);
+      console.log(`  Source:             ${pool ? 'CandidatePool' : 'Atlas Physical'}`);
+      console.log(`  Raw candidates:     ${rawPoolCount}`);
+      console.log(`  Quality passed:     ${qualityPassedCount}`);
+      console.log(`  Relevance passed:   ${relevancePassedCount}`);
+      console.log(`  Qualified (Q60/R40):${qualifiedAtlasCandidates.length}`);
+      console.log(`  Top5 consistent:    ${top5Consistent}`);
+    }
+  } else {
+    if (import.meta.env?.DEV) {
+      console.log(`⚡ [CandidatePool/Atlas Gate Tier 3 (Fallback)]`);
+      console.log(`  Source:             ${pool ? 'CandidatePool' : 'Atlas Physical'}`);
+      console.log(`  Retrieved:          ${rawPoolCount}`);
+      console.log(`  Qualified:          ${qualifiedAtlasCandidates.length}/10 (Dropped: ${rawPoolCount - qualifiedAtlasCandidates.length})`);
+      console.log(`  Top5 consistent:    ${top5Consistent}`);
+      console.log(`⚠️ FAST PATH INSUFFICIENT (<6 qualified). Continuing to free discovery / external + Enqueuing Discovery AI background mission...`);
+    }
+
+    // TIER 3: Siempre encolar Discovery AI en background para cerrar permanentemente el hueco para futuras búsquedas
+    if (exactWorkDetection.isExactWork) {
+      Promise.resolve().then(async () => {
+        try {
+          const { analyzeAtlasGap, enqueueDiscoveryMission } = await import('../atlasDiscoveryAI');
+          const gapRequest = analyzeAtlasGap({
+            query: rawQuery,
+            atlasResultCount: qualifiedAtlasCandidates.length,
+            qualityQualifiedCount: qualifiedAtlasCandidates.length,
+            relevanceQualifiedCount: qualifiedAtlasCandidates.length,
+            coverageScore: qualifiedAtlasCandidates.length / 10,
+            qualityScore: 1.0,
+            entities: [exactWorkDetection.canonicalEntity || ''],
+            works: [exactWorkDetection.canonicalWork || '']
+          });
+          if (gapRequest && gapRequest.gaps.length > 0) {
+            void enqueueDiscoveryMission(gapRequest);
+          }
+        } catch {}
+      });
+    }
+
+    // ── FREE DISCOVERY STAGE (Nivel 0: Publishers, RSS, Sitemaps, Archivos) ──
+    const { runFreeDiscoveryStage } = await import('./freeDiscovery/freeDiscoveryStage');
+    const freeDiscovery = await runFreeDiscoveryStage(query, candidates, intentData, options);
+
+    candidates = freeDiscovery.candidates;
+
+    if (freeDiscovery.passed && !forceExternal) {
+      activePath = 'discovery_free';
+    } else {
+      activePath = 'discovery';
+      if (import.meta.env?.DEV) console.log('🌐 [Discovery Path] Gate failed. Calling external providers via CapabilityRouter.');
+      
+      t = Date.now();
+      const controller = new AbortController();
+      let externalCandidates: ContentItem[] = [];
+      try {
+        // Discovery uses capability router inside externalSearch
+        externalCandidates = await externalSearch.search(query, [], {
+          signal: controller.signal,
+          intent: intentData,
+          providerStatuses,
+          routerDecisionsOut,
+          routingMode: options?.routingMode || 'shadow',
+          utilitySource: options?.utilitySource,
+          excludeProviders: options?.excludeProviders,
+          forceProviders: options?.forceProviders,
+          fallbackOptions: { requestId }
+        });
+      } catch (err) {
+        console.error(err);
       }
-      // ── FREE DISCOVERY STAGE (Nivel 0: Publishers, RSS, Sitemaps, Archivos) ──
-      const { runFreeDiscoveryStage } = await import('./freeDiscovery/freeDiscoveryStage');
-      const freeDiscovery = await runFreeDiscoveryStage(query, candidates, intentData, options);
+      latencies.providers = Date.now() - t;
 
-      candidates = freeDiscovery.candidates;
+      if (externalCandidates.length > 0) {
+        updateAcquisitionStats(externalCandidates);
+        rawCandidateCount += externalCandidates.length;
 
-      if (freeDiscovery.passed && !forceExternal) {
-        activePath = 'discovery_free';
-      } else {
-        activePath = 'discovery';
-        if (import.meta.env.DEV) console.log('🌐 [Discovery Path] Gate failed. Calling external providers via CapabilityRouter.');
+        t = Date.now();
+        externalCandidates = normalizeItems(externalCandidates);
+        latencies.normalize += (Date.now() - t);
+        
+        candidates = [...candidates, ...externalCandidates];
         
         t = Date.now();
-        const controller = new AbortController();
-        let externalCandidates: ContentItem[] = [];
-        try {
-          // Discovery uses capability router inside externalSearch
-          externalCandidates = await externalSearch.search(query, [], {
-            signal: controller.signal,
-            intent: intentData,
-            providerStatuses,
-            routerDecisionsOut,
-            routingMode: options?.routingMode || 'shadow',
-            utilitySource: options?.utilitySource,
-            excludeProviders: options?.excludeProviders,
-            forceProviders: options?.forceProviders,
-            fallbackOptions: { requestId }
-          });
-        } catch (err) {
-          console.error(err);
-        }
-        latencies.providers = Date.now() - t;
+        candidates = deduplicateItems(candidates);
+        latencies.dedup += (Date.now() - t);
+        dedupCandidateCount = candidates.length;
 
-        if (externalCandidates.length > 0) {
-          updateAcquisitionStats(externalCandidates);
-          rawCandidateCount += externalCandidates.length;
+        t = Date.now();
+        candidates = calculateBaseRanking(candidates, query, intentData);
+        latencies.relevance += (Date.now() - t);
+        
+        t = Date.now();
+        candidates = calculateQualityScore(candidates);
+        latencies.quality += (Date.now() - t);
+      }
 
-          t = Date.now();
-          externalCandidates = normalizeItems(externalCandidates);
-          latencies.normalize += (Date.now() - t);
-          
-          candidates = [...candidates, ...externalCandidates];
-          
-          t = Date.now();
-          candidates = deduplicateItems(candidates);
-          latencies.dedup += (Date.now() - t);
-          dedupCandidateCount = candidates.length;
-
-          t = Date.now();
-          candidates = calculateBaseRanking(candidates, query, intentData);
-          latencies.relevance += (Date.now() - t);
-          
-          t = Date.now();
-          candidates = calculateQualityScore(candidates);
-          latencies.quality += (Date.now() - t);
-        }
 
         // ── FASE DE GENERAL FALLBACK (Post-Routing) ─────────────────────────────────
         // Evaluamos si los candidatos cualificados son insuficientes
         const qualifiedCandidates = candidates.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40);
       
       if (qualifiedCandidates.length < 5 && activePath !== 'discovery_free') {
-        if (import.meta.env.DEV) console.log('⚠️ [Fallback] Insufficient qualified candidates. Triggering fallback providers.');
+        if (import.meta.env?.DEV) console.log('⚠️ [Fallback] Insufficient qualified candidates. Triggering fallback providers.');
         
         try {
           const activatedProviders = routerDecisionsOut.decisions.filter(d => d.shouldActivate).map(d => d.provider);
-          if (import.meta.env.DEV) {
+          if (import.meta.env?.DEV) {
             console.log('--- CALLING EXTERNAL SEARCH WITH FALLBACK ---');
             console.log('arg 7:', options?.routingMode || 'shadow');
             console.log('arg 8:', typeof options?.utilitySource);
@@ -355,11 +443,11 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
         }
       }
     }
-  }
-    
+  
     // ── DEV ENVIRONMENT ABSOLUTE FALLBACK (MOCK) ─────────────────────────
     // Política deny-by-default: los mocks solo se permiten si se explicita.
-    const allowDevMocks = import.meta.env.VITE_ALLOW_DEV_MOCKS === "true";
+    const allowDevMocks = import.meta.env?.VITE_ALLOW_DEV_MOCKS === "true";
+
     if (candidates.length === 0 && allowDevMocks) {
       console.warn('⚠️ [Dev Fallback] 0 candidates found. Injecting Mock Data to prevent crash.');
       try {
@@ -409,10 +497,16 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
      }
   });
 
-  // Enforce Relevance Floor (Eligibility Gate)
-  const qualified = top20ForRerank.filter(c => {
+  // Enforce Relevance & Exact Work Fidelity Floor (Eligibility Gate)
+  const isVerbose = import.meta.env?.VITE_SEARCH_VERBOSE === 'true';
+  let filteredForEligibility = top20ForRerank;
+  if (exactWorkDetection.isExactWork) {
+    filteredForEligibility = exactWorkSearchGate.filterAndDiversifyExactWorkCandidates(top20ForRerank, exactWorkDetection, 75);
+  }
+
+  const qualified = filteredForEligibility.filter(c => {
     const isQual = (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40;
-    if (!isQual && import.meta.env.DEV) {
+    if (!isQual && isVerbose && import.meta.env?.DEV) {
       console.log(`[Eligibility Drop] ${c.title} - Q:${c.qualityScore} R:${c.relevanceScore}`);
     }
     return isQual;
@@ -421,6 +515,10 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   qualityDrop = top20ForRerank.length - top20ForRerank.filter(c => (c.qualityScore || 0) >= 60).length;
   relevanceDrop = top20ForRerank.filter(c => (c.qualityScore || 0) >= 60).length - qualified.length;
   qualifiedCount = qualified.length;
+
+  if (import.meta.env?.DEV && top20ForRerank.length > qualified.length) {
+    console.log(`📉 [Eligibility Summary] Evaluados: ${top20ForRerank.length} | Calificados: ${qualified.length} | Descartados: ${top20ForRerank.length - qualified.length} (Q-Drop: ${qualityDrop}, R-Drop: ${relevanceDrop})`);
+  }
   
   // Publisher Separation: articles go to newsContext, they don't consume the 20 slots for audiovisual
   const qualifiedArticles = qualified.filter(c => c.type === 'article');
@@ -429,15 +527,48 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   const newsContext = applyPersonalization(qualifiedArticles).slice(0, 5);
   const personalizedTop20 = applyPersonalization(qualifiedAudiovisual).slice(0, 20);
   
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
     if (personalizedTop20.some(c => (c.qualityScore || 0) < 60 || (c.relevanceScore || 0) < 40)) {
       console.error("SEARCH_ELIGIBILITY_INVARIANT: Final results contain unqualified items.");
     }
   }
 
+  // ── ExactWorkCoverageMemory & Bronze Atlas Auto-Persistence ─────────────
+  if (exactWorkDetection.isExactWork) {
+    Promise.resolve().then(async () => {
+      try {
+        const { ExactWorkCoverageMemory } = await import('./exactWorkCoverageMemory');
+        await ExactWorkCoverageMemory.recordSearch({
+          detection: exactWorkDetection,
+          allQualifiedItems: qualified,
+          top10Items: personalizedTop20.slice(0, 10)
+        });
+
+        await ExactWorkCoverageMemory.persistBronzeAtlasAssets(
+          personalizedTop20,
+          exactWorkDetection
+        );
+
+        const { HarvestDedupeIndex } = await import('../atlasHarvester/harvestDedupeIndex');
+        await HarvestDedupeIndex.incrementalRefresh();
+      } catch {}
+    });
+  }
+
   latencies.rank = Date.now() - t;
-  
   latencies.total = Date.now() - startTime;
+
+  if (import.meta.env?.DEV) {
+    console.log(`⏱ SEARCH TIMING — Total: ${latencies.total}ms | Path: ${activePath.toUpperCase()}`);
+    console.log(`   ├─ Query Intent:    ${latencies.intent || 0}ms`);
+    console.log(`   ├─ Atlas / Pool:    ${latencies.atlas || 0}ms`);
+    console.log(`   ├─ Normalization:   ${latencies.normalize || 0}ms`);
+    console.log(`   ├─ Deduplication:   ${latencies.dedup || 0}ms`);
+    console.log(`   ├─ Relevance & Q:   ${(latencies.relevance || 0) + (latencies.quality || 0)}ms`);
+    console.log(`   ├─ Ext Providers:   ${latencies.providers || 0}ms`);
+    console.log(`   └─ Final Ranking:   ${latencies.rank || 0}ms`);
+  }
+
 
   const retrievalStats = { atlas: 0, videoMesh: 0, vimeo: 0, dailymotion: 0, radar: 0, publisher: 0, webDiscover: 0, unknown: 0, other: 0 };
   let independentCount = 0;
@@ -483,12 +614,13 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
 
   const allWithDebug = personalizedTop20.map(c => ({
     ...c,
+    type: c.type || 'video',
     debugOrigin: c.retrievalSource || 'unknown_legacy_path',
     attributionId: crypto.randomUUID()
   }));
 
   // ── Telemetría DiscoveryEconomy (Consola de Ahorro de Cuota) ───────────────
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
     const isFromIndexedDb = pool !== null;
     const isFromAtlas = acquisitionStats.atlas > 0;
     const isFromPublisher = acquisitionStats.publisher > 0;
@@ -498,8 +630,54 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     const estimatedGoogleUnits = quotaSearches * 100;
     const radarAvoided = activePath === 'fast' || activePath === 'discovery_free';
 
+    // 🎬 [Final Provider Mix] & 🔎 [Discovery Origin]
+    const providerMix = { youtube: 0, vimeo: 0, dailymotion: 0, publisher: 0, archive: 0, peertube: 0, other: 0 };
+    const discoveryOrigin = { atlas: 0, publisher: 0, vimeo: 0, dailymotion: 0, videoMesh: 0, radar: 0, other: 0 };
+
+    personalizedTop20.forEach(c => {
+      const p = (c.provider || '').toLowerCase();
+      if (p === 'youtube') providerMix.youtube++;
+      else if (p === 'vimeo') providerMix.vimeo++;
+      else if (p === 'dailymotion') providerMix.dailymotion++;
+      else if (p === 'publisher') providerMix.publisher++;
+      else if (p === 'archive') providerMix.archive++;
+      else if (p === 'peertube') providerMix.peertube++;
+      else providerMix.other++;
+
+      const s = (c.retrievalSource || '').toLowerCase();
+      if (s === 'atlas' || s === 'cache' || s === 'local') discoveryOrigin.atlas++;
+      else if (s === 'publisher') discoveryOrigin.publisher++;
+      else if (s === 'vimeo-api' || s === 'vimeo') discoveryOrigin.vimeo++;
+      else if (s === 'dailymotion-api' || s === 'dailymotion') discoveryOrigin.dailymotion++;
+      else if (s === 'video-mesh') discoveryOrigin.videoMesh++;
+      else if (s === 'radar') discoveryOrigin.radar++;
+      else discoveryOrigin.other++;
+    });
+
+    console.log(`🎬 [Final Provider Mix] YouTube: ${providerMix.youtube} | Vimeo: ${providerMix.vimeo} | Dailymotion: ${providerMix.dailymotion}${providerMix.publisher ? ` | Publisher: ${providerMix.publisher}` : ''}${providerMix.archive ? ` | Archive: ${providerMix.archive}` : ''}${providerMix.peertube ? ` | PeerTube: ${providerMix.peertube}` : ''}${providerMix.other ? ` | Otros: ${providerMix.other}` : ''}`);
+    console.log(`🔎 [Discovery Origin] Atlas: ${discoveryOrigin.atlas} | Publisher: ${discoveryOrigin.publisher} | Vimeo: ${discoveryOrigin.vimeo} | Dailymotion: ${discoveryOrigin.dailymotion}${discoveryOrigin.videoMesh ? ` | VideoMesh: ${discoveryOrigin.videoMesh}` : ''} | Radar: ${discoveryOrigin.radar}${discoveryOrigin.other ? ` | Otros: ${discoveryOrigin.other}` : ''}`);
+
+    if (personalizedTop20.length > 0) {
+      console.table(personalizedTop20.map(v => ({
+        title: (v.title || '').slice(0, 45),
+        provider: v.provider,
+        source: v.retrievalSource,
+        Q: v.qualityScore,
+        R: v.relevanceScore,
+        YS: v.youScore
+      })));
+    }
+
+
     console.groupCollapsed(`💰 [DiscoveryEconomy] "${query.rawQuery}" — Path: ${activePath.toUpperCase()} | Radar: ${youtubeCalled && youtubeResults > 0 ? `EXECUTED (1 search ≈ 100 u, +${youtubeResults} absorbed)` : 'SKIPPED (0 u)'}`);
     console.log('Query:', query.rawQuery);
+    console.log('🔭 Radar Admission:', {
+      qualifiedCount: qualifiedCount,
+      resultSufficient: qualifiedCount >= 6,
+      decision: youtubeCalled && youtubeResults > 0 ? 'AUTHORIZED' : 'SKIPPED_OR_DENIED',
+      quotaUnits: estimatedGoogleUnits,
+      blockedBy: activePath === 'fast' ? 'fast_path_gate' : (activePath === 'discovery_free' ? 'free_discovery_stage' : (youtubeCalled && youtubeResults > 0 ? 'none' : 'opportunity_gate_or_sufficiency'))
+    });
     console.log('Sources:', {
       ramCache: false,
       indexedDb: isFromIndexedDb,
@@ -526,7 +704,9 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       radarAvoided
     });
     console.groupEnd();
+
   }
+
 
   // Asynchronously save candidate pool to local IndexedDB for near-instant / zero-quota repeats
   if (allWithDebug.length > 0) {
@@ -634,17 +814,42 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
 
       if (eventsToInsert.length > 0 && options?.trafficClass !== 'benchmark') {
         const { error } = await supabase.from('telemetry_provider_events').insert(eventsToInsert);
-        if (error && import.meta.env.DEV) console.warn('[Telemetry] Failed to save provider events:', error);
+        if (error && import.meta.env?.DEV) console.warn('[Telemetry] Failed to save provider events:', error);
       }
 
       if (impressionsToInsert.length > 0 && options?.trafficClass !== 'benchmark') {
         const { error: attrErr } = await supabase.rpc('log_search_attributions', { p_attributions: impressionsToInsert });
-        if (attrErr && import.meta.env.DEV) console.warn('[Telemetry] Failed to save search impressions:', attrErr);
+        if (attrErr && import.meta.env?.DEV) console.warn('[Telemetry] Failed to save search impressions:', attrErr);
       }
     } catch (e) {
-      if (import.meta.env.DEV) console.warn('[Telemetry] Exception saving telemetry:', e);
+      if (import.meta.env?.DEV) console.warn('[Telemetry] Exception saving telemetry:', e);
     }
   });
+
+  // Atlas Discovery AI V1 — Zero-Latency Gap Hook
+  try {
+    const { analyzeAtlasGap, enqueueDiscoveryMission, recordFastPathQuery, recordGapQuery } = await import('../atlasDiscoveryAI');
+    const covScore = trace.acquisitionStats.atlas > 0 ? (trace.retrievalStats.atlas / Math.max(1, trace.acquisitionStats.atlas)) : 0;
+    const gapRequest = analyzeAtlasGap({
+      query: rawQuery,
+      atlasResultCount: trace.acquisitionStats.atlas,
+      qualityQualifiedCount: trace.funnel.qualified,
+      relevanceQualifiedCount: trace.funnel.final,
+      coverageScore: covScore,
+      qualityScore: 1.0,
+      entities: intentData?.entities,
+      works: intentData?.concepts
+    });
+
+    if (gapRequest.gaps.length > 0 && gapRequest.coverageScore < 0.55) {
+      recordGapQuery();
+      void enqueueDiscoveryMission(gapRequest);
+    } else {
+      recordFastPathQuery();
+    }
+  } catch {
+    // Non-blocking
+  }
 
   return {
     all: allWithDebug,

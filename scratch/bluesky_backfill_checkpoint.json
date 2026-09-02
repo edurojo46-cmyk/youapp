@@ -1,0 +1,13 @@
+{
+  "endpoint": "wss://jetstream1.us-east.bsky.network/subscribe?wantedCollections=app.bsky.feed.post",
+  "cursorStartUs": 1788216674873000,
+  "cursorCurrentUs": 1788356471139013,
+  "cursorTargetUs": 1788346274873000,
+  "lastEventTimestamp": "2026-09-02T13:41:05.359Z",
+  "eventsProcessedTotal": 5828304,
+  "youtubeRefsFoundTotal": 42220,
+  "netNewPersistedTotal": 63408,
+  "gapCount": 0,
+  "reconnectCount": 0,
+  "updatedAt": "2026-09-02T13:41:30.009Z"
+}

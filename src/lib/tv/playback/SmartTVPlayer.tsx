@@ -91,27 +91,27 @@ export default function SmartTVPlayer({ block, onEnded, onError }: SmartTVPlayer
 
     return (
       <div style={{ width: '100%', height: '100%', background: 'black' }}>
-        <ReactPlayer 
-          url={playerUrl}
-          playing={true}
-          controls={false}
-          muted={false} // Permitir sonido si el navegador lo permite
-          width="100%"
-          height="100%"
-          onEnded={onEnded}
-          onError={onError}
-          config={{
+        {React.createElement(ReactPlayer as any, {
+          url: playerUrl,
+          playing: true,
+          controls: false,
+          muted: false,
+          width: '100%',
+          height: '100%',
+          onEnded,
+          onError,
+          config: {
             youtube: {
               playerVars: { 
                 autoplay: 1, 
-                controls: 1, // Mostrar controles para que el usuario pueda darle play si falla el autoplay
+                controls: 1,
                 showinfo: 0, 
                 rel: 0,
                 origin: window.location.origin
               }
             }
-          }}
-        />
+          }
+        })}
       </div>
     );
   }

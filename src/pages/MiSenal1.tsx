@@ -32,7 +32,7 @@ export default function MiSenal1() {
       durationSec: actualDuration,
       title: currentBlock.contentItem.title
     });
-    setMoments(ms);
+    setMoments(ms.moments || (ms as any));
     setActiveMomentId(undefined); // reset
   };
 
@@ -252,7 +252,7 @@ export default function MiSenal1() {
                 <h1>{currentBlock ? currentBlock.contentItem.title : 'Roma'}</h1>
                 <h2>{currentBlock ? currentBlock.topic : 'El nacimiento de un imperio'}</h2>
                 <div className="ms-player-source">
-                  Fuente: {currentBlock ? currentBlock.contentItem.provider : 'YouTube'} - {currentBlock ? currentBlock.contentItem.channelName : 'History Channel'} <Info size={14} />
+                  Fuente: {currentBlock ? currentBlock.contentItem.provider : 'YouTube'} - {currentBlock ? (currentBlock.contentItem.channelTitle || (currentBlock.contentItem as any).channelName) : 'History Channel'} <Info size={14} />
                 </div>
               </div>
 
@@ -292,7 +292,7 @@ export default function MiSenal1() {
                 <div 
                   key={m.id} 
                   className={`ms-you4-item ${activeMomentId === m.id ? 'active' : ''}`}
-                  style={{ backgroundImage: `url(${currentBlock?.contentItem.thumbnailUrl || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=600&auto=format&fit=crop'})` }}
+                  style={{ backgroundImage: `url(${currentBlock?.contentItem.thumbnail || (currentBlock?.contentItem as any).thumbnailUrl || 'https://images.unsplash.com/photo-1542204165-65bf26472b9b?q=80&w=600&auto=format&fit=crop'})` }}
                   onClick={() => handleMomentClick(m, idx)}
                 >
                   <div className="ms-you4-badge">{idx + 1}</div>

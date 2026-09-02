@@ -18,7 +18,7 @@ export async function generateSurpriseBlock(signal: CustomSignal, position: numb
     const results = resultsResponse.all;
     
     // Filter out already used channels or too low quality
-    const usedCreators = new Set(signal.schedule.map(b => b.contentItem.channelName || ''));
+    const usedCreators = new Set(signal.schedule.map(b => b.contentItem.channelTitle || (b.contentItem as any).channelName || ''));
     
     // Quality & Diversity Gate (Phase 4B)
     const validCandidates = results.filter(r => {
@@ -27,7 +27,7 @@ export async function generateSurpriseBlock(signal: CustomSignal, position: numb
       if ((r.relevanceScore || 0) < 40) return false;
       
       // Must not be from a creator already heavily dominating this signal
-      if (usedCreators.has(r.channelName || '')) return false;
+      if (usedCreators.has(r.channelTitle || (r as any).channelName || '')) return false;
       return true;
     });
     
@@ -40,7 +40,7 @@ export async function generateSurpriseBlock(signal: CustomSignal, position: numb
       id: `surprise-${Date.now()}`,
       position: position, // will be recalculated by store
       startOffsetSec: 0,
-      durationSec: (chosen.durationMs || 10 * 60000) / 1000,
+      durationSec: chosen.durationSeconds || ((chosen as any).durationMs ? (chosen as any).durationMs / 1000 : 600),
       contentItem: chosen,
       topic: 'descubrimiento',
       role: 'discovery',

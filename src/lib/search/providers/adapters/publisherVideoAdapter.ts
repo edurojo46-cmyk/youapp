@@ -83,50 +83,77 @@ export class PublisherVideoAdapter implements SearchProvider {
       if (items.length > 0) {
         Promise.resolve().then(async () => {
           try {
-            // Guardar en youapp_index
-            const toInsertIndex = items.map(item => ({
-              provider: item.provider || 'youtube',
-              provider_content_id: item.providerContentId,
-              video_id: item.providerContentId,
-              title: item.title,
-              description: item.description,
-              thumbnail: item.thumbnail,
-              url: item.videoUrl,
-              creator_id: item.channelId,
-              creator_name: item.channelTitle,
-              duration_seconds: item.durationSeconds,
-              source: 'publisher',
-              content_state: 'discovered'
-            }));
-
-            await supabase
+            const ids = items.map(i => i.providerContentId).filter(Boolean);
+            
+            // Consultar existentes para evitar errores de restricción única
+            const { data: existing } = await supabase
               .from('youapp_index')
-              .upsert(toInsertIndex, { onConflict: 'provider,provider_content_id', ignoreDuplicates: true });
+              .select('provider_content_id, provider')
+              .in('provider_content_id', ids);
 
-            // Guardar procedencia en publisher_video_provenance
-            const toInsertProvenance = extractedVideos.map(v => ({
-              provider: v.provider,
-              provider_content_id: v.providerContentId,
-              publisher_code: v.publisherCode,
-              publisher_name: v.publisherName,
-              article_url: v.articleUrl,
-              article_title: v.articleTitle || v.title,
-              discovery_method: v.discoveryMethod,
-              extraction_method: v.extractionMethod,
-            }));
+            const existingSet = new Set((existing || []).map(e => `${e.provider}:${e.provider_content_id}`));
+            const toInsert = items.filter(i => !existingSet.has(`${i.provider || 'youtube'}:${i.providerContentId}`));
 
-            await supabase
-              .from('publisher_video_provenance')
-              .upsert(toInsertProvenance, { onConflict: 'provider,provider_content_id,publisher_code,article_url', ignoreDuplicates: true });
+            if (toInsert.length > 0) {
+              const toInsertIndex = toInsert.map(item => ({
+                provider: item.provider || 'youtube',
+                provider_content_id: item.providerContentId,
+                video_id: item.providerContentId,
+                title: item.title,
+                description: item.description || '',
+                thumbnail: item.thumbnail,
+                url: item.canonicalUrl || item.videoUrl,
+                creator_id: item.channelId,
+                creator_name: item.channelTitle,
+                duration_seconds: item.durationSeconds,
+                source: 'publisher',
+                content_state: 'discovered'
+              }));
 
-            if (import.meta.env.DEV) {
-              console.log(`📰 [PublisherVideoAdapter] Ingested ${items.length} publisher candidates into Atlas.`);
+              const { error: indexErr } = await supabase
+                .from('youapp_index')
+                .insert(toInsertIndex);
+
+              if (!indexErr) {
+                if (import.meta.env?.DEV) {
+                  console.log(`📰 [PublisherVideoAdapter] Absorbed ${toInsert.length} publisher candidates into youapp_index`);
+                }
+              } else if (import.meta.env?.DEV) {
+                console.warn(`📰 [PublisherVideoAdapter] Failed to insert into youapp_index (HTTP ${indexErr.code || '400'}):`, indexErr.message);
+              }
+            } else if (import.meta.env?.DEV) {
+              console.log(`📰 [PublisherVideoAdapter] All ${items.length} publisher candidates are already known in Atlas.`);
             }
-          } catch (err) {
-            // best-effort
+
+            // Guardar procedencia en publisher_video_provenance (si la tabla existe)
+            if (extractedVideos.length > 0) {
+              const toInsertProvenance = extractedVideos.map(v => ({
+                provider: v.provider,
+                provider_content_id: v.providerContentId,
+                publisher_code: v.publisherCode,
+                publisher_name: v.publisherName,
+                article_url: v.articleUrl,
+                article_title: v.articleTitle || v.title,
+                discovery_method: v.discoveryMethod,
+                extraction_method: v.extractionMethod,
+              }));
+
+              const { error: provErr } = await supabase
+                .from('publisher_video_provenance')
+                .insert(toInsertProvenance);
+
+              if (provErr && import.meta.env?.DEV) {
+                console.warn(`📰 [PublisherVideoAdapter] Provenance log note: ${provErr.message} (migration 20260901050000_create_publisher_discovery.sql pending on Cloud)`);
+              }
+            }
+          } catch (err: any) {
+            if (import.meta.env?.DEV) {
+              console.warn(`📰 [PublisherVideoAdapter] Ingestion exception:`, err?.message || err);
+            }
           }
         });
       }
+
 
       return items;
     } catch (err) {

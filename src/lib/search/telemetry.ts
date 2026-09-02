@@ -53,7 +53,7 @@ export function trackSearchEvent(eventName: SearchEventName, payload?: SearchEve
       created_at: new Date().toISOString()
     };
 
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       console.info(`[Telemetry] ${eventName}`, payload);
     }
 
@@ -76,11 +76,11 @@ async function flushEventQueue() {
 
   try {
     const { error } = await supabase.from('search_events').insert(itemsToFlush);
-    if (error && import.meta.env.DEV) {
+    if (error && import.meta.env?.DEV) {
        console.warn("[Telemetry] Failed to flush events to Supabase:", error);
     }
   } catch (e) {
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       console.warn("[Telemetry] Exception flushing events:", e);
     }
   }

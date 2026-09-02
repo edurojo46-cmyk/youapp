@@ -161,8 +161,8 @@ export default function AiSummary() {
           <button className="icon-btn">
             <Bell size={20} />
           </button>
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt="Profile" className="avatar" />
+          {(user as any)?.avatar_url ? (
+            <img src={(user as any).avatar_url} alt="Profile" className="avatar" />
           ) : (
             <div className="avatar fallback" />
           )}

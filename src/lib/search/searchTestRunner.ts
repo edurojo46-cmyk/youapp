@@ -91,7 +91,7 @@ export type TestProgressCallback = (
 ) => void;
 
 export async function runSearchTest(
-  queries: string[],
+  queries: (string | typeof TEST_QUERIES[0])[],
   onProgress: (current: number, total: number, lastResult: QueryResult, partialSummary: TestSummary) => void,
   signal?: AbortSignal,
   concurrency = 2,
@@ -125,17 +125,17 @@ export async function runSearchTest(
 }
 
 async function runSingleQuery(
-  q: typeof TEST_QUERIES[0],
+  q: string | typeof TEST_QUERIES[0] | any,
   routingMode: 'static' | 'shadow' | 'dynamic',
   signal?: AbortSignal
 ): Promise<QueryResult> {
   const startTime = Date.now();
   try {
-    const searchRes = await executeSearch(q.query, {
+    const queryText = typeof q === 'string' ? q : (q.query || String(q));
+    const searchRes = await executeSearch(queryText, {
       signal,
-      allowFastPath: false,
       routingMode
-    });
+    } as any);
     const { all, intentData } = searchRes;
     const latencyMs = Date.now() - startTime;
 
@@ -218,6 +218,7 @@ function buildSummary(results: QueryResult[], totalQueries: number): TestSummary
       successRate: 0, top20SuccessRate: 0, zeroResultRate: 0,
       independenceRate: 0, avgLatencyMs: 0, avgYouScore: 0,
       avgMetadataCompleteness: 0, avgResultCount: 0,
+      avgQualityTop20Coverage: 0, avgEligibilityRate: 0, avgRelevantAt5: 0,
       providerDistribution: {}, categoryBreakdown: {}, failedQueries: []
     };
   }

@@ -68,8 +68,12 @@ export function calculateFieldSatisfaction(
   }
   const knowledgeProgressionRate = Math.round((progressionMatches / Math.max(1, events.length)) * 100);
 
-  // 5. Duration Adherence Rate (Objetivo 45 min, Soft ±15%, Hard ±20%)
-  const durationAdherenceRate = Math.max(0, Math.min(100, Math.round(100 - deviation * 120)));
+  // 5. Duration Adherence Rate (%)
+  // Fórmula Exacta y Auditable:
+  //   deviation = |actualMinutes - targetMinutes| / targetMinutes
+  //   durationAdherenceRate = max(0, min(100, round((1 - deviation) * 100)))
+  //   Ejemplo: Para target = 45m y actual = 52m (desviación = 15.56%), adherence = 84.44% ≈ 84%
+  const durationAdherenceRate = Math.max(0, Math.min(100, Math.round((1 - deviation) * 100)));
 
   // 6. Field Coherence Score (Continuidad de entidad y compatibilidad temática)
   let coherencePoints = 0;

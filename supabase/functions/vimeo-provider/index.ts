@@ -109,23 +109,26 @@ export default {
       // Cost: 0 YouTube quota. Requiere token de acceso público (no search-only).
       const searchParams = new URLSearchParams({
         query,
-        sort,
-        filter,
+        sort: sort || 'relevant',
         per_page: String(Math.min(per_page, 50)),
         page: String(page),
         fields: 'uri,name,description,link,duration,created_time,pictures,user,privacy,embed,stats,live',
       });
 
+      const cleanToken = (vimeoToken || '').trim().replace(/^Bearer\s+/i, '');
+
       const vimeoRes = await fetch(
         `https://api.vimeo.com/videos?${searchParams.toString()}`,
         {
           headers: {
-            'Authorization': `bearer ${vimeoToken}`,
+            'Authorization': `Bearer ${cleanToken}`,
             'Accept': 'application/vnd.vimeo.*+json;version=3.4',
+            'User-Agent': 'YouApp-Search/1.0',
           },
           signal: AbortSignal.timeout(10000)
         }
       );
+
 
       if (!vimeoRes.ok) {
         const err = await vimeoRes.text();

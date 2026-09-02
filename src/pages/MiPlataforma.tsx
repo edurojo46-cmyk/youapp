@@ -301,7 +301,7 @@ export default function MiPlataforma() {
           </div>
 
           <div className="mp-grid-cards">
-            {displayedRecommendations.slice(0, 6).map((item) => {
+            {displayedRecommendations.slice(0, 6).map((item: any) => {
               const primaryProv = getProviderInfo(item.primaryProvider);
               return (
                 <div
@@ -346,7 +346,7 @@ export default function MiPlataforma() {
           </div>
 
           <div className="mp-grid-continue">
-            {CONTINUE_WATCHING_TITLES.map((item) => {
+            {CONTINUE_WATCHING_TITLES.map((item: any) => {
               const primaryProv = getProviderInfo(item.primaryProvider);
               return (
                 <div

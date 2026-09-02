@@ -98,66 +98,85 @@ export default {
 
       let items: ReturnType<typeof normalizeDailymotionResult>[] = [];
 
-      // ── Acción 1: Buscar en perfiles conocidos (V1 principal) ────────────────
-      if (action === 'search_profiles') {
+      // ── Acción 1: Buscar globalmente o en perfiles conocidos ────────────────
+      if (action === 'search' || action === 'search_global' || action === 'search_profiles') {
         if (!query) {
-          return new Response(JSON.stringify({ error: 'Query required for search_profiles', items: [] }), {
+          return new Response(JSON.stringify({ error: 'Query required for search', items: [] }), {
             status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         }
 
-        // Obtener perfiles Dailymotion conocidos de seed_sources
-        const { data: profiles } = await supabase
-          .from('seed_sources')
-          .select('provider_source_id, provider_channel_id, name, status')
-          .eq('provider', 'dailymotion')
-          .eq('status', 'verified')
-          .limit(20);
-
-        const knownProfileIds = (profiles || [])
-          .map((p: any) => p.provider_source_id || p.provider_channel_id)
-          .filter(Boolean);
-
-        if (knownProfileIds.length === 0) {
-          // Sin perfiles conocidos → devolver vacío (V1: no global search)
-          return new Response(JSON.stringify({
-            items: [],
-            meta: { total: 0, provider: 'dailymotion', note: 'No known profiles. Add Dailymotion profiles to seed_sources.' }
-          }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        // 1. Intentar búsqueda global en Dailymotion API
+        try {
+          const params = new URLSearchParams({
+            search: query,
+            fields: DM_FIELDS,
+            limit: String(Math.min(limit, 50)),
+            page: String(page),
+            sort: 'relevance',
           });
+
+          if (dmApiKey) params.set('client_id', dmApiKey);
+
+          const dmRes = await fetch(
+            `https://api.dailymotion.com/videos?${params.toString()}`,
+            { signal: AbortSignal.timeout(8000) }
+          );
+
+          if (dmRes.ok) {
+            const data = await dmRes.json();
+            items = (data.list || []).map(normalizeDailymotionResult);
+          }
+        } catch (e: any) {
+          console.warn('[dailymotion-provider] Global search failed, falling back to profiles:', e.message);
         }
 
-        // Buscar en cada perfil en paralelo (máximo 5 perfiles simultáneos)
-        const profileResults = await Promise.all(
-          knownProfileIds.slice(0, 5).map(async (profileId: string) => {
-            try {
-              const params = new URLSearchParams({
-                search: query,
-                fields: DM_FIELDS,
-                limit: String(Math.min(10, Math.ceil(limit / knownProfileIds.length))),
-                page: String(page),
-                sort: 'relevance',
-              });
+        // 2. Si no hubo resultados globales y action es search_profiles, buscar en perfiles conocidos
+        if (items.length === 0 && action === 'search_profiles') {
+          const { data: profiles } = await supabase
+            .from('seed_sources')
+            .select('provider_source_id, provider_channel_id, name, status')
+            .eq('provider', 'dailymotion')
+            .eq('status', 'verified')
+            .limit(20);
 
-              if (dmApiKey) params.set('client_id', dmApiKey);
+          const knownProfileIds = (profiles || [])
+            .map((p: any) => p.provider_source_id || p.provider_channel_id)
+            .filter(Boolean);
 
-              const dmRes = await fetch(
-                `https://api.dailymotion.com/user/${profileId}/videos?${params.toString()}`,
-                { signal: AbortSignal.timeout(8000) }
-              );
+          if (knownProfileIds.length > 0) {
+            const profileResults = await Promise.all(
+              knownProfileIds.slice(0, 5).map(async (profileId: string) => {
+                try {
+                  const params = new URLSearchParams({
+                    search: query,
+                    fields: DM_FIELDS,
+                    limit: String(Math.min(10, Math.ceil(limit / knownProfileIds.length))),
+                    page: String(page),
+                    sort: 'relevance',
+                  });
 
-              if (!dmRes.ok) return [];
-              const data = await dmRes.json();
-              return (data.list || []).map(normalizeDailymotionResult);
-            } catch {
-              return [];
-            }
-          })
-        );
+                  if (dmApiKey) params.set('client_id', dmApiKey);
 
-        items = profileResults.flat().slice(0, limit);
+                  const dmRes = await fetch(
+                    `https://api.dailymotion.com/user/${profileId}/videos?${params.toString()}`,
+                    { signal: AbortSignal.timeout(8000) }
+                  );
+
+                  if (!dmRes.ok) return [];
+                  const data = await dmRes.json();
+                  return (data.list || []).map(normalizeDailymotionResult);
+                } catch {
+                  return [];
+                }
+              })
+            );
+
+            items = profileResults.flat().slice(0, limit);
+          }
+        }
       }
+
 
       // ── Acción 2: Obtener catálogo completo de un perfil específico ──────────
       // Útil para el Watcher de Dailymotion (importación periódica)

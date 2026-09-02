@@ -1,22 +1,36 @@
 import React from 'react';
-import { Sparkles, Bookmark, Plus, Subtitles, Share2, Settings2, List } from 'lucide-react';
+import { Sparkles, Bookmark, Plus, Subtitles, Share2, Compass, List } from 'lucide-react';
 
-export function PlayerActionBar() {
+interface PlayerActionBarProps {
+  onContextClick?: () => void;
+  onSummaryClick?: () => void;
+  onMomentsClick?: () => void;
+  onSaveClick?: () => void;
+  onShareClick?: () => void;
+}
+
+export function PlayerActionBar({
+  onContextClick,
+  onSummaryClick,
+  onMomentsClick,
+  onSaveClick,
+  onShareClick
+}: PlayerActionBarProps) {
   return (
     <div className="action-bar">
-      <button className="action-btn">
+      <button className="action-btn" onClick={onSummaryClick}>
         <Sparkles size={14} /> Resumen IA
       </button>
-      <button className="action-btn">
+      <button className="action-btn" onClick={onMomentsClick}>
         <Bookmark size={14} /> Momentos
       </button>
-      <button className="action-btn">
+      <button className="action-btn" onClick={onSaveClick}>
         <Plus size={14} /> Guardar
       </button>
-      <button className="action-btn">
-        <Subtitles size={14} /> Subtítulos
+      <button className="action-btn epistemic-action-btn" onClick={onContextClick} title="Contexto y rigor epistemológico del contenido">
+        <Compass size={14} className="text-cyan-400" /> Contexto
       </button>
-      <button className="action-btn">
+      <button className="action-btn" onClick={onShareClick}>
         <Share2 size={14} /> Compartir
       </button>
       
@@ -33,8 +47,9 @@ export function PlayerActionBar() {
         .action-bar {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           margin-top: 8px;
+          flex-wrap: wrap;
         }
 
         .action-btn {
@@ -56,6 +71,16 @@ export function PlayerActionBar() {
         .action-btn:hover {
           background: var(--you-bg);
           transform: translateY(-1px);
+        }
+
+        .epistemic-action-btn {
+          border-color: rgba(56, 189, 248, 0.4);
+          background: rgba(56, 189, 248, 0.08);
+          color: #38bdf8;
+        }
+
+        .epistemic-action-btn:hover {
+          background: rgba(56, 189, 248, 0.16);
         }
       `}</style>
     </div>

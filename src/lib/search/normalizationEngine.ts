@@ -2,20 +2,20 @@ import type { ContentItem, NormalizedVideo } from './types';
 
 export function normalizeItems(items: ContentItem[]): ContentItem[] {
   return items.map(v => {
-    let finalUrl = v.videoUrl;
+    let finalUrl = v.videoUrl || '';
     
     // Normalizar URLs embebidas
-    if (v.provider === 'tiktok' && finalUrl.includes('/video/')) {
+    if (v.provider === 'tiktok' && finalUrl && finalUrl.includes('/video/')) {
       const videoIdMatch = finalUrl.match(/\/video\/(\d+)/);
       if (videoIdMatch && videoIdMatch[1]) {
         finalUrl = `https://www.tiktok.com/embed/v2/${videoIdMatch[1]}`;
       }
-    } else if (v.provider === 'instagram' && finalUrl.includes('/reel/')) {
+    } else if (v.provider === 'instagram' && finalUrl && finalUrl.includes('/reel/')) {
       if (!finalUrl.endsWith('/embed/')) {
         const cleanUrl = finalUrl.split('?')[0];
         finalUrl = cleanUrl.endsWith('/') ? `${cleanUrl}embed/` : `${cleanUrl}/embed/`;
       }
-    } else if (v.provider === 'vimeo' && !finalUrl.includes('player.vimeo.com')) {
+    } else if (v.provider === 'vimeo' && finalUrl && !finalUrl.includes('player.vimeo.com')) {
       const vimeoMatch = finalUrl.match(/vimeo\.com\/(\d+)/);
       if (vimeoMatch && vimeoMatch[1]) {
         finalUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}`;

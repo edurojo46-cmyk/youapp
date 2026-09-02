@@ -81,7 +81,7 @@ export async function generateSchedule(prompt: string, options?: { trafficClass?
         let bestScore = -1;
         
         for (const sq of request.subQueries) {
-          const sqQuery = { rawQuery: sq.query, normalizedQuery: sq.query, freshness: 'evergreen' as QueryFreshness };
+          const sqQuery = { rawQuery: sq.query, normalizedQuery: sq.query, freshness: 'evergreen' as any };
           const sqIntent = { primaryIntent: sq.intentHint, confidence: 100, topic: request.mainTopic, topics: [], entities: sq.entities, freshness: 'evergreen' };
           
           const clonedItem = { ...item };

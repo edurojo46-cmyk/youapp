@@ -45,7 +45,7 @@ export async function applySemanticScoring(query: SearchQuery, items: ContentIte
     }
 
     if (!embeddingsData || !embeddingsData.embeddings) {
-      console.warn('Semantic scoring failed, falling back to base ranking', error);
+      console.warn('Semantic scoring failed, falling back to base ranking');
       return items;
     }
 
@@ -140,7 +140,7 @@ export async function generateAiOverview(query: SearchQuery, topItems: ContentIt
     }
 
     if (!overviewData || !overviewData.text) {
-      console.warn('AI Overview failed', error);
+      console.warn('AI Overview failed');
       return null;
     }
 

@@ -9,8 +9,11 @@ import { videoMeshAdapter } from './adapters/videoMeshAdapter';
 import { mockAdapter } from './adapters/mockAdapter';
 import { normalizeItems } from '../normalizationEngine';
 import { deduplicateItems } from '../deduplicationEngine';
+import { calculateQualityScore } from '../qualityEngine';
+import { calculateBaseRanking } from '../rankingEngine';
 import { routeQuery, detectQueryCapabilities } from '../capabilityRouter';
 import type { QueryUnderstanding } from '../intentDetector';
+
 
 export const MIN_GOOD_CANDIDATES = 40;
 export const TARGET_CANDIDATES = 50;
@@ -82,7 +85,7 @@ export class ExternalOrchestrator {
     if (routerDecisionsOut) routerDecisionsOut.decisions = routerDecisions;
     const routerScoreMap = new Map(routerDecisions.map(d => [d.provider, d]));
 
-    if (import.meta.env.DEV) {
+    if (import.meta.env?.DEV) {
       console.group('[CapabilityRouter] Decisiones para:', query.rawQuery);
       routerDecisions.forEach(d => {
         const emoji = d.shouldActivate ? '✅' : '❌';
@@ -110,15 +113,25 @@ export class ExternalOrchestrator {
       adaptersToRun = adaptersToRun.filter(a => !options.excludeProviders!.includes(a.id));
     }
 
-    // Identificar cuáles correr en base a routerDecisions (excepto si están forced)
+    // ── LEVEL 2: ALTERNATIVE PROVIDER PROBE (Zero YouTube Quota Cost) ───────
+    // Los adaptadores de costo 'free' y 'low' (Vimeo, Dailymotion, Archive) se incluyen
+    // en el probe progresivo para intentar resolver la consulta ANTES de quemar cuota de YouTube Radar.
     if (!options?.forceProviders && routingMode !== 'static') {
       adaptersToRun = adaptersToRun.filter(adapter => {
         const routerId = ADAPTER_TO_ROUTER_ID[adapter.id] ?? adapter.id;
         const decision = routerScoreMap.get(routerId);
-        if (!decision) return true; // Si no está en la matrix, lo dejamos pasar
+        
+        // Adaptadores de nivel 2 (Zero YouTube Search Cost): se prueban progresivamente si están disponibles
+        if (adapter.costTier === 'free' || adapter.costTier === 'low') {
+          // Si el router lo activó explícitamente O si no está en circuito abierto
+          return decision?.reason !== 'Circuit Open';
+        }
+        
+        if (!decision) return true;
         return decision.shouldActivate;
       });
     }
+
 
     // Agrupar por tier
     const adaptersByTier: Record<CostTier, ExternalAdapter[]> = {
@@ -149,39 +162,70 @@ export class ExternalOrchestrator {
         return scoreB - scoreA; // Mayor score primero
       });
 
-      // Ejecutar en paralelo dentro del mismo tier
-      const promises = tierAdapters.map(adapter =>
-        adapter.search(query, { limit: TARGET_CANDIDATES, signal, providerStatuses }).then(res => {
+      // Calcular suficiencia actual acumulada
+      const currentScored = calculateQualityScore(calculateBaseRanking(candidates, query, options?.intent));
+      const currentQualified = currentScored.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40);
+      const avgQuality = currentQualified.length > 0
+        ? currentQualified.reduce((acc, c) => acc + (c.qualityScore || 0), 0) / currentQualified.length
+        : 0;
+      const avgRelevance = currentQualified.length > 0
+        ? currentQualified.reduce((acc, c) => acc + (c.relevanceScore || 0), 0) / currentQualified.length
+        : 0;
+
+      // Ejecutar en paralelo dentro del mismo tier con Timeout individual (Provider Deadline: 1200ms)
+      const promises = tierAdapters.map(adapter => {
+        // Combinar señal global con timeout individual por proveedor
+        const adapterTimeoutSignal = AbortSignal.timeout(1200);
+        return adapter.search(query, {
+          limit: TARGET_CANDIDATES,
+          signal: signal || adapterTimeoutSignal,
+          providerStatuses,
+          currentQualifiedCount: currentQualified.length,
+          avgQuality,
+          avgRelevance,
+          intent: options?.intent
+        }).then(res => {
           if (providerStatuses && !providerStatuses[adapter.id]) {
             providerStatuses[adapter.id] = { status: res.length > 0 ? 'success' : 'no_results', results: res.length };
           }
           return res;
         }).catch(err => {
-          if (import.meta.env.DEV) console.error(`[ExternalSearch] Adapter ${adapter.id} failed:`, err);
+          if (import.meta.env?.DEV) console.error(`[ExternalSearch] Adapter ${adapter.id} failed/timed out:`, err?.message || err);
           if (providerStatuses && !providerStatuses[adapter.id]) {
-             providerStatuses[adapter.id] = { status: 'adapter_error', results: 0 };
+             providerStatuses[adapter.id] = { status: err?.name === 'TimeoutError' ? 'timeout' : 'adapter_error', results: 0 };
           }
           return [] as ContentItem[];
-        })
-      );
+        });
+      });
 
-      const resultsArray = await Promise.all(promises);
-      const newResults = resultsArray.flat();
+      const settledResults = await Promise.allSettled(promises);
+      const newResults = settledResults.flatMap(r => r.status === 'fulfilled' ? r.value : []);
 
       // Merge y Deduplicación
       candidates = deduplicateItems(normalizeItems([...candidates, ...newResults]));
 
-      // Comprobar si alcanzamos el mínimo de calidad
-      if (candidates.length >= MIN_GOOD_CANDIDATES) {
-        if (import.meta.env.DEV) {
-          console.log(`[ExternalSearch] ✅ ${candidates.length} candidatos en tier "${tier}". YouTube Radar omitido.`);
+      // ── PROGRESSIVE PROBE QUALIFIED GATE (Invariant: Q>=60 && R>=40) ──────────
+      // Early Sufficiency: Si tenemos >= 6 candidatos calificados de alta calidad,
+      // la búsqueda se resuelve de inmediato sin esperar tiers posteriores.
+      const scoredSoFar = calculateQualityScore(calculateBaseRanking(candidates, query, options?.intent));
+      const qualifiedSoFar = scoredSoFar.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40);
+
+      if (qualifiedSoFar.length >= 6) {
+        if (import.meta.env?.DEV) {
+          console.log(`[ExternalSearch] ✅ ${qualifiedSoFar.length} candidatos CUALIFICADOS (Q>=60, R>=40) en tier "${tier}". Siguientes tiers (incluido Radar) omitidos.`);
         }
-        break; // Stop progressive fallback — YouTube Radar no necesario
+        break;
+      } else {
+        if (import.meta.env?.DEV) {
+          console.log(`[ExternalSearch] ⚠️ Tier "${tier}" entregó ${candidates.length} brutos pero solo ${qualifiedSoFar.length}/6 cualificados. Continuando a siguiente tier...`);
+        }
       }
+
     }
 
     return candidates;
   }
 }
+
 
 export const externalSearch = new ExternalOrchestrator();

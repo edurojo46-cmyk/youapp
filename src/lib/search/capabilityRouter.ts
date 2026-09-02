@@ -39,7 +39,7 @@ export async function refreshProviderIntelligence() {
     
     lastIntelligenceUpdate = Date.now();
   } catch (e) {
-    if (import.meta.env.DEV) console.warn('[CapabilityRouter] Failed to refresh intelligence', e);
+    if (import.meta.env?.DEV) console.warn('[CapabilityRouter] Failed to refresh intelligence', e);
   }
 }
 
@@ -454,7 +454,7 @@ export function routeQuery(
     });
   }
 
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
       const tag = isFallback ? '[GENERAL FALLBACK]' : '[Normal]';
       console.group(`[CapabilityRouter] ${tag} "${query.rawQuery}" intent=${primaryIntent} conf=${confidence} mode=${routingMode}`);
       
@@ -547,7 +547,7 @@ function logShadowDecision(
         fallback_triggered: staticDecisions.some(d => d.fallbackActivated)
       });
     } catch (e) {
-      if (import.meta.env.DEV) console.warn('[CapabilityRouter] Failed to log shadow decision:', e);
+      if (import.meta.env?.DEV) console.warn('[CapabilityRouter] Failed to log shadow decision:', e);
     }
   });
 }

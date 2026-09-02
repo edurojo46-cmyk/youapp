@@ -12,7 +12,7 @@ export default function MyMoments() {
 
   const tabs = ['Todos', 'IA', 'Economía', 'Historia', 'Favoritos'];
 
-  const filteredMoments = savedMoments.filter(m => {
+  const filteredMoments = savedMoments.filter((m: any) => {
     if (activeTab !== 'Todos' && !m.tags.includes(activeTab)) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -96,7 +96,7 @@ export default function MyMoments() {
             <p>No se encontraron momentos.</p>
           </div>
         ) : (
-          filteredMoments.map(moment => (
+          filteredMoments.map((moment: any) => (
             <div key={moment.id} className="moment-card">
               
               <div className="mc-left">
@@ -136,7 +136,7 @@ export default function MyMoments() {
                 <p className="mc-summary">{moment.aiSummary}</p>
 
                 <div className="mc-tags">
-                  {moment.tags.map(t => (
+                  {moment.tags.map((t: string) => (
                     <span key={t} className="mc-tag">{t}</span>
                   ))}
                 </div>

@@ -11,7 +11,11 @@ function calculateEntityCentrality(item: ContentItem, entities: any[], intentDat
   const channelLower = (item.channelTitle || '').toLowerCase();
   
   for (const entityObj of entities) {
-    const e = (entityObj.name || entityObj.canonical || '').toLowerCase();
+    const e = typeof entityObj === 'string'
+      ? entityObj.toLowerCase()
+      : (entityObj.name || entityObj.canonical || '').toLowerCase();
+    
+    if (!e) continue;
     
     // exact entity in title
     if (titleLower === e) {
@@ -80,14 +84,48 @@ export function calculateBaseRanking(items: ContentItem[], query: SearchQuery, i
     const matchesTitle = qTokens.filter(t => titleLower.includes(t)).length;
     const matchesDesc = qTokens.filter(t => descLower.includes(t)).length;
     
-    if (titleLower === qLower) semanticSimilarity = 100;
-    else if (titleLower.includes(qLower)) semanticSimilarity = 80;
-    else if (qTokens.length > 0) {
+    // Canonical Title Match (e.g. "Alike short film" -> core "alike", "Alike (2016)" -> canonical "alike")
+    const formatRegex = /\b(short\s*film|cortometraje|corto|short|pelicula|movie|film|video|clip|full|completo|hd|4k|oficial|official)\b/gi;
+    const queryCoreTitle = qClean.replace(formatRegex, '').trim().toLowerCase();
+    const candidateCanonicalTitle = titleLower.replace(/\s*\(\d{4}\)|\s*\[\d{4}\]|\s*-\s*\d{4}/g, '').replace(/[.,:;!?()"']/g, '').trim();
+
+    const isExactCanonicalMatch = queryCoreTitle.length >= 3 && (
+      queryCoreTitle === candidateCanonicalTitle ||
+      candidateCanonicalTitle.startsWith(queryCoreTitle) ||
+      candidateCanonicalTitle === qClean
+    );
+
+    // Concept & Modifier Separation (e.g. "master teologia de la liberacion")
+    const modifierRegex = /\b(master|máster|curso|clase|clases|seminario|diplomado|taller|tutorial|estudio|leccion|lecciones|charla|guia|manual|intro|introduccion)\b/gi;
+    const coreSubjectTokens = qClean.replace(modifierRegex, ' ').split(/\s+/).filter(t => t.length > 2);
+    const hasCoreSubject = coreSubjectTokens.length >= 2;
+
+    const matchesCoreTitle = coreSubjectTokens.filter(t => titleLower.includes(t)).length;
+    const matchesCoreDesc = coreSubjectTokens.filter(t => descLower.includes(t)).length;
+
+    if (titleLower === qLower || isExactCanonicalMatch) {
+      semanticSimilarity = 100;
+    } else if (titleLower.includes(qLower) || (queryCoreTitle.length >= 3 && titleLower.includes(queryCoreTitle))) {
+      semanticSimilarity = 85;
+    } else if (hasCoreSubject) {
+      // Si la búsqueda tiene sujeto central ("teología de la liberación"):
+      if (matchesCoreTitle >= coreSubjectTokens.length) {
+        // Coincidencia total en el sujeto central
+        semanticSimilarity = 90;
+        if (matchesTitle > matchesCoreTitle) semanticSimilarity = 100; // Bonus si también tiene el modificador
+      } else if (matchesCoreTitle >= 1 || matchesCoreDesc >= coreSubjectTokens.length) {
+        semanticSimilarity = 55;
+      } else {
+        // Si SOLO coincide con el modificador ("Master Psychologie", "Master Boot Record") -> Ruido semántico severo
+        semanticSimilarity = 5;
+      }
+    } else if (qTokens.length > 0) {
       semanticSimilarity = (matchesTitle / qTokens.length) * 80;
       if (matchesTitle < qTokens.length && matchesDesc > 0) {
         semanticSimilarity += (matchesDesc / qTokens.length) * 20;
       }
     }
+
     
     let entityCentrality = 0;
     if (intentData?.entities && intentData.entities.length > 0) {
@@ -112,9 +150,12 @@ export function calculateBaseRanking(items: ContentItem[], query: SearchQuery, i
     }
 
     let topicMatch = 0;
-    if (intentData?.topics && v.topics) {
+    if (intentData?.topics && v.topics && v.topics.length > 0) {
       const match = intentData.topics.some(t => v.topics?.includes(t));
       if (match) topicMatch = 100;
+    } else {
+      // Neutral fallback for items without explicit topic taxonomy
+      topicMatch = isExactCanonicalMatch ? 90 : Math.max(50, finalSemantic * 0.8);
     }
     
     // Boost topic match if we have a strong contextual entity match
@@ -122,14 +163,18 @@ export function calculateBaseRanking(items: ContentItem[], query: SearchQuery, i
       topicMatch = Math.max(topicMatch, contextualEntityMatch * 100);
     }
 
-    let intentMatch = 0;
+    let intentMatch = 50;
     if (intentData?.primaryIntent === 'NEWS' && v.category === 'news') intentMatch = 100;
     else if (intentData?.primaryIntent === 'TUTORIAL' && v.title.toLowerCase().includes('how to')) intentMatch = 100;
-    else if (intentData?.primaryIntent === 'DOCUMENTARY' && (v.title.toLowerCase().includes('documentary') || v.durationSeconds! > 1200)) intentMatch = 100;
+    else if (intentData?.primaryIntent === 'DOCUMENTARY' && (v.title.toLowerCase().includes('documentary') || (v.durationSeconds || 0) > 1200)) intentMatch = 100;
     else if (intentData?.primaryIntent === 'HISTORY' && (v.topics?.includes('History') || v.title.toLowerCase().match(/(history|empire|ancient|historia|imperio|antigua)/))) intentMatch = 100;
-    else intentMatch = 50;
+    else if (qClean.match(/short\s*film|cortometraje|corto/i) && ((v.durationSeconds || 0) < 1200 || v.title.match(/short|corto|film/i))) intentMatch = 90;
+    else if (isExactCanonicalMatch) intentMatch = 80;
 
-    const baseRelevance = (finalSemantic * 0.4) + (topicMatch * 0.3) + (entityCentrality * 0.2) + (intentMatch * 0.1);
+    const baseRelevance = Math.round(
+      (finalSemantic * 0.4) + (topicMatch * 0.3) + (entityCentrality * 0.2) + (intentMatch * 0.1)
+    );
+
     
     // --- TEMPORAL FIT CALCULATION ---
     let temporalFit = 50;
@@ -269,7 +314,8 @@ export function calculateBaseRanking(items: ContentItem[], query: SearchQuery, i
       relevanceScore,
       youScore,
       rankingVersion: 'you-score-v3-temporal',
-      ...(import.meta.env.DEV ? { rankingBreakdown } : {})
+      ...(import.meta.env?.DEV ? { rankingBreakdown } : {})
+
     };
   });
 }

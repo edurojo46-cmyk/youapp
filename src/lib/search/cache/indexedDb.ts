@@ -39,6 +39,9 @@ const DB_VERSION = 2;
 let dbPromise: Promise<IDBPDatabase<YouAppDB>> | null = null;
 
 export async function getDb() {
+  if (typeof window === 'undefined' || typeof indexedDB === 'undefined') {
+    return null;
+  }
   if (!dbPromise) {
     dbPromise = openDB<YouAppDB>(DB_NAME, DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
@@ -67,12 +70,13 @@ export async function getDb() {
 export async function getCandidatePool(query: string): Promise<CandidatePool | null> {
   try {
     const db = await getDb();
+    if (!db) return null;
     const pool = await db.get('candidate_pool', query);
     if (pool && pool.expiresAt > Date.now()) {
       return pool;
     }
   } catch (error) {
-    console.error("IndexedDB Error:", error);
+    // Silencioso en modo node o benchmark
   }
   return null;
 }
@@ -80,21 +84,22 @@ export async function getCandidatePool(query: string): Promise<CandidatePool | n
 export async function saveCandidatePool(pool: CandidatePool) {
   try {
     const db = await getDb();
+    if (!db) return;
     await db.put('candidate_pool', pool);
   } catch (error) {
-    console.error("IndexedDB Error:", error);
+    // Silencioso
   }
 }
 
 export async function getCatalogItems(ids: string[]): Promise<ContentItem[]> {
   try {
     const db = await getDb();
+    if (!db) return [];
     const tx = db.transaction('catalog', 'readonly');
     const store = tx.objectStore('catalog');
     const items = await Promise.all(ids.map(id => store.get(id)));
     return items.filter(Boolean) as ContentItem[];
   } catch (error) {
-    console.error("IndexedDB Error:", error);
     return [];
   }
 }
@@ -102,6 +107,7 @@ export async function getCatalogItems(ids: string[]): Promise<ContentItem[]> {
 export async function saveCatalogItems(items: ContentItem[]) {
   try {
     const db = await getDb();
+    if (!db) return;
     const tx = db.transaction('catalog', 'readwrite');
     const store = tx.objectStore('catalog');
     for (const item of items) {
@@ -109,19 +115,20 @@ export async function saveCatalogItems(items: ContentItem[]) {
     }
     await tx.done;
   } catch (error) {
-    console.error("IndexedDB Error:", error);
+    // Silencioso
   }
 }
 
 export async function getCache<T>(key: string): Promise<T | null> {
   try {
     const db = await getDb();
+    if (!db) return null;
     const cached = await db.get('cache', key);
     if (cached && cached.expiresAt > Date.now()) {
       return cached.value as T;
     }
   } catch (error) {
-    console.error("IndexedDB Error:", error);
+    // Silencioso
   }
   return null;
 }
@@ -129,12 +136,14 @@ export async function getCache<T>(key: string): Promise<T | null> {
 export async function setCache<T>(key: string, value: T, ttlMs: number) {
   try {
     const db = await getDb();
+    if (!db) return;
     await db.put('cache', {
       key,
       value,
       expiresAt: Date.now() + ttlMs
     });
   } catch (error) {
-    console.error("IndexedDB Error:", error);
+    // Silencioso
   }
 }
+

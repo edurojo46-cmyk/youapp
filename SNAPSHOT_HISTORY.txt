@@ -125,3 +125,44 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
    - Mapeo de múltiples fuentes descubridoras para un único contenido canónico en `youapp_index`.
 3. **Telemetría Transparente en `[DiscoveryEconomy]`:**
    - Desglose explícito de `atlasRetrieved`, `atlasQualified` y `eligibilityDropped`.
+
+---
+
+## ATLAS_EXACT_ENTITY_WORK_AUTOREPAIR_V1 — Exact Entity+Work, Multi-Provider Physical Atlas & Autonomous Gap Repair V1
+- **Fecha:** 2026-09-02
+- **Git Tag:** `ATLAS_EXACT_ENTITY_WORK_AUTOREPAIR_V1`
+- **Estado:** STABLE / PROTECTED ✅ — CONGELADO / NO MODIFICAR 🧊
+
+### Principio Fundamental:
+> **EXACT ENTITY + EXACT WORK FIDELITY + PHYSICAL ATLAS PROVENANCE + AUTONOMOUS IDEMPOTENT GAP REPAIR**
+> *"El buscador distingue estrictamente la obra y el intérprete legítimo, rechaza covers no deseados en búsquedas de autor, verifica procedencia física reproducible y repara brechas de catálogo de forma autónoma e idempotente con cuota Search.list = 0."*
+
+### Componentes y Hitos Protegidos:
+1. **ExactWorkSearchGate & ExactEntityWorkGate:**
+   - Detección precisa de obras canónicas a través de `canonicalWorksCatalog.ts` (actuando exclusivamente como ontología semántica y vocabulario, sin fabricar fixtures).
+   - Gates de fidelidad estricta: `WorkFidelity >= 75` y `ArtistFidelity >= 85` (con soporte para entidades compuestas como "Calle 13").
+   - Clasificación de roles de contenido (`ContentRole`: `PRIMARY_WORK`, `OFFICIAL_VIDEO`, `LIVE_PERFORMANCE`, `REMASTER`, `LYRIC` vs `COVER`).
+   - Rechazo riguroso de homónimos falsos, canciones distintas del mismo artista y covers sin participación del autor.
+2. **Separación Ontológica de Memoria de Cobertura:**
+   - `ExactWorkCoverageMemory`: Cobertura de la obra universal en el catálogo.
+   - `ExactEntityWorkCoverageMemory`: Cobertura estricta del binomio Entidad Canónica + Obra.
+3. **Persistencia Física Bronze Atlas & Provenance Verificable:**
+   - Inserción y enriquecimiento en `youapp_index` con `isFixture = false`.
+   - Validación física de `sourceContainsProviderId` y `isPlayable = true`.
+   - Trazabilidad multi-proveedor física: YouTube, Dailymotion, Internet Archive.
+4. **Autonomous Discovery Gap Worker:**
+   - Detección autónoma de déficit de cobertura (`ExactEntityWorkHealth`).
+   - Misiones autónomas sobre obras críticas (*Paint It, Black*, *Crimen*, *Demoliendo Hoteles*, *Seguir Viviendo Sin Tu Amor*).
+   - Tablero de 10 columnas contables con `GapClosureEfficiency` y alerta temprana `HARVEST_WITHOUT_COVERAGE_LIFT`.
+   - **Idempotencia 100% Demostrada:** En ejecuciones repetidas (RUN #2), nuevos insertos duplicados = 0, dedupe = 100%.
+5. **Invariantes Arquitectónicos de Producción:**
+   - `Search.list = 0` 🔒
+   - `Radar = 0 u` 🔒
+   - `isFixture = false` 🔒
+6. **Golden Regression Validada en Vivo:**
+   - Búsqueda: `"calle 13 la perla"`
+   - `ExactEntityWork@10: 10/10` (100% de precisión)
+   - `WrongArtist = 0`, `WrongWork = 0`
+   - `Playable@10 = 10/10`
+   - Serving Path: `FAST`
+

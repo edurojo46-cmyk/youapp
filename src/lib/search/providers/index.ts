@@ -1,11 +1,19 @@
 import type { ContentItem, SearchQuery } from '../types';
+import type { QueryUnderstanding } from '../intentDetector';
+
 
 export interface SearchOptions {
   limit?: number;
   useFallback?: boolean;
   signal?: AbortSignal;
   providerStatuses?: Record<string, { status: string; results: number }>;
+  currentQualifiedCount?: number;
+  avgQuality?: number;
+  avgRelevance?: number;
+  intent?: QueryUnderstanding;
 }
+
+
 
 export interface SearchProvider {
   name: string;

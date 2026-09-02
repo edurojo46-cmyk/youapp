@@ -165,7 +165,7 @@ export default function PublicChannel() {
   }
 
   const currentVideo = syncState.currentProgram.videos;
-  let videoUrlToUse = currentVideo.videoUrl || '';
+  let videoUrlToUse = (currentVideo as any).videoUrl || '';
   if (videoUrlToUse.includes('listType=search')) {
     videoUrlToUse = 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
   }

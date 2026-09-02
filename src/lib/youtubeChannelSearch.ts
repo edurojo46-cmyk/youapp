@@ -157,7 +157,7 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UCgB4fX6Z-CharlyGarcia',
       isLiveNow: false,
-      latestvideoId: 'aqz-KE-bpKQ'
+      latestVideoId: 'aqz-KE-bpKQ'
     },
     videos: [
       {
@@ -230,7 +230,7 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UC-RedondosOficial',
       isLiveNow: false,
-      latestvideoId: 'xq1h4X4I7vw'
+      latestVideoId: 'xq1h4X4I7vw'
     },
     videos: [
       {
@@ -303,7 +303,7 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UC-SodaStereoOficial',
       isLiveNow: false,
-      latestvideoId: 'T_FkEw27XJ0'
+      latestVideoId: 'T_FkEw27XJ0'
     },
     videos: [
       {
@@ -354,7 +354,7 @@ const CURATED_KNOWLEDGE_TOPICS: Array<{
       isVerified: true,
       channelUrl: 'https://www.youtube.com/channel/UC-FitoPaezOficial',
       isLiveNow: false,
-      latestvideoId: 'T_FkEw27XJ0'
+      latestVideoId: 'T_FkEw27XJ0'
     },
     videos: [
       {

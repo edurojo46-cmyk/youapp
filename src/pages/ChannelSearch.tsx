@@ -22,6 +22,8 @@ import { searchYouTubeChannels, resolveChannelPlayable, type YTChannelResult } f
 import { streamingRepository } from '../lib/streaming/streamingRepository';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
+import { ProviderBadge } from '../components/ui/ProviderBadge';
+
 
 // ── Historial y Canales Guardados ──────────────────────────────────────────────
 const HIST_KEY = 'youapp_chsearch_v4';
@@ -135,6 +137,7 @@ export default function ChannelSearch() {
             videoUrl: ch.videoUrl,
             provider: ch.provider || 'youtube',
             isLive: ch.isLive,
+            isVerified: (ch as any).isVerified ?? false,
             retrievalSource: 'universal-catalog'
           })),
           ...ytChannels.map(ch => ({
@@ -147,7 +150,8 @@ export default function ChannelSearch() {
             thumbnail: ch.avatarUrl,
             avatarUrl: ch.avatarUrl,
             channelUrl: ch.channelUrl,
-            provider: 'youtube',
+            videoUrl: '',
+            provider: 'youtube' as const,
             isVerified: ch.isVerified,
             retrievalSource: 'youtube-channels'
           }))
@@ -158,10 +162,14 @@ export default function ChannelSearch() {
           type: st.type === 'series' ? 'channel' as const : 'video' as const,
           title: st.title,
           channelTitle: st.primaryProvider.toUpperCase(),
+          channelId: '',
+          videoUrl: '',
           description: st.description || '',
           thumbnail: st.posterUrl,
           durationText: st.durationText,
           provider: st.primaryProvider,
+          isLive: false,
+          isVerified: false,
           retrievalSource: 'streaming-graph'
         }));
 
@@ -493,15 +501,24 @@ export default function ChannelSearch() {
                     </div>
 
                     <div className="ys-card-info">
-                      {isFirst && (
-                        <span className="ys-you-select-badge">
-                          <Sparkles size={10} /> You Select
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                        <ProviderBadge
+                          provider={vid.provider}
+                          publisherName={vid.publisherName || vid.publisher_name}
+                          retrievalSource={vid.retrievalSource}
+                          size="xs"
+                        />
+                        {isFirst && (
+                          <span className="ys-you-select-badge" style={{ marginBottom: 0 }}>
+                            <Sparkles size={10} /> You Select
+                          </span>
+                        )}
+                      </div>
                       <h3 className="ys-card-title">{title}</h3>
                       <p className="ys-card-provider">{provider}</p>
                       <p className="ys-card-meta">{meta} • 2024</p>
                     </div>
+
 
                     <div className="ys-card-action">
                       {isVideo && (() => {

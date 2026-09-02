@@ -97,7 +97,7 @@ export default function SearchTestPage() {
     setProgress(0);
 
     abortRef.current = new AbortController();
-    const queries = TEST_QUERIES.slice(0, sampleSize);
+    const queries = TEST_QUERIES.slice(0, sampleSize).map((q: any) => typeof q === 'string' ? q : q.query);
     setTotal(queries.length);
 
     try {

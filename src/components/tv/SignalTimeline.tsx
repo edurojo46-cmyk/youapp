@@ -1,18 +1,29 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import type { ScheduleBlock } from '../../lib/tv/signalTypes';
-// Force Vite HMR
 import { SignalBlockCard } from './SignalBlockCard';
-import { Radio, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { useState } from 'react';
+import { Radio, ChevronLeft, ChevronRight, Plus, Compass, Sliders } from 'lucide-react';
 
 interface SignalTimelineProps {
   schedule: ScheduleBlock[];
   currentIndex: number;
   onReorder: (dragIndex: number, dropIndex: number) => void;
   onAddClick?: () => void;
+  onMapClick?: () => void;
+  onRigorClick?: () => void;
+  entityName?: string;
+  onBlockContextClick?: (block: ScheduleBlock) => void;
 }
 
-export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }: SignalTimelineProps) {
+export function SignalTimeline({
+  schedule,
+  currentIndex,
+  onReorder,
+  onAddClick,
+  onMapClick,
+  onRigorClick,
+  entityName = 'Tema',
+  onBlockContextClick
+}: SignalTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -60,9 +71,35 @@ export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }
     <div className="tl-container">
       {/* Top Header & Line */}
       <div className="tl-header">
-        <div className="tl-title">
-          MI SEÑAL <Radio size={16} />
+        <div className="tl-title-group">
+          <div className="tl-title">
+            MI SEÑAL <Radio size={16} />
+          </div>
+
+          <div className="tl-epistemic-controls">
+            {onMapClick && (
+              <button 
+                className="tl-epistemic-btn map-btn"
+                onClick={onMapClick}
+                title="Ver equilibrio y distribución epistemológica de la señal"
+              >
+                <Compass size={13} className="text-cyan-400" />
+                <span>Ver mapa de conocimiento</span>
+              </button>
+            )}
+            {onRigorClick && (
+              <button 
+                className="tl-epistemic-btn rigor-btn"
+                onClick={onRigorClick}
+                title="Ajustar perfil de rigor de la señal"
+              >
+                <Sliders size={13} className="text-slate-400" />
+                <span>Ajustar rigor</span>
+              </button>
+            )}
+          </div>
         </div>
+
         <div className="tl-line-container">
           <div className="tl-line"></div>
           {schedule.map((b, idx) => {
@@ -80,7 +117,7 @@ export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }
             };
 
             return (
-              <div key={b.id} className="tl-point-wrapper" style={{ left: `${leftPercent}%` }}>
+              <div key={b.id || idx} className="tl-point-wrapper" style={{ left: `${leftPercent}%` }}>
                 <div className={`tl-time ${isCurrent ? 'current' : ''}`}>
                   {formatOffset(b.startOffsetSec || 0)}
                 </div>
@@ -103,7 +140,7 @@ export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }
         >
           {schedule.map((block, index) => (
             <div 
-              key={block.id}
+              key={block.id || index}
               draggable
               onDragStart={(e) => handleDragStart(e, index)}
               onDragOver={(e) => handleDragOver(e, index)}
@@ -119,6 +156,8 @@ export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }
                 block={block} 
                 isCurrent={index === currentIndex}
                 isPast={index < currentIndex}
+                entityName={entityName}
+                onContextClick={() => onBlockContextClick?.(block)}
               />
             </div>
           ))}
@@ -144,9 +183,17 @@ export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }
 
         .tl-header {
           display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        .tl-title-group {
+          display: flex;
           align-items: center;
-          margin-bottom: 32px;
-          position: relative;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
         }
 
         .tl-title {
@@ -156,12 +203,40 @@ export function SignalTimeline({ schedule, currentIndex, onReorder, onAddClick }
           display: flex;
           align-items: center;
           gap: 6px;
-          width: 140px;
-          flex-shrink: 0;
+        }
+
+        .tl-epistemic-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .tl-epistemic-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid var(--you-border);
+          border-radius: 20px;
+          padding: 4px 12px;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--you-text);
+          cursor: pointer;
+          transition: 0.15s;
+        }
+
+        .tl-epistemic-btn:hover {
+          background: var(--you-bg);
+          transform: translateY(-1px);
+        }
+
+        .tl-epistemic-btn.map-btn {
+          border-color: rgba(56, 189, 248, 0.3);
+          color: #38bdf8;
         }
 
         .tl-line-container {
-          flex: 1;
           position: relative;
           height: 32px;
         }

@@ -374,3 +374,12 @@ export class StreamingRepository {
 }
 
 export const streamingRepository = new StreamingRepository();
+
+export const FEATURED_HERO = FIXTURE_HERO_INTERSTELLAR;
+export const RECOMMENDED_TITLES = FIXTURE_RECOMMENDED_TITLES;
+export const CONTINUE_WATCHING_TITLES = FIXTURE_CONTINUE_WATCHING;
+export const ALL_STREAMING_CATALOG = FIXTURE_DISCOVERY_CATALOG;
+export function searchStreamingCatalog(query: string) {
+  const q = query.toLowerCase();
+  return ALL_STREAMING_CATALOG.filter(c => c.title.toLowerCase().includes(q) || c.description.toLowerCase().includes(q));
+}

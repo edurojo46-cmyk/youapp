@@ -259,7 +259,7 @@ export default function PipelineDebugger() {
           query: q,
           path: trace.path,
           raw: trace.funnel.raw,
-          gt60: trace.funnel.qualityEligible,
+          gt60: trace.funnel.qualified,
           final: trace.funnel.final,
           rat5: `${rAt5}/5`,
           radar: trace.retrievalStats.radar,
@@ -645,7 +645,7 @@ export default function PipelineDebugger() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 40px', paddingLeft: 12, gap: 4, marginBottom: 12 }}>
                       <span>Raw</span><span style={{ fontWeight: 600, textAlign: 'right' }}>{r.step6_searchEngine.trace.funnel.raw}</span>
                       <span>Dedup</span><span style={{ fontWeight: 600, textAlign: 'right' }}>{r.step6_searchEngine.trace.funnel.dedup}</span>
-                      <span>YouScore ≥60</span><span style={{ fontWeight: 600, textAlign: 'right' }}>{r.step6_searchEngine.trace.funnel.qualityEligible}</span>
+                      <span>YouScore ≥60</span><span style={{ fontWeight: 600, textAlign: 'right' }}>{r.step6_searchEngine.trace.funnel.qualified}</span>
                       <span style={{ color: '#2563eb' }}>Final Top</span><span style={{ fontWeight: 700, color: '#2563eb', textAlign: 'right' }}>{r.step6_searchEngine.trace.funnel.final}</span>
                     </div>
 
@@ -670,7 +670,7 @@ export default function PipelineDebugger() {
                     🔍 Result Provenance (Top 3)
                   </h4>
                   <div style={{ display: 'grid', gap: 12 }}>
-                    {r.step6_searchEngine.results.slice(0, 3).map((res: any, idx: number) => (
+                    {(r.step6_searchEngine.results || []).slice(0, 3).map((res: any, idx: number) => (
                       <div key={res.id || idx} style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: 6, padding: 12, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <div style={{ fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           #{idx + 1} {res.title}

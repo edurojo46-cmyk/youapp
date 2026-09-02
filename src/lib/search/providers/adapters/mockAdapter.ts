@@ -33,7 +33,8 @@ export class MockAdapter implements ExternalAdapter {
 
   async isAvailable(): Promise<boolean> {
     // Solo disponible en desarrollo
-    return import.meta.env.DEV && import.meta.env.VITE_USE_EXTERNAL_SEARCH === 'false';
+    return (import.meta.env?.DEV && import.meta.env?.VITE_USE_EXTERNAL_SEARCH === 'false') || false;
+
   }
 }
 

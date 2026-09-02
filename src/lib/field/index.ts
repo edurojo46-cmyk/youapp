@@ -5,9 +5,12 @@
  */
 
 export * from './fieldTypes';
+export * from './epistemicTypes';
+export * from './epistemicGuard';
 export * from './fieldStateBuilder';
 export * from './fieldRotation';
 export * from './fieldPlanner';
 export * from './fieldEngine';
 export * from './fieldFeedback';
 export * from './fieldTelemetry';
+

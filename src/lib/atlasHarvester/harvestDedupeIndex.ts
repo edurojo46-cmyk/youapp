@@ -21,6 +21,10 @@ export class HarvestDedupeIndex {
     }
   }
 
+  static isLoaded(): boolean {
+    return HarvestDedupeIndex.knownYouTubeIds.size > 0;
+  }
+
   /**
    * Refresco incremental ligero: sólo consulta novedades desde el último checkpoint
    * Sin volver a descargar los 60.000 IDs completos.

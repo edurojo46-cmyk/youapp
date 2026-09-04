@@ -6,6 +6,7 @@ export interface SearchOptions {
   limit?: number;
   useFallback?: boolean;
   signal?: AbortSignal;
+  benchmarkStartedAt?: string;
   providerStatuses?: Record<string, { status: string; results: number }>;
   currentQualifiedCount?: number;
   avgQuality?: number;

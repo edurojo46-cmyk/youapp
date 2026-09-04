@@ -1,0 +1,152 @@
+[
+  {
+    "category": "ENTITY",
+    "query": "The Rolling Stones",
+    "expected": { "entity": "The Rolling Stones", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "DOCUMENTARY"] }
+  },
+  {
+    "category": "ENTITY",
+    "query": "Gustavo Cerati",
+    "expected": { "entity": "Gustavo Cerati", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "DOCUMENTARY"] }
+  },
+  {
+    "category": "ENTITY",
+    "query": "Queen",
+    "expected": { "entity": "Queen", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "DOCUMENTARY"] }
+  },
+  {
+    "category": "ENTITY",
+    "query": "Astor Piazzolla",
+    "expected": { "entity": "Astor Piazzolla", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "DOCUMENTARY"] }
+  },
+  {
+    "category": "ENTITY",
+    "query": "Fito Paez",
+    "expected": { "entity": "Fito Paez", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "DOCUMENTARY"] }
+  },
+  {
+    "category": "ENTITY",
+    "query": "Luis Alberto Spinetta",
+    "expected": { "entity": "Luis Alberto Spinetta", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "DOCUMENTARY"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "The Rolling Stones Paint It Black",
+    "expected": { "entity": "The Rolling Stones", "object": "Paint It, Black", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "Queen Bohemian Rhapsody",
+    "expected": { "entity": "Queen", "object": "Bohemian Rhapsody", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "Gustavo Cerati Crimen",
+    "expected": { "entity": "Gustavo Cerati", "object": "Crimen", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "Soda Stereo De Musica Ligera",
+    "expected": { "entity": "Soda Stereo", "object": "De Musica Ligera", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "Fito Paez El Amor Despues del Amor",
+    "expected": { "entity": "Fito Paez", "object": "El Amor Despues del Amor", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "Luis Alberto Spinetta Seguir Viviendo Sin Tu Amor",
+    "expected": { "entity": "Luis Alberto Spinetta", "object": "Seguir Viviendo Sin Tu Amor", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "Michael Jackson Thriller",
+    "expected": { "entity": "Michael Jackson", "object": "Thriller", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_WORK",
+    "query": "Los Pericos Pupilas Lejanas",
+    "expected": { "entity": "Los Pericos", "object": "Pupilas Lejanas", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "ENTITY_LIVE",
+    "query": "Nirvana live",
+    "expected": { "entity": "Nirvana", "acceptableRoles": ["LIVE_PERFORMANCE", "TV_PERFORMANCE"], "constraint": "LIVE" }
+  },
+  {
+    "category": "ENTITY_LIVE",
+    "query": "Charly Garcia en vivo",
+    "expected": { "entity": "Charly Garcia", "acceptableRoles": ["LIVE_PERFORMANCE", "TV_PERFORMANCE"], "constraint": "LIVE" }
+  },
+  {
+    "category": "ENTITY_LIVE",
+    "query": "Soda Stereo recital",
+    "expected": { "entity": "Soda Stereo", "acceptableRoles": ["LIVE_PERFORMANCE"], "constraint": "LIVE" }
+  },
+  {
+    "category": "ENTITY_LIVE",
+    "query": "Queen live",
+    "expected": { "entity": "Queen", "acceptableRoles": ["LIVE_PERFORMANCE", "TV_PERFORMANCE"], "constraint": "LIVE" }
+  },
+  {
+    "category": "ENTITY_VENUE",
+    "query": "Gustavo Cerati en obras",
+    "expected": { "entity": "Gustavo Cerati", "constraint": "VENUE", "venue": "Estadio Obras Sanitarias" }
+  },
+  {
+    "category": "ENTITY_VENUE",
+    "query": "Queen wembley",
+    "expected": { "entity": "Queen", "constraint": "VENUE", "venue": "Wembley Stadium" }
+  },
+  {
+    "category": "ENTITY_VENUE",
+    "query": "Osvaldo Pugliese en el colon",
+    "expected": { "entity": "Osvaldo Pugliese", "constraint": "VENUE", "venue": "Teatro Colón" }
+  },
+  {
+    "category": "ENTITY_VENUE",
+    "query": "Charly Garcia teatro opera",
+    "expected": { "entity": "Charly Garcia", "constraint": "VENUE", "venue": "Teatro Ópera" }
+  },
+  {
+    "category": "ENTITY_CONTENT_TYPE",
+    "query": "Papa Francisco entrevista",
+    "expected": { "entity": "Papa Francisco", "acceptableRoles": ["INTERVIEW_WITH_PERFORMANCE", "CONTEXTUAL_USE"], "constraint": "CONTENT_TYPE", "contentType": "ENTREVISTA" }
+  },
+  {
+    "category": "ENTITY_CONTENT_TYPE",
+    "query": "Fito Paez documental",
+    "expected": { "entity": "Fito Paez", "acceptableRoles": ["DOCUMENTARY", "CONTEXTUAL_USE"], "constraint": "CONTENT_TYPE", "contentType": "DOCUMENTAL" }
+  },
+  {
+    "category": "TYPOS",
+    "query": "guztavo serati crien",
+    "expected": { "entity": "Gustavo Cerati", "object": "Crimen", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "TYPOS",
+    "query": "quen boemian rapsody",
+    "expected": { "entity": "Queen", "object": "Bohemian Rhapsody", "acceptableRoles": ["PRIMARY_WORK", "LIVE_PERFORMANCE", "OFFICIAL_VIDEO", "TV_PERFORMANCE", "LYRIC"] }
+  },
+  {
+    "category": "LONG_TAIL",
+    "query": "charly garcia recital viejo en ferro",
+    "expected": { "entity": "Charly Garcia", "constraint": "VENUE", "venue": "Estadio Ferrocarril Oeste" }
+  },
+  {
+    "category": "LONG_TAIL",
+    "query": "entrevista larga a spinetta hablando de pescado rabioso",
+    "expected": { "entity": "Luis Alberto Spinetta", "constraint": "CONTENT_TYPE", "contentType": "ENTREVISTA" }
+  },
+  {
+    "category": "ENTITY_WORK_VENUE",
+    "query": "osvaldo pugliese la yumba en el colon",
+    "expected": { "entity": "Osvaldo Pugliese", "object": "La Yumba", "constraint": "VENUE", "venue": "Teatro Colón", "isGap": false }
+  },
+  {
+    "category": "SYNTHETIC_IMPOSSIBLE",
+    "query": "the rolling stones reggaeton en marte",
+    "expected": { "entity": "The Rolling Stones", "isGap": true }
+  }
+]

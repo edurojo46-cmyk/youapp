@@ -4,6 +4,7 @@ import { supabaseProvider } from './providers/supabaseProvider';
 
 export interface RetrievalOptions {
   signal?: AbortSignal;
+  benchmarkStartedAt?: string;
 }
 
 export async function retrieveInternalCandidates(
@@ -13,7 +14,7 @@ export async function retrieveInternalCandidates(
   try {
     const [localItems, supabaseItems] = await Promise.all([
       localProvider.search(query, { limit: 50, signal: options?.signal }),
-      supabaseProvider.search(query, { limit: 100, signal: options?.signal })
+      supabaseProvider.search(query, { limit: 100, signal: options?.signal, benchmarkStartedAt: options?.benchmarkStartedAt })
     ]);
     return { candidates: [...localItems, ...supabaseItems] };
   } catch (err: any) {

@@ -15,9 +15,7 @@ export async function executeDiscoveryPlan(
 ): Promise<DiscoveryMissionResult> {
   const t0 = Date.now();
   const index = dedupeIndex || new HarvestDedupeIndex();
-  if (!dedupeIndex) {
-    await index.initialize();
-  }
+  // HOT PATH GUARD: No bloquear la ejecución descargando 58.000 IDs si no fue precargado por un worker de fondo
 
   const missionId = `mission_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   let referencesScanned = 0;
@@ -67,6 +65,8 @@ export async function executeDiscoveryPlan(
   };
 }
 
+import { supabase } from '../supabase';
+
 async function executeChannel(
   channel: DiscoveryChannel,
   plan: DiscoveryPlan,
@@ -74,43 +74,76 @@ async function executeChannel(
 ): Promise<YouTubeHarvestReference[]> {
   const refs: YouTubeHarvestReference[] = [];
   const searchKeywords = plan.targetConcepts.length > 0 ? plan.targetConcepts : [request.query];
+  const isBrowser = typeof window !== 'undefined';
 
   switch (channel) {
     case 'bluesky_backfill':
     case 'bluesky_live': {
-      // Consulta a la API pública de búsqueda de Bluesky / AT Protocol
       for (const kw of searchKeywords.slice(0, 3)) {
         try {
-          const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(kw)}&limit=30`;
-          const res = await fetch(url, {
-            signal: AbortSignal.timeout(4000),
-            headers: { 'Accept': 'application/json' }
-          });
-          if (res.ok) {
-            const json = await res.json() as any;
-            if (Array.isArray(json?.posts)) {
-              for (const post of json.posts) {
-                const text = `${post?.record?.text || ''} ${post?.record?.embed?.external?.uri || ''}`;
-                const ids = extractYouTubeVideoIds(text);
-                for (const vid of ids) {
+          if (isBrowser) {
+            // PROHIBICIÓN ESTRICTA: El navegador jamás hace fetch directo a APIs de terceros
+            // Delegar a YouApp Edge Function para evitar CORS / 403
+            const { data } = await supabase.functions.invoke('publisher-video-discovery', {
+              body: { query: kw, provider: 'bluesky' }
+            });
+            if (data?.videos && Array.isArray(data.videos)) {
+              for (const v of data.videos) {
+                if (v.providerContentId) {
                   refs.push({
-                    videoId: vid,
-                    canonicalUrl: `https://www.youtube.com/watch?v=${vid}`,
-                    title: post?.record?.embed?.external?.title || post?.record?.text?.slice(0, 80) || `Bluesky Post [${vid}]`,
+                    videoId: v.providerContentId,
+                    canonicalUrl: v.videoUrl || `https://www.youtube.com/watch?v=${v.providerContentId}`,
+                    title: v.title || `Bluesky Reference [${v.providerContentId}]`,
                     publisherId: 'discovery_ai_bluesky',
-                    publisherName: 'Bluesky Discovery AI',
-                    articleUrl: post?.uri || `https://bsky.app/post/${vid}`,
+                    publisherName: 'Bluesky Discovery AI (Edge)',
+                    articleUrl: v.articleUrl || `https://bsky.app/post/${v.providerContentId}`,
                     country: 'GLOBAL',
                     language: 'multi',
                     category: 'Discovery AI / Bluesky',
                     harvestTier: 'bronze',
-                    discoveredAt: post?.record?.createdAt || new Date().toISOString()
+                    discoveredAt: new Date().toISOString()
                   });
                 }
               }
             }
+          } else {
+            // Entorno servidor / Node / Worker: llamada segura server-to-server
+            const url = `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(kw)}&limit=30`;
+            const res = await fetch(url, {
+              signal: AbortSignal.timeout(4000),
+              headers: { 'Accept': 'application/json' },
+              redirect: 'follow'
+            });
+            if (res.ok) {
+              const json = await res.json() as any;
+              if (Array.isArray(json?.posts)) {
+                for (const post of json.posts) {
+                  const text = `${post?.record?.text || ''} ${post?.record?.embed?.external?.uri || ''}`;
+                  const ids = extractYouTubeVideoIds(text);
+                  for (const vid of ids) {
+                    refs.push({
+                      videoId: vid,
+                      canonicalUrl: `https://www.youtube.com/watch?v=${vid}`,
+                      title: post?.record?.embed?.external?.title || post?.record?.text?.slice(0, 80) || `Bluesky Post [${vid}]`,
+                      publisherId: 'discovery_ai_bluesky',
+                      publisherName: 'Bluesky Discovery AI',
+                      articleUrl: post?.uri || `https://bsky.app/post/${vid}`,
+                      country: 'GLOBAL',
+                      language: 'multi',
+                      category: 'Discovery AI / Bluesky',
+                      harvestTier: 'bronze',
+                      discoveredAt: post?.record?.createdAt || new Date().toISOString()
+                    });
+                  }
+                }
+              }
+            } else if (res.status === 404) {
+              console.warn('[DiscoveryExecutor] Bluesky endpoint 404, source marked as degraded');
+            }
           }
-        } catch {}
+        } catch (err: any) {
+          // Fallo silencioso de canal sin romper la misión
+        }
       }
       break;
     }
@@ -125,27 +158,62 @@ async function executeChannel(
       ];
       for (const sm of sitemapEndpoints) {
         try {
-          const res = await fetch(sm, { signal: AbortSignal.timeout(4000) });
-          if (res.ok) {
-            const xml = await res.text();
-            const ids = extractYouTubeVideoIds(xml);
-            for (const vid of ids.slice(0, 20)) {
-              refs.push({
-                videoId: vid,
-                canonicalUrl: `https://www.youtube.com/watch?v=${vid}`,
-                title: `Broadcaster Archive Reference [${vid}]`,
-                publisherId: 'discovery_ai_broadcaster',
-                publisherName: 'Broadcaster Archive Discovery',
-                articleUrl: sm,
-                country: 'GLOBAL',
-                language: 'multi',
-                category: 'Discovery AI / Broadcaster',
-                harvestTier: 'bronze',
-                discoveredAt: new Date().toISOString()
-              });
+          if (isBrowser) {
+            // PROHIBICIÓN ESTRICTA: El navegador jamás hace fetch directo a sitemaps externos (CORS/301/404)
+            // Delegar a YouApp Edge Function
+            const { data } = await supabase.functions.invoke('publisher-video-discovery', {
+              body: { url: sm }
+            });
+            if (data?.videos && Array.isArray(data.videos)) {
+              for (const v of data.videos) {
+                if (v.providerContentId) {
+                  refs.push({
+                    videoId: v.providerContentId,
+                    canonicalUrl: v.videoUrl || `https://www.youtube.com/watch?v=${v.providerContentId}`,
+                    title: v.title || `Broadcaster Reference [${v.providerContentId}]`,
+                    publisherId: 'discovery_ai_broadcaster',
+                    publisherName: 'Broadcaster Archive Discovery (Edge)',
+                    articleUrl: sm,
+                    country: 'GLOBAL',
+                    language: 'multi',
+                    category: 'Discovery AI / Broadcaster',
+                    harvestTier: 'bronze',
+                    discoveredAt: new Date().toISOString()
+                  });
+                }
+              }
+            }
+          } else {
+            // Entorno servidor: sigue redirects 301 automáticamente
+            const res = await fetch(sm, {
+              signal: AbortSignal.timeout(4000),
+              redirect: 'follow'
+            });
+            if (res.ok) {
+              const xml = await res.text();
+              const ids = extractYouTubeVideoIds(xml);
+              for (const vid of ids.slice(0, 20)) {
+                refs.push({
+                  videoId: vid,
+                  canonicalUrl: `https://www.youtube.com/watch?v=${vid}`,
+                  title: `Broadcaster Archive Reference [${vid}]`,
+                  publisherId: 'discovery_ai_broadcaster',
+                  publisherName: 'Broadcaster Archive Discovery',
+                  articleUrl: sm,
+                  country: 'GLOBAL',
+                  language: 'multi',
+                  category: 'Discovery AI / Broadcaster',
+                  harvestTier: 'bronze',
+                  discoveredAt: new Date().toISOString()
+                });
+              }
+            } else if (res.status === 404) {
+              console.warn('[DiscoveryExecutor] Publisher sitemap 404 (source degraded):', sm);
             }
           }
-        } catch {}
+        } catch (err: any) {
+          // Degradación suave sin romper la misión
+        }
       }
       break;
     }

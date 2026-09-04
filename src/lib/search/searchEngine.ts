@@ -6,6 +6,7 @@ import { externalSearch } from './providers/externalSearch';
 import { normalizeItems } from './normalizationEngine';
 import { deduplicateItems } from './deduplicationEngine';
 import { calculateQualityScore } from './qualityEngine';
+import { calculateMediaQualityScore, sortByMediaQuality } from './mediaQualityEngine';
 import { calculateBaseRanking } from './rankingEngine';
 import { applyPersonalization } from './personalizationEngine';
 import { determineQueryComplexity } from './aiRouter';
@@ -17,7 +18,7 @@ import { lookupQueryMemory, saveQueryMemory, markQueryResolvedByAtlas } from './
 import { applyIntentFit, groupByFormat } from './intentFit';
 
 import type { QueryUnderstanding } from './intentDetector';
-import type { IntentType } from './types';
+import type { IntentType, ResolvedSearchIntent } from './types';
 import { autoRegisterChannel } from '../creatorGraph';
 
 export interface ExecuteSearchOptions {
@@ -29,6 +30,7 @@ export interface ExecuteSearchOptions {
   routingMode?: 'static' | 'shadow' | 'dynamic' | 'all';
   trafficClass?: 'organic' | 'benchmark' | 'synthetic';
   utilitySource?: any; // any to avoid circular import if needed, or proper type
+  resolvedIntent?: ResolvedSearchIntent;
   queryContext?: {
     source: 'tv_signal' | 'user' | 'unknown';
     parentTopic?: string;
@@ -36,9 +38,12 @@ export interface ExecuteSearchOptions {
     intentHint?: IntentType;
     needsDocumentary?: boolean;
     entities?: any[];
+    resolvedIntent?: ResolvedSearchIntent;
   };
   excludeProviders?: string[];
   forceProviders?: string[];
+  readOnlyBenchmark?: boolean; // If true, do not mutate Cache/Atlas or enqueue Discovery AI
+  benchmarkStartedAt?: string; // ISO date string to freeze Atlas temporal state
 }
 
 
@@ -46,6 +51,9 @@ export interface SearchExecutionTrace {
   requestId: string;
   latencyMs: number;
   path: 'fast' | 'discovery' | 'radar';
+  resolvedIntent?: ResolvedSearchIntent;
+  searchEngineReceivedResolvedIntent?: boolean;
+  tierDecisionBasis?: 'EXACT_ENTITY_WORK' | 'EXACT_ENTITY_TITLE' | 'ENTITY_TOPIC' | 'GENERIC_QR';
   latencies: {
     parse: number;
     intent: number;
@@ -105,7 +113,7 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     parse: 0, intent: 0, memory: 0, atlas: 0, normalize: 0, dedup: 0,
     relevance: 0, quality: 0, rank: 0, router: 0, providers: 0, fastPathEvaluation: 0, total: 0
   };
-  let activePath: 'fast' | 'discovery' | 'radar' = 'discovery';
+  let activePath: 'fast' | 'discovery' | 'radar' | 'discovery_free' = 'discovery';
 
   if (!rawQuery.trim()) {
     return { all: [], videos: [], channels: [], trace: {} as any };
@@ -114,8 +122,14 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   let t = Date.now();
   const query = parseQuery(rawQuery);
   query.forceExternal = forceExternal;
+  if (options?.resolvedIntent) {
+    query.resolvedIntent = options.resolvedIntent;
+  }
   if (options?.queryContext) {
     query.context = options.queryContext;
+    if (options.queryContext.resolvedIntent && !query.resolvedIntent) {
+      query.resolvedIntent = options.queryContext.resolvedIntent;
+    }
   }
   latencies.parse = Date.now() - t;
 
@@ -173,20 +187,82 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   };
 
   const { exactWorkSearchGate } = await import('./exactWorkSearchGate');
-  const exactWorkDetection = exactWorkSearchGate.detectExactWork(query.rawQuery, intentData);
+
+  const incomingResolvedIntent =
+    options?.resolvedIntent ||
+    options?.queryContext?.resolvedIntent ||
+    query.resolvedIntent ||
+    query.context?.resolvedIntent;
+
+  let exactWorkDetection: import('./exactWorkSearchGate').ExactWorkDetection;
+  let searchEngineReceivedResolvedIntent = false;
+  let resolvedIntentSource: 'AUTOCOMPLETE_SELECTION' | 'QUERY_RESOLVER' = 'QUERY_RESOLVER';
+
+  const isIncomingValid = incomingResolvedIntent && (
+    (incomingResolvedIntent.baseIntent && incomingResolvedIntent.baseIntent !== 'GENERIC') ||
+    (incomingResolvedIntent.type && incomingResolvedIntent.type !== 'GENERIC') ||
+    (incomingResolvedIntent.constraints && incomingResolvedIntent.constraints.length > 0)
+  );
+
+  if (isIncomingValid) {
+    searchEngineReceivedResolvedIntent = true;
+    resolvedIntentSource = incomingResolvedIntent.source || 'AUTOCOMPLETE_SELECTION';
+    exactWorkDetection = exactWorkSearchGate.fromResolvedIntent(incomingResolvedIntent);
+  } else {
+    exactWorkDetection = exactWorkSearchGate.detectExactWork(query.rawQuery, intentData);
+    resolvedIntentSource = exactWorkDetection.resolvedIntentSource || 'QUERY_RESOLVER';
+  }
+  
+  const resolvedSearchIntent = isIncomingValid ? incomingResolvedIntent! : exactWorkSearchGate.fromResolvedIntent(exactWorkDetection);
+  const mandatoryGates = exactWorkSearchGate.buildMandatoryGates(exactWorkDetection, resolvedSearchIntent);
+  if (import.meta.env?.DEV) {
+    console.log(`\n[Mandatory Intent Gates]`);
+    console.log(`Source Type:         ${mandatoryGates.sourceIntentType}`);
+    console.log(`EntityRequired:      ${mandatoryGates.entity?.required || false}`);
+    if (mandatoryGates.entity) {
+      console.log(`Entity:              ${mandatoryGates.entity.canonicalName} (Thresh: ${mandatoryGates.entity.minIdentityFidelity})`);
+    }
+    console.log(`ObjectRequired:      ${mandatoryGates.object?.required || false}`);
+    if (mandatoryGates.object) {
+      console.log(`Object:              ${mandatoryGates.object.canonicalValue} (Thresh: ${mandatoryGates.object.minFidelity})`);
+    }
+    console.log(`Constraints:`);
+    mandatoryGates.constraints.forEach(c => {
+      console.log(`  ${c.type} = ${c.value} (Thresh: ${c.minFidelity})`);
+    });
+  }
+
+  const hasAutocompleteResolved = resolvedIntentSource === 'AUTOCOMPLETE_SELECTION';
+
+  let retrievalQuery = query.normalizedQuery;
+  if (exactWorkDetection.canonicalEntity || exactWorkDetection.canonicalWork || exactWorkDetection.residualTitle || exactWorkDetection.topic) {
+    const parts = [];
+    if (exactWorkDetection.canonicalEntity) parts.push(exactWorkDetection.canonicalEntity);
+    if (exactWorkDetection.canonicalWork) parts.push(exactWorkDetection.canonicalWork);
+    else if (exactWorkDetection.residualTitle) parts.push(exactWorkDetection.residualTitle);
+    else if (exactWorkDetection.topic) parts.push(exactWorkDetection.topic);
+    
+    if (exactWorkDetection.constraints && exactWorkDetection.constraints.length > 0) {
+      parts.push(...exactWorkDetection.constraints.map(c => c.canonicalValue));
+    }
+    if (parts.length > 0) {
+      retrievalQuery = parts.join(' ').trim();
+    }
+  }
+  query.retrievalQuery = retrievalQuery;
 
   if (!forceExternal && !options?.bypassCandidatePool) {
     try {
-      pool = await getCandidatePool(query.normalizedQuery);
+      pool = await getCandidatePool(query.retrievalQuery);
       if (pool && pool.candidates && pool.candidates.length > 0) {
-        // Si es una ExactWork y el pool en caché tiene menos de 10 candidatos, refrescar desde Atlas físico
-        if (exactWorkDetection.isExactWork && pool.candidates.length < 10) {
+        // Si es una ExactWork o ExactEntityTitle y el pool en caché tiene menos de 10 candidatos, refrescar desde Atlas físico
+        if ((exactWorkDetection.isExactWork || exactWorkDetection.isExactEntityTitle) && pool.candidates.length < 10) {
           pool = null;
         } else {
           const cachedIds = pool.candidates.map(c => c.contentId);
           candidates = await getCatalogItems(cachedIds);
           if (candidates.length > 0) {
-            if (import.meta.env?.DEV) console.log(`⚡ [CandidatePool Cache] Loaded ${candidates.length} candidates for "${query.normalizedQuery}"`);
+            if (import.meta.env?.DEV) console.log(`⚡ [CandidatePool Cache] Loaded ${candidates.length} candidates for "${query.retrievalQuery}"`);
           }
         }
       }
@@ -227,16 +303,30 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   candidates = calculateBaseRanking(candidates, query, intentData);
   latencies.relevance = Date.now() - t;
 
-  // Phase 5: Quality
+  // Phase 5: Quality & Media Quality
   t = Date.now();
   candidates = calculateQualityScore(candidates);
+  candidates = calculateMediaQualityScore(candidates);
   latencies.quality = Date.now() - t;
+
 
   // Phase 6: FAST PATH GATE (Graduated 3-Tier Early-Stop Strategy)
   t = Date.now();
   
+  const isEntityWithTitle = exactWorkDetection.detectionType === 'EXACT_ENTITY_WORK' || exactWorkDetection.detectionType === 'EXACT_ENTITY_TITLE';
+  const isEntityTopic = exactWorkDetection.detectionType === 'ENTITY_TOPIC';
+  const hasConstraints = !!(exactWorkDetection.constraints && exactWorkDetection.constraints.length > 0) || !!exactWorkDetection.venue;
+  const isEntitySemanticQuery = isEntityWithTitle || exactWorkDetection.isExactWork || isEntityTopic || hasConstraints || !!exactWorkDetection.canonicalEntity;
+
+  let tierDecisionBasis: 'EXACT_ENTITY_WORK' | 'EXACT_ENTITY_TITLE' | 'ENTITY_TOPIC' | 'EXACT_ENTITY_CONSTRAINT' | 'EXACT_ENTITY' | 'GENERIC_QR' = 'GENERIC_QR';
+  if (exactWorkDetection.detectionType === 'EXACT_ENTITY_WORK') tierDecisionBasis = 'EXACT_ENTITY_WORK';
+  else if (exactWorkDetection.detectionType === 'EXACT_ENTITY_TITLE') tierDecisionBasis = 'EXACT_ENTITY_TITLE';
+  else if (exactWorkDetection.detectionType === 'ENTITY_TOPIC') tierDecisionBasis = 'ENTITY_TOPIC';
+  else if (hasConstraints) tierDecisionBasis = 'EXACT_ENTITY_CONSTRAINT';
+  else if (exactWorkDetection.canonicalEntity) tierDecisionBasis = 'EXACT_ENTITY';
+
   let poolForFastPath = candidates;
-  if (exactWorkDetection.isExactWork) {
+  if (isEntitySemanticQuery) {
     poolForFastPath = exactWorkSearchGate.filterAndDiversifyExactWorkCandidates(candidates, exactWorkDetection, 75);
   }
 
@@ -252,29 +342,87 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   const top5 = provisionalTop.slice(0, 5);
   const top5Consistent = top5.length >= 1 && top5.every(c => (c.relevanceScore || 0) >= 40);
 
-  // ── Graduated 3-Tier Early-Stop Strategy ──────────────────────────────
-  // Cuando la query especifica Artista + Obra (ej. "calle 13 la perla", "soda stereo de musica ligera"),
-  // los tiers deben basarse estrictamente en entityWorkQualifiedCount (artista original + obra),
-  // NUNCA en covers o tributos que sólo coinciden con la obra.
-  const hasSpecificArtist = !!exactWorkDetection.canonicalEntity;
-  const effectiveFastPathCandidates = hasSpecificArtist
-    ? qualifiedAtlasCandidates.filter(c => (c as any).isExactEntityWork === true)
-    : qualifiedAtlasCandidates;
+  // ── Graduated Early-Stop Strategy (Mandatory Gates) ──────────────────────────────
+  const requiredCoverage = exactWorkSearchGate.getRequiredCoverage(mandatoryGates);
+  
+  let fullyQualifiedCount = 0;
+  let shadowMismatches = 0;
 
-  // Tier 1: >= 10 Entity+Work calificados -> STRONG FAST PATH (0ms externo)
-  // Tier 2: 6 - 9 Entity+Work calificados -> FAST PATH (Inmediato + Background Harvest)
-  // Tier 3: < 6 Entity+Work calificados  -> HYBRID DISCOVERY (Externo + Background Discovery AI)
-  const isStrongFastPath = effectiveFastPathCandidates.length >= 10 && top5Consistent;
-  const isFastPathWithBackgroundHarvest = effectiveFastPathCandidates.length >= 6 && effectiveFastPathCandidates.length < 10 && top5Consistent;
-  const fastPathReady = (isStrongFastPath || isFastPathWithBackgroundHarvest) && !forceExternal;
+  const effectiveFastPathCandidates = qualifiedAtlasCandidates.filter(c => {
+    // OLD LOGIC
+    let isOldPassed = false;
+    if (hasConstraints) {
+      isOldPassed = !!(c.semanticMatch?.isConstraintMatch || c.isConstraintMatch);
+    } else if (isEntityTopic) {
+      isOldPassed = !!(c.semanticMatch?.isEntityTopic || c.isEntityTopic);
+    } else if (isEntityWithTitle) {
+      isOldPassed = !!(c.semanticMatch?.isExactEntityWork || c.semanticMatch?.isExactEntityTitle || c.isExactEntityWork || c.isExactEntityTitle);
+    } else if (exactWorkDetection.canonicalEntity) {
+      isOldPassed = (c.artistFidelityScore || 0) >= 85;
+    } else {
+      isOldPassed = true;
+    }
+
+    // NEW LOGIC
+    const gateResult = exactWorkSearchGate.evaluateMandatoryGates(c, mandatoryGates);
+    
+    if (import.meta.env?.DEV && isOldPassed !== gateResult.passed) {
+      shadowMismatches++;
+      // console.log(`Shadow Mismatch [${c.title}]: OLD=${isOldPassed}, NEW=${gateResult.passed} (${gateResult.reason || 'none'})`);
+    }
+
+    // We fully rely on the NEW LOGIC for the real decision
+    if (gateResult.passed) {
+      fullyQualifiedCount++;
+      return true;
+    }
+    return false;
+  });
+
+  if (import.meta.env?.DEV && shadowMismatches > 0) {
+    console.log(`⚠️ [Shadow Evaluation] Found ${shadowMismatches} discrepancies between old logic and new MandatoryIntentGates.`);
+  }
+
+  const exactEntityWorkQualified = qualifiedAtlasCandidates.filter(c => c.semanticMatch?.isExactEntityWork || c.isExactEntityWork).length;
+  const exactTitleQualified = qualifiedAtlasCandidates.filter(c => c.semanticMatch?.isExactEntityTitle || c.isExactEntityTitle).length;
+  const topicQualified = qualifiedAtlasCandidates.filter(c => c.semanticMatch?.isEntityTopic || c.isEntityTopic).length;
+  const constraintQualified = qualifiedAtlasCandidates.filter(c => c.semanticMatch?.isConstraintMatch || c.isConstraintMatch).length;
+  const genericQualified = candidates.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40).length;
+
+  const fastPathReady = (fullyQualifiedCount >= requiredCoverage && top5Consistent) && !forceExternal;
+  const isStrongFastPath = fastPathReady && fullyQualifiedCount >= 10;
+  const isFastPathWithBackgroundHarvest = fastPathReady && fullyQualifiedCount < 10;
 
   latencies.fastPathEvaluation = Date.now() - t;
+
+  if (isEntitySemanticQuery || import.meta.env?.DEV) {
+    console.log(`[EntityTitleResolver Telemetry]`);
+    console.log(`  autocompleteResolved:                ${hasAutocompleteResolved}`);
+    console.log(`  resolvedIntentSource:                ${resolvedIntentSource}`);
+    console.log(`  resolvedEntity:                      ${exactWorkDetection.canonicalEntity || 'none'}`);
+    console.log(`  resolvedTitle:                       ${exactWorkDetection.residualTitle || exactWorkDetection.canonicalWork || exactWorkDetection.topic || 'none'}`);
+    console.log(`  resolvedWorkId:                      ${exactWorkDetection.workId || 'null'}`);
+    console.log(`  provisionalTitleKey:                 ${exactWorkDetection.provisionalTitleKey || 'null'}`);
+    console.log(`  searchEngineReceivedResolvedIntent:  ${searchEngineReceivedResolvedIntent}`);
+    console.log(`  entity:                              ${exactWorkDetection.canonicalEntity || 'none'}`);
+    console.log(`  entityConfidence:                    ${exactWorkDetection.entityConfidence !== undefined ? exactWorkDetection.entityConfidence.toFixed(2) : '0.00'}`);
+    console.log(`  residualTitle:                       ${exactWorkDetection.residualTitle || exactWorkDetection.canonicalWork || exactWorkDetection.topic || 'none'}`);
+    console.log(`  workId:                              ${exactWorkDetection.workId || 'null'}`);
+    console.log(`  workConfidence:                      ${exactWorkDetection.workConfidence !== undefined ? exactWorkDetection.workConfidence.toFixed(2) : '0.00'}`);
+    console.log(`  genericQualified:                    ${genericQualified}`);
+    console.log(`  exactTitleQualified:                 ${exactTitleQualified}`);
+    console.log(`  exactEntityWorkQualified:            ${exactEntityWorkQualified}`);
+    console.log(`  topicQualified:                      ${topicQualified}`);
+    console.log(`  constraintQualified:                 ${constraintQualified}`);
+    console.log(`  venue:                               ${exactWorkDetection.venue || 'none'}`);
+    console.log(`  tierDecisionBasis:                   ${tierDecisionBasis}`);
+    console.log(`  Tier:                                ${isStrongFastPath ? 1 : (isFastPathWithBackgroundHarvest ? 2 : 3)}`);
+  }
 
   if (fastPathReady) {
     activePath = 'fast';
 
-    if (isFastPathWithBackgroundHarvest) {
-      // 6-9 resultados de artista+obra: responder de inmediato al usuario y lanzar misión en background
+    if (isFastPathWithBackgroundHarvest && (isEntityWithTitle || exactWorkDetection.isExactWork) && !options?.readOnlyBenchmark) {
       Promise.resolve().then(async () => {
         try {
           const { analyzeAtlasGap, enqueueDiscoveryMission } = await import('../atlasDiscoveryAI');
@@ -286,7 +434,7 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
             coverageScore: effectiveFastPathCandidates.length / 10,
             qualityScore: 1.0,
             entities: [exactWorkDetection.canonicalEntity || ''],
-            works: [exactWorkDetection.canonicalWork || '']
+            works: [exactWorkDetection.canonicalWork || exactWorkDetection.residualTitle || '']
           });
           if (gapRequest && gapRequest.gaps.length > 0) {
             void enqueueDiscoveryMission(gapRequest);
@@ -296,12 +444,12 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     }
 
     if (import.meta.env?.DEV) {
-      console.log(`⚡ [Fast Path Tier ${isStrongFastPath ? '1 (Strong)' : '2 (Harvest Backfill)'}] Gate PASSED ${exactWorkDetection.isExactWork ? `[ExactWork: ${exactWorkDetection.canonicalWork}]` : ''}`);
+      console.log(`⚡ [Fast Path Tier ${isStrongFastPath ? '1 (Strong)' : '2 (Harvest Backfill)'}] Gate PASSED [Basis: ${tierDecisionBasis}]`);
       console.log(`  Source:             ${pool ? 'CandidatePool' : 'Atlas Physical'}`);
       console.log(`  Raw candidates:     ${rawPoolCount}`);
       console.log(`  Quality passed:     ${qualityPassedCount}`);
       console.log(`  Relevance passed:   ${relevancePassedCount}`);
-      console.log(`  Qualified (Q60/R40):${qualifiedAtlasCandidates.length}`);
+      console.log(`  Qualified (Exact):  ${effectiveFastPathCandidates.length}`);
       console.log(`  Top5 consistent:    ${top5Consistent}`);
     }
   } else {
@@ -309,25 +457,25 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       console.log(`⚡ [CandidatePool/Atlas Gate Tier 3 (Fallback)]`);
       console.log(`  Source:             ${pool ? 'CandidatePool' : 'Atlas Physical'}`);
       console.log(`  Retrieved:          ${rawPoolCount}`);
-      console.log(`  Qualified:          ${qualifiedAtlasCandidates.length}/10 (Dropped: ${rawPoolCount - qualifiedAtlasCandidates.length})`);
+      console.log(`  Qualified (Exact):  ${effectiveFastPathCandidates.length}/10 (Dropped: ${rawPoolCount - effectiveFastPathCandidates.length})`);
       console.log(`  Top5 consistent:    ${top5Consistent}`);
-      console.log(`⚠️ FAST PATH INSUFFICIENT (<6 qualified). Continuing to free discovery / external + Enqueuing Discovery AI background mission...`);
+      console.log(`⚠️ FAST PATH INSUFFICIENT (<6 exact qualified). Continuing to free discovery / external + Enqueuing Discovery AI background mission...`);
     }
 
     // TIER 3: Siempre encolar Discovery AI en background para cerrar permanentemente el hueco para futuras búsquedas
-    if (exactWorkDetection.isExactWork) {
+    if ((isEntityWithTitle || exactWorkDetection.isExactWork) && !options?.readOnlyBenchmark) {
       Promise.resolve().then(async () => {
         try {
           const { analyzeAtlasGap, enqueueDiscoveryMission } = await import('../atlasDiscoveryAI');
           const gapRequest = analyzeAtlasGap({
             query: rawQuery,
-            atlasResultCount: qualifiedAtlasCandidates.length,
-            qualityQualifiedCount: qualifiedAtlasCandidates.length,
-            relevanceQualifiedCount: qualifiedAtlasCandidates.length,
-            coverageScore: qualifiedAtlasCandidates.length / 10,
+            atlasResultCount: effectiveFastPathCandidates.length,
+            qualityQualifiedCount: effectiveFastPathCandidates.length,
+            relevanceQualifiedCount: effectiveFastPathCandidates.length,
+            coverageScore: effectiveFastPathCandidates.length / 10,
             qualityScore: 1.0,
             entities: [exactWorkDetection.canonicalEntity || ''],
-            works: [exactWorkDetection.canonicalWork || '']
+            works: [exactWorkDetection.canonicalWork || exactWorkDetection.residualTitle || '']
           });
           if (gapRequest && gapRequest.gaps.length > 0) {
             void enqueueDiscoveryMission(gapRequest);
@@ -336,7 +484,65 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       });
     }
 
-    // ── FREE DISCOVERY STAGE (Nivel 0: Publishers, RSS, Sitemaps, Archivos) ──
+    // ── V1.3.1 EXPLICIT NAME RECOVERY LANE ─────────────────────────────────
+    let explicitNameRecoveryPassed = false;
+    const isExplicitNameQuery = !exactWorkDetection.canonicalEntity && mandatoryGates.explicitName?.required && mandatoryGates.explicitName.normalizedPhrase;
+
+    if (isExplicitNameQuery) {
+      const explicitName = mandatoryGates.explicitName!.normalizedPhrase;
+      if (import.meta.env?.DEV) console.log(`🚀 [Explicit Name Recovery] Triggered for: "${explicitName}" (Initial Qualified: ${fullyQualifiedCount})`);
+      
+      const { supabaseProvider } = await import('./providers/supabaseProvider');
+      const { registerProvisionalEntity } = await import('../atlasBootstrap/entityResolverV2');
+      
+      const deepCandidates = await supabaseProvider.searchExplicitNameDeep(explicitName, { benchmarkStartedAt: query.benchmarkStartedAt });
+      
+      let externalCandidates: ContentItem[] = [];
+      try {
+        const explicitQueryObj = { ...query, rawQuery: explicitName, normalizedQuery: explicitName, retrievalQuery: explicitName };
+        const controller = new AbortController();
+        externalCandidates = await externalSearch.search(explicitQueryObj, [], {
+          signal: controller.signal,
+          intent: intentData,
+          providerStatuses,
+          routerDecisionsOut,
+          routingMode: options?.routingMode || 'shadow',
+          utilitySource: options?.utilitySource,
+          excludeProviders: options?.excludeProviders,
+          forceProviders: ['dailymotion', 'vimeo', 'archive', 'publisher', 'discover'],
+          fallbackOptions: { explicitNameRecovery: true }
+        });
+      } catch (err) {
+        console.error(err);
+      }
+
+      let recoveryCandidates = deduplicateItems(normalizeItems([...candidates, ...deepCandidates, ...externalCandidates]));
+      recoveryCandidates = calculateBaseRanking(recoveryCandidates, query, intentData);
+      recoveryCandidates = calculateQualityScore(recoveryCandidates);
+      recoveryCandidates = calculateMediaQualityScore(recoveryCandidates);
+
+      // Evaluar los recuperados con el Gate riguroso
+      const strictlyQualifiedRecovery = recoveryCandidates.filter(c => {
+         const res = exactWorkSearchGate.evaluateMandatoryGates(c, mandatoryGates);
+         return res.passed && (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40;
+      });
+
+      if (import.meta.env?.DEV) {
+        console.log(`✅ [Explicit Name Recovery] Recovered ${strictlyQualifiedRecovery.length} valid results.`);
+      }
+
+      candidates = recoveryCandidates;
+
+      if (strictlyQualifiedRecovery.length >= 8) {
+         explicitNameRecoveryPassed = true;
+         activePath = 'fast';
+         // Registrar provisionalmente la entidad si tuvo éxito la recuperación
+         registerProvisionalEntity(explicitName, 'UNKNOWN', 'query/explicit_recovery');
+      }
+    }
+
+    if (!explicitNameRecoveryPassed) {
+      // ── FREE DISCOVERY STAGE (Nivel 0: Publishers, RSS, Sitemaps, Archivos) ──
     const { runFreeDiscoveryStage } = await import('./freeDiscovery/freeDiscoveryStage');
     const freeDiscovery = await runFreeDiscoveryStage(query, candidates, intentData, options);
 
@@ -390,6 +596,7 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
         
         t = Date.now();
         candidates = calculateQualityScore(candidates);
+        candidates = calculateMediaQualityScore(candidates);
         latencies.quality += (Date.now() - t);
       }
 
@@ -437,12 +644,14 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
 
             candidates = calculateBaseRanking(candidates, query, intentData);
             candidates = calculateQualityScore(candidates);
+            candidates = calculateMediaQualityScore(candidates);
           }
         } catch (err) {
           console.error('[Fallback] Error:', err);
         }
       }
-    }
+    } // Fin de if (!explicitNameRecoveryPassed)
+    } // Fin de la rama "else" de fastPathReady
   
     // ── DEV ENVIRONMENT ABSOLUTE FALLBACK (MOCK) ─────────────────────────
     // Política deny-by-default: los mocks solo se permiten si se explicita.
@@ -456,6 +665,7 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
         mockCandidates = normalizeItems(mockCandidates);
         mockCandidates = calculateBaseRanking(mockCandidates, query, intentData);
         mockCandidates = calculateQualityScore(mockCandidates);
+        mockCandidates = calculateMediaQualityScore(mockCandidates);
         candidates = mockCandidates;
       } catch (err) {
         console.error('Failed to inject mock candidates:', err);
@@ -463,22 +673,24 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     }
     // ──────────────────────────────────────────────────────────────────────
     
-    // Save to Cache
-    await saveCatalogItems(candidates);
-    const refs: CandidateRef[] = candidates.map(c => ({
-      contentId: c.id, relevanceScore: c.relevanceScore, qualityScore: c.qualityScore, youScore: c.youScore
-    }));
-    await saveCandidatePool({
-      normalizedQuery: query.normalizedQuery, candidates: refs, queryVersion: 1, qualityVersion: 1, rankingVersion: 1,
-      createdAt: Date.now(), expiresAt: Date.now() + 7200000,
-    });
-    
-    // Fire & Forget: Background Creators Registration
-    candidates.forEach(c => {
-      if (c.channelId && c.channelTitle) {
-        autoRegisterChannel(c.channelId, c.channelTitle, c.provider || 'youtube');
-      }
-    });
+    // Save to Cache (unless readOnlyBenchmark is enabled)
+    if (!options?.readOnlyBenchmark) {
+      await saveCatalogItems(candidates);
+      const refs: CandidateRef[] = candidates.map(c => ({
+        contentId: c.id, relevanceScore: c.relevanceScore, qualityScore: c.qualityScore, youScore: c.youScore
+      }));
+      await saveCandidatePool({
+        normalizedQuery: query.retrievalQuery, candidates: refs, queryVersion: 1, qualityVersion: 1, rankingVersion: 1,
+        createdAt: Date.now(), expiresAt: Date.now() + 7200000,
+      });
+      
+      // Fire & Forget: Background Creators Registration
+      candidates.forEach(c => {
+        if (c.channelId && c.channelTitle) {
+          autoRegisterChannel(c.channelId, c.channelTitle, c.provider || 'youtube');
+        }
+      });
+    }
   }
 
   // AI & Final Ranking
@@ -497,44 +709,98 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
      }
   });
 
-  // Enforce Relevance & Exact Work Fidelity Floor (Eligibility Gate)
+  // Enforce Relevance & Exact Work/Title Fidelity Floor (Eligibility Gate)
   const isVerbose = import.meta.env?.VITE_SEARCH_VERBOSE === 'true';
   let filteredForEligibility = top20ForRerank;
-  if (exactWorkDetection.isExactWork) {
+  if (isEntitySemanticQuery) {
     filteredForEligibility = exactWorkSearchGate.filterAndDiversifyExactWorkCandidates(top20ForRerank, exactWorkDetection, 75);
   }
 
+  let wrongEntityCount = 0;
+  let wrongObjectCount = 0;
+  let wrongVenueCount = 0;
+  let missingVenueEvidenceCount = 0;
+  let qDropCount = 0;
+  let rDropCount = 0;
+
   const qualified = filteredForEligibility.filter(c => {
     const isQual = (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40;
-    if (!isQual && isVerbose && import.meta.env?.DEV) {
-      console.log(`[Eligibility Drop] ${c.title} - Q:${c.qualityScore} R:${c.relevanceScore}`);
+    if (!isQual) {
+      if ((c.qualityScore || 0) < 60) qDropCount++;
+      else rDropCount++;
+      return false;
     }
-    return isQual;
+    
+    // NEW LOGIC: Use Mandatory Gates
+    const gateResult = exactWorkSearchGate.evaluateMandatoryGates(c, mandatoryGates);
+    
+    if (!gateResult.passed) {
+      if (gateResult.reason === 'wrongEntity') wrongEntityCount++;
+      else if (gateResult.reason === 'wrongObject') wrongObjectCount++;
+      else if (gateResult.reason === 'constraintViolation') {
+        if (gateResult.failedConstraint === 'VENUE') wrongVenueCount++;
+        else missingVenueEvidenceCount++; // For lack of better bucket
+      }
+      return false;
+    }
+    
+    return true;
   });
   
-  qualityDrop = top20ForRerank.length - top20ForRerank.filter(c => (c.qualityScore || 0) >= 60).length;
-  relevanceDrop = top20ForRerank.filter(c => (c.qualityScore || 0) >= 60).length - qualified.length;
+  qualityDrop = qDropCount;
+  relevanceDrop = rDropCount + wrongEntityCount + wrongObjectCount + wrongVenueCount + missingVenueEvidenceCount;
   qualifiedCount = qualified.length;
 
-  if (import.meta.env?.DEV && top20ForRerank.length > qualified.length) {
-    console.log(`📉 [Eligibility Summary] Evaluados: ${top20ForRerank.length} | Calificados: ${qualified.length} | Descartados: ${top20ForRerank.length - qualified.length} (Q-Drop: ${qualityDrop}, R-Drop: ${relevanceDrop})`);
-  }
-  
+  const entityQualifiedCount = candidates.filter(c => (c.artistFidelityScore || 0) >= 85).length;
+  const objectQualifiedCount = candidates.filter(c => (c.workFidelityScore || 0) >= 75 || (c.titleFidelityScore || 0) >= 75).length;
+  const constraintQualifiedCount = candidates.filter(c => (c.constraintFidelityScore || 0) >= 75).length;
+
   // Publisher Separation: articles go to newsContext, they don't consume the 20 slots for audiovisual
   const qualifiedArticles = qualified.filter(c => c.type === 'article');
   const qualifiedAudiovisual = qualified.filter(c => c.type !== 'article');
   
   const newsContext = applyPersonalization(qualifiedArticles).slice(0, 5);
-  const personalizedTop20 = applyPersonalization(qualifiedAudiovisual).slice(0, 20);
   
+  // Media Quality Gate for EXACT_ENTITY_WORK
+  let finalAudiovisual = qualifiedAudiovisual;
+  if (isEntityWithTitle || exactWorkDetection.isExactWork) {
+     finalAudiovisual = sortByMediaQuality(finalAudiovisual, exactWorkDetection);
+  } else {
+     finalAudiovisual = applyPersonalization(finalAudiovisual);
+  }
+  
+  const personalizedTop20 = finalAudiovisual.slice(0, 20);
+
   if (import.meta.env?.DEV) {
+    console.log(`\n[Search Result Ledger]`);
+    console.log(`  Query:                        "${rawQuery}"`);
+    console.log(`  ResolvedBaseIntent:           ${exactWorkDetection.baseIntent}`);
+    console.log(`  ResolvedEntity:               ${exactWorkDetection.canonicalEntity || 'none'}`);
+    console.log(`  ResolvedObject:               ${exactWorkDetection.canonicalWork || exactWorkDetection.residualTitle || 'none'}`);
+    console.log(`  ResolvedConstraints:          ${exactWorkDetection.constraints ? JSON.stringify(exactWorkDetection.constraints.map(c => `${c.type}=${c.canonicalValue}`)) : 'none'}`);
+    console.log(`  AtlasRaw:                     ${rawCandidateCount}`);
+    console.log(`  EntityQualified:              ${entityQualifiedCount}`);
+    console.log(`  ObjectQualified:              ${objectQualifiedCount}`);
+    console.log(`  ConstraintQualified:          ${constraintQualifiedCount}`);
+    console.log(`  FullyQualified:               ${qualified.length}`);
+    console.log(`  Returned:                     ${Math.min(qualified.length, 20)}`);
+    console.log(`  Top Playable State:           ${personalizedTop20[0]?.playableState || 'none'}`);
+    console.log(`  Top Media Quality:            ${personalizedTop20[0]?.mediaQualityScore || 'N/A'}`);
+    console.log(`  Drop Reasons:`);
+    console.log(`    wrongEntity:                ${wrongEntityCount}`);
+    console.log(`    wrongObject:                ${wrongObjectCount}`);
+    console.log(`    wrongVenue:                 ${wrongVenueCount}`);
+    console.log(`    missingVenueEvidence:       ${missingVenueEvidenceCount}`);
+    console.log(`    qualityDrop:                ${qualityDrop}`);
+    console.log(`    relevanceDrop:              ${rDropCount}\n`);
+
     if (personalizedTop20.some(c => (c.qualityScore || 0) < 60 || (c.relevanceScore || 0) < 40)) {
       console.error("SEARCH_ELIGIBILITY_INVARIANT: Final results contain unqualified items.");
     }
   }
 
   // ── ExactWorkCoverageMemory & Bronze Atlas Auto-Persistence ─────────────
-  if (exactWorkDetection.isExactWork) {
+  if (isEntityWithTitle || exactWorkDetection.isExactWork) {
     Promise.resolve().then(async () => {
       try {
         const { ExactWorkCoverageMemory } = await import('./exactWorkCoverageMemory');
@@ -548,12 +814,85 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
           personalizedTop20,
           exactWorkDetection
         );
-
-        const { HarvestDedupeIndex } = await import('../atlasHarvester/harvestDedupeIndex');
-        await HarvestDedupeIndex.incrementalRefresh();
       } catch {}
     });
   }
+
+    // ── Expansion Logic: Relationship Gap Filling ───────────────────────────
+    let relatedResults: ContentItem[] = [];
+    let expansionActivated = false;
+    let expansionReason = '';
+    let expansionEntity = '';
+    
+    // Configurable policy (hardcoded defaults for V1)
+    const expansionPolicy: import('./types').RelationshipExpansionPolicy = {
+      maxHops: 1,
+      minRelationshipStrength: 0.60,
+      activateOnlyOnGap: true,
+      maxExpandedResults: 5,
+      preserveExactResultsFirst: true
+    };
+    
+    const isEntityObject = exactWorkDetection.baseIntent === 'ENTITY_OBJECT' || exactWorkDetection.detectionType === 'EXACT_ENTITY_WORK';
+    if (isEntityObject && expansionPolicy.activateOnlyOnGap && exactEntityWorkQualified < 6) {
+      expansionActivated = true;
+      expansionReason = 'exact_entity_work_gap';
+      expansionEntity = exactWorkDetection.canonicalEntity || '';
+      
+      // Filter candidates that are related but were NOT included in the exact set
+      let potentialRelated = candidates.filter(c => 
+        !qualified.includes(c) && 
+        c.semanticMatch?.relatedEntityMatch === true && 
+        (c.semanticMatch.relationshipScore || 0) >= (expansionPolicy.minRelationshipStrength * 100) &&
+        (c.qualityScore || 0) >= 60
+      );
+      
+      // Must respect exact work fidelity if this is an entity+work query
+      potentialRelated = potentialRelated.filter(c => {
+        const wf = c.semanticMatch?.workFidelity || (c.workFidelityScore || 0);
+        const tf = c.semanticMatch?.titleFidelity || (c.titleFidelityScore || 0);
+        return wf >= 75 || tf >= 75;
+      });
+      
+      // Must respect mandatory constraints
+      if (hasConstraints) {
+        potentialRelated = potentialRelated.filter(c => c.semanticMatch?.isConstraintMatch || c.isConstraintMatch);
+      }
+      
+      // Custom Cascade Sort for Related Results
+      potentialRelated.sort((a, b) => {
+        // 1. Mandatory Constraints (Already filtered above)
+        // 2. Relationship Strength
+        const relA = a.semanticMatch?.relationshipScore || 0;
+        const relB = b.semanticMatch?.relationshipScore || 0;
+        if (Math.abs(relA - relB) > 5) return relB - relA;
+        
+        // 3. Entity/Work relevance (Relevance Score)
+        const revA = a.relevanceScore || 0;
+        const revB = b.relevanceScore || 0;
+        if (Math.abs(revA - revB) > 10) return revB - revA;
+        
+        // 4. Playable
+        const playA = a.playableState === 'STREAM' ? 1 : 0;
+        const playB = b.playableState === 'STREAM' ? 1 : 0;
+        if (playA !== playB) return playB - playA;
+        
+        // 5. WorkSpecificity
+        const specA = a.semanticMatch?.workSpecificity || 0;
+        const specB = b.semanticMatch?.workSpecificity || 0;
+        if (specA !== specB) return specB - specA;
+        
+        // 6. MediaQuality
+        const mqA = a.mediaQualityScore || 0;
+        const mqB = b.mediaQualityScore || 0;
+        if (Math.abs(mqA - mqB) > 10) return mqB - mqA;
+        
+        return (b.youScore || 0) - (a.youScore || 0); // 7. Personalization
+      });
+      
+      relatedResults = potentialRelated.slice(0, expansionPolicy.maxExpandedResults);
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
   latencies.rank = Date.now() - t;
   latencies.total = Date.now() - startTime;
@@ -596,6 +935,9 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     requestId,
     latencyMs: latencies.total,
     path: activePath,
+    resolvedIntent: exactWorkSearchGate.toResolvedIntent(exactWorkDetection, resolvedIntentSource),
+    searchEngineReceivedResolvedIntent,
+    tierDecisionBasis,
     latencies,
     retrievalStats,
     acquisitionStats,
@@ -613,6 +955,13 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
   };
 
   const allWithDebug = personalizedTop20.map(c => ({
+    ...c,
+    type: c.type || 'video',
+    debugOrigin: c.retrievalSource || 'unknown_legacy_path',
+    attributionId: crypto.randomUUID()
+  }));
+
+  const relatedWithDebug = relatedResults.map(c => ({
     ...c,
     type: c.type || 'video',
     debugOrigin: c.retrievalSource || 'unknown_legacy_path',
@@ -714,7 +1063,7 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       try {
         await saveCatalogItems(allWithDebug);
         await saveCandidatePool({
-          normalizedQuery: query.normalizedQuery,
+          normalizedQuery: query.retrievalQuery,
           candidates: allWithDebug.map(c => ({ contentId: c.id, youScore: c.youScore || 0 })),
           expiresAt: Date.now() + 6 * 3600 * 1000, // 6h TTL
           createdAt: Date.now()
@@ -837,8 +1186,8 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
       relevanceQualifiedCount: trace.funnel.final,
       coverageScore: covScore,
       qualityScore: 1.0,
-      entities: intentData?.entities,
-      works: intentData?.concepts
+      entities: (intentData?.entities || []).map(e => typeof e === 'string' ? e : e.name),
+      works: intentData?.requiredConcepts || []
     });
 
     if (gapRequest.gaps.length > 0 && gapRequest.coverageScore < 0.55) {
@@ -855,6 +1204,19 @@ export async function executeSearch(rawQuery: string, options?: ExecuteSearchOpt
     all: allWithDebug,
     videos: allWithDebug.filter(c => c.type === 'video'),
     channels: allWithDebug.filter(c => c.type === 'channel' || c.type === 'playlist'),
+    relatedResults: relatedWithDebug,
+    coverage: {
+      exactQualified: exactEntityWorkQualified,
+      playableExact: personalizedTop20.filter(c => c.playableState === 'STREAM').length,
+      gapDetected: expansionActivated,
+      gapType: expansionReason
+    },
+    expansion: {
+      activated: expansionActivated,
+      reason: expansionReason,
+      sourceEntity: expansionEntity,
+      relationsUsed: Array.from(new Set(relatedWithDebug.map(c => c.semanticMatch?.relationshipType).filter(Boolean) as string[]))
+    },
     newsContext: newsContext.length > 0 ? newsContext : undefined,
     overview,
     intentData,

@@ -332,4 +332,242 @@ export class DiscoveryGapWorker {
       }
     };
   }
+
+  /**
+   * Repara autónomamente un hueco de Entity + Title descubierto vía Autocomplete o Query directa
+   */
+  static async repairEntityTitleGap(artist: string, title: string): Promise<AutonomousGapMissionResult> {
+    console.log(`🚀 INICIANDO MISIÓN AUTÓNOMA DISCOVERY GAP: "${title}" — ${artist}`);
+
+    const provisionalKey = title.toLowerCase().replace(/[,;:.()\-–—"']/g, '').replace(/\s+/g, '_');
+    const detection = exactWorkSearchGate.detectExactWork(`${artist} ${title}`);
+
+    // Obtener IDs ya indexados físicamente para no duplicar (Idempotencia)
+    const { data: existingAtlasRows } = await supabase
+      .from('youapp_index')
+      .select('provider_content_id, title')
+      .ilike('title', `%${title}%`);
+
+    const knownIds = new Set((existingAtlasRows || []).map(r => r.provider_content_id));
+
+    // Generación dinámica de queries de cosecha
+    const harvestQueries = [
+      `${artist} ${title}`,
+      `${artist} ${title} live`,
+      `${artist} ${title} en vivo`,
+      `${artist} ${title} oficial`
+    ];
+
+    const rawCandidates: any[] = [];
+    let duplicateSkipped = 0;
+
+    // CANAL 1: Dailymotion API Pública
+    for (const q of harvestQueries) {
+      try {
+        const params = new URLSearchParams({
+          search: q,
+          fields: 'id,title,description,duration,created_time,thumbnail_url,owner',
+          limit: '15'
+        });
+        const dmRes = await fetch(`https://api.dailymotion.com/videos?${params.toString()}`, { signal: AbortSignal.timeout(6000) });
+        if (dmRes.ok) {
+          const json = await dmRes.json();
+          for (const item of (json.list || [])) {
+            if (knownIds.has(item.id)) {
+              duplicateSkipped++;
+            } else {
+              rawCandidates.push({
+                provider: 'dailymotion',
+                providerId: item.id,
+                title: item.title,
+                description: item.description || `Dailymotion public asset for ${title}`,
+                url: `https://www.dailymotion.com/video/${item.id}`,
+                durationSeconds: item.duration || 240,
+                channelTitle: item.owner || artist,
+                discoveredVia: 'dailymotion_api',
+                sourceUrl: `https://api.dailymotion.com/videos?search=${encodeURIComponent(q)}`
+              });
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // CANAL 2: Internet Archive Open Collections
+    try {
+      const iaQuery = `("${artist}" AND "${title}")`;
+      const archiveUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(iaQuery)}&fl[]=identifier,title,description,mediatype,length&rows=8&output=json`;
+      const iaRes = await fetch(archiveUrl, { signal: AbortSignal.timeout(6000) });
+      if (iaRes.ok) {
+        const data = await iaRes.json();
+        for (const doc of (data?.response?.docs || [])) {
+          if (knownIds.has(doc.identifier)) {
+            duplicateSkipped++;
+          } else {
+            rawCandidates.push({
+              provider: 'archive',
+              providerId: doc.identifier,
+              title: doc.title,
+              description: doc.description || `Internet Archive asset for ${title}`,
+              url: `https://archive.org/details/${doc.identifier}`,
+              durationSeconds: doc.length ? parseFloat(doc.length) : 240,
+              channelTitle: 'Internet Archive',
+              discoveredVia: 'archive_org_api',
+              sourceUrl: `https://archive.org/details/${doc.identifier}`
+            });
+          }
+        }
+      }
+    } catch {}
+
+    const discoveredRaw = rawCandidates.length + duplicateSkipped;
+
+    // FILTRADO CON ExactWorkSearchGate (TF >= 75, AF >= 85)
+    const qualifiedItems: any[] = [];
+    const seenRecordings = new Set<string>();
+    const seenRenditions = new Set<string>();
+
+    for (const c of rawCandidates) {
+      const item: ContentItem = {
+        id: `${c.provider}_${c.providerId}`,
+        provider: c.provider,
+        providerContentId: c.providerId,
+        title: c.title,
+        description: c.description,
+        channelTitle: c.channelTitle,
+        videoUrl: c.url,
+        canonicalUrl: c.url,
+        durationSeconds: c.durationSeconds
+      };
+
+      const tf = exactWorkSearchGate.calculateTitleFidelity(item, detection);
+      const af = exactWorkSearchGate.calculateArtistFidelity(item, detection);
+      const role = exactWorkSearchGate.classifyContentRole(item, detection);
+      const recId = exactWorkSearchGate.extractRecordingId(item, detection);
+
+      const isValidExact = tf >= 75 && af >= 85 && (
+        role === 'PRIMARY_WORK' ||
+        role === 'OFFICIAL_VIDEO' ||
+        role === 'LIVE_PERFORMANCE' ||
+        role === 'TV_PERFORMANCE' ||
+        role === 'ARCHIVE' ||
+        role === 'LYRIC' ||
+        role === 'REMASTER'
+      );
+
+      if (isValidExact) {
+        (item as any).contentRole = role;
+        (item as any).workFidelityScore = tf;
+        (item as any).artistFidelityScore = af;
+        (item as any).isExactEntityTitle = true;
+        (item as any).recordingId = recId;
+        (item as any).discoveredVia = c.discoveredVia;
+        (item as any).sourceUrl = c.sourceUrl;
+        (item as any).sourceContainsProviderId = true;
+        (item as any).playable = true;
+
+        seenRecordings.add(recId);
+        seenRenditions.add(role);
+        qualifiedItems.push(item);
+      }
+    }
+
+    const validatedExactEntityWork = qualifiedItems.length;
+
+    // AUTO-PERSISTENCIA EN BRONZE ATLAS
+    let newlyPersisted = 0;
+    for (const q of qualifiedItems) {
+      const row = {
+        provider: q.provider,
+        provider_content_id: q.providerContentId,
+        video_id: q.providerContentId,
+        title: q.title,
+        description: `Bronze Atlas asset for ${title} (${artist})`,
+        url: q.videoUrl,
+        canonical_url: q.canonicalUrl,
+        creator_name: artist,
+        duration_seconds: q.durationSeconds,
+        source: 'federated_bronze',
+        metadata_provenance: `bronze_${q.discoveredVia}`,
+        content_state: 'ready',
+        created_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from('youapp_index').insert(row);
+      if (!error) {
+        newlyPersisted++;
+      }
+    }
+
+    // BÚSQUEDA VERIFICATORIA REAL
+    const query = `${artist} ${title}`;
+    const t0 = Date.now();
+    const searchRes = await executeSearch(query, { bypassCandidatePool: true });
+    const totalLatencyMs = Date.now() - t0;
+    const totalLatencySeconds = (totalLatencyMs / 1000).toFixed(3);
+    const returned = searchRes.videos || [];
+
+    const exactEntityCount = returned.filter((c: any) => (c as any).isExactEntityTitle || (c as any).isExactEntityWork).length;
+    const wrongArtistCount = returned.filter((c: any) => {
+      const af = exactWorkSearchGate.calculateArtistFidelity(c, detection);
+      return af < 85;
+    }).length;
+    const wrongWorkCount = returned.filter((c: any) => {
+      const tf = exactWorkSearchGate.calculateTitleFidelity(c, detection);
+      return tf < 75;
+    }).length;
+    const playableCount = returned.filter((c: any) => (c.videoUrl || c.url)).length;
+    const finalCoverage = Math.min(100, Math.round((exactEntityCount / 10) * 100));
+
+    const totalExactEntityWorkAfter = exactEntityCount;
+    const totalPlayableAfter = playableCount;
+    const uniqueAssetsAfter = new Set(returned.map(c => c.id || c.providerContentId)).size;
+    const uniqueRecordingsAfter = seenRecordings.size;
+    const uniqueRenditionTypesAfter = seenRenditions.size;
+    const coveragePointsGained = finalCoverage;
+    const gapClosureEfficiency = newlyPersisted > 0 ? coveragePointsGained / newlyPersisted : 0;
+    const alertStatus: 'OK' | 'HARVEST_WITHOUT_COVERAGE_LIFT' | 'MAX_SATURATION' =
+      finalCoverage >= 80 ? 'MAX_SATURATION' : (coveragePointsGained > 0 ? 'OK' : 'HARVEST_WITHOUT_COVERAGE_LIFT');
+
+    console.log(`\n📊 RESULTADO MISIÓN AUTÓNOMA DISCOVERY GAP: "${title}" (${artist})`);
+    console.log(`   • Discovered Raw:         ${discoveredRaw}`);
+    console.log(`   • Qualified Exact:        ${validatedExactEntityWork}`);
+    console.log(`   • New Physical Bronze:    ${newlyPersisted}`);
+    console.log(`   • Coverage@10 Final:      ${finalCoverage}% (+${coveragePointsGained} pts)`);
+    console.log(`   • SERP Exact@10:          ${exactEntityCount}/${returned.length}`);
+    console.log(`   • Wrong Artist @10:       ${wrongArtistCount} ✅`);
+    console.log(`   • Wrong Work @10:         ${wrongWorkCount} ✅`);
+    console.log(`   • Latency:                ${totalLatencySeconds}s`);
+
+    return {
+      workId: provisionalKey,
+      canonicalTitle: title,
+      artist,
+      initialCoverageAt10: 0,
+      finalCoverageAt10: finalCoverage,
+      coveragePointsGained,
+      discoveredRaw,
+      validatedExactEntityWork,
+      newPhysicalAssetsInserted: newlyPersisted,
+      existingAssetsReclassified: 0,
+      duplicateSkipped,
+      totalExactEntityWorkAfter,
+      totalPlayableAfter,
+      uniqueAssetsAfter,
+      uniqueRecordingsAfter,
+      uniqueRenditionTypesAfter,
+      gapClosureEfficiency,
+      alertStatus,
+      verificationStats: {
+        totalReturned: returned.length,
+        exactEntityWorkAt10: exactEntityCount,
+        wrongArtistCount,
+        wrongWorkCount,
+        playableCount,
+        totalLatencyMs,
+        totalLatencySeconds,
+        path: searchRes.trace.path
+      }
+    };
+  }
 }

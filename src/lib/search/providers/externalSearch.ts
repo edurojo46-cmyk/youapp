@@ -65,7 +65,7 @@ export class ExternalOrchestrator {
       routerDecisionsOut?: { decisions: any[] },
       routingMode?: 'static' | 'shadow' | 'dynamic' | 'all',
       utilitySource?: any,
-      fallbackOptions?: { isFallback?: boolean; activatedProviders?: string[]; requestId?: string },
+      fallbackOptions?: { isFallback?: boolean; activatedProviders?: string[]; requestId?: string; explicitNameRecovery?: boolean },
       excludeProviders?: string[],
       forceProviders?: string[]
     }
@@ -207,17 +207,20 @@ export class ExternalOrchestrator {
       // ── PROGRESSIVE PROBE QUALIFIED GATE (Invariant: Q>=60 && R>=40) ──────────
       // Early Sufficiency: Si tenemos >= 6 candidatos calificados de alta calidad,
       // la búsqueda se resuelve de inmediato sin esperar tiers posteriores.
+      // Si estamos en explicitNameRecovery, buscamos mínimo 12 resultados calificados.
       const scoredSoFar = calculateQualityScore(calculateBaseRanking(candidates, query, options?.intent));
       const qualifiedSoFar = scoredSoFar.filter(c => (c.qualityScore || 0) >= 60 && (c.relevanceScore || 0) >= 40);
 
-      if (qualifiedSoFar.length >= 6) {
+      const requiredEarlyStop = fallbackOptions?.explicitNameRecovery ? 12 : 6;
+
+      if (qualifiedSoFar.length >= requiredEarlyStop) {
         if (import.meta.env?.DEV) {
           console.log(`[ExternalSearch] ✅ ${qualifiedSoFar.length} candidatos CUALIFICADOS (Q>=60, R>=40) en tier "${tier}". Siguientes tiers (incluido Radar) omitidos.`);
         }
         break;
       } else {
         if (import.meta.env?.DEV) {
-          console.log(`[ExternalSearch] ⚠️ Tier "${tier}" entregó ${candidates.length} brutos pero solo ${qualifiedSoFar.length}/6 cualificados. Continuando a siguiente tier...`);
+          console.log(`[ExternalSearch] ⚠️ Tier "${tier}" entregó ${candidates.length} brutos pero solo ${qualifiedSoFar.length}/${requiredEarlyStop} cualificados. Continuando a siguiente tier...`);
         }
       }
 

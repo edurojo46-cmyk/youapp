@@ -16,8 +16,8 @@ import {
 
 import { UNIVERSAL_CATALOG, type UniversalChannel } from '../lib/universalChannels';
 import { executeSearch } from '../lib/search/searchEngine';
-import { fetchYouTubeAutocomplete } from '../lib/search/queryEngine';
-import type { ContentItem } from '../lib/search/types';
+import { fetchYouTubeAutocomplete, resolveAutocompleteSuggestion } from '../lib/search/queryEngine';
+import type { ContentItem, ResolvedSearchIntent } from '../lib/search/types';
 import { searchYouTubeChannels, resolveChannelPlayable, type YTChannelResult } from '../lib/youtubeChannelSearch';
 import { streamingRepository } from '../lib/streaming/streamingRepository';
 import { useStore } from '../store/useStore';
@@ -30,14 +30,20 @@ const HIST_KEY = 'youapp_chsearch_v4';
 const SAVED_CHANNELS_KEY = 'youapp_saved_custom_channels';
 
 const getHist = (): string[] => {
-  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; }
+  try { 
+    const parsed = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); 
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
 };
 const saveHist = (q: string) => {
   const h = getHist().filter(x => x !== q);
   localStorage.setItem(HIST_KEY, JSON.stringify([q, ...h].slice(0, 15)));
 };
 const getSavedCustomChannels = (): UniversalChannel[] => {
-  try { return JSON.parse(localStorage.getItem(SAVED_CHANNELS_KEY) || '[]'); } catch { return []; }
+  try { 
+    const parsed = JSON.parse(localStorage.getItem(SAVED_CHANNELS_KEY) || '[]'); 
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
 };
 
 type SearchStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -70,10 +76,12 @@ export default function ChannelSearch() {
 
   const savedChannelIds = useMemo(() => {
     const ids = new Set<string>();
-    savedChannels.forEach(c => {
-      if (c.channelId) ids.add(c.channelId);
-      if (c.id) ids.add(c.id.replace(/^custom-yt-/, ''));
-    });
+    if (Array.isArray(savedChannels)) {
+      savedChannels.forEach(c => {
+        if (c?.channelId) ids.add(c.channelId);
+        if (c?.id && typeof c.id === 'string') ids.add(c.id.replace(/^custom-yt-/, ''));
+      });
+    }
     return ids;
   }, [savedChannels]);
 
@@ -94,7 +102,7 @@ export default function ChannelSearch() {
   }, [query]);
 
   // ── Búsqueda Principal ──────────────────────────────────────────────────────
-  const doSearch = useCallback(async (q: string, tabOverride?: 'channels' | 'videos') => {
+  const doSearch = useCallback(async (q: string, tabOverride?: 'channels' | 'videos', resolvedIntent?: ResolvedSearchIntent) => {
     const trimmed = q.trim();
     if (!trimmed) return;
     setCommitted(trimmed);
@@ -108,7 +116,7 @@ export default function ChannelSearch() {
     }
     const currentSearchId = ++searchRaceRef.current;
     try {
-      let searchData = await executeSearch(trimmed);
+      let searchData = await executeSearch(trimmed, { resolvedIntent });
       
       // Si el motor devuelve 0 resultados (ej. fast path vacío o edge offline), consultar fallback multi-fuente
       if (!searchData.all || searchData.all.length === 0) {
@@ -344,7 +352,7 @@ export default function ChannelSearch() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  const displayItems = (results.all && results.all.length > 0 ? results.all : [...results.channels, ...results.videos]).slice(0, 24);
+  const displayItems = (results.all && results.all.length > 0 ? results.all : [...(results.channels || []), ...(results.videos || [])]).slice(0, 24);
 
   const fallbackThumbs = [
     'https://images.unsplash.com/photo-1522674705398-51903ee7a52c?w=400&q=80',
@@ -397,7 +405,11 @@ export default function ChannelSearch() {
           {showDrop && (hints.length > 0 || (history.length > 0 && !query)) && (
             <div className="ys-dropdown">
               {query && hints.map((h, i) => (
-                <button key={i} className="ys-drop-item" onMouseDown={() => { setQuery(h); doSearch(h); }}>
+                <button key={i} className="ys-drop-item" onMouseDown={() => {
+                  const resolved = resolveAutocompleteSuggestion(h);
+                  setQuery(h);
+                  doSearch(h, undefined, resolved);
+                }}>
                   <Search size={14} className="ys-drop-ico" /><span>{h}</span>
                 </button>
               ))}

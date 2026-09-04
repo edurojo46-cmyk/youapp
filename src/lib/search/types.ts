@@ -1,16 +1,117 @@
 export type QueryFreshness = 'live' | 'news' | 'trending' | 'current' | 'evergreen';
 export type IntentType = 'NEWS' | 'LIVE' | 'TUTORIAL' | 'DOCUMENTARY' | 'HISTORY' | 'ENTERTAINMENT' | 'MUSIC' | 'SPORTS' | 'UNKNOWN';
 
+export type SearchConstraintType = 
+  | 'VENUE'
+  | 'CONTENT_TYPE'
+  | 'LOCATION'
+  | 'DATE'
+  | 'LANGUAGE'
+  | 'EVENT';
+
+export interface SearchConstraint {
+  type: SearchConstraintType;
+  value: string;
+  canonicalValue: string;
+  confidence: number;
+}
+
+export type MandatoryConstraintType =
+  | 'VENUE'
+  | 'CONTENT_TYPE'
+  | 'GENRE'
+  | 'PERFORMANCE_MODE'
+  | 'DATE'
+  | 'TOPIC';
+
+export interface MandatoryConstraint {
+  type: MandatoryConstraintType;
+  value: string;
+  required: true;
+  minFidelity: number;
+}
+
+export interface MandatoryIntentGates {
+  entity?: {
+    required: true;
+    entityId?: string;
+    canonicalName: string;
+    minIdentityFidelity: number;
+    requireExplicitEntityVisibleMatch?: boolean;
+  };
+  object?: {
+    required: true;
+    objectId?: string;
+    canonicalValue: string;
+    objectType: 'WORK' | 'TITLE';
+    minFidelity: number;
+  };
+  constraints: MandatoryConstraint[];
+  explicitName?: {
+    required: true;
+    normalizedPhrase: string;
+    titleOnly: true;
+  };
+  sourceIntentType: string; // fallback to string if IntentType is not exactly mapped, but I'll use string here for simplicity since baseIntent works.
+}
+
+export interface GateResult {
+  passed: boolean;
+  reason?: 'wrongEntity' | 'wrongObject' | 'constraintViolation' | 'explicitNameMissing';
+  failedConstraint?: MandatoryConstraintType;
+  scores?: {
+    entityIdentity?: number;
+    object?: number;
+    constraints?: Partial<Record<MandatoryConstraintType, number>>;
+  };
+}
+
+export interface IntentEntity {
+  id?: string;
+  name: string;
+  confidence: number;
+}
+
+export interface IntentObject {
+  type: 'WORK' | 'TITLE';
+  canonicalValue: string;
+  id?: string;
+  confidence: number;
+}
+
+export interface ResolvedSearchIntent {
+  baseIntent: 'GENERIC' | 'ENTITY' | 'ENTITY_OBJECT';
+  entity?: IntentEntity;
+  object?: IntentObject;
+  constraints?: SearchConstraint[];
+  confidence: number;
+  source: 'AUTOCOMPLETE_SELECTION' | 'QUERY_RESOLVER';
+
+  // Backwards-compatible mappings for legacy modules
+  type?: 'GENERIC' | 'EXACT_ENTITY' | 'EXACT_ENTITY_TITLE' | 'EXACT_ENTITY_WORK' | 'ENTITY_TOPIC';
+  entityId?: string;
+  entityName?: string;
+  workId?: string;
+  canonicalTitle?: string;
+  residualTitle?: string;
+  provisionalTitleKey?: string;
+  topic?: string;
+  topicCategory?: 'ENTREVISTA' | 'DISCURSO' | 'CONFERENCIA' | 'MISA' | 'DOCUMENTAL' | 'DEBATE' | 'OTHER';
+}
+
 export interface SearchQuery {
   rawQuery: string;
   normalizedQuery: string;
+  retrievalQuery?: string;
   freshness: QueryFreshness;
   limit?: number;
   forceExternal?: boolean; // If user clicked "Search more on internet"
+  resolvedIntent?: ResolvedSearchIntent;
   context?: {
     source: 'tv_signal' | 'user' | 'unknown';
     parentTopic?: string;
     needsDocumentary?: boolean;
+    resolvedIntent?: ResolvedSearchIntent;
     entities?: Array<{
       canonical: string;
       aliases: string[];
@@ -91,6 +192,9 @@ export interface ContentItem {
   
   provider: 'youtube' | 'twitch' | 'tiktok' | 'instagram' | 'vimeo' | 'dailymotion' | 'itunes' | 'direct' | 'youapp' | 'unknown';
   providerId?: string;
+  providerContentId?: string;
+  category?: string;
+  language?: string;
   canonicalUrl?: string;
   
   title: string;
@@ -174,6 +278,129 @@ export interface ContentItem {
     | 'cache'           // IndexedDB / candidate pool hit
     | 'local'           // localProvider (hardcoded seeds)
     | 'mock';           // mockAdapter (dev)
+
+  // ── Typed Semantic Match Contract (Zero any) ──────────────────────────
+  semanticMatch?: SemanticMatch;
+  isExactEntityWork?: boolean;
+  isExactEntityTitle?: boolean;
+  isOriginalArtist?: boolean;
+  artistFidelityScore?: number;
+  workFidelityScore?: number;
+  titleFidelityScore?: number;
+  contentRole?: ContentRole;
+  renditionCategory?: RenditionCategory;
+  recordingId?: string;
+  objectType?: RequestedObjectType;
+  directPerformance?: boolean;
+  isEntityTopic?: boolean;
+  topicFidelityScore?: number;
+  venueFidelityScore?: number;
+  constraintFidelityScore?: number;
+  isVenueMatch?: boolean;
+  isConstraintMatch?: boolean;
+
+  // ── Media Quality Contract ──────────────────────────────────────────────
+  mediaMetrics?: MediaQualityMetrics;
+  mediaQualityScore?: number;
+  playableState?: PlayableState;
+}
+
+export type PlayableState = 'STREAM' | 'DERIVATIVE_ONLY' | 'BROKEN' | 'UNKNOWN';
+
+export interface MediaQualityMetrics {
+  resolutionHeight?: number; // e.g. 360, 480, 720, 1080
+  bitrateKbps?: number;
+  audioQuality?: 'LOW' | 'NORMAL' | 'HIGH';
+  playbackAvailability?: PlayableState;
+  historicalValue?: 'HIGH' | 'NORMAL';
+}
+
+export type RequestedObjectType =
+  | 'SONG'
+  | 'ALBUM_CONTAINER'
+  | 'NEWS'
+  | 'DOCUMENTARY'
+  | 'COMMENTARY'
+  | 'OTHER';
+
+export type ContentRole =
+  | 'PRIMARY_WORK'
+  | 'OFFICIAL_VIDEO'
+  | 'LIVE_PERFORMANCE'
+  | 'SOLO_LIVE_PERFORMANCE'
+  | 'MULTI_WORK_PERFORMANCE'
+  | 'INTERVIEW_WITH_PERFORMANCE'
+  | 'MEDLEY'
+  | 'TV_PERFORMANCE'
+  | 'REMASTER'
+  | 'LYRIC'
+  | 'COVER'
+  | 'TRIBUTE'
+  | 'CONTEXTUAL_USE'
+  | 'COMMENTARY'
+  | 'DOCUMENTARY'
+  | 'NEWS'
+  | 'ALBUM_CONTAINER'
+  | 'REACTION';
+
+export type RenditionCategory =
+  | 'ORIGINAL_STUDIO'
+  | 'REMASTER'
+  | 'ORIGINAL_LIVE'
+  | 'TV_PERFORMANCE'
+  | 'ARCHIVE'
+  | 'ACOUSTIC'
+  | 'LYRIC'
+  | 'COVER'
+  | 'TRIBUTE'
+  | 'OTHER_RENDITION';
+
+export type PrimaryWorkEvidenceType = 'TITLE_EXACT' | 'STRUCTURED_METADATA' | 'DESCRIPTION_EXPLICIT' | 'CHAPTER_MATCH' | 'TRANSCRIPT_MATCH' | 'INFERRED';
+
+export interface PrimaryWorkEvidence {
+  type: PrimaryWorkEvidenceType;
+  confidence: number;
+}
+
+export interface RelationshipExpansionPolicy {
+  maxHops: number;
+  minRelationshipStrength: number;
+  activateOnlyOnGap: boolean;
+  maxExpandedResults: number;
+  preserveExactResultsFirst: boolean;
+}
+
+export interface SemanticMatch {
+  isExactEntityWork: boolean;
+  isExactEntityTitle: boolean;
+  isOriginalArtist: boolean;
+  
+  // Identity vs Relationship
+  artistFidelity: number;
+  entityIdentityMatch?: boolean;
+  explicitEntityTitleMatch?: boolean;
+  relatedEntityMatch?: boolean;
+  relationshipType?: string;
+  relationshipScore?: number;
+  
+  workFidelity: number;
+  titleFidelity?: number;
+  workSpecificity?: number;
+  
+  primaryWorkEvidence?: PrimaryWorkEvidence[];
+  primaryWorkConfidence?: number;
+  
+  contentRole?: ContentRole;
+  renditionCategory?: RenditionCategory;
+  recordingId?: string;
+  objectType?: RequestedObjectType;
+  directPerformance?: boolean;
+  isEntityTopic?: boolean;
+  topicFidelity?: number;
+  venueFidelity?: number;
+  constraintFidelity?: number;
+  isVenueMatch?: boolean;
+  isConstraintMatch?: boolean;
 }
 
 export type DiscoverySource = 
@@ -215,6 +442,22 @@ export interface AiOverview {
 
 export interface SearchResponse {
   results: ContentItem[];
+  relatedResults?: ContentItem[];
+  
+  coverage?: {
+    exactQualified: number;
+    playableExact: number;
+    gapDetected: boolean;
+    gapType?: string;
+  };
+  
+  expansion?: {
+    activated: boolean;
+    reason?: string;
+    sourceEntity?: string;
+    relationsUsed?: string[];
+  };
+
   newsContext?: ContentItem[];
   overview?: AiOverview;
   rankingVersion?: number;

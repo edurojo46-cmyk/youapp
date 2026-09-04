@@ -112,3 +112,31 @@ export async function fetchYouTubeAutocomplete(query: string): Promise<string[]>
     `lo mejor de ${q}`
   ];
 }
+
+import { exactWorkSearchGate } from './exactWorkSearchGate';
+import type { ResolvedSearchIntent } from './types';
+
+export interface AutocompleteSuggestionItem {
+  text: string;
+  resolvedIntent: ResolvedSearchIntent;
+}
+
+/**
+ * Resuelve una sugerencia de autocomplete preservando su estructura semántica
+ * (Entity, Title, Work, Confidence) para que searchEngine no tenga que re-adivinar.
+ */
+export function resolveAutocompleteSuggestion(suggestion: string): ResolvedSearchIntent {
+  const detection = exactWorkSearchGate.detectExactWork(suggestion);
+  return exactWorkSearchGate.toResolvedIntent(detection, 'AUTOCOMPLETE_SELECTION');
+}
+
+/**
+ * Autocompletado enriquecido que provee texto y su intención semántica resuelta
+ */
+export async function fetchEnhancedAutocomplete(query: string): Promise<AutocompleteSuggestionItem[]> {
+  const list = await fetchYouTubeAutocomplete(query);
+  return list.map(text => ({
+    text,
+    resolvedIntent: resolveAutocompleteSuggestion(text)
+  }));
+}

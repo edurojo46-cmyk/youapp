@@ -66,7 +66,7 @@ function calculateEntityCentrality(item: ContentItem, entities: any[], intentDat
 }
 
 export function calculateBaseRanking(items: ContentItem[], query: SearchQuery, intentData?: QueryUnderstanding): ContentItem[] {
-  const qLower = query.normalizedQuery;
+  const qLower = (query.retrievalQuery || query.normalizedQuery).toLowerCase();
   
   return items.map(v => {
     // Normalize accents for matching

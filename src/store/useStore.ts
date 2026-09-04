@@ -194,13 +194,19 @@ export const useStore = create<AppState>((set, get) => {
 
   try {
     const storedAlgos = localStorage.getItem('youapp_saved_algorithms');
-    if (storedAlgos) initialAlgos = JSON.parse(storedAlgos);
+    if (storedAlgos) {
+      const parsed = JSON.parse(storedAlgos);
+      if (Array.isArray(parsed)) initialAlgos = parsed;
+    }
     
     const storedActiveAlgo = localStorage.getItem('youapp_active_algorithm_id');
     if (storedActiveAlgo) initialActiveAlgo = storedActiveAlgo;
     
     const storedMoments = localStorage.getItem('youapp_saved_moments');
-    if (storedMoments) initialMoments = JSON.parse(storedMoments);
+    if (storedMoments) {
+      const parsed = JSON.parse(storedMoments);
+      if (Array.isArray(parsed)) initialMoments = parsed;
+    }
   } catch (e) {
     console.warn("Failed to load state from localStorage");
   }

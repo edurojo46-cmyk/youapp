@@ -30,6 +30,7 @@ export function normalizeItems(items: ContentItem[]): ContentItem[] {
       providerId: canonical.providerContentId,
       provider: canonical.provider,
       videoUrl: finalUrl,
+      thumbnail: v.thumbnail || (v as any).thumbnailUrl || (v as any).thumbnail_url || 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=800',
       publishedAt: canonical.publishedAt || v.publishedAt,
       viewCount: canonical.viewCount !== undefined ? canonical.viewCount : v.viewCount,
       durationSeconds: canonical.durationSeconds !== undefined ? canonical.durationSeconds : v.durationSeconds,

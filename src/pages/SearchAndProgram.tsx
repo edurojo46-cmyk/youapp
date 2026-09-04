@@ -38,7 +38,10 @@ const FILTER_CHIPS = [
 const HISTORY_KEY = 'youapp_search_history';
 
 function getHistory(): string[] {
-  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+  try { 
+    const parsed = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); 
+    return Array.isArray(parsed) ? parsed : [];
+  } catch { return []; }
 }
 function saveHistory(q: string) {
   if (!q.trim()) return;

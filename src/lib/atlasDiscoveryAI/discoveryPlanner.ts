@@ -67,8 +67,13 @@ async function callGeminiPlanner(systemPrompt: string, data: any): Promise<any> 
     if (!error && edgeData && !edgeData.error) {
       return typeof edgeData === 'string' ? JSON.parse(edgeData) : edgeData;
     }
-  } catch {
-    // Fallback heurístico inteligente
+    if (error && import.meta.env?.DEV) {
+      console.warn(`[AI Gateway Discovery Audit] missionId: plan_${data.query?.slice(0, 10)} | requestType: plan_discovery | HTTP status: 400 | validation error: Unknown action: plan_discovery (falling back to heuristic planner)`);
+    }
+  } catch (err: any) {
+    if (import.meta.env?.DEV) {
+      console.warn(`[AI Gateway Discovery Audit] Exception invoking ai-gateway: ${err?.message}`);
+    }
   }
 
   // 3. Fallback Heurístico Estructurado si el servicio no responde

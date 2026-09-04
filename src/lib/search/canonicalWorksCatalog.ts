@@ -116,6 +116,15 @@ export const CANONICAL_WORKS_ONTOLOGY: CanonicalWorkOntologyEntry[] = [
     releaseYear: 1983,
     aliases: ['Los Dinosaurios Clics Modernos'],
     canonicalSearchTerms: ['los dinosaurios', 'charly garcia los dinosaurios']
+  },
+  {
+    workId: 'pugliese_la_yumba',
+    canonicalTitle: 'La Yumba',
+    artist: 'Osvaldo Pugliese',
+    workType: 'composition',
+    releaseYear: 1946,
+    aliases: ['La Yumba', 'La Yumba Pugliese', 'La Yumba Osvaldo Pugliese'],
+    canonicalSearchTerms: ['la yumba', 'osvaldo pugliese la yumba', 'la yumba pugliese']
   }
 ];
 

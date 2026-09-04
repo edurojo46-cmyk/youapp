@@ -11,17 +11,58 @@
 export interface ResolvedEntity {
   id: string;
   name: string;
-  entityType: 'solo_artist' | 'band' | 'composer' | 'orchestra' | 'performer' | 'ensemble';
+  entityType: 'solo_artist' | 'band' | 'composer' | 'orchestra' | 'performer' | 'ensemble' | 'venue';
   country?: string;
   confidence: number;
   evidence: string[];
   resolvedVia: 'exact_canonical' | 'exact_alias' | 'title_syntax' | 'composer_work' | 'project_band' | 'ensemble_match' | 'unresolved';
 }
 
+export interface EntityRelation {
+  from: string;
+  to: string;
+  type: 'FORMER_MEMBER_OF' | 'MEMBER_OF' | 'FOUNDER_OF' | 'LEAD_SINGER_OF' | 'COLLABORATED_WITH';
+  strength: number;
+}
+
+export interface ProvisionalEntity {
+  id: string;
+  canonicalName: string;
+  type: 'PERSON' | 'BAND' | 'SHOW' | 'ORGANIZATION' | 'PLACE' | 'FRANCHISE' | 'UNKNOWN';
+  identityConfidence: number;
+  typeConfidence: number;
+  source: string;
+}
+
+const provisionalEntities = new Map<string, ProvisionalEntity>();
+
+export function registerProvisionalEntity(name: string, type: 'PERSON' | 'BAND' | 'SHOW' | 'ORGANIZATION' | 'PLACE' | 'FRANCHISE' | 'UNKNOWN' = 'UNKNOWN', source: string = 'query/open_world'): ProvisionalEntity {
+  const norm = name.toLowerCase().trim();
+  if (provisionalEntities.has(norm)) {
+    return provisionalEntities.get(norm)!;
+  }
+  const id = `prov_${norm.replace(/[^a-z0-9]+/g, '_')}`;
+  const entity: ProvisionalEntity = {
+    id,
+    canonicalName: name,
+    type,
+    identityConfidence: 0.90, // Alta confianza para identidad
+    typeConfidence: type === 'UNKNOWN' ? 0 : 0.90, // Si no se conoce, cero.
+    source
+  };
+  provisionalEntities.set(norm, entity);
+  return entity;
+}
+
+export function getProvisionalEntity(name: string): ProvisionalEntity | undefined {
+  const norm = name.toLowerCase().trim();
+  return provisionalEntities.get(norm);
+}
+
 export interface CanonicalEntityDef {
   id: string;
   name: string;
-  entityType: 'solo_artist' | 'band' | 'composer' | 'orchestra' | 'performer' | 'ensemble';
+  entityType: 'solo_artist' | 'band' | 'composer' | 'orchestra' | 'performer' | 'ensemble' | 'venue';
   aliases: string[];
   regex: RegExp;
   country?: string;
@@ -31,32 +72,57 @@ export interface CanonicalEntityDef {
 
 export const CANONICAL_ENTITIES_V2: CanonicalEntityDef[] = [
   // 🇦🇷 Rock Argentino & Rioplatense
-  { id: 'luis_alberto_spinetta', name: 'Luis Alberto Spinetta', entityType: 'solo_artist', aliases: ['Spinetta', 'El Flaco Spinetta'], regex: /\b(spinetta|almendra|pescado rabioso|invisible|spinetta jade|socios del desierto)\b/i, country: 'AR', projects: ['Almendra', 'Pescado Rabioso', 'Invisible', 'Spinetta Jade', 'Socios del Desierto'] },
-  { id: 'charly_garcia', name: 'Charly García', entityType: 'solo_artist', aliases: ['Charly Garcia', 'Sui Generis', 'Seru Giran', 'La Maquina de Hacer Pajaros'], regex: /\b(charly garcia|charly garcía|sui generis|seru giran|serú girán|maquina de hacer pajaros)\b/i, country: 'AR', projects: ['Sui Generis', 'La Máquina de Hacer Pájaros', 'Serú Girán'] },
-  { id: 'gustavo_cerati', name: 'Gustavo Cerati', entityType: 'solo_artist', aliases: ['Cerati', 'Soda Stereo'], regex: /\b(gustavo cerati|cerati|soda stereo)\b/i, country: 'AR', projects: ['Soda Stereo'] },
+  { id: 'luis_alberto_spinetta', name: 'Luis Alberto Spinetta', entityType: 'solo_artist', aliases: ['Spinetta', 'El Flaco Spinetta'], regex: /\b(spinetta)\b/i, country: 'AR', projects: ['Almendra', 'Pescado Rabioso', 'Invisible', 'Spinetta Jade', 'Socios del Desierto'] },
+  { id: 'charly_garcia', name: 'Charly García', entityType: 'solo_artist', aliases: ['Charly', 'Charly Garcia'], regex: /\b(charly\s+garcia|charly\s+garcía|charly)\b/i, country: 'AR', projects: ['Sui Generis', 'La Máquina de Hacer Pájaros', 'Serú Girán'] },
+  { id: 'gustavo_cerati', name: 'Gustavo Cerati', entityType: 'solo_artist', aliases: ['Cerati', 'Gustavo Adrián Cerati'], regex: /\b(gustavo cerati|cerati)\b/i, country: 'AR' },
+  { id: 'soda_stereo', name: 'Soda Stereo', entityType: 'band', aliases: ['Soda'], regex: /\b(soda stereo)\b/i, country: 'AR' },
   { id: 'fito_paez', name: 'Fito Páez', entityType: 'solo_artist', aliases: ['Fito Paez'], regex: /\b(fito paez|fito páez)\b/i, country: 'AR' },
-  { id: 'los_redondos', name: 'Patricio Rey y sus Redonditos de Ricota', entityType: 'band', aliases: ['Los Redondos', 'Indio Solari', 'Skay Beilinson'], regex: /\b(los redondos|redonditos de ricota|patricio rey|indio solari|skay beilinson)\b/i, country: 'AR' },
-  { id: 'divididos', name: 'Divididos', entityType: 'band', aliases: ['Ricardo Mollo', 'Diego Arnedo'], regex: /\b(divididos|ricardo mollo|diego arnedo)\b/i, country: 'AR' },
-  { id: 'sumo', name: 'Sumo', entityType: 'band', aliases: ['Luca Prodan'], regex: /\b(sumo band|luca prodan)\b/i, country: 'AR' },
+  { id: 'los_redondos', name: 'Patricio Rey y sus Redonditos de Ricota', entityType: 'band', aliases: ['Los Redondos'], regex: /\b(los redondos|redonditos de ricota|patricio rey)\b/i, country: 'AR' },
+  { id: 'indio_solari', name: 'Indio Solari', entityType: 'solo_artist', aliases: ['El Indio'], regex: /\b(indio solari)\b/i, country: 'AR' },
+  { id: 'skay_beilinson', name: 'Skay Beilinson', entityType: 'solo_artist', aliases: ['Skay'], regex: /\b(skay beilinson|skay)\b/i, country: 'AR' },
+  { id: 'divididos', name: 'Divididos', entityType: 'band', aliases: ['La aplanadora del rock'], regex: /\b(divididos)\b/i, country: 'AR' },
+  { id: 'ricardo_mollo', name: 'Ricardo Mollo', entityType: 'solo_artist', aliases: ['Mollo'], regex: /\b(ricardo mollo)\b/i, country: 'AR' },
+  { id: 'diego_arnedo', name: 'Diego Arnedo', entityType: 'solo_artist', aliases: ['Arnedo'], regex: /\b(diego arnedo)\b/i, country: 'AR' },
+  { id: 'sumo', name: 'Sumo', entityType: 'band', aliases: ['Sumo band'], regex: /\b(sumo band)\b/i, country: 'AR' },
+  { id: 'luca_prodan', name: 'Luca Prodan', entityType: 'solo_artist', aliases: ['Luca'], regex: /\b(luca prodan)\b/i, country: 'AR' },
   { id: 'pappo', name: 'Pappo', entityType: 'solo_artist', aliases: ['Norberto Napolitano', 'Pappo\'s Blues', 'Riff'], regex: /\b(pappo|pappo\'s blues|riff band)\b/i, country: 'AR' },
-  { id: 'andres_calamaro', name: 'Andrés Calamaro', entityType: 'solo_artist', aliases: ['Calamaro', 'Los Rodriguez'], regex: /\b(calamaro|andres calamaro|los rodriguez|los rodríguez)\b/i, country: 'AR' },
-  { id: 'los_fabulosos_cadillacs', name: 'Los Fabulosos Cadillacs', entityType: 'band', aliases: ['Cadillacs', 'Vicentico'], regex: /\b(fabulosos cadillacs|vicentico)\b/i, country: 'AR' },
-  { id: 'virus_band', name: 'Virus', entityType: 'band', aliases: ['Federico Moura', 'Marcelo Moura'], regex: /\b(virus band|federico moura|marcelo moura)\b/i, country: 'AR' },
-  { id: 'la_renga', name: 'La Renga', entityType: 'band', aliases: ['Chizzo Napoli'], regex: /\b(la renga|chizzo napoli)\b/i, country: 'AR' },
-  { id: 'babasonicos', name: 'Babasónicos', entityType: 'band', aliases: ['Babasonicos', 'Adrian Dargelos'], regex: /\b(babasonicos|babasónicos|dargelos)\b/i, country: 'AR' },
-  { id: 'los_piojos', name: 'Los Piojos', entityType: 'band', aliases: ['Ciro Martinez', 'Ciro y los Persas'], regex: /\b(los piojos|ciro y los persas|ciro martinez)\b/i, country: 'AR' },
-  { id: 'ratones_paranoicos', name: 'Ratones Paranoicos', entityType: 'band', aliases: ['Juanse'], regex: /\b(ratones paranoicos|juanse)\b/i, country: 'AR' },
-  { id: 'las_pelotas', name: 'Las Pelotas', entityType: 'band', aliases: ['German Daffunchio'], regex: /\b(las pelotas|daffunchio)\b/i, country: 'AR' },
-  { id: 'rata_blanca', name: 'Rata Blanca', entityType: 'band', aliases: ['Walter Giardino', 'Adrian Barilari'], regex: /\b(rata blanca|walter giardino|barilari)\b/i, country: 'AR' },
-  { id: 'los_pericos', name: 'Los Pericos', entityType: 'band', aliases: ['Bahiano', 'Juanchi Baleiron'], regex: /\b(los pericos|bahiano|juanchi baleiron)\b/i, country: 'AR' },
-  { id: 'los_autenticos_decadentes', name: 'Los Auténticos Decadentes', entityType: 'band', aliases: ['Cucho Parisi'], regex: /\b(autenticos decadentes|auténticos decadentes|cucho parisi)\b/i, country: 'AR' },
-  { id: 'bersuit_vergarabat', name: 'Bersuit Vergarabat', entityType: 'band', aliases: ['Bersuit', 'Gustavo Cordera'], regex: /\b(bersuit vergarabat|bersuit|gustavo cordera)\b/i, country: 'AR' },
-  { id: 'attaque_77', name: 'Attaque 77', entityType: 'band', aliases: ['Ciro Pertusi', 'Mariano Martinez'], regex: /\b(attaque 77|ataque 77|ciro pertusi)\b/i, country: 'AR' },
+  { id: 'andres_calamaro', name: 'Andrés Calamaro', entityType: 'solo_artist', aliases: ['Calamaro', 'El Salmon'], regex: /\b(calamaro|andres calamaro)\b/i, country: 'AR' },
+  { id: 'los_fabulosos_cadillacs', name: 'Los Fabulosos Cadillacs', entityType: 'band', aliases: ['Cadillacs'], regex: /\b(fabulosos cadillacs)\b/i, country: 'AR' },
+  { id: 'vicentico', name: 'Vicentico', entityType: 'solo_artist', aliases: ['Gabriel Fernández Capello'], regex: /\b(vicentico)\b/i, country: 'AR' },
+  { id: 'virus_band', name: 'Virus', entityType: 'band', aliases: ['Virus band'], regex: /\b(virus band)\b/i, country: 'AR' },
+  { id: 'federico_moura', name: 'Federico Moura', entityType: 'solo_artist', aliases: ['Moura'], regex: /\b(federico moura)\b/i, country: 'AR' },
+  { id: 'la_renga', name: 'La Renga', entityType: 'band', aliases: [], regex: /\b(la renga)\b/i, country: 'AR' },
+  { id: 'chizzo_napoli', name: 'Chizzo Napoli', entityType: 'solo_artist', aliases: ['Chizzo'], regex: /\b(chizzo napoli)\b/i, country: 'AR' },
+  { id: 'babasonicos', name: 'Babasónicos', entityType: 'band', aliases: ['Babasonicos'], regex: /\b(babasonicos|babasónicos)\b/i, country: 'AR' },
+  { id: 'adrian_dargelos', name: 'Adrián Dárgelos', entityType: 'solo_artist', aliases: ['Dargelos', 'Dárgelos'], regex: /\b(adrian dargelos|adrián dárgelos|dargelos)\b/i, country: 'AR' },
+  { id: 'los_piojos', name: 'Los Piojos', entityType: 'band', aliases: [], regex: /\b(los piojos)\b/i, country: 'AR' },
+  { id: 'ciro_martinez', name: 'Ciro Martínez', entityType: 'solo_artist', aliases: ['Ciro Martinez', 'Andrés Ciro Martínez'], regex: /\b(ciro martinez|ciro martínez)\b/i, country: 'AR' },
+  { id: 'ciro_y_los_persas', name: 'Ciro y los Persas', entityType: 'band', aliases: [], regex: /\b(ciro y los persas)\b/i, country: 'AR' },
+  { id: 'ratones_paranoicos', name: 'Ratones Paranoicos', entityType: 'band', aliases: [], regex: /\b(ratones paranoicos)\b/i, country: 'AR' },
+  { id: 'juanse', name: 'Juanse', entityType: 'solo_artist', aliases: ['Juan Sebastián Gutiérrez'], regex: /\b(juanse)\b/i, country: 'AR' },
+  { id: 'las_pelotas', name: 'Las Pelotas', entityType: 'band', aliases: [], regex: /\b(las pelotas)\b/i, country: 'AR' },
+  { id: 'german_daffunchio', name: 'Germán Daffunchio', entityType: 'solo_artist', aliases: ['German Daffunchio', 'Daffunchio'], regex: /\b(german daffunchio|germán daffunchio|daffunchio)\b/i, country: 'AR' },
+  { id: 'rata_blanca', name: 'Rata Blanca', entityType: 'band', aliases: [], regex: /\b(rata blanca)\b/i, country: 'AR' },
+  { id: 'walter_giardino', name: 'Walter Giardino', entityType: 'solo_artist', aliases: ['Giardino'], regex: /\b(walter giardino)\b/i, country: 'AR' },
+  { id: 'adrian_barilari', name: 'Adrián Barilari', entityType: 'solo_artist', aliases: ['Adrian Barilari', 'Barilari'], regex: /\b(adrian barilari|adrián barilari|barilari)\b/i, country: 'AR' },
+  { id: 'los_pericos', name: 'Los Pericos', entityType: 'band', aliases: [], regex: /\b(los pericos)\b/i, country: 'AR' },
+  { id: 'bahiano', name: 'Bahiano', entityType: 'solo_artist', aliases: ['El Bahiano'], regex: /\b(bahiano)\b/i, country: 'AR' },
+  { id: 'juanchi_baleiron', name: 'Juanchi Baleirón', entityType: 'solo_artist', aliases: ['Juanchi Baleiron'], regex: /\b(juanchi baleiron|juanchi baleirón)\b/i, country: 'AR' },
+  { id: 'los_autenticos_decadentes', name: 'Los Auténticos Decadentes', entityType: 'band', aliases: ['Autenticos Decadentes'], regex: /\b(autenticos decadentes|auténticos decadentes)\b/i, country: 'AR' },
+  { id: 'cucho_parisi', name: 'Cucho Parisi', entityType: 'solo_artist', aliases: ['Cucho'], regex: /\b(cucho parisi)\b/i, country: 'AR' },
+  { id: 'bersuit_vergarabat', name: 'Bersuit Vergarabat', entityType: 'band', aliases: ['Bersuit'], regex: /\b(bersuit vergarabat|bersuit)\b/i, country: 'AR' },
+  { id: 'gustavo_cordera', name: 'Gustavo Cordera', entityType: 'solo_artist', aliases: ['Cordera'], regex: /\b(gustavo cordera|cordera)\b/i, country: 'AR' },
+  { id: 'attaque_77', name: 'Attaque 77', entityType: 'band', aliases: ['Ataque 77'], regex: /\b(attaque 77|ataque 77)\b/i, country: 'AR' },
+  { id: 'ciro_pertusi', name: 'Ciro Pertusi', entityType: 'solo_artist', aliases: ['Pertusi'], regex: /\b(ciro pertusi)\b/i, country: 'AR' },
   { id: 'litto_nebbia', name: 'Litto Nebbia', entityType: 'solo_artist', aliases: ['Los Gatos'], regex: /\b(litto nebbia|los gatos band)\b/i, country: 'AR' },
-  { id: 'manal', name: 'Manal', entityType: 'band', aliases: ['Javier Martinez', 'Claudio Gabis'], regex: /\b(manal band|javier martinez manal|claudio gabis)\b/i, country: 'AR' },
-  { id: 'vox_dei', name: 'Vox Dei', entityType: 'band', aliases: ['Willy Quiroga', 'Ricardo Soule'], regex: /\b(vox dei|willy quiroga|ricardo soule)\b/i, country: 'AR' },
+  { id: 'manal', name: 'Manal', entityType: 'band', aliases: [], regex: /\b(manal band)\b/i, country: 'AR' },
+  { id: 'javier_martinez_manal', name: 'Javier Martínez', entityType: 'solo_artist', aliases: ['Javier Martinez'], regex: /\b(javier martinez manal)\b/i, country: 'AR' },
+  { id: 'vox_dei', name: 'Vox Dei', entityType: 'band', aliases: [], regex: /\b(vox dei)\b/i, country: 'AR' },
 
-  // 🇦🇷 🇺🇾 Tango, Candombe & Folklore
+  // 🇦🇷 🇺🇾 Tango, Candombe, Folklore & Cantautores
+  { id: 'leon_gieco', name: 'León Gieco', entityType: 'solo_artist', aliases: ['Leon Gieco'], regex: /\b(leon gieco|león gieco)\b/i, country: 'AR' },
+  { id: 'victor_heredia', name: 'Víctor Heredia', entityType: 'solo_artist', aliases: ['Victor Heredia'], regex: /\b(victor heredia|víctor heredia)\b/i, country: 'AR' },
+  { id: 'pedro_aznar', name: 'Pedro Aznar', entityType: 'solo_artist', aliases: ['Aznar'], regex: /\b(pedro aznar|aznar)\b/i, country: 'AR' },
   { id: 'astor_piazzolla', name: 'Astor Piazzolla', entityType: 'composer', aliases: ['Piazzolla', 'Quinteto Tango Nuevo'], regex: /\b(astor piazzolla|piazzolla|quinteto tango nuevo)\b/i, country: 'AR' },
   { id: 'carlos_gardel', name: 'Carlos Gardel', entityType: 'solo_artist', aliases: ['El Zorzal Criollo'], regex: /\b(carlos gardel|gardel)\b/i, country: 'AR' },
   { id: 'anibal_troilo', name: 'Aníbal Troilo', entityType: 'solo_artist', aliases: ['Pichuco', 'Troilo'], regex: /\b(anibal troilo|aníbal troilo|troilo|pichuco)\b/i, country: 'AR' },
@@ -107,7 +173,7 @@ export const CANONICAL_ENTITIES_V2: CanonicalEntityDef[] = [
   { id: 'the_beatles', name: 'The Beatles', entityType: 'band', aliases: ['Beatles', 'John Lennon', 'Paul McCartney', 'George Harrison'], regex: /\b(the beatles|beatles|john lennon|paul mccartney|george harrison|ringo starr)\b/i, country: 'UK' },
   { id: 'pink_floyd', name: 'Pink Floyd', entityType: 'band', aliases: ['Floyd', 'David Gilmour', 'Roger Waters', 'Syd Barrett'], regex: /\b(pink floyd|david gilmour|roger waters|syd barrett)\b/i, country: 'UK' },
   { id: 'david_bowie', name: 'David Bowie', entityType: 'solo_artist', aliases: ['Bowie', 'Ziggy Stardust', 'Thin White Duke'], regex: /\b(david bowie|bowie|ziggy stardust)\b/i, country: 'UK' },
-  { id: 'queen', name: 'Queen', entityType: 'band', aliases: ['Freddie Mercury', 'Brian May'], regex: /\b(queen band|freddie mercury|brian may)\b/i, country: 'UK' },
+  { id: 'queen', name: 'Queen', entityType: 'band', aliases: ['Freddie Mercury', 'Brian May'], regex: /\b(queen(\s+band)?|freddie mercury|brian may)\b/i, country: 'UK' },
   { id: 'led_zeppelin', name: 'Led Zeppelin', entityType: 'band', aliases: ['Zeppelin', 'Jimmy Page', 'Robert Plant'], regex: /\b(led zeppelin|jimmy page|robert plant)\b/i, country: 'UK' },
   { id: 'the_rolling_stones', name: 'The Rolling Stones', entityType: 'band', aliases: ['Rolling Stones', 'Stones', 'Mick Jagger', 'Keith Richards'], regex: /\b(rolling stones|the rolling stones|mick jagger|keith richards)\b/i, country: 'UK' },
   { id: 'radiohead', name: 'Radiohead', entityType: 'band', aliases: ['Thom Yorke', 'The Smile'], regex: /\b(radiohead|thom yorke|the smile)\b/i, country: 'UK' },
@@ -195,12 +261,126 @@ export const CANONICAL_ENTITIES_V2: CanonicalEntityDef[] = [
   { id: 'fela_kuti', name: 'Fela Kuti', entityType: 'solo_artist', aliases: ['Fela Anikulapo Kuti', 'Africa 70'], regex: /\b(fela kuti|africa 70)\b/i, country: 'NG' },
   { id: 'ravi_shankar', name: 'Ravi Shankar', entityType: 'solo_artist', aliases: ['Pandit Ravi Shankar'], regex: /\b(ravi shankar)\b/i, country: 'IN' },
   { id: 'munir_bashir', name: 'Munir Bashir', entityType: 'solo_artist', aliases: ['Bashir Oud'], regex: /\b(munir bashir|oud solo)\b/i, country: 'IQ' },
-  { id: 'goran_bregovic', name: 'Goran Bregović', entityType: 'solo_artist', aliases: ['Goran Bregovic', 'Wedding and Funeral Orchestra'], regex: /\b(goran bregovic|goran bregović|wedding and funeral)\b/i, country: 'BA' }
+  { id: 'goran_bregovic', name: 'Goran Bregović', entityType: 'solo_artist', aliases: ['Goran Bregovic', 'Wedding and Funeral Orchestra'], regex: /\b(goran bregovic|goran bregović|wedding and funeral)\b/i, country: 'BA' },
+
+  // 🌟 Pop, Balada & Música Popular Global/Latina
+  { id: 'ricky_martin', name: 'Ricky Martin', entityType: 'solo_artist', aliases: ['Ricky Martin'], regex: /\b(ricky martin)\b/i, country: 'PR' },
+  { id: 'sandro', name: 'Sandro', entityType: 'solo_artist', aliases: ['Sandro de América', 'Roberto Sánchez'], regex: /\b(sandro de america|sandro de américa|sandro)\b/i, country: 'AR' },
+  { id: 'shakira', name: 'Shakira', entityType: 'solo_artist', aliases: ['Shakira Mebarak'], regex: /\b(shakira)\b/i, country: 'CO' },
+  { id: 'calle_13', name: 'Calle 13', entityType: 'band', aliases: ['Residente', 'Calle 13 Oficial'], regex: /\b(calle 13|residente)\b/i, country: 'PR' },
+  { id: 'chayanne', name: 'Chayanne', entityType: 'solo_artist', aliases: ['Elmer Figueroa'], regex: /\b(chayanne)\b/i, country: 'PR' },
+  { id: 'michael_jackson', name: 'Michael Jackson', entityType: 'solo_artist', aliases: ['MJ', 'King of Pop'], regex: /\b(michael jackson)\b/i, country: 'US' },
+  { id: 'queen', name: 'Queen', entityType: 'band', aliases: ['Queen Band', 'Freddie Mercury'], regex: /\b(queen(\s+band)?|freddie\s+mercury)\b/i, country: 'GB' },
+  { id: 'luciano_pavarotti', name: 'Luciano Pavarotti', entityType: 'solo_artist', aliases: ['Pavarotti'], regex: /\b(luciano\s+pavarotti|pavarotti)\b/i, country: 'IT' },
+
+  // 🏛️ Figuras Públicas, Culturales e Institucionales
+  { id: 'papa_francisco', name: 'Papa Francisco', entityType: 'performer', aliases: ['Pope Francis', 'Jorge Mario Bergoglio', 'Francisco Papa'], regex: /\b(papa francisco|pope francis|jorge mario bergoglio)\b/i, country: 'VA' },
+  { id: 'lionel_messi', name: 'Lionel Messi', entityType: 'performer', aliases: ['Messi', 'Leo Messi'], regex: /\b(lionel messi|leo messi|messi)\b/i, country: 'AR' },
+  { id: 'javier_milei', name: 'Javier Milei', entityType: 'performer', aliases: ['Milei'], regex: /\b(javier milei|milei)\b/i, country: 'AR' },
+
+  // 🏛️ Recintos Históricos, Teatros y Estadios Universales (Venues)
+  { id: 'teatro_colon', name: 'Teatro Colón', entityType: 'venue', aliases: ['Teatro Colon', 'el Colon', 'el Colón', 'Colón', 'Colon'], regex: /\b(teatro\s+col[oó]n|en\s+el\s+col[oó]n|\bcol[oó]n\b)\b/i, country: 'AR' },
+  { id: 'estadio_obras', name: 'Estadio Obras Sanitarias', entityType: 'venue', aliases: ['Obras', 'Estadio Obras', 'Obras Sanitarias', 'en Obras'], regex: /\b(estadio\s+obras(?:\s+sanitarias)?|en\s+obras|\bobras\b)\b/i, country: 'AR' },
+  { id: 'estadio_ferro', name: 'Estadio Ferro Carril Oeste', entityType: 'venue', aliases: ['Ferro', 'Estadio Ferro', 'en Ferro'], regex: /\b(estadio\s+ferro|en\s+ferro|\bferro\b)\b/i, country: 'AR' },
+  { id: 'wembley_stadium', name: 'Wembley Stadium', entityType: 'venue', aliases: ['Wembley', 'Estadio Wembley'], regex: /\b(wembley(?:\s+stadium)?)\b/i, country: 'GB' },
+  { id: 'teatro_alla_scala', name: 'Teatro alla Scala', entityType: 'venue', aliases: ['La Scala', 'La Scala de Milán', 'Teatro de La Scala'], regex: /\b(la\s+scala(?:\s+de\s+mil[aá]n)?|teatro\s+alla\s+scala)\b/i, country: 'IT' },
+  { id: 'carnegie_hall', name: 'Carnegie Hall', entityType: 'venue', aliases: ['Carnegie Hall NY'], regex: /\b(carnegie\s+hall)\b/i, country: 'US' },
+  { id: 'madison_square_garden', name: 'Madison Square Garden', entityType: 'venue', aliases: ['MSG', 'The Garden'], regex: /\b(madison\s+square\s+garden|\bmsg\b)\b/i, country: 'US' },
+  { id: 'luna_park', name: 'Estadio Luna Park', entityType: 'venue', aliases: ['Luna Park'], regex: /\b(luna\s+park)\b/i, country: 'AR' },
+  { id: 'teatro_gran_rex', name: 'Teatro Gran Rex', entityType: 'venue', aliases: ['Gran Rex'], regex: /\b(gran\s+rex|teatro\s+gran\s+rex)\b/i, country: 'AR' },
+  { id: 'estadio_river_plate', name: 'Estadio River Plate', entityType: 'venue', aliases: ['El Monumental', 'Monumental de Nuñez', 'River Plate'], regex: /\b(monumental|river\s+plate|estadio\s+river)\b/i, country: 'AR' },
+  { id: 'estadio_velez', name: 'Estadio Vélez Sarsfield', entityType: 'venue', aliases: ['Vélez', 'Velez', 'Estadio Velez', 'en Velez'], regex: /\b(estadio\s+v[eé]lez|en\s+v[eé]lez|\bv[eé]lez\b)\b/i, country: 'AR' },
+  { id: 'estadio_huracan', name: 'Estadio Tomás Adolfo Ducó', entityType: 'venue', aliases: ['Huracán', 'Huracan', 'El Ducó', 'Estadio Huracán'], regex: /\b(estadio\s+hurac[aá]n|en\s+hurac[aá]n|\bhurac[aá]n\b|el\s+duc[oó])\b/i, country: 'AR' },
+  { id: 'estadio_unico_la_plata', name: 'Estadio Único de La Plata', entityType: 'venue', aliases: ['Estadio Unico', 'Estadio Único', 'Único de La Plata'], regex: /\b(estadio\s+[uú]nico(?:\s+de\s+la\s+plata)?|[uú]nico\s+de\s+la\s+plata)\b/i, country: 'AR' },
+  { id: 'olympia_paris', name: 'L\'Olympia', entityType: 'venue', aliases: ['Olympia de París', 'Olympia Paris'], regex: /\b(olympia(?:\s+de\s+par[ií]s)?)\b/i, country: 'FR' }
 ];
+
+export const CANONICAL_RELATIONS: EntityRelation[] = [
+  { from: 'bahiano', to: 'los_pericos', type: 'FORMER_MEMBER_OF', strength: 0.75 },
+  { from: 'juanchi_baleiron', to: 'los_pericos', type: 'MEMBER_OF', strength: 0.70 },
+  { from: 'indio_solari', to: 'los_redondos', type: 'FORMER_MEMBER_OF', strength: 0.85 },
+  { from: 'skay_beilinson', to: 'los_redondos', type: 'FORMER_MEMBER_OF', strength: 0.80 },
+  { from: 'gustavo_cerati', to: 'soda_stereo', type: 'FORMER_MEMBER_OF', strength: 0.85 },
+  { from: 'vicentico', to: 'los_fabulosos_cadillacs', type: 'MEMBER_OF', strength: 0.75 },
+  { from: 'ricardo_mollo', to: 'divididos', type: 'MEMBER_OF', strength: 0.80 },
+  { from: 'ricardo_mollo', to: 'sumo', type: 'FORMER_MEMBER_OF', strength: 0.60 },
+  { from: 'diego_arnedo', to: 'divididos', type: 'MEMBER_OF', strength: 0.80 },
+  { from: 'diego_arnedo', to: 'sumo', type: 'FORMER_MEMBER_OF', strength: 0.60 },
+  { from: 'luca_prodan', to: 'sumo', type: 'FORMER_MEMBER_OF', strength: 0.85 },
+  { from: 'chizzo_napoli', to: 'la_renga', type: 'MEMBER_OF', strength: 0.75 },
+  { from: 'adrian_dargelos', to: 'babasonicos', type: 'MEMBER_OF', strength: 0.75 },
+  { from: 'ciro_martinez', to: 'los_piojos', type: 'FORMER_MEMBER_OF', strength: 0.80 },
+  { from: 'ciro_martinez', to: 'ciro_y_los_persas', type: 'MEMBER_OF', strength: 0.80 },
+  { from: 'juanse', to: 'ratones_paranoicos', type: 'MEMBER_OF', strength: 0.75 },
+  { from: 'german_daffunchio', to: 'las_pelotas', type: 'MEMBER_OF', strength: 0.75 },
+  { from: 'german_daffunchio', to: 'sumo', type: 'FORMER_MEMBER_OF', strength: 0.60 },
+  { from: 'walter_giardino', to: 'rata_blanca', type: 'MEMBER_OF', strength: 0.75 },
+  { from: 'adrian_barilari', to: 'rata_blanca', type: 'MEMBER_OF', strength: 0.75 },
+  { from: 'cucho_parisi', to: 'los_autenticos_decadentes', type: 'MEMBER_OF', strength: 0.70 },
+  { from: 'gustavo_cordera', to: 'bersuit_vergarabat', type: 'FORMER_MEMBER_OF', strength: 0.75 },
+  { from: 'ciro_pertusi', to: 'attaque_77', type: 'FORMER_MEMBER_OF', strength: 0.75 },
+  { from: 'javier_martinez_manal', to: 'manal', type: 'MEMBER_OF', strength: 0.75 }
+];
+
+export function checkEntityRelation(fromId: string, toId: string): EntityRelation | null {
+  return CANONICAL_RELATIONS.find(r => r.from === fromId && r.to === toId) || null;
+}
+
+/**
+ * Resolutor Jerárquico de Venues / Recintos:
+ * PRIMARY: Entity Graph / Atlas place entities / aliases
+ * SECONDARY: Static venue ontology fallback
+ */
+export function resolveVenueFromEntityGraph(text: string): { canonicalVenue: string; venueId: string; confidence: number; matchedText: string } | null {
+  const norm = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  // 1. PRIMARY: Búsqueda en el Entity Graph para entities de tipo 'venue'
+  const venueEntities = CANONICAL_ENTITIES_V2.filter(e => e.entityType === 'venue');
+  for (const v of venueEntities) {
+    if (v.regex.test(text) || v.regex.test(norm)) {
+      // Encontrar el fragmento que coincidió
+      const match = text.match(v.regex) || norm.match(v.regex);
+      return {
+        canonicalVenue: v.name,
+        venueId: v.id,
+        confidence: 0.96,
+        matchedText: match ? match[0] : v.name
+      };
+    }
+    for (const alias of v.aliases) {
+      const aliasNorm = alias.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      if (norm.includes(aliasNorm)) {
+        return {
+          canonicalVenue: v.name,
+          venueId: v.id,
+          confidence: 0.92,
+          matchedText: alias
+        };
+      }
+    }
+  }
+
+  return null;
+}
 
 export function resolveEntityV2(title: string, description = '', creator = ''): ResolvedEntity {
   const text = `${title} ${description} ${creator}`.toLowerCase();
   const evidence: string[] = [];
+
+  // NIVEL 0: Provisional Entities Cache (Open-world discovery)
+  for (const [normName, prov] of provisionalEntities.entries()) {
+    if (text.includes(normName)) {
+      evidence.push(`provisional_entity_match:${prov.id}`);
+      return {
+        id: prov.id,
+        name: prov.canonicalName,
+        entityType: prov.type === 'BAND' ? 'band' : 'solo_artist',
+        confidence: prov.identityConfidence, // Se usa la confianza de identidad para activar rutas
+        evidence,
+        resolvedVia: 'exact_canonical' // Tratado como canónico
+      };
+    }
+  }
 
   // NIVEL 1 & 2: Exact Canonical & Exact Alias Match
   for (const ent of CANONICAL_ENTITIES_V2) {

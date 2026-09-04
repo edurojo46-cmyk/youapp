@@ -58,8 +58,9 @@ export class ExactWorkCoverageMemory {
    */
   static async recordSearch(stats: ExactWorkExecutionStats): Promise<ExactEntityWorkCoverageRecord> {
     const { detection, allQualifiedItems, top10Items } = stats;
-    const workId = detection.canonicalWork?.toLowerCase().replace(/[,;:.()\-]/g, '').replace(/\s+/g, '_') || 'unknown_work';
-    const canonicalTitle = detection.canonicalWork || 'Obra Desconocida';
+    const targetTitle = detection.canonicalWork || detection.residualTitle || 'unknown_work';
+    const workId = targetTitle.toLowerCase().replace(/[,;:.()\-]/g, '').replace(/\s+/g, '_');
+    const canonicalTitle = detection.canonicalWork || detection.residualTitle || 'Obra Desconocida';
     const artist = detection.canonicalEntity || 'Artista Desconocido';
 
     let atlasPhysical = 0;
@@ -71,20 +72,20 @@ export class ExactWorkCoverageMemory {
 
     for (const item of allQualifiedItems) {
       const rs = (item.retrievalSource || '').toLowerCase();
-      const isPhysical = (item as any).atlasRowExists === true || rs === 'atlas' || rs === 'cache' || rs === 'local';
+      const isPhysical = rs === 'atlas' || rs === 'cache' || rs === 'local';
       if (isPhysical) {
         atlasPhysical++;
       } else {
         federatedExact++;
       }
 
-      const role: ContentRole = (item as any).contentRole || 'PRIMARY_WORK';
-      const af = (item as any).artistFidelityScore ?? 100;
-      const isExactEntityWork = (item as any).isExactEntityWork ?? (
+      const role: ContentRole = item.contentRole || item.semanticMatch?.contentRole || 'PRIMARY_WORK';
+      const af = item.artistFidelityScore ?? item.semanticMatch?.artistFidelity ?? 100;
+      const isExactEntity = item.semanticMatch?.isExactEntityWork || item.semanticMatch?.isExactEntityTitle || item.isExactEntityWork || item.isExactEntityTitle || (
         role !== 'COVER' && role !== 'TRIBUTE' && role !== 'CONTEXTUAL_USE' && role !== 'COMMENTARY' && role !== 'REACTION' && af >= 75
       );
 
-      if (isExactEntityWork) {
+      if (isExactEntity) {
         entityWorkQualifiedCount++;
         originalArtist++;
       }
@@ -104,15 +105,13 @@ export class ExactWorkCoverageMemory {
 
     // Top 5 Originales
     const top5Originals = top5.filter(c => {
-      const isEEW = (c as any).isExactEntityWork ?? false;
-      return isEEW;
+      return c.semanticMatch?.isExactEntityWork || c.semanticMatch?.isExactEntityTitle || c.isExactEntityWork || c.isExactEntityTitle || false;
     }).length;
     const originalArtistCoverageAt5 = Math.min(100, Math.round((top5Originals / 5) * 100));
 
     // Top 10 Exact Entity Work (Obra + Artista Original)
     const top10EntityWork = top10.filter(c => {
-      const isEEW = (c as any).isExactEntityWork ?? false;
-      return isEEW;
+      return c.semanticMatch?.isExactEntityWork || c.semanticMatch?.isExactEntityTitle || c.isExactEntityWork || c.isExactEntityTitle || false;
     }).length;
     const exactEntityWorkCoverageAt10 = Math.min(100, Math.round((top10EntityWork / 10) * 100));
 
@@ -296,15 +295,16 @@ export class ExactWorkCoverageMemory {
     assets: ContentItem[],
     detection: ExactWorkDetection
   ): Promise<number> {
+    const canonicalTitle = detection.canonicalWork || detection.residualTitle || 'Unknown Work';
     const qualifiedFederated = assets.filter(a => {
       const rs = (a.retrievalSource || '').toLowerCase();
-      const isPhysical = (a as any).atlasRowExists === true || rs === 'atlas' || rs === 'cache' || rs === 'local';
+      const isPhysical = rs === 'atlas' || rs === 'cache' || rs === 'local';
       const isQualified = (a.qualityScore || 0) >= 60 && (a.relevanceScore || 0) >= 40;
-      const hasFidelity = ((a as any).workFidelityScore ?? 100) >= 75;
-      const role = (a as any).contentRole || 'PRIMARY_WORK';
+      const hasFidelity = (a.workFidelityScore ?? a.titleFidelityScore ?? a.semanticMatch?.workFidelity ?? a.semanticMatch?.titleFidelity ?? 100) >= 75;
+      const role = a.contentRole || a.semanticMatch?.contentRole || 'PRIMARY_WORK';
       // CONTEXTUAL_USE, COMMENTARY, REACTION no deben persistirse como grabaciones exactas
       const isValidRole = role !== 'CONTEXTUAL_USE' && role !== 'COMMENTARY' && role !== 'REACTION';
-      const isPlayable = a.videoUrl && a.videoUrl.length > 5;
+      const isPlayable = !!a.videoUrl && a.videoUrl.length > 5;
       return !isPhysical && isQualified && hasFidelity && isValidRole && isPlayable;
     });
 
@@ -312,16 +312,16 @@ export class ExactWorkCoverageMemory {
 
     const rowsToInsert = qualifiedFederated.map(item => {
       const provider = item.provider || 'dailymotion';
-      const providerContentId = (item as any).providerContentId || item.id?.replace(/^[a-z]+_/, '') || item.id;
+      const providerContentId = item.providerId || item.id?.replace(/^[a-z]+_/, '') || item.id;
       const videoUrl = item.videoUrl || item.canonicalUrl;
-      const role = (item as any).contentRole || 'PRIMARY_WORK';
+      const role = item.contentRole || item.semanticMatch?.contentRole || 'PRIMARY_WORK';
 
       return {
         provider,
         provider_content_id: providerContentId,
         video_id: providerContentId,
         title: item.title,
-        description: item.description || `Federated Bronze [${role}] for "${detection.canonicalWork}"`,
+        description: item.description || `Federated Bronze [${role}] for "${canonicalTitle}"`,
         thumbnail: item.thumbnail,
         thumbnail_url: item.thumbnail,
         url: videoUrl,

@@ -166,3 +166,36 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
    - `Playable@10 = 10/10`
    - Serving Path: `FAST`
 
+---
+
+## ATLAS_MAIL_FABRIC_V1 — Transactional Email Infrastructure & First Real Registration E2E V1
+- **Fecha:** 2026-09-10
+- **Estado:** FROZEN / CERTIFIED 🧊
+- **ATLAS_MAIL_FABRIC_V1:** FROZEN
+- **ATLAS_REAL_TRANSACTIONAL_E2E_V1:** CERTIFIED
+- **INBOX_DELIVERABILITY:** NOT_CERTIFIED
+- **REPUTATION_GATE:** WATCH / PILOT_ONLY
+- **CAN_SCALE:** NO
+- **MASS_SENDING:** BLOCKED
+- **ARTIFICIAL_CANARIES:** STOPPED
+
+### Critical File Hashes (SHA-256):
+- `src/lib/atlasMailFabric/AtlasMailTransactionalEventBridge.ts`: `4e7533c5d6bc53475e541c9049e6107ae2784a9bf127fd8a57cf3d04d1d0cbd1`
+- `src/lib/atlasMailFabric/ServerSideRegistrationEmitter.ts`: `e2ca512afc82ac568cc2477cabe0946d8138ed7d4d02e06a0af22b08b549fce0`
+- `src/lib/atlasMailFabric/LegitimateSourceEventGuard.ts`: `441ab4ee45ca8899c22e1cbe73fbe04ab307237e38542589ad66fe028efdb787`
+- `src/lib/atlasMailFabric/AtlasRFC822Builder.ts`: `d8abc8b3cf33b4aaf6f4ec5023175590f545691af7163991ebb03d31e9ab02f0`
+- `src/lib/atlasMailFabric/AtlasMailReputationGuard.ts`: `5d33ce5706d039016704b78c011c60c16ea24e1f0dd13765dd750db9dcf2fe00`
+- `src/lib/atlasMailFabric/AtlasMailVolumeGovernor.ts`: `567c3eb853d1fa4898587c38a161fb477c7726caaa0b5ae2c6e0d7e882ce010a`
+- `src/lib/atlasMailFabric/AtlasMailSignalProviders.ts`: `6156ca37745686294ee9dbbb077d03d346a7e85ee99cbb24fca0b27cca710952`
+- `src/lib/atlasMailFabric/LiveSMTPTransport.ts`: `d1e1800f8ec9e793e76fa236c6e5b51e444c5aaa6993bebbf3c811e65c351843`
+- `supabase/migrations/20260909077000_atlas_mail_control_plane_v1.sql`: `e3f96b469b502c690403da75cb9561cd75cc42ffa426c11789a212cac69e7400`
+- `supabase/migrations/20260909080000_atlas_mail_fabric_v1.sql`: `8d04a837f821529fd8280f1262e82b431ba2aa91ee603fe94e21365f95cf7e11`
+- `supabase/migrations/20260909081000_atlas_reputation_guard_v1.sql`: `aa19eb6d8384ffd3b3e8acdfa9165a46a844855b7c33a56c5c32309263db51f1`
+- `walkthrough.md`: `fda76e4b68579b991c567465f4b10e32a802113e8768f322cd23ee02d64b3b33`
+
+### Regla Operativa Maestra:
+- Cero tráfico artificial para calentar reputación.
+- 0 eventos legítimos $\rightarrow$ 0 emails.
+- Techo operativo inicial: 5 eventos legítimos / día.
+
+

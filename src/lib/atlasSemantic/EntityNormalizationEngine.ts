@@ -90,6 +90,33 @@ export class EntityNormalizationEngine {
   }
 
   /**
+   * Set of shared platform and social media domains that must NEVER be used as a company's strong identity domain.
+   */
+  public static readonly SHARED_PLATFORM_DOMAINS: Set<string> = new Set([
+    'youtube.com',
+    'youtu.be',
+    'instagram.com',
+    'facebook.com',
+    'fb.com',
+    'tiktok.com',
+    'twitter.com',
+    'x.com',
+    'linkedin.com',
+    'vimeo.com',
+    'twitch.tv',
+    'linktr.ee'
+  ]);
+
+  /**
+   * Checks if a domain is a shared public platform / hosting domain.
+   */
+  public static isSharedPlatformDomain(domain: string | undefined): boolean {
+    if (!domain) return false;
+    const clean = domain.trim().toLowerCase().replace(/^www\d?\./i, '');
+    return this.SHARED_PLATFORM_DOMAINS.has(clean);
+  }
+
+  /**
    * Normalizes email to lowercase trimmed string, then produces canonical SHA-256 hash.
    * Prohibits plaintext storage.
    */

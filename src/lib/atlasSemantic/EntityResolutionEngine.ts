@@ -125,7 +125,9 @@ export class EntityResolutionEngine {
     // B. Verified Domain (for COMPANY / ORGANIZATION)
     if (candidate.entity_type === 'COMPANY' || candidate.entity_type === 'ORGANIZATION') {
       if (candDomain && targetDomain) {
-        if (candDomain === targetDomain) {
+        if (EntityNormalizationEngine.isSharedPlatformDomain(candDomain) || EntityNormalizationEngine.isSharedPlatformDomain(targetDomain)) {
+          // Shared platform domains (e.g. youtube.com, instagram.com) are NEVER strong company identity domains
+        } else if (candDomain === targetDomain) {
           strongIdentityMatched = true;
           signals.push({
             signal_name: 'VERIFIED_DOMAIN_EXACT',

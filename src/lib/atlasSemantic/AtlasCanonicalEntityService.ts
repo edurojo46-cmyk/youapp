@@ -62,7 +62,8 @@ export class AtlasCanonicalEntityService {
 
     const autoCreate = options?.auto_create_if_no_match !== false;
     const normName = EntityNormalizationEngine.normalizeName(candidate.raw_name, candidate.entity_type);
-    const normDomain = EntityNormalizationEngine.normalizeDomain(candidate.domain);
+    const rawNormDomain = EntityNormalizationEngine.normalizeDomain(candidate.domain);
+    const normDomain = EntityNormalizationEngine.isSharedPlatformDomain(rawNormDomain) ? undefined : rawNormDomain;
 
     // 1. Query potential candidate matches from DB
     let query = this.supabase

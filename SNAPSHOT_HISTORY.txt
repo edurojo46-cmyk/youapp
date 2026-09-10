@@ -221,5 +221,58 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
   - `RECEIVER`: `MICROSOFT / OUTLOOK`
   - `ZERO_PII`: `PASS`
 
+---
 
+## ATLAS_CANONICAL_ENTITIES_V1 — Canonical Identity Resolution & Provenance Ledger V1
+- **Fecha:** 2026-09-10
+- **Commit:** `653726ec3c6f892193bce1612166b53a3ed3e602`
+- **Estado:** BASE FROZEN 🧊
+- **ATLAS_CANONICAL_ENTITIES_V1:** CERTIFIED
+- **AUTHENTICATED_CROSS_TENANT_LEAKS:** 0
+- **TESTS:** 69/69 PASS
 
+### Original V1 File Hashes (SHA-256):
+- `src/lib/atlasSemantic/EntityNormalizationEngine.ts`: `260bc2ac7617f9a21460cdea8ff323094a61e90a0417091b6805793303455dec`
+- `src/lib/atlasSemantic/EntityResolutionEngine.ts`: `49142bba376370ce43e44de81d3b0d0165e3dc6e561a9b8d31e3e27b990f1ccf`
+- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `bedc9e716d12d12a76b4e453d924c9183c65c78d70353636faed68f270d40990`
+- `src/lib/atlasSemantic/types.ts`: `293f46019b05493fe74e4930d5762ca805836211e25e3e36228d0e1fba96dd65`
+- `supabase/migrations/20260910160000_atlas_canonical_entities_v1.sql`: `106f49fa533fc7fe94d492c493e800af564fad0db25d7a376789145c52b5fecb`
+- `supabase/migrations/20260910161000_atlas_canonical_entities_rls_closure.sql`: `a5a7121b40857c05ea7f6f3fdf5442410a1943dfb98244eab4f5f092c3aad01d`
+
+---
+
+## ATLAS_SEMANTIC_FACTS_AND_RELATIONSHIPS_V1 — Semantic Facts, Relationships & Inference Engine V1
+- **Fecha:** 2026-09-10
+- **Commit:** `fd4ae52`
+- **Estado:** CERTIFIED / FROZEN 🧊
+- **LEVEL_3_RELATIONAL_INTELLIGENCE:** ACHIEVED
+- **TESTS:** 132/132 PASS
+
+### File Hashes (SHA-256):
+- `src/lib/atlasSemantic/AtlasSemanticFactService.ts`: `5ea9834160a08e1ec2768560ff02131922e33f38e68cf96cbdfba1207e492ca4`
+- `src/lib/atlasSemantic/AtlasSemanticRelationshipService.ts`: `5ee5a2a229c17f16ef062776c5b5f8ea559a43a6d95c735d4665c829e0788ee5`
+- `src/lib/atlasSemantic/SemanticRuleInferenceEngine.ts`: `295a62f8b5a0ca97ef5cb92d2bc7a3f4cf2fa1d528cb615ba164c679a7fe92b3`
+- `supabase/migrations/20260910170000_atlas_semantic_facts_and_relationships_v1.sql`: `4132af0a025d08b3e99c03affdf7de9dbe06b6c83683e6ee1e0911012fe0f52a`
+
+---
+
+## ATLAS_CANONICAL_ENTITIES_V1_0_1 — Shared Platform Identity Guard Hotfix
+- **Fecha:** 2026-09-10
+- **Hotfix Tag:** `V1.0.1_SHARED_PLATFORM_IDENTITY_GUARD`
+- **Estado:** FINAL FROZEN CERTIFIED 🧊
+- **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
+- **TESTS:** 193/193 PASS (Full regression across all canonical, semantic, and identity closure suites)
+
+### Reglas del Hotfix:
+1. **SHARED_PLATFORM_DOMAINS:** `youtube.com`, `youtu.be`, `instagram.com`, `facebook.com`, `fb.com`, `tiktok.com`, `twitter.com`, `x.com`, `linkedin.com`, `vimeo.com`, `twitch.tv`, `linktr.ee`.
+2. **SHARED_PLATFORM_DOMAIN** $\Rightarrow$ `NEVER VERIFIED_DOMAIN_EXACT` $\Rightarrow$ `NEVER STRONG COMPANY IDENTITY` $\Rightarrow$ `NEVER primary_domain`.
+3. **Provider-scoped channel IDs:** Usar namespace explícito (`youtube_channel:<id>`, etc.).
+
+### Hotfix V1.0.1 Hash Baseline (SHA-256):
+- `src/lib/atlasSemantic/EntityNormalizationEngine.ts`: `7c44f9e4155813a00e0a70da023990f9a49560f1f26d845d339f46c133e79223`
+- `src/lib/atlasSemantic/EntityResolutionEngine.ts`: `11ae3ec49cad647209d46484baab9b25b024099c4798aff2745c00d39e0ec9ab`
+- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `7d8b91226eca19f0b1d7470c22c474dcee266bb73369fa9f9cdd6a3b7fc9838b`
+- `src/lib/atlasSemantic/types.ts`: `293f46019b05493fe74e4930d5762ca805836211e25e3e36228d0e1fba96dd65`
+- `supabase/migrations/20260910160000_atlas_canonical_entities_v1.sql`: `106f49fa533fc7fe94d492c493e800af564fad0db25d7a376789145c52b5fecb`
+- `supabase/migrations/20260910161000_atlas_canonical_entities_rls_closure.sql`: `a5a7121b40857c05ea7f6f3fdf5442410a1943dfb98244eab4f5f092c3aad01d`
+- `supabase/migrations/20260910170000_atlas_semantic_facts_and_relationships_v1.sql`: `4132af0a025d08b3e99c03affdf7de9dbe06b6c83683e6ee1e0911012fe0f52a`

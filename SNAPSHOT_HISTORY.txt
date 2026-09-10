@@ -197,5 +197,29 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
 - Cero tráfico artificial para calentar reputación.
 - 0 eventos legítimos $\rightarrow$ 0 emails.
 - Techo operativo inicial: 5 eventos legítimos / día.
+- Hard reputation cap: 25 / día.
+
+### Atlas Real-World Validation Tracker (Natural Organic Traffic Only):
+- **ATLAS_REAL_WORLD_VALIDATION_TARGET:** 50
+- **ATLAS_REAL_WORLD_VALIDATION_COMPLETED:** 1
+- **ATLAS_REAL_WORLD_VALIDATION_REMAINING:** 49
+- **CONDICIONES:** Eventos orgánicos reales de YouApp (registro verdadero, reset de contraseña, verificación, notificación solicitada). Prohibidos fixtures, mocks, self-sends, warmup y canaries artificiales.
+
+#### Registro de Validaciones Reales:
+* **TEST #1 / 50:**
+  - `EVENT_TYPE`: `REGISTRATION_CONFIRMATION`
+  - `REAL_SOURCE`: `PASS` (Supabase Auth SignUp auténtico)
+  - `BRIDGE`: `PASS` (`AtlasMailTransactionalEventBridge`)
+  - `IDEMPOTENCY`: `PASS` (`DurableSpoolQueue` atomic claim)
+  - `GUARDS`: `PASS` (`LegitimateSourceEventGuard` + `AtlasMailReputationGuard`)
+  - `PHYSICAL_ACCEPTED`: `PASS` (Microsoft MX `hotmail-com.olc.protection.outlook.com` $\rightarrow$ `250 2.6.0 Queued mail for delivery`)
+  - `SPF`: `PASS`
+  - `DKIM`: `PASS`
+  - `DMARC`: `PASS`
+  - `COMPAUTH`: `PASS`
+  - `PLACEMENT`: `JUNK` (SCL: 5, BCL: 0)
+  - `RECEIVER`: `MICROSOFT / OUTLOOK`
+  - `ZERO_PII`: `PASS`
+
 
 

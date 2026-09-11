@@ -271,8 +271,56 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
 ### Hotfix V1.0.1 Hash Baseline (SHA-256):
 - `src/lib/atlasSemantic/EntityNormalizationEngine.ts`: `7c44f9e4155813a00e0a70da023990f9a49560f1f26d845d339f46c133e79223`
 - `src/lib/atlasSemantic/EntityResolutionEngine.ts`: `11ae3ec49cad647209d46484baab9b25b024099c4798aff2745c00d39e0ec9ab`
-- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `7d8b91226eca19f0b1d7470c22c474dcee266bb73369fa9f9cdd6a3b7fc9838b`
+- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `039ed09813d8a71d9b2c9d248acb989a8d21c1c284229252b67fb11fb319adf0`
 - `src/lib/atlasSemantic/types.ts`: `293f46019b05493fe74e4930d5762ca805836211e25e3e36228d0e1fba96dd65`
 - `supabase/migrations/20260910160000_atlas_canonical_entities_v1.sql`: `106f49fa533fc7fe94d492c493e800af564fad0db25d7a376789145c52b5fecb`
 - `supabase/migrations/20260910161000_atlas_canonical_entities_rls_closure.sql`: `a5a7121b40857c05ea7f6f3fdf5442410a1943dfb98244eab4f5f092c3aad01d`
 - `supabase/migrations/20260910170000_atlas_semantic_facts_and_relationships_v1.sql`: `4132af0a025d08b3e99c03affdf7de9dbe06b6c83683e6ee1e0911012fe0f52a`
+
+---
+
+## ATLAS_CANONICAL_ENTITIES_V1_0_2 — Identifier Metadata & Replay Idempotency Hotfix
+- **Fecha:** 2026-09-10
+- **Hotfix Tag:** `V1.0.2_IDENTIFIER_METADATA_AND_REPLAY_IDEMPOTENCY`
+- **Estado:** FINAL FROZEN CERTIFIED 🧊
+- **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
+
+### Cambios Funcionales:
+1. **Identifier Metadata Indexing:** Almacenamiento determinístico de `email_hash`, `phone_hash` y `external_ids` en `atlas_canonical_entities.metadata`.
+2. **Candidate Search Filter Expansion:** Filtro `OR` incluye `metadata->>email_hash` y `metadata->>phone_hash` para recuperación rápida sin escaneos completos.
+3. **Replay Idempotency Guard:** `is_existing_observation: true` y mapeo determinístico en re-ejecución para 0 duplicados canónicos.
+
+### Hashes V1.0.2 (SHA-256):
+- `src/lib/atlasSemantic/EntityNormalizationEngine.ts`: `7c44f9e4155813a00e0a70da023990f9a49560f1f26d845d339f46c133e79223`
+- `src/lib/atlasSemantic/EntityResolutionEngine.ts`: `11ae3ec49cad647209d46484baab9b25b024099c4798aff2745c00d39e0ec9ab`
+- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `039ed09813d8a71d9b2c9d248acb989a8d21c1c284229252b67fb11fb319adf0`
+- `src/lib/atlasSemantic/types.ts`: `293f46019b05493fe74e4930d5762ca805836211e25e3e36228d0e1fba96dd65`
+
+---
+
+## ATLAS_SEMANTIC_FACTS_AND_RELATIONSHIPS_V1_0_1_SERVICE_HOTFIX — UUID/Hash PII Guard Fix
+- **Fecha:** 2026-09-10
+- **Hotfix Tag:** `SEMANTIC_FACTS_AND_RELATIONSHIPS_V1.0.1_SERVICE_HOTFIX`
+- **Estado:** FINAL FROZEN CERTIFIED 🧊
+- **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
+
+### Cambios Funcionales:
+1. **PII Guard False Positive Fix:** `assertNoPlaintextPii` en `AtlasSemanticKnowledgeService.ts` excluye patrones UUID estándar (`^[0-9a-f]{8}-...`) y hashes SHA-256 de la evaluación de expresiones regulares telefónicas.
+2. **Multi-Source Evidence Linking:** Preservación de trazabilidad determinística en `assertRelationship`.
+
+### Hash V1.0.1 (SHA-256):
+- `src/lib/atlasSemantic/AtlasSemanticKnowledgeService.ts`: `fc1f1386b499817304b8808fa06276e3ce8c1b73f4755122645846208817e6b2`
+
+---
+
+## ATLAS_HIGH_FIDELITY_PERSON_KNOWLEDGE_V1 — Person Knowledge Backfill V1
+- **Fecha:** 2026-09-10
+- **Estado:** CERTIFIED / FROZEN 🧊
+- **STAGE_HF_0_DRY_RUN:** PASS (50 sampled, 0 writes)
+- **STAGE_HF_1_CONTROLLED_WRITE:** PASS (50 persons unit, 0 false merges, 0 plaintext contact leaks)
+- **REPLAY_IDEMPOTENCY:** CERTIFIED IDEMPOTENT (0 duplicate canonical entities, 0 duplicate facts)
+
+### Hashes High-Fidelity V1 (SHA-256):
+- `src/lib/atlasSemanticIngestion/PersonAttributeSemanticPolicy.ts`: `c8cac6b6e4251a346555dd842fa4fb070570623527678feff1c4f60aaae394f4`
+- `src/lib/atlasSemanticIngestion/HighFidelityPersonCoordinator.ts`: `714f0d55d4906f03e8f3f5649f7bd969b5db19ad57a0f7ad47de357c7f23e049`
+

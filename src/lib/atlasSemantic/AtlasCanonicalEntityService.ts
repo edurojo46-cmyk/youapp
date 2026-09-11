@@ -53,10 +53,11 @@ export class AtlasCanonicalEntityService {
 
     if (existingObs && existingObs.canonical_entity_id) {
       return {
-        decision: existingObs.resolution_decision,
+        decision: existingObs.resolution_decision === 'NO_MATCH' ? 'AUTO_MATCH' : existingObs.resolution_decision,
         canonical_entity_id: existingObs.canonical_entity_id,
         explanation: existingObs.resolution_explanation as ResolutionExplanation,
-        observation_id: existingObs.observation_id
+        observation_id: existingObs.observation_id,
+        is_existing_observation: true
       };
     }
 
@@ -77,6 +78,8 @@ export class AtlasCanonicalEntityService {
     const orFilters: string[] = [];
     if (normName) orFilters.push(`normalized_name.eq."${normName.replace(/"/g, '')}"`);
     if (normDomain) orFilters.push(`primary_domain.eq."${normDomain.replace(/"/g, '')}"`);
+    if (candidate.email_hash) orFilters.push(`metadata->>email_hash.eq."${candidate.email_hash}"`);
+    if (candidate.phone_hash) orFilters.push(`metadata->>phone_hash.eq."${candidate.phone_hash}"`);
 
     if (orFilters.length > 0) {
       query = query.or(orFilters.join(','));
@@ -140,6 +143,14 @@ export class AtlasCanonicalEntityService {
       }
     } else if (bestExplanation.decision === 'NO_MATCH' && autoCreate) {
       // Create new Canonical Entity
+      const entityMetadata: Record<string, any> = {
+        first_source: candidate.source_name,
+        first_observed_at: candidate.observed_at || new Date().toISOString()
+      };
+      if (candidate.email_hash) entityMetadata.email_hash = candidate.email_hash;
+      if (candidate.phone_hash) entityMetadata.phone_hash = candidate.phone_hash;
+      if (candidate.external_ids) entityMetadata.external_ids = candidate.external_ids;
+
       const { data: newEntity, error: createErr } = await this.supabase
         .from('atlas_canonical_entities')
         .insert({
@@ -149,10 +160,7 @@ export class AtlasCanonicalEntityService {
           normalized_name: normName,
           primary_domain: normDomain || null,
           status: 'ACTIVE',
-          metadata: {
-            first_source: candidate.source_name,
-            first_observed_at: candidate.observed_at || new Date().toISOString()
-          }
+          metadata: entityMetadata
         })
         .select()
         .single();

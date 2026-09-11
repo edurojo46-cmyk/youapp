@@ -868,10 +868,11 @@ export class AtlasSemanticKnowledgeService {
       if (val === null || val === undefined) return;
 
       if (typeof val === 'string') {
+        const isUuidOrHash = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val) || /^[0-9a-f]{64}$/i.test(val);
         if (emailRegex.test(val)) {
           throw new Error(`PII_VIOLATION_DETECTED: Plaintext email detected in ${path}.`);
         }
-        if (phoneRegex.test(val)) {
+        if (!isUuidOrHash && phoneRegex.test(val)) {
           throw new Error(`PII_VIOLATION_DETECTED: Plaintext phone number detected in ${path}.`);
         }
       } else if (typeof val === 'object') {

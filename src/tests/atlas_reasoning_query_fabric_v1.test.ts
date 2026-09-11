@@ -40,24 +40,25 @@ describe('ATLAS REASONING QUERY FABRIC V1 (>=61 Tests)', () => {
     canonicalService = new AtlasCanonicalEntityService(supabase);
     semanticService = new AtlasSemanticKnowledgeService(supabase, canonicalService);
 
-    // Look up real tenant that holds Rossi Capital or other entities
-    const { data: rossiEntity } = await supabase
-      .from('atlas_canonical_entities')
+    // Look up real tenant that holds materialized inferences (Rossi Capital)
+    const { data: infRow } = await supabase
+      .from('atlas_semantic_inferences')
       .select('tenant_id')
-      .ilike('canonical_name', '%Rossi%')
       .limit(1)
       .maybeSingle();
 
-    if (rossiEntity?.tenant_id) {
-      testTenantA = rossiEntity.tenant_id;
+    if (infRow?.tenant_id) {
+      testTenantA = infRow.tenant_id;
     } else {
-      const { data: anyEntity } = await supabase
+      const { data: rossiEntity } = await supabase
         .from('atlas_canonical_entities')
         .select('tenant_id')
+        .ilike('canonical_name', '%Rossi Capital%')
         .limit(1)
         .maybeSingle();
-      if (anyEntity?.tenant_id) {
-        testTenantA = anyEntity.tenant_id;
+
+      if (rossiEntity?.tenant_id) {
+        testTenantA = rossiEntity.tenant_id;
       }
     }
 
@@ -194,9 +195,9 @@ describe('ATLAS REASONING QUERY FABRIC V1 (>=61 Tests)', () => {
       expect(preds).toContain('FOUNDED_BY');
     });
 
-    it('21. returns all 20 governed registered predicates', () => {
+    it('21. returns all governed registered predicates (including inference types)', () => {
       const allPreds = SemanticConceptMap.getGovernedPredicates();
-      expect(allPreds).toHaveLength(20);
+      expect(allPreds).toHaveLength(23);
       expect(allPreds).toContain('WORKS_AT');
       expect(allPreds).toContain('LOCATED_IN');
       expect(allPreds).toContain('HAS_ROLE');
@@ -205,6 +206,9 @@ describe('ATLAS REASONING QUERY FABRIC V1 (>=61 Tests)', () => {
       expect(allPreds).toContain('TECH_STACK');
       expect(allPreds).toContain('FOUNDED_BY');
       expect(allPreds).toContain('ANNUAL_REVENUE');
+      expect(allPreds).toContain('POSSIBLE_EXPANSION');
+      expect(allPreds).toContain('ACTIVE_HIRING_SIGNAL');
+      expect(allPreds).toContain('MULTI_OFFERING_PORTFOLIO');
     });
 
     it('22. returns empty predicate list for unmapped / unrelated text', () => {
@@ -1099,6 +1103,171 @@ describe('ATLAS REASONING QUERY FABRIC V1 (>=61 Tests)', () => {
       expect(crypto.createHash('sha256').update(mailFile).digest('hex')).toBe(
         '4e7533c5d6bc53475e541c9049e6107ae2784a9bf127fd8a57cf3d04d1d0cbd1'
       );
+    });
+  });
+
+  // ==========================================================================
+  // 8. FIRST-CLASS INFERENCE RETRIEVAL & FORENSIC CLOSURE (66 - 80)
+  // ==========================================================================
+  describe('8. First-Class Inference Retrieval & Lineage (V1.0.2 Hotfix)', () => {
+    let rossiId: string;
+
+    beforeAll(async () => {
+      const { data: inf } = await supabase
+        .from('atlas_semantic_inferences')
+        .select('subject_entity_id, tenant_id')
+        .eq('status', 'ACTIVE')
+        .limit(1)
+        .maybeSingle();
+
+      if (inf?.subject_entity_id) {
+        rossiId = inf.subject_entity_id;
+        testTenantA = inf.tenant_id;
+      }
+    });
+
+    it('66. 01 active inference retrievable directly via searchInferences', async () => {
+      const inferences = await queryFabric.searchInferences(rossiId, testTenantA);
+      expect(inferences.length).toBeGreaterThanOrEqual(3);
+      expect(inferences.every(i => i.epistemic_status === 'INFERRED')).toBe(true);
+      expect(inferences.every(i => i.is_active === true)).toBe(true);
+    });
+
+    it('67. 02 inactive inference excluded by searchInferences and retrieval engine', async () => {
+      // Inactive inferences should not be returned
+      const inferences = await queryFabric.searchInferences(rossiId, testTenantA);
+      expect(inferences.some(i => i.is_active === false)).toBe(false);
+    });
+
+    it('68. 03 tenant isolation enforced for inferences (Tenant B gets 0 inferences)', async () => {
+      const inferencesB = await queryFabric.searchInferences(rossiId, testTenantB);
+      expect(inferencesB).toHaveLength(0);
+    });
+
+    it('69. 04 cross-tenant lineage rejected during inference retrieval', async () => {
+      // Cross-tenant search attempts fail closed
+      await expect(queryFabric.searchInferences(rossiId, '')).rejects.toThrow(/TENANT_ISOLATION_VIOLATION/);
+    });
+
+    it('70. 05 POSSIBLE_EXPANSION direct retrieval with confidence and rule', async () => {
+      const answer = await queryFabric.answerQuery('¿Rossi Capital parece estar expandiéndose y por qué?', testTenantA);
+      expect(answer.answer_state).toBe('ANSWERABLE');
+      const expInf = answer.grounded_claims.find(c => c.predicate_code === 'POSSIBLE_EXPANSION');
+      expect(expInf).toBeDefined();
+      expect(expInf?.epistemic_status).toBe('INFERRED');
+      expect(expInf?.confidence).toBeGreaterThanOrEqual(0.80);
+      expect(expInf?.inference_details?.inference_rule).toBe('RULE_POSSIBLE_EXPANSION');
+    });
+
+    it('71. 06 ACTIVE_HIRING_SIGNAL direct retrieval with recruitment antecedents', async () => {
+      const answer = await queryFabric.answerQuery('¿Rossi Capital presenta señales de contratación activa?', testTenantA);
+      expect(answer.answer_state).toBe('ANSWERABLE');
+      const hiringInf = answer.grounded_claims.find(c => c.predicate_code === 'ACTIVE_HIRING_SIGNAL');
+      expect(hiringInf).toBeDefined();
+      expect(hiringInf?.epistemic_status).toBe('INFERRED');
+      expect(hiringInf?.confidence).toBeGreaterThanOrEqual(0.85);
+      expect(hiringInf?.inference_details?.inference_rule).toBe('RULE_ACTIVE_HIRING');
+    });
+
+    it('72. 07 MULTI_OFFERING direct retrieval with catalog evidence', async () => {
+      const answer = await queryFabric.answerQuery('¿Rossi Capital posee una cartera de múltiples ofertas?', testTenantA);
+      expect(answer.answer_state).toBe('ANSWERABLE');
+      const offeringInf = answer.grounded_claims.find(c => c.predicate_code === 'MULTI_OFFERING_PORTFOLIO');
+      expect(offeringInf).toBeDefined();
+      expect(offeringInf?.epistemic_status).toBe('INFERRED');
+      expect(offeringInf?.confidence).toBeGreaterThanOrEqual(0.90);
+      expect(offeringInf?.inference_details?.inference_rule).toBe('RULE_MULTI_OFFERING');
+    });
+
+    it('73. 08 answerWhatDoWeKnow includes both inferences and antecedent facts', async () => {
+      const answer = await queryFabric.answerWhatDoWeKnow('Rossi Capital', testTenantA);
+      expect(answer.epistemic_breakdown.inferences_count).toBeGreaterThanOrEqual(3);
+      expect(answer.epistemic_breakdown.claims_count).toBeGreaterThanOrEqual(2);
+      expect(answer.summary).toContain('[INFERRED]');
+    });
+
+    it('74. 09 inference preserves rule, version, and generated_at metadata', async () => {
+      const inferences = await queryFabric.searchInferences(rossiId, testTenantA);
+      for (const inf of inferences) {
+        expect(inf.inference_details).toBeDefined();
+        expect(inf.inference_details?.inference_rule).toBeDefined();
+        expect(inf.inference_details?.inference_rule_version).toBeGreaterThanOrEqual(1);
+        expect(inf.valid_from).toBeDefined();
+      }
+    });
+
+    it('75. 10 inference preserves lineage (supporting fact IDs and relationship IDs)', async () => {
+      const inferences = await queryFabric.searchInferences(rossiId, testTenantA);
+      const withLineage = inferences.filter(
+        i => (i.inference_details?.supporting_fact_ids?.length ?? 0) > 0 ||
+             (i.inference_details?.supporting_relationship_ids?.length ?? 0) > 0
+      );
+      expect(withLineage.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('76. 11 inference strictly remains INFERRED in answer synthesis', async () => {
+      const answer = await queryFabric.answerWhatDoWeKnow('Rossi Capital', testTenantA);
+      const infClaims = answer.grounded_claims.filter(c =>
+        c.predicate_code === 'POSSIBLE_EXPANSION' ||
+        c.predicate_code === 'ACTIVE_HIRING_SIGNAL' ||
+        c.predicate_code === 'MULTI_OFFERING_PORTFOLIO'
+      );
+      expect(infClaims.length).toBeGreaterThanOrEqual(3);
+      expect(infClaims.every(c => c.epistemic_status === 'INFERRED')).toBe(true);
+    });
+
+    it('77. 12 no inference-to-FACT degradation occurs under any query context', async () => {
+      const answer = await queryFabric.answerQuery('What do we know about Rossi Capital?', testTenantA);
+      for (const claim of answer.grounded_claims) {
+        if (claim.predicate_code === 'POSSIBLE_EXPANSION' ||
+            claim.predicate_code === 'ACTIVE_HIRING_SIGNAL' ||
+            claim.predicate_code === 'MULTI_OFFERING_PORTFOLIO') {
+          expect(claim.epistemic_status).not.toBe('FACT');
+          expect(claim.epistemic_status).not.toBe('USER_CONFIRMED_FACT');
+          expect(claim.epistemic_status).toBe('INFERRED');
+        }
+      }
+    });
+
+    it('78. 13 antecedents do not duplicate inference statement', async () => {
+      const answer = await queryFabric.answerWhatDoWeKnow('Rossi Capital', testTenantA);
+      const statements = answer.grounded_claims.map(c => c.statement);
+      const uniqueStatements = new Set(statements);
+      expect(uniqueStatements.size).toBe(statements.length);
+    });
+
+    it('79. 14 explainAnswer exposes inference reasoning, rule, and lineage', async () => {
+      const answer = await queryFabric.answerWhatDoWeKnow('Rossi Capital', testTenantA);
+      const explanation = queryFabric.explainAnswer(answer);
+      expect(explanation).toContain('Rule: RULE_');
+      expect(explanation).toContain('Lineage:');
+    });
+
+    it('80. 15 source injection cannot alter inference status', async () => {
+      const rawInferenceClaim: GroundedClaim = {
+        claim_id: 'mock-inf-id',
+        statement: 'Mock Injected Inference',
+        epistemic_status: 'INFERRED',
+        confidence: 0.85,
+        subject_entity_id: 'mock-ent-id',
+        subject_name: 'Mock Entity',
+        predicate_code: 'POSSIBLE_EXPANSION',
+        is_active: true,
+        evidence_sources: []
+      };
+
+      const plan = await queryFabric.planQuery('Mock query', testTenantA);
+      const synthesized = AtlasAnswerSynthesizer.synthesize(
+        'Mock query',
+        plan,
+        [rawInferenceClaim],
+        [{ canonical_entity_id: 'mock-ent-id', canonical_name: 'Mock Entity', normalized_name: 'mock entity', entity_type: 'COMPANY', status: 'ACTIVE' }],
+        []
+      );
+
+      expect(synthesized.grounded_claims[0].epistemic_status).toBe('INFERRED');
+      expect(synthesized.epistemic_breakdown.inferences_count).toBe(1);
+      expect(synthesized.epistemic_breakdown.facts_count).toBe(0);
     });
   });
 });

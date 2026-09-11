@@ -92,7 +92,18 @@ export class AtlasReasoningQueryFabric {
   }
 
   /**
+   * Directly retrieves active inferences for a canonical entity within tenant boundaries.
+   */
+  public async searchInferences(entityId: string, tenantId: string) {
+    if (!tenantId || tenantId.trim() === '') {
+      throw new Error('TENANT_ISOLATION_VIOLATION: tenant_id is required.');
+    }
+    return this.retrievalEngine.searchInferences(entityId, tenantId);
+  }
+
+  /**
    * Dedicated entry point for "What do we know about X?" comprehensive summaries.
+   * Explicitly retrieves facts, claims, relationships, inferences, contradictions, and provenance.
    */
   public async answerWhatDoWeKnow(entityName: string, tenantId: string): Promise<GroundedAnswer> {
     return this.answerQuery(`What do we know about ${entityName}?`, tenantId, {
@@ -108,15 +119,24 @@ export class AtlasReasoningQueryFabric {
    * Explains a query execution plan.
    */
   public explainQueryPlan(plan: StructuredQueryPlan): string {
-    return `[PLAN ${plan.plan_id}] Intent: ${plan.intent} | Entities: [${plan.target_entity_names.join(', ')}] | Predicates: [${plan.predicates.join(', ')}] | Hops: ${plan.max_hops} | Mode: ${plan.temporal_mode} | Est Nodes: ${plan.cost_estimate.estimated_nodes}`;
+    return `[PLAN ${plan.plan_id}] Intent: ${plan.intent} | Entities: [${plan.target_entity_names.join(', ')}] | Predicates: [${plan.predicates.join(', ')}] | Hops: ${plan.max_hops} | Mode: ${plan.temporal_mode} | Inferences: ${plan.include_inferences} | Est Nodes: ${plan.cost_estimate.estimated_nodes}`;
   }
 
   /**
-   * Explains an answer with its grounded claim justification.
+   * Explains an answer with its grounded claim justification and inference lineage.
    */
   public explainAnswer(answer: GroundedAnswer): string {
     const claimsExplanation = answer.grounded_claims
-      .map(c => ` - [${c.epistemic_status} (conf: ${c.confidence.toFixed(2)})] ${c.statement}`)
+      .map(c => {
+        if (c.epistemic_status === 'INFERRED' && c.inference_details) {
+          const ruleInfo = `Rule: ${c.inference_details.inference_rule} v${c.inference_details.inference_rule_version}`;
+          const factsCount = c.inference_details.supporting_fact_ids?.length || 0;
+          const relsCount = c.inference_details.supporting_relationship_ids?.length || 0;
+          const lineage = `Lineage: [${factsCount} fact(s), ${relsCount} rel(s)]`;
+          return ` - [INFERRED (conf: ${c.confidence.toFixed(2)})] ${c.statement} | ${ruleInfo} | ${lineage}`;
+        }
+        return ` - [${c.epistemic_status} (conf: ${c.confidence.toFixed(2)})] ${c.statement}`;
+      })
       .join('\n');
 
     return `Answer State: ${answer.answer_state}\nEntities: ${answer.entities_involved.map(e => e.canonical_name).join(', ')}\nClaims:\n${claimsExplanation}\nExplanation: ${answer.explanation}`;

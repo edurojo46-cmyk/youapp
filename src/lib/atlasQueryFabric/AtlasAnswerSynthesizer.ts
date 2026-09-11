@@ -69,6 +69,15 @@ export class AtlasAnswerSynthesizer {
     let summary = '';
     let explanation = '';
 
+    const formatClaimBullet = (c: GroundedClaim) => {
+      const prefix = `[${c.epistemic_status}]`;
+      let text = c.statement;
+      if (text.startsWith(prefix)) {
+        text = text.substring(prefix.length).trim();
+      }
+      return `• [${c.epistemic_status}] ${text}`;
+    };
+
     if (entities.length === 0 && claims.length === 0) {
       answerState = 'NO_DATA_FOUND';
       summary = `No verified entities or knowledge found in Atlas for "${query}".`;
@@ -85,12 +94,12 @@ export class AtlasAnswerSynthesizer {
       explanation = 'Canonical entity records exist, but no active facts or relationships match the requested predicates.';
     } else if (contradictedCount > 0) {
       answerState = 'CONTRADICTED';
-      const claimBullets = claims.map(c => `• [${c.epistemic_status}] ${c.statement}`).join('\n');
+      const claimBullets = claims.map(c => formatClaimBullet(c)).join('\n');
       summary = `Contradiction Notice: Atlas found competing or conflicting assertions for this query:\n${claimBullets}`;
       explanation = 'Multiple contradictory observations exist across sources and require resolution or human confirmation.';
     } else {
       answerState = 'ANSWERABLE';
-      const claimBullets = claims.map(c => `• [${c.epistemic_status}] ${c.statement}`).join('\n');
+      const claimBullets = claims.map(c => formatClaimBullet(c)).join('\n');
       summary = claimBullets;
       explanation = `Answer derived deterministically from ${claims.length} grounded claims across ${entities.length} canonical entities.`;
     }

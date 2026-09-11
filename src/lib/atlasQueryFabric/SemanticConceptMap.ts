@@ -57,9 +57,21 @@ export class SemanticConceptMap {
     },
     {
       concept: 'HIRING',
-      predicates: ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT'],
+      predicates: ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT', 'ACTIVE_HIRING_SIGNAL'],
       entity_types: ['COMPANY', 'ORGANIZATION'],
       description: 'Job openings and recruitment activity'
+    },
+    {
+      concept: 'EXPANSION',
+      predicates: ['OPENED_LOCATION', 'EXPANDED_TO', 'POSSIBLE_EXPANSION'],
+      entity_types: ['COMPANY', 'ORGANIZATION'],
+      description: 'Expansion, new offices, and market growth'
+    },
+    {
+      concept: 'PORTFOLIO_INFERENCE',
+      predicates: ['OFFERS', 'MULTI_OFFERING_PORTFOLIO'],
+      entity_types: ['COMPANY', 'ORGANIZATION'],
+      description: 'Multi-offering product and service catalog analysis'
     }
   ];
 
@@ -114,6 +126,23 @@ export class SemanticConceptMap {
     'products': ['OFFERS'],
     'servicios': ['OFFERS'],
     'services': ['OFFERS'],
+    'cartera': ['OFFERS', 'MULTI_OFFERING_PORTFOLIO'],
+    'múltiples ofertas': ['OFFERS', 'MULTI_OFFERING_PORTFOLIO'],
+    'multiples ofertas': ['OFFERS', 'MULTI_OFFERING_PORTFOLIO'],
+    'portfolio': ['OFFERS', 'MULTI_OFFERING_PORTFOLIO'],
+
+    // Inferences & Signals
+    'expand': ['OPENED_LOCATION', 'EXPANDED_TO', 'POSSIBLE_EXPANSION'],
+    'expanding': ['OPENED_LOCATION', 'EXPANDED_TO', 'POSSIBLE_EXPANSION'],
+    'expandiendo': ['OPENED_LOCATION', 'EXPANDED_TO', 'POSSIBLE_EXPANSION'],
+    'expansion': ['OPENED_LOCATION', 'EXPANDED_TO', 'POSSIBLE_EXPANSION'],
+    'expansión': ['OPENED_LOCATION', 'EXPANDED_TO', 'POSSIBLE_EXPANSION'],
+    'hiring signal': ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT', 'ACTIVE_HIRING_SIGNAL'],
+    'hiring signals': ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT', 'ACTIVE_HIRING_SIGNAL'],
+    'contratación activa': ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT', 'ACTIVE_HIRING_SIGNAL'],
+    'contratacion activa': ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT', 'ACTIVE_HIRING_SIGNAL'],
+    'señales de contratación': ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT', 'ACTIVE_HIRING_SIGNAL'],
+    'senales de contratacion': ['HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT', 'ACTIVE_HIRING_SIGNAL'],
 
     // Industry / Tech
     'industry': ['INDUSTRY'],
@@ -161,7 +190,8 @@ export class SemanticConceptMap {
       'OFFERS', 'EMPLOYS', 'INTERESTED_IN', 'HAS_NEED', 'OPENED_LOCATION',
       'EXPANDED_TO', 'ASSOCIATED_WITH', 'OWNS', 'BELONGS_TO',
       'EMPLOYEE_COUNT', 'INDUSTRY', 'ANNUAL_REVENUE', 'TECH_STACK',
-      'HAS_ROLE', 'HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT'
+      'HAS_ROLE', 'HIRING_FOR_ROLE', 'OPEN_POSITIONS_COUNT',
+      'POSSIBLE_EXPANSION', 'ACTIVE_HIRING_SIGNAL', 'MULTI_OFFERING_PORTFOLIO'
     ];
   }
 }

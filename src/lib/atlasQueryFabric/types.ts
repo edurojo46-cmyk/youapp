@@ -78,6 +78,8 @@ export interface EvidenceSourceItem {
   observed_at?: string;
 }
 
+export const QUERY_FABRIC_VERSION = 'V1.0.2_INFERENCE_RETRIEVAL_HOTFIX';
+
 export interface GroundedClaim {
   claim_id: string;
   statement: string;
@@ -97,6 +99,15 @@ export interface GroundedClaim {
   contradiction_info?: {
     is_disputed: boolean;
     conflicting_statement?: string;
+  };
+  inference_details?: {
+    inference_id: string;
+    inference_rule: string;
+    inference_rule_version: number;
+    explanation: string;
+    supporting_fact_ids?: string[];
+    supporting_relationship_ids?: string[];
+    generated_at?: string;
   };
 }
 

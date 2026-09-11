@@ -20,17 +20,37 @@ export class AtlasAnswerSynthesizer {
     provenance: ProvenanceChainItem[],
     contradictions?: any[]
   ): GroundedAnswer {
+    let userConfirmedFactsCount = 0;
     let factsCount = 0;
-    let claimsCount = 0;
     let inferencesCount = 0;
+    let claimsCount = 0;
+    let predictionsCount = 0;
+    let rawObservationsCount = 0;
     let contradictedCount = 0;
 
     const citations: EvidenceSourceItem[] = [];
 
     for (const c of claims) {
-      if (c.epistemic_status === 'FACT' || c.epistemic_status === 'USER_CONFIRMED_FACT') factsCount++;
-      else if (c.epistemic_status === 'CLAIM') claimsCount++;
-      else if (c.epistemic_status === 'INFERRED') inferencesCount++;
+      switch (c.epistemic_status) {
+        case 'USER_CONFIRMED_FACT':
+          userConfirmedFactsCount++;
+          break;
+        case 'FACT':
+          factsCount++;
+          break;
+        case 'INFERRED':
+          inferencesCount++;
+          break;
+        case 'CLAIM':
+          claimsCount++;
+          break;
+        case 'PREDICTION':
+          predictionsCount++;
+          break;
+        case 'RAW_OBSERVATION':
+          rawObservationsCount++;
+          break;
+      }
 
       if (c.contradiction_info?.is_disputed) contradictedCount++;
 
@@ -84,9 +104,12 @@ export class AtlasAnswerSynthesizer {
       entities_involved: entities,
       citations,
       epistemic_breakdown: {
+        user_confirmed_facts_count: userConfirmedFactsCount,
         facts_count: factsCount,
-        claims_count: claimsCount,
         inferences_count: inferencesCount,
+        claims_count: claimsCount,
+        predictions_count: predictionsCount,
+        raw_observations_count: rawObservationsCount,
         contradicted_count: contradictedCount
       },
       provenance_chain: provenance,

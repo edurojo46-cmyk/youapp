@@ -652,6 +652,75 @@ describe('ATLAS REASONING QUERY FABRIC V1 (>=61 Tests)', () => {
       const ranked = EvidenceRankingEngine.rankClaims([cRaw, cClaim]);
       expect(ranked[0].claim_id).toBe('cl1');
     });
+
+    it('48a. ranks USER_CONFIRMED_FACT highest in the epistemic hierarchy', () => {
+      const uFact: GroundedClaim = {
+        claim_id: 'uc1',
+        statement: 'Confirmed by Tenant Admin',
+        epistemic_status: 'USER_CONFIRMED_FACT',
+        confidence: 1.0,
+        subject_entity_id: 'e1',
+        subject_name: 'E1',
+        predicate_code: 'WORKS_AT',
+        is_active: true,
+        evidence_sources: []
+      };
+      const fact: GroundedClaim = {
+        claim_id: 'f1',
+        statement: 'System Fact',
+        epistemic_status: 'FACT',
+        confidence: 1.0,
+        subject_entity_id: 'e1',
+        subject_name: 'E1',
+        predicate_code: 'WORKS_AT',
+        is_active: true,
+        evidence_sources: []
+      };
+
+      const ranked = EvidenceRankingEngine.rankClaims([fact, uFact]);
+      expect(ranked[0].claim_id).toBe('uc1');
+    });
+
+    it('48b. ranks PREDICTION strictly below CLAIM and above RAW_OBSERVATION', () => {
+      const cClaim: GroundedClaim = {
+        claim_id: 'cl1',
+        statement: 'Claim text',
+        epistemic_status: 'CLAIM',
+        confidence: 0.80,
+        subject_entity_id: 'e1',
+        subject_name: 'E1',
+        predicate_code: 'HAS_ROLE',
+        is_active: true,
+        evidence_sources: []
+      };
+      const cPred: GroundedClaim = {
+        claim_id: 'pred1',
+        statement: 'Predicted churn 80%',
+        epistemic_status: 'PREDICTION',
+        confidence: 0.80,
+        subject_entity_id: 'e1',
+        subject_name: 'E1',
+        predicate_code: 'HAS_ROLE',
+        is_active: true,
+        evidence_sources: []
+      };
+      const cRaw: GroundedClaim = {
+        claim_id: 'raw1',
+        statement: 'Raw observation',
+        epistemic_status: 'RAW_OBSERVATION',
+        confidence: 0.80,
+        subject_entity_id: 'e1',
+        subject_name: 'E1',
+        predicate_code: 'HAS_ROLE',
+        is_active: true,
+        evidence_sources: []
+      };
+
+      const ranked = EvidenceRankingEngine.rankClaims([cRaw, cPred, cClaim]);
+      expect(ranked[0].claim_id).toBe('cl1');
+      expect(ranked[1].claim_id).toBe('pred1');
+      expect(ranked[2].claim_id).toBe('raw1');
+    });
   });
 
   // ==========================================================================
@@ -889,6 +958,67 @@ describe('ATLAS REASONING QUERY FABRIC V1 (>=61 Tests)', () => {
       const plan = StructuredQueryPlanner.plan('Who is Alice?', QueryIntentClassifier.classify('Who is Alice?'), testTenantA);
       const answer = AtlasAnswerSynthesizer.synthesize(plan.original_query, plan, [claim], [], []);
       expect(answer.summary).toMatch(/•|-/);
+    });
+
+    it('58a. explicitly discloses [USER_CONFIRMED_FACT] and preserves its origin', () => {
+      const uClaim: GroundedClaim = {
+        claim_id: 'uc100',
+        statement: 'Tenant admin verified employment',
+        epistemic_status: 'USER_CONFIRMED_FACT',
+        confidence: 1.0,
+        subject_entity_id: 'e100',
+        subject_name: 'Alice',
+        predicate_code: 'WORKS_AT',
+        is_active: true,
+        evidence_sources: []
+      };
+
+      const plan = StructuredQueryPlanner.plan('Who is Alice?', QueryIntentClassifier.classify('Who is Alice?'), testTenantA);
+      const answer = AtlasAnswerSynthesizer.synthesize(plan.original_query, plan, [uClaim], [], []);
+      expect(answer.summary).toContain('[USER_CONFIRMED_FACT]');
+      expect(answer.epistemic_breakdown.user_confirmed_facts_count).toBe(1);
+    });
+
+    it('58b. explicitly discloses [PREDICTION] and never disguises it as [FACT] or [INFERRED]', () => {
+      const predClaim: GroundedClaim = {
+        claim_id: 'pred100',
+        statement: 'Likely expansion to Mexico Q4',
+        epistemic_status: 'PREDICTION',
+        confidence: 0.65,
+        subject_entity_id: 'e100',
+        subject_name: 'Acme Corp',
+        predicate_code: 'EXPANDED_TO',
+        is_active: true,
+        evidence_sources: []
+      };
+
+      const plan = StructuredQueryPlanner.plan('Where will Acme expand?', QueryIntentClassifier.classify('Where will Acme expand?'), testTenantA);
+      const answer = AtlasAnswerSynthesizer.synthesize(plan.original_query, plan, [predClaim], [], []);
+      expect(answer.summary).toContain('[PREDICTION]');
+      expect(answer.summary).not.toContain('[FACT]');
+      expect(answer.summary).not.toContain('[INFERRED]');
+      expect(answer.epistemic_breakdown.predictions_count).toBe(1);
+    });
+
+    it('58c. populates epistemic_breakdown accurately across all 6 epistemic taxonomy types', () => {
+      const allTypesClaims: GroundedClaim[] = [
+        { claim_id: '1', statement: 's1', epistemic_status: 'USER_CONFIRMED_FACT', confidence: 1.0, subject_entity_id: 'e1', subject_name: 'E', predicate_code: 'WORKS_AT', is_active: true, evidence_sources: [] },
+        { claim_id: '2', statement: 's2', epistemic_status: 'FACT', confidence: 0.95, subject_entity_id: 'e1', subject_name: 'E', predicate_code: 'WORKS_AT', is_active: true, evidence_sources: [] },
+        { claim_id: '3', statement: 's3', epistemic_status: 'INFERRED', confidence: 0.85, subject_entity_id: 'e1', subject_name: 'E', predicate_code: 'WORKS_AT', is_active: true, evidence_sources: [] },
+        { claim_id: '4', statement: 's4', epistemic_status: 'CLAIM', confidence: 0.70, subject_entity_id: 'e1', subject_name: 'E', predicate_code: 'WORKS_AT', is_active: true, evidence_sources: [] },
+        { claim_id: '5', statement: 's5', epistemic_status: 'PREDICTION', confidence: 0.55, subject_entity_id: 'e1', subject_name: 'E', predicate_code: 'WORKS_AT', is_active: true, evidence_sources: [] },
+        { claim_id: '6', statement: 's6', epistemic_status: 'RAW_OBSERVATION', confidence: 0.40, subject_entity_id: 'e1', subject_name: 'E', predicate_code: 'WORKS_AT', is_active: true, evidence_sources: [] }
+      ];
+
+      const plan = StructuredQueryPlanner.plan('Who is E?', QueryIntentClassifier.classify('Who is E?'), testTenantA);
+      const answer = AtlasAnswerSynthesizer.synthesize(plan.original_query, plan, allTypesClaims, [], []);
+
+      expect(answer.epistemic_breakdown.user_confirmed_facts_count).toBe(1);
+      expect(answer.epistemic_breakdown.facts_count).toBe(1);
+      expect(answer.epistemic_breakdown.inferences_count).toBe(1);
+      expect(answer.epistemic_breakdown.claims_count).toBe(1);
+      expect(answer.epistemic_breakdown.predictions_count).toBe(1);
+      expect(answer.epistemic_breakdown.raw_observations_count).toBe(1);
     });
   });
 

@@ -61,6 +61,9 @@ export class EvidenceRankingEngine {
       case 'CLAIM':
         base = 0.70;
         break;
+      case 'PREDICTION':
+        base = 0.55;
+        break;
       case 'RAW_OBSERVATION':
         base = 0.40;
         break;

@@ -326,33 +326,30 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
 
 ---
 
-## ATLAS_REASONING_QUERY_FABRIC_V1 — Multi-Hop Graph Reasoning & Grounded Synthesis
+## ATLAS_REASONING_QUERY_FABRIC_V1_0_1 — Epistemic Taxonomy Complete Support Hotfix
 - **Fecha:** 2026-09-10
-- **Tag:** `ATLAS_REASONING_QUERY_FABRIC_V1_CERTIFIED`
+- **Tag:** `ATLAS_REASONING_QUERY_FABRIC_V1.0.1_HOTFIX_CERTIFIED`
 - **Estado:** FINAL FROZEN CERTIFIED 🧊
 - **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
-- **TESTS:** 65/65 PASS (Suite `atlas_reasoning_query_fabric_v1.test.ts`) / 224/224 PASS (Full Regression)
+- **TESTS:** 70/70 PASS (Suite `atlas_reasoning_query_fabric_v1.test.ts`) / SELECTED_FULL_STACK_REGRESSION = 229/229 PASS
 
-### Arquitectura & Capacidades Implementadas:
-1. **QueryIntentClassifier:** Clasificación de intents (`ENTITY_LOOKUP`, `FACT_RETRIEVAL`, `RELATIONSHIP_TRAVERSAL`, `MULTI_HOP_DISCOVERY`, `TEMPORAL_QUERY`, `CONTRADICTION_ANALYSIS`, `WHAT_DO_WE_KNOW`, `DISCOVER_BY_SIGNALS`), detección de candidatos de entidad, resolución temporal y chequeo de contradicciones.
-2. **SemanticConceptMap:** Mapeo de vocabulario natural (inglés y español) al registro de 20 predicados gobernados.
-3. **StructuredQueryPlanner:** Planificación estructurada con límite estricto `MAX_HOPS = 3`, estimación de costo y validación `TENANT_CONTEXT_REQUIRED` fail-closed.
-4. **AtlasGraphRetrievalEngine:** Recuperación de grafos multi-hop bidireccional (`subject_entity_id` y `object_entity_id`), resolución de canonical merge roots y carga de cadenas de proveniencia.
-5. **TemporalContradictionFilter:** Filtrado temporal de intervalos (`CURRENT`, `HISTORICAL`, `AS_OF`, `ALL`) y detección de contradicciones respetando cardinalidad.
-6. **EvidenceRankingEngine:** Scoring determinístico `RULE_GATED_V1` con jerarquía epistémica (`USER_CONFIRMED_FACT` > `FACT` > `INFERRED` > `CLAIM` > `RAW_OBSERVATION`), bonificación por corroboración de fuentes y penalización por disputa.
-7. **AtlasAnswerSynthesizer:** Síntesis grounded con garantía `NO_HALLUCINATION_GUARD = TRUE`, estados epistémicos explícitos (`[FACT]`, `[CLAIM]`, `[INFERRED]`), y neutralidad contra inyecciones de prompt (`SOURCE_CONTENT_IS_DATA = TRUE`).
-8. **AtlasReasoningQueryFabric:** Fachada unificada que expone `planQuery`, `executeQueryPlan`, `answerQuery`, `answerWhatDoWeKnow`, `explainQueryPlan` y `explainAnswer`.
+### Cambios Funcionales (Hotfix V1.0.1):
+1. **Full 6-Type Epistemic Taxonomy:** Soporte formal e integral para `USER_CONFIRMED_FACT`, `FACT`, `INFERRED`, `CLAIM`, `PREDICTION`, `RAW_OBSERVATION`.
+2. **Ranking Hierarchy Enforcement:** `USER_CONFIRMED_FACT` (1.00) > `FACT` (0.95) > `INFERRED` (0.85) > `CLAIM` (0.70) > `PREDICTION` (0.55) > `RAW_OBSERVATION` (0.40).
+3. **Anti-Degradation & Label Preservation:** `PREDICTION` nunca se disfraza de `FACT` o `INFERRED`. `USER_CONFIRMED_FACT` preserva su proveniencia explícita.
+4. **Epistemic Breakdown Accounting:** Conteo individual de las 6 categorías epistémicas en `GroundedAnswer.epistemic_breakdown`.
 
-### Hashes Query Fabric V1 (SHA-256):
-- `src/lib/atlasQueryFabric/types.ts`: `f9c8f44c8d0e48568385e33b85de43375526291d06e873667a3396b8d010756f`
+### Hashes Query Fabric V1.0.1 (SHA-256):
+- `src/lib/atlasQueryFabric/types.ts`: `51a44bebbc491c14875f0771fb8633aac3d784eb7087e63d365b2ca4aa22f07c`
 - `src/lib/atlasQueryFabric/SemanticConceptMap.ts`: `215bed455d84f9051c1a20b3af5e6c7dd4202e918ad29342548a394e31911cab`
 - `src/lib/atlasQueryFabric/QueryIntentClassifier.ts`: `af2857903ef4ce9353ed1f0d91b43557ed8d41a89bfde2c62b21cce2152a86f9`
 - `src/lib/atlasQueryFabric/StructuredQueryPlanner.ts`: `e6e795ea93042b68d58aeb463f717f8e5b284c827336df8a982e4d94d600121e`
 - `src/lib/atlasQueryFabric/AtlasGraphRetrievalEngine.ts`: `4c6ca5e2386ee7c38fd06e083734d558f7ae40d2773263549c118bcbbe4bba85`
 - `src/lib/atlasQueryFabric/TemporalContradictionFilter.ts`: `bc0694c588845ebd5456105b1b81e7f8b7d44034c6964ccf4646610950da96f8`
-- `src/lib/atlasQueryFabric/EvidenceRankingEngine.ts`: `c44f7f94b4fa38f0a7362161e8025a8d59d0b528aeab4b55720e35acbb9e0b44`
-- `src/lib/atlasQueryFabric/AtlasAnswerSynthesizer.ts`: `1f2b18c4dc3248e95173f67397564c6940830c3ee1506f07d0e1de73928ed324`
+- `src/lib/atlasQueryFabric/EvidenceRankingEngine.ts`: `b9895f7278f4fae0fea04ed296b68e50837f368e483225f5d90c26c2a7c88276`
+- `src/lib/atlasQueryFabric/AtlasAnswerSynthesizer.ts`: `df9609163c6361c79b5956612d0dbbfb2d15eb7c2e5ce8a9be76f2cbe258bd85`
 - `src/lib/atlasQueryFabric/AtlasReasoningQueryFabric.ts`: `3fde06cb435f0f801fb525e4bd608880dfc20851613877c1f3b4c7d7fc3d1ca2`
 - `src/lib/atlasQueryFabric/index.ts`: `93dc52bd6601b79e8d63a6700bf58f252eb421000d281c078650c4c0caf8ace6`
+
 
 

@@ -13,10 +13,11 @@ export type QueryIntentType =
   | 'GENERAL_SEARCH';
 
 export type EpistemicStatus =
-  | 'FACT'
-  | 'CLAIM'
-  | 'INFERRED'
   | 'USER_CONFIRMED_FACT'
+  | 'FACT'
+  | 'INFERRED'
+  | 'CLAIM'
+  | 'PREDICTION'
   | 'RAW_OBSERVATION';
 
 export type AnswerState =
@@ -126,9 +127,12 @@ export interface GroundedAnswer {
   entities_involved: EntitySummaryItem[];
   citations?: EvidenceSourceItem[];
   epistemic_breakdown: {
+    user_confirmed_facts_count: number;
     facts_count: number;
-    claims_count: number;
     inferences_count: number;
+    claims_count: number;
+    predictions_count: number;
+    raw_observations_count: number;
     contradicted_count: number;
   };
   provenance_chain: ProvenanceChainItem[];

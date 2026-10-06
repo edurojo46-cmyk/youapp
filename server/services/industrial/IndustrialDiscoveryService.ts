@@ -68,6 +68,7 @@ export interface MissionMetrics {
   
   scanned_count: number;
   discovered_count: number;
+  candidates_count?: number;
   verified_count: number;
   qualified_count: number;
   true_net_new_count: number;
@@ -1002,6 +1003,7 @@ export class IndustrialDiscoveryService {
 
           probeRowsFound = probeSample.length;
           orchestrator.recordProbeRows(missionId, probeSample.length);
+          await orchestrator.notifyProgress(missionId, { force: true });
           if (probeSample.length > 0) {
             probePassed = true;
           } else {
@@ -1013,6 +1015,7 @@ export class IndustrialDiscoveryService {
             const probeRes = suitabilityGate.probeSource(currentPath.source_id, semSpec, PROBE_LIMIT);
             probeRowsFound = Math.max(probeRes.probed_count, probeRes.candidates_sample.length);
             orchestrator.recordProbeRows(missionId, probeRowsFound);
+            await orchestrator.notifyProgress(missionId, { force: true });
             probePassed = probeRes.pass_probe || probeRes.valid_count > 0;
             if (!probePassed) probeReason = probeRes.probe_reason;
           } else {
@@ -1032,6 +1035,7 @@ export class IndustrialDiscoveryService {
         probeRowsFound,
         probePassed ? probeRowsFound : 0
       );
+      await orchestrator.notifyProgress(missionId, { force: true });
 
       if (!probePassed) {
         console.warn(`[PROBE_FAILED] Source ${currentPath.source_id} probe failed: ${probeReason}. MISSION CONTINUES!`);
@@ -1098,6 +1102,7 @@ export class IndustrialDiscoveryService {
           }
 
           orchestrator.recordAcquisitionRows(missionId, partCandidates.length);
+          await orchestrator.notifyProgress(missionId, { force: true });
 
           for (const cand of partCandidates) {
             if (certified >= targetLimit) break;
@@ -1107,6 +1112,7 @@ export class IndustrialDiscoveryService {
             if (!syntaxValid) {
               ledger.recordHardRejection(ledgerCand.identity_key, 'MALFORMED_RECORD_OR_NAME_TOO_SHORT');
               rejected++;
+              await orchestrator.notifyProgress(missionId);
               continue;
             }
 
@@ -1127,6 +1133,7 @@ export class IndustrialDiscoveryService {
             if (!passesNegative) {
               ledger.recordHardRejection(ledgerCand.identity_key, 'NEGATIVE_SEMANTICS_MATCH');
               rejected++;
+              await orchestrator.notifyProgress(missionId);
               continue;
             }
 
@@ -1157,6 +1164,7 @@ export class IndustrialDiscoveryService {
               duplicates++;
               ledger.recordCertification(ledgerCand.identity_key, false, true);
               orchestrator.updateNetNew(missionId, certified, duplicates);
+              await orchestrator.notifyProgress(missionId);
               continue;
             }
 
@@ -1220,6 +1228,7 @@ export class IndustrialDiscoveryService {
                 rejected++;
               }
             }
+            await orchestrator.notifyProgress(missionId);
           }
 
           await orchestrator.syncTelemetry(missionId);
@@ -1288,11 +1297,13 @@ export class IndustrialDiscoveryService {
             if (execRes.entities && execRes.entities.length > 0) {
               sourceBatch = execRes.entities.map(e => ({
                 company_name: e.name || e.company_name,
-                product_name: `${semSpec.category} — ${e.name}`,
-                category: semSpec.category,
-                role: semSpec.relation,
-                rubros: semSpec.category,
-                relation_type: semSpec.relation,
+                product_name: e.name ? (e.rubro ? `${e.rubro} — ${e.name}` : e.name) : null,
+                category: e.category || e.rubro || null,
+                role: e.role || null,
+                rubros: e.rubros || e.rubro || null,
+                relation_type: e.relation || e.role || null,
+                expected_category: semSpec.category,
+                expected_relation: semSpec.relation,
                 cuit: e.cuit || `${currentPath.source_id}-${Buffer.from(e.name).toString('base64').slice(0, 10)}`,
                 province: e.province || 'Buenos Aires',
                 city: e.city || 'CABA',
@@ -1305,7 +1316,13 @@ export class IndustrialDiscoveryService {
                 source_id: currentPath.source_id,
                 entity_type: semSpec.entity_type || 'ESTABLISHMENT',
                 row_unit: rowUnit,
-                evidence: e.evidence
+                evidence: e.evidence || {
+                  source_id: currentPath.source_id,
+                  url: e.source_url || currentPath.resource,
+                  provenance: 'SOURCE_STRUCTURED',
+                  address: e.address,
+                  phone: e.phone
+                }
               }));
             }
           } catch (execErr: any) {
@@ -1313,6 +1330,7 @@ export class IndustrialDiscoveryService {
           }
         }
         orchestrator.recordAcquisitionRows(missionId, sourceBatch.length);
+        await orchestrator.notifyProgress(missionId, { force: true });
 
         for (const cand of sourceBatch) {
           if (certified >= targetLimit) break;
@@ -1322,6 +1340,7 @@ export class IndustrialDiscoveryService {
           if (!syntaxValid) {
             ledger.recordHardRejection(ledgerCand.identity_key, 'MALFORMED_RECORD_OR_NAME_TOO_SHORT');
             rejected++;
+            await orchestrator.notifyProgress(missionId);
             continue;
           }
 
@@ -1333,6 +1352,7 @@ export class IndustrialDiscoveryService {
             duplicates++;
             ledger.recordCertification(ledgerCand.identity_key, false, true);
             orchestrator.updateNetNew(missionId, certified, duplicates);
+            await orchestrator.notifyProgress(missionId);
             continue;
           }
 
@@ -1341,29 +1361,31 @@ export class IndustrialDiscoveryService {
           const certCandidate = {
             productId,
             name: cand.product_name || cand.company_name,
-            category: cand.category || semSpec.category,
-            description: `${cand.product_name || cand.company_name} provisto por ${cand.company_name}`,
+            category: cand.category || 'GENERAL_UNSPECIFIED',
+            description: `${cand.company_name} en ${cand.city || 'Argentina'}, ${cand.province || 'Nacional'}`,
             rawAttributes: {
               company_name: cand.company_name,
               company_id: canonicalEntityId,
-              relationship_type: cand.relation_type || cand.role || semSpec.relation,
-              role: cand.role || semSpec.relation,
+              relationship_type: cand.relation_type || cand.role || null,
+              role: cand.role || null,
               row_unit: rowUnit,
               entity_type: cand.entity_type || semSpec.entity_type,
-              target_sector: semSpec.category || cand.category || 'general_industry',
-              rubros: cand.rubros || cand.category || semSpec.category,
+              target_sector: cand.category || null,
+              rubros: cand.rubros || cand.category || null,
+              expected_category: semSpec.category,
+              expected_relation: semSpec.relation,
               source_id: currentPath.source_id,
-              evidence: {
-                certificate_id: `CERT-${cand.cuit || iteration}-${Date.now()}`,
+              evidence: cand.evidence || {
                 source_id: currentPath.source_id,
-                url: cand.source_url || currentPath.resource || 'https://data.buenosaires.gob.ar/',
-                official_registry: currentPath.resource || cand.source_name || 'Registro Oficial CABA',
+                url: cand.source_url || currentPath.resource,
+                provenance: 'SOURCE_OBSERVED',
                 cuit: cand.cuit,
                 address: cand.address,
-                email: cand.email
+                email: cand.email,
+                phone: cand.phone
               },
               structured_attributes: {
-                role: cand.role || semSpec.relation,
+                role: cand.role || null,
                 email: cand.email,
                 is_person: rowUnit === 'PERSON'
               },
@@ -1395,7 +1417,9 @@ export class IndustrialDiscoveryService {
               rejected++;
             }
           }
+          await orchestrator.notifyProgress(missionId);
         }
+        await orchestrator.syncTelemetry(missionId);
       }
 
       if (sourceTechnicalFailure) {
@@ -1423,18 +1447,18 @@ export class IndustrialDiscoveryService {
           : sourceBatch.length;
         const candidatesFromThisSource = certified - certifiedBeforeThisSource;
 
-        if (isUnvalidatedFallback && rawRowsFromThisSource === 0) {
-          // INVARIANT: A source hypothesis, AI fallback, directory name, lookup-only source,
-          // or unvalidated web path MUST NOT qualify as EXHAUSTED or contribute to VALID_SOURCE_ZERO_YIELD
-          // merely because its connector returned HTTP 200 with 0 rows.
+        if (isUnvalidatedFallback && (rawRowsFromThisSource === 0 || candidatesFromThisSource === 0)) {
+          // INVARIANT: An unvalidated fallback/hypothesis that produced 0 certified candidates
+          // (or whose raw items were rejected as non-entity chrome or non-matching records)
+          // MUST NOT qualify as EXHAUSTED or contribute to VALID_SOURCE_ZERO_YIELD.
           orchestrator.markPathState(missionId, currentPath.path_id, 'PERMANENTLY_UNUSABLE', {
-            failure_reason: 'UNVALIDATED_FALLBACK_ZERO_YIELD'
+            failure_reason: rawRowsFromThisSource === 0 ? 'UNVALIDATED_FALLBACK_ZERO_YIELD' : 'UNVALIDATED_FALLBACK_ALL_ITEMS_REJECTED'
           });
           orchestrator.completeWorkItem(
             missionId,
             acquisitionWorkItem.work_item_id,
             'COMPLETED',
-            0,
+            rawRowsFromThisSource,
             0
           );
         } else {
@@ -1466,13 +1490,13 @@ export class IndustrialDiscoveryService {
       terminalCondition = 'USER_CANCELLED_WITH_EXPLICIT_USER_ACTION';
     } else if (certified >= targetLimit && targetLimit > 0) {
       terminalCondition = 'TARGET_REACHED';
-    } else if (canonicalSourceFailedTechnically && tel.acquisition_rows === 0) {
+    } else if (canonicalSourceFailedTechnically && (certified === 0 || sourcesExhaustedCount === 0)) {
       // Primary canonical acquisition source ended in technical failure (timeout, network error, 504, etc.)
-      // Later fallback returning 0 must not erase that truth!
+      // Unvalidated fallbacks returning 0 or only rejected candidates must not erase that truth!
       terminalCondition = 'ALL_EXECUTABLE_SOURCES_TECHNICALLY_FAILED';
-    } else if (sourcesAttemptedCount > 0 && sourcesFailedCount === sourcesAttemptedCount && tel.acquisition_rows === 0) {
+    } else if (sourcesAttemptedCount > 0 && sourcesFailedCount === sourcesAttemptedCount && certified === 0) {
       terminalCondition = 'ALL_EXECUTABLE_SOURCES_TECHNICALLY_FAILED';
-    } else if (sourcesFailedCount > 0 && sourcesExhaustedCount === 0 && tel.acquisition_rows === 0) {
+    } else if (sourcesFailedCount > 0 && sourcesExhaustedCount === 0 && certified === 0) {
       terminalCondition = 'ALL_EXECUTABLE_SOURCES_TECHNICALLY_FAILED';
     } else if (validatedSourcesCompletedWithZeroYield > 0 && tel.acquisition_rows === 0 && !canonicalSourceFailedTechnically) {
       // VALID_SOURCE_ZERO_YIELD is legal only if at least one validated enumerable mission-compatible acquisition source completed successfully and genuinely yielded zero valid/raw candidates
@@ -2033,6 +2057,14 @@ export class IndustrialDiscoveryService {
   }
 
   private mapRowToMetrics(r: any): MissionMetrics {
+    const crit = typeof r.criteria === 'string' ? JSON.parse(r.criteria) : (r.criteria || {});
+    const cp = typeof r.checkpoint_data === 'string' ? JSON.parse(r.checkpoint_data) : (r.checkpoint_data || {});
+    const orchTel = cp.orchestrator_telemetry || {};
+
+    const speed = Number(r.speed_records_per_sec) || Number(orchTel.speed_records_per_sec) || 0;
+    const discovered = Number(r.discovered_count) || Number(orchTel.candidates_discovered) || 0;
+    const totalScanned = Number(r.scanned_count) || ((Number(orchTel.probe_rows) || 0) + (Number(orchTel.acquisition_rows) || 0)) || 0;
+
     return {
       mission_id: r.mission_id,
       objective: r.objective,
@@ -2042,24 +2074,24 @@ export class IndustrialDiscoveryService {
       environment: r.environment,
       status: r.status,
       
-      scanned_count: Number(r.scanned_count) || 0,
-      discovered_count: Number(r.discovered_count) || 0,
-      verified_count: Number(r.verified_count) || 0,
+      scanned_count: totalScanned,
+      discovered_count: discovered,
+      candidates_count: discovered,
+      verified_count: Number(r.verified_count) || discovered,
       qualified_count: Number(r.qualified_count) || 0,
-      true_net_new_count: Number(r.true_net_new_count) || 0,
-      persisted_count: Number(r.persisted_count) || 0,
+      true_net_new_count: Number(r.true_net_new_count) || Number(orchTel.net_new) || 0,
+      persisted_count: Number(r.persisted_count) || Number(orchTel.net_new) || 0,
       searchable_count: Number(r.searchable_count) || 0,
-      duplicate_existing_count: Number(r.duplicate_existing_count) || 0,
-      rejected_count: Number(r.rejected_count) || 0,
+      duplicate_existing_count: Number(r.duplicate_existing_count) || Number(orchTel.duplicates_this_run) || 0,
+      rejected_count: Number(r.rejected_count) || Number(orchTel.candidates_rejected) || 0,
       core_existing_before: (() => {
-        const crit = typeof r.criteria === 'string' ? JSON.parse(r.criteria) : (r.criteria || {});
         return Number(crit.core_existing_before || crit.existing_matches_count || crit.universal_spec?.existing_matches_count || 0);
       })(),
       
-      certified_new_searchable: Number(r.certified_new_searchable) || 0,
+      certified_new_searchable: Number(r.certified_new_searchable) || Number(orchTel.net_new) || 0,
       target_reached: Boolean(r.target_reached),
       
-      speed_records_per_sec: Number(r.speed_records_per_sec) || 0,
+      speed_records_per_sec: speed,
       elapsed_seconds: (r.status === 'RUNNING' || r.status === 'STARTING')
         ? Math.max(Number(r.elapsed_seconds) || 0, Math.floor((Date.now() - new Date(r.started_at || r.created_at).getTime()) / 1000))
         : (Number(r.elapsed_seconds) > 0

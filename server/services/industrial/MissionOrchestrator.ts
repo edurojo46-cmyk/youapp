@@ -145,6 +145,9 @@ export interface MissionTelemetry {
   current_source_id?: string;
   termination_proof?: MissionTerminationProof | null;
   work_items?: MissionWorkItem[];
+  speed_records_per_sec?: number;
+  elapsed_seconds?: number;
+  candidates_discovered?: number;
 }
 
 /**
@@ -282,6 +285,18 @@ export class AtlasCandidateLedger {
   }
 }
 
+export interface ActiveOrchestratorMetrics {
+  probeRows: number;
+  acquisitionRows: number;
+  target: number;
+  netNew: number;
+  duplicates: number;
+  startTimeMs: number;
+  lastSyncMs: number;
+  recentSamples: Array<{ timestamp: number; scanned: number }>;
+  currentSpeed: number;
+}
+
 /**
  * Universal Mission Orchestrator
  */
@@ -293,8 +308,12 @@ export class MissionOrchestrator {
   private activeFrontiers: Map<string, SourcePath[]> = new Map();
   private activeLedgers: Map<string, AtlasCandidateLedger> = new Map();
   private activePhases: Map<string, MissionPhase> = new Map();
-  private activeMetrics: Map<string, { probeRows: number; acquisitionRows: number; target: number; netNew: number; duplicates: number }> = new Map();
+  private activeMetrics: Map<string, ActiveOrchestratorMetrics> = new Map();
   private activeWorkItems: Map<string, MissionWorkItem[]> = new Map();
+  private lastSyncTimestamp: Map<string, number> = new Map();
+  private rowsSinceLastSync: Map<string, number> = new Map();
+  private isSyncInProgress: Map<string, boolean> = new Map();
+  private syncPending: Map<string, boolean> = new Map();
 
   private constructor(pool: pg.Pool) {
     this.dbPool = pool;
@@ -344,13 +363,20 @@ export class MissionOrchestrator {
     this.activeLedgers.set(missionId, ledger);
     this.activeFrontiers.set(missionId, frontier);
     this.activePhases.set(missionId, 'PLANNING');
+    const now = Date.now();
     this.activeMetrics.set(missionId, {
       probeRows: 0,
       acquisitionRows: 0,
       target,
       netNew: 0,
-      duplicates: 0
+      duplicates: 0,
+      startTimeMs: now,
+      lastSyncMs: now,
+      recentSamples: [{ timestamp: now, scanned: 0 }],
+      currentSpeed: 0
     });
+    this.lastSyncTimestamp.set(missionId, now);
+    this.rowsSinceLastSync.set(missionId, 0);
     this.activeWorkItems.set(missionId, []);
     return { ledger, frontier };
   }
@@ -586,8 +612,72 @@ export class MissionOrchestrator {
     }
   }
 
+  public computeSpeed(missionId: string): number {
+    const m = this.activeMetrics.get(missionId);
+    if (!m) return 0;
+    const now = Date.now();
+    const currentScanned = m.probeRows + m.acquisitionRows;
+
+    m.recentSamples.push({ timestamp: now, scanned: currentScanned });
+    const cutoff = now - 5000;
+    m.recentSamples = m.recentSamples.filter(s => s.timestamp >= cutoff);
+
+    if (m.recentSamples.length >= 2) {
+      const oldest = m.recentSamples[0];
+      const deltaScanned = currentScanned - oldest.scanned;
+      const deltaSec = (now - oldest.timestamp) / 1000;
+      if (deltaSec >= 0.5) {
+        m.currentSpeed = Math.round((deltaScanned / deltaSec) * 10) / 10;
+        return m.currentSpeed;
+      }
+    }
+
+    const elapsedSec = (now - m.startTimeMs) / 1000;
+    if (elapsedSec >= 0.5 && currentScanned > 0) {
+      m.currentSpeed = Math.round((currentScanned / elapsedSec) * 10) / 10;
+      return m.currentSpeed;
+    }
+
+    return m.currentSpeed;
+  }
+
+  /**
+   * Throttled progress notification for bounded periodic sync
+   * Flushes every >= 750ms OR every >= 25 candidate rows processed
+   */
+  public async notifyProgress(missionId: string, options?: { force?: boolean }): Promise<void> {
+    const now = Date.now();
+    const lastSync = this.lastSyncTimestamp.get(missionId) || 0;
+    const rows = (this.rowsSinceLastSync.get(missionId) || 0) + 1;
+    this.rowsSinceLastSync.set(missionId, rows);
+
+    const shouldSync = options?.force || (now - lastSync >= 750) || (rows >= 25);
+    if (!shouldSync) return;
+
+    if (this.isSyncInProgress.get(missionId)) {
+      this.syncPending.set(missionId, true);
+      return;
+    }
+
+    this.lastSyncTimestamp.set(missionId, now);
+    this.rowsSinceLastSync.set(missionId, 0);
+    this.isSyncInProgress.set(missionId, true);
+
+    try {
+      await this.syncTelemetry(missionId);
+    } finally {
+      this.isSyncInProgress.set(missionId, false);
+      if (this.syncPending.get(missionId)) {
+        this.syncPending.set(missionId, false);
+        setImmediate(() => {
+          this.notifyProgress(missionId, { force: true }).catch(() => {});
+        });
+      }
+    }
+  }
+
   public getTelemetry(missionId: string): MissionTelemetry {
-    const m = this.activeMetrics.get(missionId) || { probeRows: 0, acquisitionRows: 0, target: 0, netNew: 0, duplicates: 0 };
+    const m = this.activeMetrics.get(missionId) || { probeRows: 0, acquisitionRows: 0, target: 0, netNew: 0, duplicates: 0, startTimeMs: Date.now(), lastSyncMs: Date.now(), recentSamples: [], currentSpeed: 0 };
     const phase = this.getPhase(missionId);
     const ledger = this.getLedger(missionId);
     const summary = ledger.getSummary();
@@ -596,6 +686,7 @@ export class MissionOrchestrator {
     const remainingGap = Math.max(0, m.target - m.netNew);
     const attempted = frontier.filter(p => p.state !== 'DISCOVERED' && p.state !== 'VALIDATED').length;
     const remaining = frontier.filter(p => p.state === 'DISCOVERED' || p.state === 'VALIDATED').length;
+    const elapsedSec = Math.max(0, Math.floor((Date.now() - m.startTimeMs) / 1000));
 
     return {
       mission_phase: phase,
@@ -610,50 +701,85 @@ export class MissionOrchestrator {
       duplicates_this_run: m.duplicates,
       source_paths_attempted: attempted,
       source_paths_remaining: remaining,
-      work_items: this.getWorkItems(missionId)
+      work_items: this.getWorkItems(missionId),
+      speed_records_per_sec: m.currentSpeed,
+      elapsed_seconds: elapsedSec,
+      candidates_discovered: summary.discovered
     };
   }
 
   /**
-   * Persists telemetry to DB
+   * Persists telemetry to DB with live speed and candidate counts
    */
   public async syncTelemetry(missionId: string): Promise<void> {
     try {
       const tel = this.getTelemetry(missionId);
       const isTerminal = tel.mission_phase === 'COMPLETED' || tel.mission_phase === 'FAILED' || tel.mission_phase === 'USER_CANCELLED';
       const frontier = this.getFrontier(missionId);
+      const ledger = this.getLedger(missionId);
+      const summary = ledger.getSummary();
+      const m = this.activeMetrics.get(missionId);
+      const now = Date.now();
+      const elapsedSec = m ? Math.max(0, Math.floor((now - m.startTimeMs) / 1000)) : 0;
+
+      let speed = 0;
+      if (isTerminal) {
+        const totalScanned = tel.probe_rows + tel.acquisition_rows;
+        const totalSec = Math.max(1, elapsedSec);
+        speed = totalScanned > 0 ? Math.round((totalScanned / totalSec) * 10) / 10 : 0;
+      } else {
+        speed = this.computeSpeed(missionId);
+      }
 
       await this.dbPool.query(`
         UPDATE public.atlas_discovery_missions
         SET 
           status = CASE WHEN $1 = TRUE THEN status ELSE (CASE WHEN $2 = 'PLANNING' THEN 'STARTING' ELSE 'RUNNING' END) END,
           scanned_count = $3,
-          certified_new_searchable = $4,
-          true_net_new_count = $4,
-          duplicate_existing_count = $5,
-          rejected_count = $6,
-          target_reached = ($4 >= target_new_records AND target_new_records > 0),
+          discovered_count = $4,
+          verified_count = $4,
+          certified_new_searchable = $5,
+          true_net_new_count = $5,
+          duplicate_existing_count = $6,
+          rejected_count = $7,
+          speed_records_per_sec = $8,
+          elapsed_seconds = $9,
+          target_reached = ($5 >= target_new_records AND target_new_records > 0),
           checkpoint_data = jsonb_set(
             jsonb_set(
               COALESCE(checkpoint_data, '{}'::jsonb),
               '{orchestrator_telemetry}',
-              $7::jsonb
+              $10::jsonb
             ),
             '{source_frontier}',
-            $8::jsonb
+            $11::jsonb
           ),
           updated_at = NOW()
-        WHERE mission_id = $9;
+        WHERE mission_id = $12;
       `, [
         isTerminal,
         tel.mission_phase,
-        tel.probe_rows + tel.acquisition_rows,
-        tel.net_new,
-        tel.duplicates_this_run,
-        tel.candidates_rejected,
-        JSON.stringify(tel),
-        JSON.stringify(frontier.map(p => ({ path_id: p.path_id, source_id: p.source_id, state: p.state, priority: p.priority, rows_seen: p.rows_seen }))),
-        missionId
+        tel.probe_rows + tel.acquisition_rows, // $3 scanned_count
+        summary.discovered,                   // $4 discovered_count / verified_count
+        tel.net_new,                          // $5 certified_new_searchable / true_net_new_count
+        tel.duplicates_this_run,              // $6 duplicate_existing_count
+        tel.candidates_rejected,              // $7 rejected_count
+        speed,                                // $8 speed_records_per_sec
+        elapsedSec,                           // $9 elapsed_seconds
+        JSON.stringify({
+          ...tel,
+          speed_records_per_sec: speed,
+          elapsed_seconds: elapsedSec,
+          candidates_discovered: summary.discovered
+        }),                                   // $10
+        JSON.stringify(frontier.map(p => ({
+          path_id: p.path_id,
+          source_id: p.source_id,
+          state: p.state,
+          priority: p.priority,
+          rows_seen: p.rows_seen
+        }))),                                 // $11
+        missionId                             // $12
       ]);
     } catch (err) {
       console.warn(`[MissionOrchestrator] syncTelemetry non-blocking error for ${missionId}:`, err);
@@ -736,7 +862,12 @@ export class MissionOrchestrator {
     const finalNetNew = Math.max(tel.net_new, actualPersisted);
     const finalScanned = Math.max(totalScanned, finalNetNew + tel.duplicates_this_run);
 
-    console.log(`[MissionOrchestrator] TERMINATING mission ${missionId}: status=${dbStatus}, condition=${proof.terminal_condition}, gap=${proof.remaining_gap}, net_new=${finalNetNew}`);
+    const m = this.activeMetrics.get(missionId);
+    const now = Date.now();
+    const finalElapsed = m ? Math.max(1, Math.floor((now - m.startTimeMs) / 1000)) : 1;
+    const finalSpeed = totalScanned > 0 ? Math.round((totalScanned / finalElapsed) * 10) / 10 : 0;
+    const ledger = this.getLedger(missionId);
+    const summary = ledger.getSummary();
 
     // EXCLUSIVE TERMINAL WRITER
     await this.dbPool.query(`
@@ -751,19 +882,23 @@ export class MissionOrchestrator {
         duplicate_existing_count = $5,
         rejected_count = $6,
         scanned_count = $7,
-        error_message = $8,
+        discovered_count = $8,
+        verified_count = $8,
+        speed_records_per_sec = $9,
+        elapsed_seconds = $10,
+        error_message = $11,
         completed_at = NOW(),
         checkpoint_data = jsonb_set(
           jsonb_set(
             COALESCE(checkpoint_data, '{}'::jsonb),
             '{termination_proof}',
-            $9::jsonb
+            $12::jsonb
           ),
           '{orchestrator_telemetry}',
-          $10::jsonb
+          $13::jsonb
         ),
         updated_at = NOW()
-      WHERE mission_id = $11;
+      WHERE mission_id = $14;
     `, [
       dbStatus,
       proof.terminal_condition,
@@ -772,9 +907,18 @@ export class MissionOrchestrator {
       tel.duplicates_this_run,
       tel.candidates_rejected,
       finalScanned,
+      summary.discovered,
+      finalSpeed,
+      finalElapsed,
       finalMessage,
       JSON.stringify(proof),
-      JSON.stringify({ ...tel, net_new: finalNetNew }),
+      JSON.stringify({
+        ...tel,
+        net_new: finalNetNew,
+        speed_records_per_sec: finalSpeed,
+        elapsed_seconds: finalElapsed,
+        candidates_discovered: summary.discovered
+      }),
       missionId
     ]);
 
@@ -782,6 +926,11 @@ export class MissionOrchestrator {
     this.activePhases.delete(missionId);
     this.activeFrontiers.delete(missionId);
     this.activeLedgers.delete(missionId);
+    this.activeMetrics.delete(missionId);
+    this.lastSyncTimestamp.delete(missionId);
+    this.rowsSinceLastSync.delete(missionId);
+    this.isSyncInProgress.delete(missionId);
+    this.syncPending.delete(missionId);
     this.activeMetrics.delete(missionId);
 
     return {

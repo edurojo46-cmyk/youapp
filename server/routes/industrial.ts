@@ -16,6 +16,8 @@ import { AtlasGeographyRegistry } from '../services/industrial/AtlasGeographyReg
 import { AtlasVirtualDatasetService } from '../services/industrial/AtlasVirtualDatasetService.ts';
 import { DurableMissionWorker } from '../services/industrial/DurableMissionWorker.ts';
 import { DurableMissionQueue } from '../services/industrial/DurableMissionQueue.ts';
+import { AtlasMissionRouter } from '../services/industrial/AtlasMissionRouter.ts';
+import { BulkEmailEngineAdapter } from '../services/industrial/BulkEmailEngineAdapter.ts';
 
 export interface IndustrialRouterDeps {
   dbPool: any;
@@ -801,6 +803,40 @@ export function createIndustrialRouter(deps: IndustrialRouterDeps): Router {
       const { allowedTarget } = req.body || {};
       const target = allowedTarget ? Math.min(Number(allowedTarget), 100000) : undefined;
 
+      // 1. Fetch mission metadata for routing decision
+      const mRes = await dbPool.query(`
+        SELECT mission_id, objective, geography, entity_type, criteria, target_new_records
+        FROM public.atlas_discovery_missions
+        WHERE mission_id = $1;
+      `, [missionId]);
+      const missionRecord = mRes.rows[0];
+
+      // 2. Specialized Single Router Decision BEFORE IndustrialDiscoveryService
+      const routeEngine = AtlasMissionRouter.resolveEngine(missionRecord || {});
+
+      if (routeEngine === 'BULK_EMAIL_ACQUISITION') {
+        const adapter = new BulkEmailEngineAdapter(dbPool);
+        const execTarget = target || missionRecord?.target_new_records || 100;
+
+        // Async execution of Bulk Engine via adapter
+        adapter.executeMission({
+          mission_id: missionId,
+          objective: missionRecord?.objective || 'Adquisición de emails públicos',
+          geography: missionRecord?.geography,
+          target_count: execTarget,
+          public_observed_only: true
+        }).catch(err => {
+          console.error(`[BulkEmailAdapter] Fatal error in mission loop ${missionId}:`, err);
+        });
+
+        return res.status(202).json({
+          success: true,
+          route_engine: 'BULK_EMAIL_ACQUISITION',
+          mission: { ...(missionRecord || {}), status: 'STARTING' }
+        });
+      }
+
+      // 3. ESTABLISHMENT: IndustrialDiscoveryService remains untouched
       const mission = await discoveryService.startMission(missionId, target);
       res.status(202).json({ success: true, mission });
     } catch (err: any) {

@@ -30,6 +30,7 @@ import {
 import { PreexistingEmailAuthority } from '../../../src/lib/atlasIndustrialEmail/PreexistingEmailAuthority.ts';
 import type { PublicEmailContact } from '../../../src/lib/atlasIndustrialEmail/types.ts';
 import { CurrentAtlasEmailAuthorityGate } from './CurrentAtlasEmailAuthorityGate.ts';
+import { BulkSourceKnowledgeAdapter } from './BulkSourceKnowledgeAdapter.ts';
 
 export interface SourceExecutionResult {
   source_id: string;
@@ -65,114 +66,33 @@ export class BulkSourceFrontierCoordinator {
   private dbPool: pg.Pool;
   private authorityGate: CurrentAtlasEmailAuthorityGate;
   private t0Authority: PreexistingEmailAuthority;
+  private kmAdapter: BulkSourceKnowledgeAdapter;
 
   constructor(dbPool: pg.Pool) {
     this.dbPool = dbPool;
     this.authorityGate = new CurrentAtlasEmailAuthorityGate(dbPool);
     this.t0Authority = new PreexistingEmailAuthority();
+    this.kmAdapter = new BulkSourceKnowledgeAdapter(dbPool);
   }
 
   /**
-   * Authoritative list of pre-configured physical bulk sources
+   * Retrieves the eligible physical bulk frontier dynamically from public.atlas_source_knowledge_map (SSOT).
+   * ZERO hardcoded source definitions remain.
    */
-  public static getPreconfiguredFrontier(): ScalableEmailSource[] {
-    return [
-      {
-        source_id: 'SRC_SIPRO_NACION_LEGACY',
-        source_family: 'PUBLIC_PROCUREMENT_REGISTRY',
-        source_name: 'Sistema de Información de Proveedores del Estado Nacional (SIPRO Legacy)',
-        url: 'https://infra.datos.gob.ar/catalog/modernizacion/dataset/2/distribution/2.12/download/proveedores-sistema-legacy.csv',
-        local_path: path.resolve('scratch/physical_sources/proveedores_sistema_legacy.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / NACIONAL',
-        estimated_supply: 55000
-      },
-      {
-        source_id: 'SRC_GCBA_ADMINISTRADORES',
-        source_family: 'MUNICIPAL_PROFESSIONAL_REGISTRY',
-        source_name: 'Registro Público de Administradores de Consorcios (CABA)',
-        url: 'https://cdn.buenosaires.gob.ar/datosabiertos/datasets/defensa-al-consumidor/administradores-consorcio/administradores-consorcio.csv',
-        local_path: path.resolve('scratch/physical_sources/gcba_administradores_consorcio.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / CABA',
-        estimated_supply: 8500
-      },
-      {
-        source_id: 'SRC_GCBA_AUTORIDADES_2026',
-        source_family: 'PUBLIC_ADMINISTRATION_DIRECTORY',
-        source_name: 'Estructura y Autoridades del Gobierno de la Ciudad (2026)',
-        url: 'https://cdn.buenosaires.gob.ar/datosabiertos/datasets/secretaria-general/estructura-gobierno/estructura-gobierno-2026.csv',
-        local_path: path.resolve('scratch/physical_sources/gcba_autoridades_2026.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / CABA',
-        estimated_supply: 2200
-      },
-      {
-        source_id: 'SRC_GCBA_AUTORIDADES_2025',
-        source_family: 'PUBLIC_ADMINISTRATION_DIRECTORY',
-        source_name: 'Estructura y Autoridades del Gobierno de la Ciudad (2025)',
-        url: 'https://cdn.buenosaires.gob.ar/datosabiertos/datasets/secretaria-general/estructura-gobierno/estructura-gobierno-2025.csv',
-        local_path: path.resolve('scratch/physical_sources/gcba_autoridades_2025.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / CABA',
-        estimated_supply: 2500
-      },
-      {
-        source_id: 'SRC_GCBA_AUTORIDADES_2024',
-        source_family: 'PUBLIC_ADMINISTRATION_DIRECTORY',
-        source_name: 'Estructura y Autoridades del Gobierno de la Ciudad (2024)',
-        url: 'https://cdn.buenosaires.gob.ar/datosabiertos/datasets/secretaria-general/estructura-gobierno/estructura-gobierno-2024.csv',
-        local_path: path.resolve('scratch/physical_sources/gcba_autoridades_2024.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / CABA',
-        estimated_supply: 2100
-      },
-      {
-        source_id: 'SRC_PROVEEDORES_MODERNIZACION',
-        source_family: 'PUBLIC_PROCUREMENT_REGISTRY',
-        source_name: 'Directorio de Proveedores de Modernización de la Nación',
-        url: 'https://infra.datos.gob.ar/catalog/modernizacion/dataset/2/distribution/2.1/download/proveedores-modernizacion.csv',
-        local_path: path.resolve('scratch/physical_sources/proveedores_modernizacion.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / NACIONAL',
-        estimated_supply: 5000
-      },
-      {
-        source_id: 'SRC_SSN_PRODUCTORES_SEGUROS',
-        source_family: 'PROFESSIONAL_LICENSING_REGISTRY',
-        source_name: 'Registro de Productores y Asesores de Seguros de la Nación (SSN)',
-        url: 'https://datosabiertos.ssn.gob.ar/dataset/productores-asesores',
-        local_path: path.resolve('scratch/physical_sources/productores_asesores_ssn.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / NACIONAL',
-        estimated_supply: 35000
-      },
-      {
-        source_id: 'SRC_SSS_PROFESIONALES_SALUD',
-        source_family: 'HEALTH_PROFESSIONALS_REGISTRY',
-        source_name: 'Registro Nacional de Prestadores de la Salud (SSSalud)',
-        url: 'https://datos.gob.ar/dataset/salud-registro-prestadores',
-        local_path: path.resolve('scratch/physical_sources/registro_profesionales_sss.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / NACIONAL',
-        estimated_supply: 45000
-      },
-      {
-        source_id: 'SRC_AUDIENCIAS_PUBLICAS_PEN',
-        source_family: 'PUBLIC_ADMINISTRATION_DIRECTORY',
-        source_name: 'Registro Único de Audiencias Públicas del Poder Ejecutivo Nacional',
-        url: 'https://datos.gob.ar/dataset/justicia-audiencias',
-        local_path: path.resolve('scratch/physical_sources/audiencias_2024.csv'),
-        format: 'LOCAL_FILE',
-        jurisdiction: 'ARGENTINA / NACIONAL',
-        estimated_supply: 1000
-      }
-    ];
+  public async getEligibleFrontier(): Promise<ScalableEmailSource[]> {
+    return this.kmAdapter.getEligibleBulkFrontier();
+  }
+
+  /**
+   * Audits registered bulk sources in Source KM and their physical readiness.
+   */
+  public async auditFrontierStatus() {
+    return this.kmAdapter.auditRegisteredBulkSources();
   }
 
   /**
    * Executes bounded source continuation until target true-net-new is reached
-   * or all available frontier sources are exhausted with proof.
+   * or all available frontier sources from Source KM are exhausted with proof.
    */
   public async executeContinuation(options: {
     target: number;
@@ -181,7 +101,7 @@ export class BulkSourceFrontierCoordinator {
     missionId?: string;
   }): Promise<FrontierCoordinationResult> {
     const target = options.target;
-    const frontier = options.sources || BulkSourceFrontierCoordinator.getPreconfiguredFrontier();
+    const frontier = options.sources || (await this.kmAdapter.getEligibleBulkFrontier());
     const maxSources = options.maxSourcesToExecute || frontier.length;
 
     await this.t0Authority.loadOrInitializeT0();

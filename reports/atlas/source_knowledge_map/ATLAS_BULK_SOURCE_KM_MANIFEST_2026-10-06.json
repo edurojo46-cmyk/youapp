@@ -1,0 +1,369 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-10-06T17:50:00Z",
+  "lkg_tag": "ATLAS_BULK_SOURCE_KM_SSOT_LKG_2026-10-06",
+  "source_count": 13,
+  "sources": [
+    {
+      "source_id": "SRC_AUDIENCIAS_PUBLICAS_PEN",
+      "source_name": "Registro Único de Audiencias Públicas del Poder Ejecutivo Nacional",
+      "source_family": "PUBLIC_ADMINISTRATION_DIRECTORY",
+      "current_status": "STALE",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_NACIONAL",
+      "estimated_records": 1000,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": false,
+        "format": "LOCAL_FILE",
+        "stale_reason": "NO_EMAIL_EVIDENCE_FOUND",
+        "email_capability": "NONE"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_BA_DATOS_ALOJAMIENTOS",
+      "source_name": "Alojamientos Turísticos Habilitados con Contacto Oficial",
+      "source_family": "MUNICIPAL_OPEN_DATA",
+      "current_status": "PROMOTED",
+      "protocol": "HTTP_GET",
+      "access_method": "STREAMING_CSV",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_CABA",
+      "estimated_records": 500,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "CSV",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_BA_DATOS_CONSULADOS",
+      "source_name": "Cuerpo Consular y Misiones Diplomáticas en Argentina",
+      "source_family": "MUNICIPAL_OPEN_DATA",
+      "current_status": "PROMOTED",
+      "protocol": "HTTP_GET",
+      "access_method": "STREAMING_CSV",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": false,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG / NACIONAL",
+      "estimated_records": 100,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "CSV",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH"
+      ]
+    },
+    {
+      "source_id": "SRC_BA_DATOS_CONSULTORES_AMBIENTALES",
+      "source_name": "Consultores y Profesionales Ambientales Habilitados (APRA)",
+      "source_family": "MUNICIPAL_OPEN_DATA",
+      "current_status": "PROMOTED",
+      "protocol": "HTTP_GET",
+      "access_method": "STREAMING_CSV",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_CABA",
+      "estimated_records": 300,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "CSV",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_DATOS_GOB_AR_CKAN_DISCOVERY",
+      "source_name": "Catálogo Nacional de Datos Abiertos de la República Argentina",
+      "source_family": "NATIONAL_OPEN_DATA_PORTAL",
+      "current_status": "STALE",
+      "protocol": "HTTP_GET",
+      "access_method": "STREAMING_CSV",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": false,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG / NACIONAL",
+      "estimated_records": 100000,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": false,
+        "format": "API",
+        "stale_reason": "ENDPOINT_UNREACHABLE_HTTP_404",
+        "email_capability": "NONE"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH"
+      ]
+    },
+    {
+      "source_id": "SRC_GCBA_ADMINISTRADORES",
+      "source_name": "Registro Público de Administradores de Consorcios (CABA)",
+      "source_family": "MUNICIPAL_PROFESSIONAL_REGISTRY",
+      "current_status": "PROMOTED",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_CABA",
+      "estimated_records": 8500,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "LOCAL_FILE",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_GCBA_AUTORIDADES_2024",
+      "source_name": "Estructura y Autoridades del Gobierno de la Ciudad (2024)",
+      "source_family": "PUBLIC_ADMINISTRATION_DIRECTORY",
+      "current_status": "PROMOTED",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_CABA",
+      "estimated_records": 2100,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "LOCAL_FILE",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_GCBA_AUTORIDADES_2025",
+      "source_name": "Estructura y Autoridades del Gobierno de la Ciudad (2025)",
+      "source_family": "PUBLIC_ADMINISTRATION_DIRECTORY",
+      "current_status": "PROMOTED",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_CABA",
+      "estimated_records": 2500,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "LOCAL_FILE",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_GCBA_AUTORIDADES_2026",
+      "source_name": "Estructura y Autoridades del Gobierno de la Ciudad (2026)",
+      "source_family": "PUBLIC_ADMINISTRATION_DIRECTORY",
+      "current_status": "PROMOTED",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_CABA",
+      "estimated_records": 2200,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "LOCAL_FILE",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_PROVEEDORES_MODERNIZACION",
+      "source_name": "Directorio de Proveedores de Modernización de la Nación",
+      "source_family": "PUBLIC_PROCUREMENT_REGISTRY",
+      "current_status": "STALE",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_NACIONAL",
+      "estimated_records": 5000,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": false,
+        "format": "LOCAL_FILE",
+        "stale_reason": "NO_EMAIL_EVIDENCE_FOUND",
+        "email_capability": "NONE"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_SIPRO_NACION_LEGACY",
+      "source_name": "Sistema de Información de Proveedores del Estado Nacional (SIPRO Legacy)",
+      "source_family": "PUBLIC_PROCUREMENT_REGISTRY",
+      "current_status": "PROMOTED",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": false,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG / NACIONAL",
+      "estimated_records": 55000,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": true,
+        "format": "LOCAL_FILE",
+        "stale_reason": null,
+        "email_capability": "HIGH"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH"
+      ]
+    },
+    {
+      "source_id": "SRC_SSN_PRODUCTORES_SEGUROS",
+      "source_name": "Registro de Productores y Asesores de Seguros de la Nación (SSN)",
+      "source_family": "PROFESSIONAL_LICENSING_REGISTRY",
+      "current_status": "STALE",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_NACIONAL",
+      "estimated_records": 35000,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": false,
+        "format": "LOCAL_FILE",
+        "stale_reason": "NO_EMAIL_EVIDENCE_FOUND",
+        "email_capability": "NONE"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    },
+    {
+      "source_id": "SRC_SSS_PROFESIONALES_SALUD",
+      "source_name": "Registro Nacional de Prestadores de la Salud (SSSalud)",
+      "source_family": "HEALTH_PROFESSIONALS_REGISTRY",
+      "current_status": "STALE",
+      "protocol": "LOCAL_FILE",
+      "access_method": "LOCAL_STREAM",
+      "public_status": "PUBLIC",
+      "public_access_confirmed": true,
+      "permitted_status": "PERMITTED",
+      "row_unit_supported": [
+        "PUBLIC_EMAIL_CONTACT"
+      ],
+      "geography_scope": "ARG_NACIONAL",
+      "estimated_records": 45000,
+      "capability_metadata": {
+        "bulk_capable": true,
+        "can_enumerate": true,
+        "contains_public_email": false,
+        "format": "LOCAL_FILE",
+        "stale_reason": "NO_EMAIL_EVIDENCE_FOUND",
+        "email_capability": "NONE"
+      },
+      "tesla_motor_capabilities": [
+        "CAPABILITY_BULK_FETCH",
+        "CAPABILITY_TESLA_STREAM"
+      ]
+    }
+  ]
+}

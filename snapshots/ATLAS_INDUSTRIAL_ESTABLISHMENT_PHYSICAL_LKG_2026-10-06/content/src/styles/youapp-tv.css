@@ -1,0 +1,153 @@
+/* src/styles/youapp-tv.css */
+
+.you-tv-layout {
+  background-color: var(--you-bg);
+  min-height: 100vh;
+  color: var(--you-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Typography Utilities */
+.you-text-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--you-text);
+  margin: 0;
+}
+.you-text-subtitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--you-text-secondary);
+  margin: 0;
+}
+.you-text-meta {
+  font-size: 13px;
+  color: var(--you-text-secondary);
+}
+
+/* Layout Grid */
+.you-tv-main {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  padding: 24px 32px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.you-tv-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0; /* allows flex children to shrink */
+}
+
+.you-tv-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding-right: 8px; /* For scrollbar */
+}
+
+/* Surface Cards */
+.you-surface {
+  background: var(--you-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--you-border);
+  border-radius: var(--you-radius-lg);
+  box-shadow: var(--you-shadow);
+  padding: 24px;
+}
+
+.you-surface-solid {
+  background: var(--you-surface-solid);
+  border: 1px solid var(--you-border);
+  border-radius: var(--you-radius-md);
+  box-shadow: var(--you-shadow-sm);
+  padding: 16px;
+}
+
+/* Buttons */
+.you-btn-icon {
+  background: var(--you-surface);
+  border: 1px solid var(--you-border);
+  border-radius: var(--you-radius-sm);
+  color: var(--you-text);
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--you-transition);
+}
+.you-btn-icon:hover {
+  background: var(--you-surface-solid);
+  box-shadow: var(--you-shadow-sm);
+  color: var(--you-blue);
+}
+
+.you-btn-text {
+  background: var(--you-surface);
+  border: 1px solid var(--you-border);
+  border-radius: var(--you-radius-sm);
+  color: var(--you-text);
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: var(--you-transition);
+}
+.you-btn-text:hover {
+  background: var(--you-surface-solid);
+  box-shadow: var(--you-shadow-sm);
+  color: var(--you-blue);
+}
+
+/* Timeline */
+.you-timeline-container {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+}
+
+/* Status Bar */
+.you-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 32px;
+  background: var(--you-surface-solid);
+  border-top: 1px solid var(--you-border);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .you-tv-main {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .you-tv-rail {
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 768px) {
+  .you-tv-main {
+    padding: 16px;
+  }
+  .you-status-bar {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
+}

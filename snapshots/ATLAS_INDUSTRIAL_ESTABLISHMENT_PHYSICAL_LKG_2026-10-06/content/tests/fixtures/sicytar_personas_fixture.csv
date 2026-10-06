@@ -1,0 +1,5 @@
+persona_id;nombre;apellido;sexo_id;edad;cvar_ultimo_acceso;max_grado_academico_id;gran_area_id;tipo_personal_id
+1000001;JUAN PABLO;FIXTURE;1;45;2024-01-15;1;2;1
+1000002;MARIA LAURA;SYNTHETIC;2;38;2023-11-20;2;3;2
+1000003;CARLOS;MOCK;1;;2022-05-10;3;1;3
+1000004;ANA;TESTER;2;29;2024-02-28;4;4;4

@@ -1,0 +1,397 @@
+# YOUAPP SNAPSHOT HISTORY
+
+Este documento constituye el registro maestro inmutable de versiones protegidas, propiedad intelectual (IP) y estados de ingeniería de **YouApp**.
+
+---
+
+## V1 — YouApp Core
+- **Fecha:** 2026-08-30
+- **Git Tag:** `youapp-core-v1`
+- **Archivo:** `YOUAPP_IP_SNAPSHOT_V1.zip`
+- **SHA256:** `0502BE57641F112FB4B224872ACA7A26428BA9E3BCF2E2447665186724D080F6`
+- **Estado:** ORIGINAL — CONGELADO / NO MODIFICAR
+
+### Incluye:
+- Search Engine & Normalization Engine
+- Atlas Graph & Semantic Embeddings
+- Ranking Engine & Relevance
+- RadarPlanner & QuotaBrain
+- TV Core & Signal Persistence V1
+- LiveZapping & ProgramarTV
+- Persistence V1 & Guest Auth
+- Universal Test Pack
+
+---
+
+## V1.1 — YouApp Core + UI Captures
+- **Fecha:** 2026-08-30
+- **Git Tag:** `youapp-core-v1` (congelado)
+- **Archivo:** `YOUAPP_IP_SNAPSHOT_V1_1.zip`
+- **SHA256:** `3BFFBC0C18E0613A37A89C4C3893E49EAF430154950118C20721CDCA2BF81594`
+- **Estado:** ORIGINAL — CONGELADO / NO MODIFICAR
+
+### Incluye:
+- Todo V1
+- Capturas de Pantalla de interfaz (HOME, BUSCAR_IA, HACEME_UNA_TV, LIVE_ZAPPING, PROGRAMAR_TV, SEARCH_LAB, MI_SIGNAL)
+
+---
+
+## V2 — YouApp Streaming MVP & Smart Bar
+- **Fecha:** 2026-09-01
+- **Commit:** `45fec1c`
+- **Git Tag:** `youapp-streaming-mvp-v1`
+- **Archivo:** `YOUAPP_IP_SNAPSHOT_V2.zip`
+- **SHA256:** `2D2E58CF65AB81B3C198E146B90CB488C43D9610623700BAFDB35CA98FBC31C4`
+- **Estado:** ORIGINAL — CONGELADO / NO MODIFICAR
+
+### Cambios & Nuevas Capacidades desde V1:
+1. **Smart Bar Contextual & Player Event Bridge:**
+   - Contrato unificado de `PlaybackState` (`idle | ready | buffering | playing | paused | ended | error`).
+   - Sincronización continua en tiempo real de progreso (`currentTime / duration`) y círculo SVG en la Smart Bar.
+   - Smart Bar adaptativa con `StreamingCapabilities`.
+2. **Capa Multiplataforma & Streaming Graph:**
+   - `streaming_titles`: Catálogo universal de películas y series con metadatos y external IDs (TMDB, IMDB, Watchmode).
+   - `streaming_availability`: Disponibilidad de streaming en Argentina (`country_code = 'AR'`) con trazabilidad completa de origen (`source`, `verified_at`, `expires_at`).
+   - `user_streaming_services`: Gestión de suscripciones activas declaradas por el usuario (*"Mis plataformas"*).
+   - `user_library`: Mi Lista universal multi-contenido (`movie`, `series`, `episode`, `video`, `signal`, `live`).
+   - `user_streaming_activity`: Historial de streaming reciente distinguiendo progreso medido vs actividad externa.
+3. **Nuevas Experiencias de Interfaz:**
+   - **Mi Plataforma (`/mi-plataforma`):** Centro personalizado con filtro `[✓ Mis plataformas]`, Hero inteligente, recomendaciones y lista unificada.
+   - **Explorar (`/explorar`):** Descubrimiento universal con filtros por géneros, tendencias y catálogo global.
+   - **Ficha de Detalle (`/streaming/:type/:id`):** Ficha técnica cinematográfica con desglose de disponibilidad en Argentina y enlaces seguros.
+   - **Modal Mis Plataformas:** Selector limpio sin credenciales para optimizar el catálogo sin costos adicionales.
+   - **Modal Dónde Verla:** Jerarquía de valor (Tu Suscripción $\rightarrow$ Otras Suscripciones $\rightarrow$ Alquiler/Compra).
+
+---
+
+## V3 — YouApp Knowledge Reuse V1
+- **Fecha:** 2026-09-01
+- **Git Tag:** `youapp-knowledge-reuse-v1-live-validated`
+- **Archivo:** `YOUAPP_IP_SNAPSHOT_V3.zip`
+- **SHA256:** `EA4053D46B82586018131B3440A1A67466149000AB082FCC715DECEB74DFA753`
+- **Estado:** LIVE VALIDATED ✅ — CONGELADO / NO MODIFICAR 🧊
+
+### Principio Fundamental:
+> **SEARCH ONCE → ABSORB → REMEMBER → REUSE**
+> *"Cada búsqueda Radar exitosa y correctamente absorbida construye conocimiento reutilizable en YouApp."*
+
+### Validaciones Superadas:
+- **CandidatePool / IndexedDB Local Reuse:** PASS
+- **Browser Reload / F5 Persistence:** PASS
+- **Atlas Pure Recovery (`youapp_index` sin RAM ni IndexedDB):** PASS
+- **Novel Query Learning & Absorption (`"spinetta jade"`):** PASS (40 videos absorbidos en 1ª consulta)
+- **Repeated Query Quota Delta = 0:** PASS (2ª consulta ejecutó Fast Path 100% Atlas con 0 cuota backend)
+
+### Caso Gold de Validación en Vivo:
+- **Query:** `"spinetta jade"`
+  - **1ª Búsqueda (Inédita):** Atlas = 0 $\rightarrow$ Radar = 1 (~100 u) $\rightarrow$ 40 videos absorbidos en `youapp_index`.
+  - **2ª Búsqueda (Sin Caché):** Atlas = 40 $\rightarrow$ Fast Path $\rightarrow$ Radar = 0 $\rightarrow$ **Cuota = 0 u**.
+
+### Nuevas Capacidades & Defensas de Economía:
+1. **Radar Recency Guard Inteligente (`quotaBrain.ts`):**
+   - Cooldown de 6 horas para consultas generales y 1 hora para noticias/actualidad.
+   - Condicionado a la existencia efectiva de candidatos reutilizables (`hasKnowledge > 0`).
+2. **Normalización Canónica de Consultas:**
+   - Limpieza de acentos, símbolos y espacios redundantes para reutilización semántica compartida.
+3. **Calibración de Fast Path Adaptativo (`searchEngine.ts`):**
+   - Aprobación con $\ge 8$ candidatos y Top 5 de alta relevancia sin exigir umbrales artificiales.
+4. **Telemetría Estructurada `[DiscoveryEconomy]`:**
+   - Registro en tiempo real de fuentes (RAM, IndexedDB, Atlas, Radar), estado de guardas y balance de cuota consumida.
+
+---
+
+## V4 — Publisher Video Discovery V1 & Fast Path Post-Eligibility Audit
+- **Fecha:** 2026-09-01
+- **Git Tag:** `youapp-publisher-discovery-v1-live-validated`
+- **Estado:** LIVE VALIDATED ✅ — CONGELADO / NO MODIFICAR 🧊
+
+### Principio Fundamental:
+> **WEB → VIDEO → ATLAS — NO YOUTUBE SEARCH REQUIRED**
+> *"Descubrir y absorber videos reproducibles desde medios de comunicación, feeds RSS y archivos públicos antes de activar Radar."*
+
+### Regla de Invariante Arquitectónico:
+> `atlasRetrieved` nunca puede decidir por sí solo el Fast Path. Sólo `atlasQualified` ($Q \ge 60 \land R \ge 40$) + consistencia del Top 5 pueden aprobar el paso rápido.
+
+### Validaciones Superadas:
+1. **Blindaje SSRF Multi-Hop (Gate 1):** PASS ✅ (Bloqueo de localhost, IPs privadas y redirects no autorizados).
+2. **Prueba Negativa / Fallback (Gate 2):** PASS ✅ (Si calificados $< 8$, la calidad manda y CapabilityRouter queda disponible).
+3. **Extracción y Absorción en Atlas (Gate 3):** PASS ✅ (Extracción determinista de TV Pública / Encuentro y guardado en `publisher_video_provenance`).
+4. **Auditoría Post-Eligibility de Fast Path:** PASS ✅ (Caso en vivo `"cortometraje"`: 30 recuperados $\rightarrow$ 29 calificados $Q \ge 60, R \ge 40$ $\rightarrow$ 1 descartado $R=17.5$ $\rightarrow$ Fast Path aprobado con 0 cuota).
+
+### Nuevas Capacidades:
+1. **Free Discovery Stage (Nivel 0 Pre-Router):**
+   - Extractor 100% determinista (iframes, VideoObject JSON-LD, RSS media, OpenGraph).
+2. **Tabla de Procedencia Múltiple (`publisher_video_provenance`):**
+   - Mapeo de múltiples fuentes descubridoras para un único contenido canónico en `youapp_index`.
+3. **Telemetría Transparente en `[DiscoveryEconomy]`:**
+   - Desglose explícito de `atlasRetrieved`, `atlasQualified` y `eligibilityDropped`.
+
+---
+
+## ATLAS_EXACT_ENTITY_WORK_AUTOREPAIR_V1 — Exact Entity+Work, Multi-Provider Physical Atlas & Autonomous Gap Repair V1
+- **Fecha:** 2026-09-02
+- **Git Tag:** `ATLAS_EXACT_ENTITY_WORK_AUTOREPAIR_V1`
+- **Estado:** STABLE / PROTECTED ✅ — CONGELADO / NO MODIFICAR 🧊
+
+### Principio Fundamental:
+> **EXACT ENTITY + EXACT WORK FIDELITY + PHYSICAL ATLAS PROVENANCE + AUTONOMOUS IDEMPOTENT GAP REPAIR**
+> *"El buscador distingue estrictamente la obra y el intérprete legítimo, rechaza covers no deseados en búsquedas de autor, verifica procedencia física reproducible y repara brechas de catálogo de forma autónoma e idempotente con cuota Search.list = 0."*
+
+### Componentes y Hitos Protegidos:
+1. **ExactWorkSearchGate & ExactEntityWorkGate:**
+   - Detección precisa de obras canónicas a través de `canonicalWorksCatalog.ts` (actuando exclusivamente como ontología semántica y vocabulario, sin fabricar fixtures).
+   - Gates de fidelidad estricta: `WorkFidelity >= 75` y `ArtistFidelity >= 85` (con soporte para entidades compuestas como "Calle 13").
+   - Clasificación de roles de contenido (`ContentRole`: `PRIMARY_WORK`, `OFFICIAL_VIDEO`, `LIVE_PERFORMANCE`, `REMASTER`, `LYRIC` vs `COVER`).
+   - Rechazo riguroso de homónimos falsos, canciones distintas del mismo artista y covers sin participación del autor.
+2. **Separación Ontológica de Memoria de Cobertura:**
+   - `ExactWorkCoverageMemory`: Cobertura de la obra universal en el catálogo.
+   - `ExactEntityWorkCoverageMemory`: Cobertura estricta del binomio Entidad Canónica + Obra.
+3. **Persistencia Física Bronze Atlas & Provenance Verificable:**
+   - Inserción y enriquecimiento en `youapp_index` con `isFixture = false`.
+   - Validación física de `sourceContainsProviderId` y `isPlayable = true`.
+   - Trazabilidad multi-proveedor física: YouTube, Dailymotion, Internet Archive.
+4. **Autonomous Discovery Gap Worker:**
+   - Detección autónoma de déficit de cobertura (`ExactEntityWorkHealth`).
+   - Misiones autónomas sobre obras críticas (*Paint It, Black*, *Crimen*, *Demoliendo Hoteles*, *Seguir Viviendo Sin Tu Amor*).
+   - Tablero de 10 columnas contables con `GapClosureEfficiency` y alerta temprana `HARVEST_WITHOUT_COVERAGE_LIFT`.
+   - **Idempotencia 100% Demostrada:** En ejecuciones repetidas (RUN #2), nuevos insertos duplicados = 0, dedupe = 100%.
+5. **Invariantes Arquitectónicos de Producción:**
+   - `Search.list = 0` 🔒
+   - `Radar = 0 u` 🔒
+   - `isFixture = false` 🔒
+6. **Golden Regression Validada en Vivo:**
+   - Búsqueda: `"calle 13 la perla"`
+   - `ExactEntityWork@10: 10/10` (100% de precisión)
+   - `WrongArtist = 0`, `WrongWork = 0`
+   - `Playable@10 = 10/10`
+   - Serving Path: `FAST`
+
+---
+
+## ATLAS_MAIL_FABRIC_V1 — Transactional Email Infrastructure & First Real Registration E2E V1
+- **Fecha:** 2026-09-10
+- **Estado:** FROZEN / CERTIFIED 🧊
+- **ATLAS_MAIL_FABRIC_V1:** FROZEN
+- **ATLAS_REAL_TRANSACTIONAL_E2E_V1:** CERTIFIED
+- **INBOX_DELIVERABILITY:** NOT_CERTIFIED
+- **REPUTATION_GATE:** WATCH / PILOT_ONLY
+- **CAN_SCALE:** NO
+- **MASS_SENDING:** BLOCKED
+- **ARTIFICIAL_CANARIES:** STOPPED
+
+### Critical File Hashes (SHA-256):
+- `src/lib/atlasMailFabric/AtlasMailTransactionalEventBridge.ts`: `4e7533c5d6bc53475e541c9049e6107ae2784a9bf127fd8a57cf3d04d1d0cbd1`
+- `src/lib/atlasMailFabric/ServerSideRegistrationEmitter.ts`: `e2ca512afc82ac568cc2477cabe0946d8138ed7d4d02e06a0af22b08b549fce0`
+- `src/lib/atlasMailFabric/LegitimateSourceEventGuard.ts`: `441ab4ee45ca8899c22e1cbe73fbe04ab307237e38542589ad66fe028efdb787`
+- `src/lib/atlasMailFabric/AtlasRFC822Builder.ts`: `d8abc8b3cf33b4aaf6f4ec5023175590f545691af7163991ebb03d31e9ab02f0`
+- `src/lib/atlasMailFabric/AtlasMailReputationGuard.ts`: `5d33ce5706d039016704b78c011c60c16ea24e1f0dd13765dd750db9dcf2fe00`
+- `src/lib/atlasMailFabric/AtlasMailVolumeGovernor.ts`: `567c3eb853d1fa4898587c38a161fb477c7726caaa0b5ae2c6e0d7e882ce010a`
+- `src/lib/atlasMailFabric/AtlasMailSignalProviders.ts`: `6156ca37745686294ee9dbbb077d03d346a7e85ee99cbb24fca0b27cca710952`
+- `src/lib/atlasMailFabric/LiveSMTPTransport.ts`: `d1e1800f8ec9e793e76fa236c6e5b51e444c5aaa6993bebbf3c811e65c351843`
+- `supabase/migrations/20260909077000_atlas_mail_control_plane_v1.sql`: `e3f96b469b502c690403da75cb9561cd75cc42ffa426c11789a212cac69e7400`
+- `supabase/migrations/20260909080000_atlas_mail_fabric_v1.sql`: `8d04a837f821529fd8280f1262e82b431ba2aa91ee603fe94e21365f95cf7e11`
+- `supabase/migrations/20260909081000_atlas_reputation_guard_v1.sql`: `aa19eb6d8384ffd3b3e8acdfa9165a46a844855b7c33a56c5c32309263db51f1`
+- `walkthrough.md`: `fda76e4b68579b991c567465f4b10e32a802113e8768f322cd23ee02d64b3b33`
+
+### Regla Operativa Maestra:
+- Cero tráfico artificial para calentar reputación.
+- 0 eventos legítimos $\rightarrow$ 0 emails.
+- Techo operativo inicial: 5 eventos legítimos / día.
+- Hard reputation cap: 25 / día.
+
+### Atlas Real-World Validation Tracker (Natural Organic Traffic Only):
+- **ATLAS_REAL_WORLD_VALIDATION_TARGET:** 50
+- **ATLAS_REAL_WORLD_VALIDATION_COMPLETED:** 1
+- **ATLAS_REAL_WORLD_VALIDATION_REMAINING:** 49
+- **CONDICIONES:** Eventos orgánicos reales de YouApp (registro verdadero, reset de contraseña, verificación, notificación solicitada). Prohibidos fixtures, mocks, self-sends, warmup y canaries artificiales.
+
+#### Registro de Validaciones Reales:
+* **TEST #1 / 50:**
+  - `EVENT_TYPE`: `REGISTRATION_CONFIRMATION`
+  - `REAL_SOURCE`: `PASS` (Supabase Auth SignUp auténtico)
+  - `BRIDGE`: `PASS` (`AtlasMailTransactionalEventBridge`)
+  - `IDEMPOTENCY`: `PASS` (`DurableSpoolQueue` atomic claim)
+  - `GUARDS`: `PASS` (`LegitimateSourceEventGuard` + `AtlasMailReputationGuard`)
+  - `PHYSICAL_ACCEPTED`: `PASS` (Microsoft MX `hotmail-com.olc.protection.outlook.com` $\rightarrow$ `250 2.6.0 Queued mail for delivery`)
+  - `SPF`: `PASS`
+  - `DKIM`: `PASS`
+  - `DMARC`: `PASS`
+  - `COMPAUTH`: `PASS`
+  - `PLACEMENT`: `JUNK` (SCL: 5, BCL: 0)
+  - `RECEIVER`: `MICROSOFT / OUTLOOK`
+  - `ZERO_PII`: `PASS`
+
+---
+
+## ATLAS_CANONICAL_ENTITIES_V1 — Canonical Identity Resolution & Provenance Ledger V1
+- **Fecha:** 2026-09-10
+- **Commit:** `653726ec3c6f892193bce1612166b53a3ed3e602`
+- **Estado:** BASE FROZEN 🧊
+- **ATLAS_CANONICAL_ENTITIES_V1:** CERTIFIED
+- **AUTHENTICATED_CROSS_TENANT_LEAKS:** 0
+- **TESTS:** 69/69 PASS
+
+### Original V1 File Hashes (SHA-256):
+- `src/lib/atlasSemantic/EntityNormalizationEngine.ts`: `260bc2ac7617f9a21460cdea8ff323094a61e90a0417091b6805793303455dec`
+- `src/lib/atlasSemantic/EntityResolutionEngine.ts`: `49142bba376370ce43e44de81d3b0d0165e3dc6e561a9b8d31e3e27b990f1ccf`
+- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `bedc9e716d12d12a76b4e453d924c9183c65c78d70353636faed68f270d40990`
+- `src/lib/atlasSemantic/types.ts`: `293f46019b05493fe74e4930d5762ca805836211e25e3e36228d0e1fba96dd65`
+- `supabase/migrations/20260910160000_atlas_canonical_entities_v1.sql`: `106f49fa533fc7fe94d492c493e800af564fad0db25d7a376789145c52b5fecb`
+- `supabase/migrations/20260910161000_atlas_canonical_entities_rls_closure.sql`: `a5a7121b40857c05ea7f6f3fdf5442410a1943dfb98244eab4f5f092c3aad01d`
+
+---
+
+## ATLAS_SEMANTIC_FACTS_AND_RELATIONSHIPS_V1 — Semantic Facts, Relationships & Inference Engine V1
+- **Fecha:** 2026-09-10
+- **Commit:** `fd4ae52`
+- **Estado:** CERTIFIED / FROZEN 🧊
+- **LEVEL_3_RELATIONAL_INTELLIGENCE:** ACHIEVED
+- **TESTS:** 132/132 PASS
+
+### File Hashes (SHA-256):
+- `src/lib/atlasSemantic/AtlasSemanticFactService.ts`: `5ea9834160a08e1ec2768560ff02131922e33f38e68cf96cbdfba1207e492ca4`
+- `src/lib/atlasSemantic/AtlasSemanticRelationshipService.ts`: `5ee5a2a229c17f16ef062776c5b5f8ea559a43a6d95c735d4665c829e0788ee5`
+- `src/lib/atlasSemantic/SemanticRuleInferenceEngine.ts`: `295a62f8b5a0ca97ef5cb92d2bc7a3f4cf2fa1d528cb615ba164c679a7fe92b3`
+- `supabase/migrations/20260910170000_atlas_semantic_facts_and_relationships_v1.sql`: `4132af0a025d08b3e99c03affdf7de9dbe06b6c83683e6ee1e0911012fe0f52a`
+
+---
+
+## ATLAS_CANONICAL_ENTITIES_V1_0_1 — Shared Platform Identity Guard Hotfix
+- **Fecha:** 2026-09-10
+- **Hotfix Tag:** `V1.0.1_SHARED_PLATFORM_IDENTITY_GUARD`
+- **Estado:** FINAL FROZEN CERTIFIED 🧊
+- **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
+- **TESTS:** 193/193 PASS (Full regression across all canonical, semantic, and identity closure suites)
+
+### Reglas del Hotfix:
+1. **SHARED_PLATFORM_DOMAINS:** `youtube.com`, `youtu.be`, `instagram.com`, `facebook.com`, `fb.com`, `tiktok.com`, `twitter.com`, `x.com`, `linkedin.com`, `vimeo.com`, `twitch.tv`, `linktr.ee`.
+2. **SHARED_PLATFORM_DOMAIN** $\Rightarrow$ `NEVER VERIFIED_DOMAIN_EXACT` $\Rightarrow$ `NEVER STRONG COMPANY IDENTITY` $\Rightarrow$ `NEVER primary_domain`.
+3. **Provider-scoped channel IDs:** Usar namespace explícito (`youtube_channel:<id>`, etc.).
+
+### Hotfix V1.0.1 Hash Baseline (SHA-256):
+- `src/lib/atlasSemantic/EntityNormalizationEngine.ts`: `7c44f9e4155813a00e0a70da023990f9a49560f1f26d845d339f46c133e79223`
+- `src/lib/atlasSemantic/EntityResolutionEngine.ts`: `11ae3ec49cad647209d46484baab9b25b024099c4798aff2745c00d39e0ec9ab`
+- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `039ed09813d8a71d9b2c9d248acb989a8d21c1c284229252b67fb11fb319adf0`
+- `src/lib/atlasSemantic/types.ts`: `293f46019b05493fe74e4930d5762ca805836211e25e3e36228d0e1fba96dd65`
+- `supabase/migrations/20260910160000_atlas_canonical_entities_v1.sql`: `106f49fa533fc7fe94d492c493e800af564fad0db25d7a376789145c52b5fecb`
+- `supabase/migrations/20260910161000_atlas_canonical_entities_rls_closure.sql`: `a5a7121b40857c05ea7f6f3fdf5442410a1943dfb98244eab4f5f092c3aad01d`
+- `supabase/migrations/20260910170000_atlas_semantic_facts_and_relationships_v1.sql`: `4132af0a025d08b3e99c03affdf7de9dbe06b6c83683e6ee1e0911012fe0f52a`
+
+---
+
+## ATLAS_CANONICAL_ENTITIES_V1_0_2 — Identifier Metadata & Replay Idempotency Hotfix
+- **Fecha:** 2026-09-10
+- **Hotfix Tag:** `V1.0.2_IDENTIFIER_METADATA_AND_REPLAY_IDEMPOTENCY`
+- **Estado:** FINAL FROZEN CERTIFIED 🧊
+- **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
+
+### Cambios Funcionales:
+1. **Identifier Metadata Indexing:** Almacenamiento determinístico de `email_hash`, `phone_hash` y `external_ids` en `atlas_canonical_entities.metadata`.
+2. **Candidate Search Filter Expansion:** Filtro `OR` incluye `metadata->>email_hash` y `metadata->>phone_hash` para recuperación rápida sin escaneos completos.
+3. **Replay Idempotency Guard:** `is_existing_observation: true` y mapeo determinístico en re-ejecución para 0 duplicados canónicos.
+
+### Hashes V1.0.2 (SHA-256):
+- `src/lib/atlasSemantic/EntityNormalizationEngine.ts`: `7c44f9e4155813a00e0a70da023990f9a49560f1f26d845d339f46c133e79223`
+- `src/lib/atlasSemantic/EntityResolutionEngine.ts`: `11ae3ec49cad647209d46484baab9b25b024099c4798aff2745c00d39e0ec9ab`
+- `src/lib/atlasSemantic/AtlasCanonicalEntityService.ts`: `039ed09813d8a71d9b2c9d248acb989a8d21c1c284229252b67fb11fb319adf0`
+- `src/lib/atlasSemantic/types.ts`: `293f46019b05493fe74e4930d5762ca805836211e25e3e36228d0e1fba96dd65`
+
+---
+
+## ATLAS_SEMANTIC_FACTS_AND_RELATIONSHIPS_V1_0_1_SERVICE_HOTFIX — UUID/Hash PII Guard Fix
+- **Fecha:** 2026-09-10
+- **Hotfix Tag:** `SEMANTIC_FACTS_AND_RELATIONSHIPS_V1.0.1_SERVICE_HOTFIX`
+- **Estado:** FINAL FROZEN CERTIFIED 🧊
+- **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
+
+### Cambios Funcionales:
+1. **PII Guard False Positive Fix:** `assertNoPlaintextPii` en `AtlasSemanticKnowledgeService.ts` excluye patrones UUID estándar (`^[0-9a-f]{8}-...`) y hashes SHA-256 de la evaluación de expresiones regulares telefónicas.
+2. **Multi-Source Evidence Linking:** Preservación de trazabilidad determinística en `assertRelationship`.
+
+### Hash V1.0.1 (SHA-256):
+- `src/lib/atlasSemantic/AtlasSemanticKnowledgeService.ts`: `fc1f1386b499817304b8808fa06276e3ce8c1b73f4755122645846208817e6b2`
+
+---
+
+## ATLAS_HIGH_FIDELITY_PERSON_KNOWLEDGE_V1 — Person Knowledge Backfill V1
+- **Fecha:** 2026-09-10
+- **Estado:** CERTIFIED / FROZEN 🧊
+- **STAGE_HF_0_DRY_RUN:** PASS (50 sampled, 0 writes)
+- **STAGE_HF_1_CONTROLLED_WRITE:** PASS (50 persons unit, 0 false merges, 0 plaintext contact leaks)
+- **REPLAY_IDEMPOTENCY:** CERTIFIED IDEMPOTENT (0 duplicate canonical entities, 0 duplicate facts)
+
+### Hashes High-Fidelity V1 (SHA-256):
+- `src/lib/atlasSemanticIngestion/PersonAttributeSemanticPolicy.ts`: `c8cac6b6e4251a346555dd842fa4fb070570623527678feff1c4f60aaae394f4`
+- `src/lib/atlasSemanticIngestion/HighFidelityPersonCoordinator.ts`: `714f0d55d4906f03e8f3f5649f7bd969b5db19ad57a0f7ad47de357c7f23e049`
+
+---
+
+## ATLAS_REASONING_QUERY_FABRIC_V1_0_1 — Epistemic Taxonomy Complete Support Hotfix
+- **Fecha:** 2026-09-10
+- **Tag:** `ATLAS_REASONING_QUERY_FABRIC_V1.0.1_HOTFIX_CERTIFIED`
+- **Estado:** FINAL FROZEN CERTIFIED 🧊
+- **DATABASE_SCHEMA_CHANGE_REQUIRED:** NO (`NEW_MIGRATION = NONE`)
+- **TESTS:** 70/70 PASS (Suite `atlas_reasoning_query_fabric_v1.test.ts`) / SELECTED_FULL_STACK_REGRESSION = 229/229 PASS
+
+### Cambios Funcionales (Hotfix V1.0.1):
+1. **Full 6-Type Epistemic Taxonomy:** Soporte formal e integral para `USER_CONFIRMED_FACT`, `FACT`, `INFERRED`, `CLAIM`, `PREDICTION`, `RAW_OBSERVATION`.
+2. **Ranking Hierarchy Enforcement:** `USER_CONFIRMED_FACT` (1.00) > `FACT` (0.95) > `INFERRED` (0.85) > `CLAIM` (0.70) > `PREDICTION` (0.55) > `RAW_OBSERVATION` (0.40).
+3. **Anti-Degradation & Label Preservation:** `PREDICTION` nunca se disfraza de `FACT` o `INFERRED`. `USER_CONFIRMED_FACT` preserva su proveniencia explícita.
+4. **Epistemic Breakdown Accounting:** Conteo individual de las 6 categorías epistémicas en `GroundedAnswer.epistemic_breakdown`.
+
+### Hashes Query Fabric V1.0.1 (SHA-256):
+- `src/lib/atlasQueryFabric/types.ts`: `51a44bebbc491c14875f0771fb8633aac3d784eb7087e63d365b2ca4aa22f07c`
+- `src/lib/atlasQueryFabric/SemanticConceptMap.ts`: `215bed455d84f9051c1a20b3af5e6c7dd4202e918ad29342548a394e31911cab`
+- `src/lib/atlasQueryFabric/QueryIntentClassifier.ts`: `af2857903ef4ce9353ed1f0d91b43557ed8d41a89bfde2c62b21cce2152a86f9`
+- `src/lib/atlasQueryFabric/StructuredQueryPlanner.ts`: `e6e795ea93042b68d58aeb463f717f8e5b284c827336df8a982e4d94d600121e`
+- `src/lib/atlasQueryFabric/AtlasGraphRetrievalEngine.ts`: `4c6ca5e2386ee7c38fd06e083734d558f7ae40d2773263549c118bcbbe4bba85`
+- `src/lib/atlasQueryFabric/TemporalContradictionFilter.ts`: `bc0694c588845ebd5456105b1b81e7f8b7d44034c6964ccf4646610950da96f8`
+- `src/lib/atlasQueryFabric/EvidenceRankingEngine.ts`: `b9895f7278f4fae0fea04ed296b68e50837f368e483225f5d90c26c2a7c88276`
+- `src/lib/atlasQueryFabric/AtlasAnswerSynthesizer.ts`: `df9609163c6361c79b5956612d0dbbfb2d15eb7c2e5ce8a9be76f2cbe258bd85`
+- `src/lib/atlasQueryFabric/AtlasReasoningQueryFabric.ts`: `3fde06cb435f0f801fb525e4bd608880dfc20851613877c1f3b4c7d7fc3d1ca2`
+- `src/lib/atlasQueryFabric/index.ts`: `93dc52bd6601b79e8d63a6700bf58f252eb421000d281c078650c4c0caf8ace6`
+
+
+
+
+---
+
+## ATLAS_IP_SNAPSHOT_2026-09-16_102705 — Atlas Industrial Architecture IP Protection Checkpoint
+- **Fecha / Hora:** Wed Sep 16 2026 10:27:05 GMT-0300 (hora estándar de Argentina) (2026-09-16T13:27:05.239Z)
+- **Git HEAD:** `923adbe62033b61d6cfa53e50ce42cdf5c35eb99`
+- **Git Branch:** `main`
+- **Archivo ZIP:** `ATLAS_IP_SNAPSHOT_2026-09-16_102705.zip`
+- **SHA256 ZIP:** `c54847a8bd63e10d3be0fbaf295ab32eb51f1f9530f25ae00c1a4417c152ae11`
+- **Archivo Git Bundle:** `ATLAS_SOURCE_HISTORY_2026-09-16_102705.bundle`
+- **SHA256 Git Bundle:** `bb94c503ed21d7fcaf0989a710a8b9d2c5ea6214c65dfe4bab523b0e434fbe9a`
+- **Archivos Incluidos:** 1632 (12.70 MB)
+- **SECRETS_INCLUDED:** 0
+- **Motivo:** IP PROTECTION CHECKPOINT — ATLAS INDUSTRIAL ARCHITECTURE
+- **Estado:** FROZEN / CERTIFIED 🧊
+
+---
+
+## ATLAS_INDUSTRIAL_ESTABLISHMENT_PHYSICAL_LKG_2026-10-06 — Atlas Industrial Physical Known-Good State
+- **Fecha / Hora:** Tue Oct 06 2026 11:08:16 GMT-0300 (hora estándar de Argentina) (2026-10-06T14:08:16.344Z)
+- **Git HEAD:** `923adbe62033b61d6cfa53e50ce42cdf5c35eb99`
+- **Git Branch:** `main`
+- **Archivo ZIP:** `ATLAS_INDUSTRIAL_ESTABLISHMENT_PHYSICAL_LKG_2026-10-06.zip`
+- **SHA256 ZIP:** `1e4fa74fb2a5a762fa4253434976d36dc96dfa037f4fe2d09c3bddb8e13680be`
+- **Archivo Git Bundle:** `ATLAS_INDUSTRIAL_ESTABLISHMENT_PHYSICAL_LKG_2026-10-06.bundle`
+- **SHA256 Git Bundle:** `dc55e4eddf540cbc87a6e7190236e87b3fec580e38efa211a35f8343a5825b7d`
+- **Archivos Incluidos:** 3200 (30.47 MB)
+- **SECRETS_INCLUDED:** 0
+- **Verificación Física en Vivo:**
+  - **Misión:** `#4_00B681` (`LIBRERIAS CABA`, Target = 1000)
+  - **URL:** `http://localhost:5175/buscaindustrial`
+  - **Scanned:** `279`
+  - **Core Existing:** `139`
+  - **Certified New:** `130`
+  - **Runtime Backend PID:** `36128` (Puerto 5174)
+  - **Runtime Frontend PID:** `40332` (Puerto 5175)
+  - **Build TypeScript:** `npx tsc --noEmit PASS`
+- **Observaciones Registradas:**
+  - `UI_SCANNED = 279`, `VISIBLE_ACCOUNTED = 139 + 130 = 269`, `VISIBLE_DIFFERENCE = 10` (posible conteo visual de filas probe).
+  - `UI_SPEED = 0 reg/sec` mientras la búsqueda física continúa en segundo plano.
+- **Motivo:** FREEZE CURRENT PHYSICAL KNOWN-GOOD STATE (ESTABLISHMENT ACQUISITION WORKING)
+- **Estado:** FROZEN / CERTIFIED LKG 🧊

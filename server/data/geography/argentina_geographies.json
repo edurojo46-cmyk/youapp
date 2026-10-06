@@ -1,0 +1,2435 @@
+[
+  {
+    "geography_id": "ARG_NACIONAL",
+    "canonical_name": "Argentina (Nivel Nacional)",
+    "display_name": "Argentina",
+    "country": "ARG",
+    "province": null,
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "NATIONAL",
+    "aliases": [
+      "argentina",
+      "nacional",
+      "todo el pais",
+      "republica argentina",
+      "arg / nacional"
+    ],
+    "bbox": {
+      "south": -55.05,
+      "west": -73.6,
+      "north": -21.75,
+      "east": -53.6,
+      "clause": "(-55.05,-73.60,-21.75,-53.60)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": null,
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "argentina",
+      "nacional",
+      "todo el pais",
+      "republica argentina",
+      "arg / nacional"
+    ],
+    "updated_at": "2026-10-03T18:04:37.698Z"
+  },
+  {
+    "geography_id": "ARG_CABA",
+    "canonical_name": "CABA (Ciudad Autónoma de Buenos Aires)",
+    "display_name": "CABA",
+    "country": "ARG",
+    "province": "Ciudad Autónoma de Buenos Aires",
+    "department": "CABA",
+    "municipality": "CABA",
+    "locality": "CABA",
+    "admin_level": "CITY_PROVINCE",
+    "aliases": [
+      "caba",
+      "capital federal",
+      "ciudad autonoma de buenos aires",
+      "ciudad de buenos aires",
+      "buenos aires capital",
+      "porteno",
+      "portena",
+      "portenos",
+      "arg / caba"
+    ],
+    "bbox": {
+      "south": -34.7,
+      "west": -58.53,
+      "north": -34.53,
+      "east": -58.35,
+      "clause": "(-34.70,-58.53,-34.53,-58.35)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-C",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "caba",
+      "capital federal",
+      "ciudad autonoma de buenos aires",
+      "ciudad de buenos aires",
+      "buenos aires capital",
+      "porteno",
+      "portena",
+      "portenos",
+      "arg / caba"
+    ],
+    "updated_at": "2026-10-03T18:04:37.699Z"
+  },
+  {
+    "geography_id": "ARG_PROV_BUENOS_AIRES",
+    "canonical_name": "Provincia de Buenos Aires",
+    "display_name": "Buenos Aires (Provincia)",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de buenos aires",
+      "buenos aires provincia",
+      "pba",
+      "bonaerense",
+      "arg / buenos aires"
+    ],
+    "bbox": {
+      "south": -41.05,
+      "west": -63.4,
+      "north": -33.25,
+      "east": -56.65,
+      "clause": "(-41.05,-63.4,-33.25,-56.65)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-B",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de buenos aires",
+      "buenos aires provincia",
+      "pba",
+      "bonaerense",
+      "arg / buenos aires"
+    ],
+    "updated_at": "2026-10-03T18:04:37.699Z"
+  },
+  {
+    "geography_id": "ARG_PROV_CATAMARCA",
+    "canonical_name": "Provincia de Catamarca",
+    "display_name": "Catamarca",
+    "country": "ARG",
+    "province": "Catamarca",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de catamarca",
+      "catamarca provincia",
+      "catamarqueno",
+      "arg / catamarca"
+    ],
+    "bbox": {
+      "south": -30.08,
+      "west": -69.05,
+      "north": -25.2,
+      "east": -64.95,
+      "clause": "(-30.08,-69.05,-25.2,-64.95)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-K",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de catamarca",
+      "catamarca provincia",
+      "catamarqueno",
+      "arg / catamarca"
+    ],
+    "updated_at": "2026-10-03T18:04:37.699Z"
+  },
+  {
+    "geography_id": "ARG_PROV_CHACO",
+    "canonical_name": "Provincia del Chaco",
+    "display_name": "Chaco",
+    "country": "ARG",
+    "province": "Chaco",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "chaco",
+      "provincia del chaco",
+      "provincia de chaco",
+      "chaqueno",
+      "arg / chaco"
+    ],
+    "bbox": {
+      "south": -28,
+      "west": -63.45,
+      "north": -24.1,
+      "east": -58.35,
+      "clause": "(-28,-63.45,-24.1,-58.35)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-H",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "chaco",
+      "provincia del chaco",
+      "provincia de chaco",
+      "chaqueno",
+      "arg / chaco"
+    ],
+    "updated_at": "2026-10-03T18:04:37.699Z"
+  },
+  {
+    "geography_id": "ARG_PROV_CHUBUT",
+    "canonical_name": "Provincia del Chubut",
+    "display_name": "Chubut",
+    "country": "ARG",
+    "province": "Chubut",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "chubut",
+      "provincia del chubut",
+      "chibutense",
+      "arg / chubut"
+    ],
+    "bbox": {
+      "south": -46,
+      "west": -72.2,
+      "north": -42,
+      "east": -65.05,
+      "clause": "(-46,-72.2,-42,-65.05)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-U",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "chubut",
+      "provincia del chubut",
+      "chibutense",
+      "arg / chubut"
+    ],
+    "updated_at": "2026-10-03T18:04:37.699Z"
+  },
+  {
+    "geography_id": "ARG_PROV_CORDOBA",
+    "canonical_name": "Provincia de Córdoba",
+    "display_name": "Córdoba (Provincia)",
+    "country": "ARG",
+    "province": "Córdoba",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de cordoba",
+      "provincia de córdoba",
+      "cordoba provincia",
+      "arg / cordoba provincia"
+    ],
+    "bbox": {
+      "south": -35,
+      "west": -65.8,
+      "north": -29.5,
+      "east": -61.75,
+      "clause": "(-35,-65.8,-29.5,-61.75)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-X",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de cordoba",
+      "cordoba provincia",
+      "arg / cordoba provincia"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_CORRIENTES",
+    "canonical_name": "Provincia de Corrientes",
+    "display_name": "Corrientes (Provincia)",
+    "country": "ARG",
+    "province": "Corrientes",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de corrientes",
+      "corrientes provincia",
+      "correntino",
+      "arg / corrientes"
+    ],
+    "bbox": {
+      "south": -30.75,
+      "west": -59.65,
+      "north": -27.2,
+      "east": -55.6,
+      "clause": "(-30.75,-59.65,-27.2,-55.6)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-W",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de corrientes",
+      "corrientes provincia",
+      "correntino",
+      "arg / corrientes"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_ENTRE_RIOS",
+    "canonical_name": "Provincia de Entre Ríos",
+    "display_name": "Entre Ríos",
+    "country": "ARG",
+    "province": "Entre Ríos",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "entre rios",
+      "entre ríos",
+      "provincia de entre rios",
+      "entrerriano",
+      "arg / entre rios"
+    ],
+    "bbox": {
+      "south": -34.05,
+      "west": -60.75,
+      "north": -30.15,
+      "east": -57.8,
+      "clause": "(-34.05,-60.75,-30.15,-57.8)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-E",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "entre rios",
+      "provincia de entre rios",
+      "entrerriano",
+      "arg / entre rios"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_FORMOSA",
+    "canonical_name": "Provincia de Formosa",
+    "display_name": "Formosa (Provincia)",
+    "country": "ARG",
+    "province": "Formosa",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de formosa",
+      "formosa provincia",
+      "formoseno",
+      "arg / formosa"
+    ],
+    "bbox": {
+      "south": -26.9,
+      "west": -62.4,
+      "north": -22.5,
+      "east": -57.55,
+      "clause": "(-26.9,-62.4,-22.5,-57.55)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-P",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de formosa",
+      "formosa provincia",
+      "formoseno",
+      "arg / formosa"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_JUJUY",
+    "canonical_name": "Provincia de Jujuy",
+    "display_name": "Jujuy (Provincia)",
+    "country": "ARG",
+    "province": "Jujuy",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "jujuy",
+      "provincia de jujuy",
+      "jujeno",
+      "arg / jujuy"
+    ],
+    "bbox": {
+      "south": -24.7,
+      "west": -67.25,
+      "north": -21.75,
+      "east": -64.15,
+      "clause": "(-24.7,-67.25,-21.75,-64.15)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-Y",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "jujuy",
+      "provincia de jujuy",
+      "jujeno",
+      "arg / jujuy"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_LA_PAMPA",
+    "canonical_name": "Provincia de La Pampa",
+    "display_name": "La Pampa",
+    "country": "ARG",
+    "province": "La Pampa",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "la pampa",
+      "provincia de la pampa",
+      "pampeano",
+      "arg / la pampa"
+    ],
+    "bbox": {
+      "south": -38.25,
+      "west": -68.3,
+      "north": -35,
+      "east": -63.35,
+      "clause": "(-38.25,-68.3,-35,-63.35)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-L",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "la pampa",
+      "provincia de la pampa",
+      "pampeano",
+      "arg / la pampa"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_LA_RIOJA",
+    "canonical_name": "Provincia de La Rioja",
+    "display_name": "La Rioja (Provincia)",
+    "country": "ARG",
+    "province": "La Rioja",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de la rioja",
+      "la rioja provincia",
+      "riojano",
+      "arg / la rioja"
+    ],
+    "bbox": {
+      "south": -31.95,
+      "west": -69.45,
+      "north": -27.75,
+      "east": -65.35,
+      "clause": "(-31.95,-69.45,-27.75,-65.35)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-F",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de la rioja",
+      "la rioja provincia",
+      "riojano",
+      "arg / la rioja"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_MENDOZA",
+    "canonical_name": "Provincia de Mendoza",
+    "display_name": "Mendoza (Provincia)",
+    "country": "ARG",
+    "province": "Mendoza",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de mendoza",
+      "mendoza provincia",
+      "mendocino",
+      "arg / mendoza provincia"
+    ],
+    "bbox": {
+      "south": -37.6,
+      "west": -70.6,
+      "north": -31.95,
+      "east": -66.5,
+      "clause": "(-37.6,-70.6,-31.95,-66.5)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-M",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de mendoza",
+      "mendoza provincia",
+      "mendocino",
+      "arg / mendoza provincia"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_MISIONES",
+    "canonical_name": "Provincia de Misiones",
+    "display_name": "Misiones",
+    "country": "ARG",
+    "province": "Misiones",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "misiones",
+      "provincia de misiones",
+      "misionero",
+      "arg / misiones"
+    ],
+    "bbox": {
+      "south": -28.2,
+      "west": -56.05,
+      "north": -25.5,
+      "east": -53.6,
+      "clause": "(-28.2,-56.05,-25.5,-53.6)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-N",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "misiones",
+      "provincia de misiones",
+      "misionero",
+      "arg / misiones"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_NEUQUEN",
+    "canonical_name": "Provincia del Neuquén",
+    "display_name": "Neuquén (Provincia)",
+    "country": "ARG",
+    "province": "Neuquén",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia del neuquen",
+      "neuquen provincia",
+      "neuquino",
+      "arg / neuquen"
+    ],
+    "bbox": {
+      "south": -41.15,
+      "west": -71.95,
+      "north": -36.15,
+      "east": -68.1,
+      "clause": "(-41.15,-71.95,-36.15,-68.1)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-Q",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia del neuquen",
+      "neuquen provincia",
+      "neuquino",
+      "arg / neuquen"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_RIO_NEGRO",
+    "canonical_name": "Provincia de Río Negro",
+    "display_name": "Río Negro",
+    "country": "ARG",
+    "province": "Río Negro",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "rio negro",
+      "río negro",
+      "provincia de rio negro",
+      "rionegrino",
+      "arg / rio negro"
+    ],
+    "bbox": {
+      "south": -42,
+      "west": -72,
+      "north": -37.55,
+      "east": -62.75,
+      "clause": "(-42,-72,-37.55,-62.75)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-R",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "rio negro",
+      "provincia de rio negro",
+      "rionegrino",
+      "arg / rio negro"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_SALTA",
+    "canonical_name": "Provincia de Salta",
+    "display_name": "Salta (Provincia)",
+    "country": "ARG",
+    "province": "Salta",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de salta",
+      "salta provincia",
+      "salteno",
+      "arg / salta"
+    ],
+    "bbox": {
+      "south": -26.4,
+      "west": -68.6,
+      "north": -22,
+      "east": -62.35,
+      "clause": "(-26.4,-68.6,-22,-62.35)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-A",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de salta",
+      "salta provincia",
+      "salteno",
+      "arg / salta"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_SAN_JUAN",
+    "canonical_name": "Provincia de San Juan",
+    "display_name": "San Juan (Provincia)",
+    "country": "ARG",
+    "province": "San Juan",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de san juan",
+      "san juan provincia",
+      "sanjuanino",
+      "arg / san juan provincia"
+    ],
+    "bbox": {
+      "south": -32.65,
+      "west": -70.6,
+      "north": -28.35,
+      "east": -66.75,
+      "clause": "(-32.65,-70.6,-28.35,-66.75)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-J",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de san juan",
+      "san juan provincia",
+      "sanjuanino",
+      "arg / san juan provincia"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_SAN_LUIS",
+    "canonical_name": "Provincia de San Luis",
+    "display_name": "San Luis (Provincia)",
+    "country": "ARG",
+    "province": "San Luis",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de san luis",
+      "san luis provincia",
+      "puntano",
+      "arg / san luis"
+    ],
+    "bbox": {
+      "south": -36,
+      "west": -67.25,
+      "north": -31.85,
+      "east": -64.95,
+      "clause": "(-36,-67.25,-31.85,-64.95)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-D",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de san luis",
+      "san luis provincia",
+      "puntano",
+      "arg / san luis"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_SANTA_CRUZ",
+    "canonical_name": "Provincia de Santa Cruz",
+    "display_name": "Santa Cruz",
+    "country": "ARG",
+    "province": "Santa Cruz",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "santa cruz",
+      "provincia de santa cruz",
+      "santacruzeno",
+      "arg / santa cruz"
+    ],
+    "bbox": {
+      "south": -52.4,
+      "west": -73.6,
+      "north": -46,
+      "east": -65.7,
+      "clause": "(-52.4,-73.6,-46,-65.7)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-Z",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "santa cruz",
+      "provincia de santa cruz",
+      "santacruzeno",
+      "arg / santa cruz"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_SANTA_FE",
+    "canonical_name": "Provincia de Santa Fe",
+    "display_name": "Santa Fe (Provincia)",
+    "country": "ARG",
+    "province": "Santa Fe",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de santa fe",
+      "santa fe provincia",
+      "santafesino",
+      "arg / santa fe provincia"
+    ],
+    "bbox": {
+      "south": -34.4,
+      "west": -62.9,
+      "north": -27.95,
+      "east": -59.35,
+      "clause": "(-34.4,-62.9,-27.95,-59.35)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-S",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de santa fe",
+      "santa fe provincia",
+      "santafesino",
+      "arg / santa fe provincia"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_SANTIAGO_DEL_ESTERO",
+    "canonical_name": "Provincia de Santiago del Estero",
+    "display_name": "Santiago del Estero (Provincia)",
+    "country": "ARG",
+    "province": "Santiago del Estero",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de santiago del estero",
+      "santiago del estero provincia",
+      "santiagueno",
+      "arg / santiago del estero"
+    ],
+    "bbox": {
+      "south": -30.05,
+      "west": -65.5,
+      "north": -25.55,
+      "east": -61.65,
+      "clause": "(-30.05,-65.5,-25.55,-61.65)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-G",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de santiago del estero",
+      "santiago del estero provincia",
+      "santiagueno",
+      "arg / santiago del estero"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_TIERRA_DEL_FUEGO",
+    "canonical_name": "Provincia de Tierra del Fuego",
+    "display_name": "Tierra del Fuego",
+    "country": "ARG",
+    "province": "Tierra del Fuego",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "tierra del fuego",
+      "provincia de tierra del fuego",
+      "fueguino",
+      "arg / tierra del fuego"
+    ],
+    "bbox": {
+      "south": -55.05,
+      "west": -68.7,
+      "north": -52.65,
+      "east": -63.75,
+      "clause": "(-55.05,-68.7,-52.65,-63.75)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-V",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "tierra del fuego",
+      "provincia de tierra del fuego",
+      "fueguino",
+      "arg / tierra del fuego"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_PROV_TUCUMAN",
+    "canonical_name": "Provincia de Tucumán",
+    "display_name": "Tucumán (Provincia)",
+    "country": "ARG",
+    "province": "Tucumán",
+    "department": null,
+    "municipality": null,
+    "locality": null,
+    "admin_level": "PROVINCE",
+    "aliases": [
+      "provincia de tucuman",
+      "tucuman provincia",
+      "tucumano",
+      "arg / tucuman"
+    ],
+    "bbox": {
+      "south": -28,
+      "west": -66.25,
+      "north": -26.05,
+      "east": -64.45,
+      "clause": "(-28,-66.25,-26.05,-64.45)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": "AR-T",
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_NACIONAL",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "provincia de tucuman",
+      "tucuman provincia",
+      "tucumano",
+      "arg / tucuman"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CORDOBA_CAPITAL",
+    "canonical_name": "Ciudad de Córdoba, Córdoba",
+    "display_name": "Córdoba Capital",
+    "country": "ARG",
+    "province": "Córdoba",
+    "department": "Capital",
+    "municipality": "Córdoba",
+    "locality": "Córdoba",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "cordoba capital",
+      "córdoba capital",
+      "ciudad de cordoba",
+      "ciudad de córdoba",
+      "municipio de cordoba",
+      "cba capital",
+      "arg / cordoba capital"
+    ],
+    "bbox": {
+      "south": -31.55,
+      "west": -64.35,
+      "north": -31.25,
+      "east": -64.05,
+      "clause": "(-31.55,-64.35,-31.25,-64.05)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CORDOBA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "cordoba capital",
+      "ciudad de cordoba",
+      "municipio de cordoba",
+      "cba capital",
+      "arg / cordoba capital"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CORDOBA_RIO_CUARTO",
+    "canonical_name": "Río Cuarto, Córdoba",
+    "display_name": "Río Cuarto",
+    "country": "ARG",
+    "province": "Córdoba",
+    "department": "Río Cuarto",
+    "municipality": "Río Cuarto",
+    "locality": "Río Cuarto",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "rio cuarto",
+      "río cuarto",
+      "ciudad de rio cuarto"
+    ],
+    "bbox": {
+      "south": -33.18,
+      "west": -64.42,
+      "north": -33.08,
+      "east": -64.28,
+      "clause": "(-33.18,-64.42,-33.08,-64.28)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CORDOBA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "rio cuarto",
+      "ciudad de rio cuarto"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CORDOBA_VILLA_MARIA",
+    "canonical_name": "Villa María, Córdoba",
+    "display_name": "Villa María",
+    "country": "ARG",
+    "province": "Córdoba",
+    "department": "General San Martín",
+    "municipality": "Villa María",
+    "locality": "Villa María",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "villa maria",
+      "villa maría",
+      "ciudad de villa maria"
+    ],
+    "bbox": {
+      "south": -32.46,
+      "west": -63.3,
+      "north": -32.36,
+      "east": -63.18,
+      "clause": "(-32.46,-63.3,-32.36,-63.18)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CORDOBA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "villa maria",
+      "ciudad de villa maria"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SANTA_FE_ROSARIO",
+    "canonical_name": "Rosario, Santa Fe",
+    "display_name": "Rosario",
+    "country": "ARG",
+    "province": "Santa Fe",
+    "department": "Rosario",
+    "municipality": "Rosario",
+    "locality": "Rosario",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "rosario",
+      "ciudad de rosario",
+      "rosarino",
+      "rosarina",
+      "arg / rosario"
+    ],
+    "bbox": {
+      "south": -33.05,
+      "west": -60.78,
+      "north": -32.85,
+      "east": -60.6,
+      "clause": "(-33.05,-60.78,-32.85,-60.6)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SANTA_FE",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "rosario",
+      "ciudad de rosario",
+      "rosarino",
+      "rosarina",
+      "arg / rosario"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SANTA_FE_CAPITAL",
+    "canonical_name": "Ciudad de Santa Fe, Santa Fe",
+    "display_name": "Santa Fe Capital",
+    "country": "ARG",
+    "province": "Santa Fe",
+    "department": "La Capital",
+    "municipality": "Santa Fe",
+    "locality": "Santa Fe",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "santa fe capital",
+      "ciudad de santa fe",
+      "santa fe ciudad",
+      "arg / santa fe capital"
+    ],
+    "bbox": {
+      "south": -31.7,
+      "west": -60.78,
+      "north": -31.55,
+      "east": -60.63,
+      "clause": "(-31.7,-60.78,-31.55,-60.63)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SANTA_FE",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "santa fe capital",
+      "ciudad de santa fe",
+      "santa fe ciudad",
+      "arg / santa fe capital"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SANTA_FE_RAFAELA",
+    "canonical_name": "Rafaela, Santa Fe",
+    "display_name": "Rafaela",
+    "country": "ARG",
+    "province": "Santa Fe",
+    "department": "Castellanos",
+    "municipality": "Rafaela",
+    "locality": "Rafaela",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "rafaela",
+      "ciudad de rafaela"
+    ],
+    "bbox": {
+      "south": -31.32,
+      "west": -61.55,
+      "north": -31.22,
+      "east": -61.43,
+      "clause": "(-31.32,-61.55,-31.22,-61.43)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SANTA_FE",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "rafaela",
+      "ciudad de rafaela"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_MENDOZA_CAPITAL",
+    "canonical_name": "Ciudad de Mendoza, Mendoza",
+    "display_name": "Mendoza Capital",
+    "country": "ARG",
+    "province": "Mendoza",
+    "department": "Capital",
+    "municipality": "Mendoza",
+    "locality": "Mendoza",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "mendoza capital",
+      "ciudad de mendoza",
+      "gran mendoza",
+      "mendoza ciudad",
+      "arg / mendoza capital"
+    ],
+    "bbox": {
+      "south": -32.95,
+      "west": -68.9,
+      "north": -32.85,
+      "east": -68.8,
+      "clause": "(-32.95,-68.9,-32.85,-68.8)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_MENDOZA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "mendoza capital",
+      "ciudad de mendoza",
+      "gran mendoza",
+      "mendoza ciudad",
+      "arg / mendoza capital"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_MENDOZA_SAN_RAFAEL",
+    "canonical_name": "San Rafael, Mendoza",
+    "display_name": "San Rafael",
+    "country": "ARG",
+    "province": "Mendoza",
+    "department": "San Rafael",
+    "municipality": "San Rafael",
+    "locality": "San Rafael",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "san rafael",
+      "san rafael mendoza",
+      "ciudad de san rafael"
+    ],
+    "bbox": {
+      "south": -34.66,
+      "west": -68.4,
+      "north": -34.56,
+      "east": -68.26,
+      "clause": "(-34.66,-68.4,-34.56,-68.26)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_MENDOZA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "san rafael",
+      "san rafael mendoza",
+      "ciudad de san rafael"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SALTA_CAPITAL",
+    "canonical_name": "Ciudad de Salta, Salta",
+    "display_name": "Salta Capital",
+    "country": "ARG",
+    "province": "Salta",
+    "department": "Capital",
+    "municipality": "Salta",
+    "locality": "Salta",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "salta capital",
+      "ciudad de salta",
+      "salta ciudad",
+      "salta",
+      "arg / salta capital"
+    ],
+    "bbox": {
+      "south": -24.87,
+      "west": -65.5,
+      "north": -24.7,
+      "east": -65.34,
+      "clause": "(-24.87,-65.5,-24.7,-65.34)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SALTA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "salta capital",
+      "ciudad de salta",
+      "salta ciudad",
+      "salta",
+      "arg / salta capital"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_TUCUMAN_SAN_MIGUEL",
+    "canonical_name": "San Miguel de Tucumán, Tucumán",
+    "display_name": "San Miguel de Tucumán",
+    "country": "ARG",
+    "province": "Tucumán",
+    "department": "Capital",
+    "municipality": "San Miguel de Tucumán",
+    "locality": "San Miguel de Tucumán",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "san miguel de tucuman",
+      "san miguel de tucumán",
+      "tucuman capital",
+      "tucumán capital",
+      "tucuman",
+      "tucumán",
+      "ciudad de tucuman"
+    ],
+    "bbox": {
+      "south": -26.89,
+      "west": -65.3,
+      "north": -26.77,
+      "east": -65.14,
+      "clause": "(-26.89,-65.3,-26.77,-65.14)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_TUCUMAN",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "san miguel de tucuman",
+      "tucuman capital",
+      "tucuman",
+      "ciudad de tucuman"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_MAR_DEL_PLATA",
+    "canonical_name": "Mar del Plata, Buenos Aires",
+    "display_name": "Mar del Plata",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "General Pueyrredón",
+    "municipality": "Mar del Plata",
+    "locality": "Mar del Plata",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "mar del plata",
+      "mdp",
+      "mardel",
+      "general pueyrredon",
+      "general pueyrredón"
+    ],
+    "bbox": {
+      "south": -38.12,
+      "west": -57.68,
+      "north": -37.88,
+      "east": -57.48,
+      "clause": "(-38.12,-57.68,-37.88,-57.48)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "mar del plata",
+      "mdp",
+      "mardel",
+      "general pueyrredon"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_LA_PLATA",
+    "canonical_name": "La Plata, Buenos Aires",
+    "display_name": "La Plata",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "La Plata",
+    "municipality": "La Plata",
+    "locality": "La Plata",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "la plata",
+      "ciudad de la plata",
+      "platense"
+    ],
+    "bbox": {
+      "south": -35.02,
+      "west": -58.07,
+      "north": -34.83,
+      "east": -57.86,
+      "clause": "(-35.02,-58.07,-34.83,-57.86)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "la plata",
+      "ciudad de la plata",
+      "platense"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_BAHIA_BLANCA",
+    "canonical_name": "Bahía Blanca, Buenos Aires",
+    "display_name": "Bahía Blanca",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "Bahía Blanca",
+    "municipality": "Bahía Blanca",
+    "locality": "Bahía Blanca",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "bahia blanca",
+      "bahía blanca",
+      "ciudad de bahia blanca"
+    ],
+    "bbox": {
+      "south": -38.8,
+      "west": -62.36,
+      "north": -38.64,
+      "east": -62.18,
+      "clause": "(-38.8,-62.36,-38.64,-62.18)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "bahia blanca",
+      "ciudad de bahia blanca"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_TANDIL",
+    "canonical_name": "Tandil, Buenos Aires",
+    "display_name": "Tandil",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "Tandil",
+    "municipality": "Tandil",
+    "locality": "Tandil",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "tandil",
+      "ciudad de tandil"
+    ],
+    "bbox": {
+      "south": -37.38,
+      "west": -59.2,
+      "north": -37.26,
+      "east": -59.06,
+      "clause": "(-37.38,-59.2,-37.26,-59.06)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "tandil",
+      "ciudad de tandil"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_PILAR",
+    "canonical_name": "Pilar, Buenos Aires",
+    "display_name": "Pilar",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "Pilar",
+    "municipality": "Pilar",
+    "locality": "Pilar",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "pilar",
+      "partido de pilar",
+      "parque industrial pilar"
+    ],
+    "bbox": {
+      "south": -34.58,
+      "west": -59.05,
+      "north": -34.38,
+      "east": -58.82,
+      "clause": "(-34.58,-59.05,-34.38,-58.82)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "pilar",
+      "partido de pilar",
+      "parque industrial pilar"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_SAN_MARTIN",
+    "canonical_name": "General San Martín, Buenos Aires",
+    "display_name": "General San Martín",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "General San Martín",
+    "municipality": "General San Martín",
+    "locality": "San Martín",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "san martin",
+      "general san martin",
+      "partido de san martin",
+      "partido de general san martin"
+    ],
+    "bbox": {
+      "south": -34.61,
+      "west": -58.62,
+      "north": -34.53,
+      "east": -58.50,
+      "clause": "(-34.61,-58.62,-34.53,-58.50)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "san martin",
+      "general san martin",
+      "partido de san martin",
+      "partido de general san martin"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_SAN_ISIDRO",
+    "canonical_name": "San Isidro, Buenos Aires",
+    "display_name": "San Isidro",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "San Isidro",
+    "municipality": "San Isidro",
+    "locality": "San Isidro",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "san isidro",
+      "partido de san isidro"
+    ],
+    "bbox": {
+      "south": -34.52,
+      "west": -58.58,
+      "north": -34.45,
+      "east": -58.48,
+      "clause": "(-34.52,-58.58,-34.45,-58.48)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "san isidro",
+      "partido de san isidro"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_VICENTE_LOPEZ",
+    "canonical_name": "Vicente López, Buenos Aires",
+    "display_name": "Vicente López",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "Vicente López",
+    "municipality": "Vicente López",
+    "locality": "Vicente López",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "vicente lopez",
+      "vicente lópez",
+      "partido de vicente lopez"
+    ],
+    "bbox": {
+      "south": -34.55,
+      "west": -58.53,
+      "north": -34.5,
+      "east": -58.45,
+      "clause": "(-34.55,-58.53,-34.5,-58.45)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "vicente lopez",
+      "partido de vicente lopez"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_BSAS_QUILMES",
+    "canonical_name": "Quilmes, Buenos Aires",
+    "display_name": "Quilmes",
+    "country": "ARG",
+    "province": "Buenos Aires",
+    "department": "Quilmes",
+    "municipality": "Quilmes",
+    "locality": "Quilmes",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "quilmes",
+      "partido de quilmes"
+    ],
+    "bbox": {
+      "south": -34.78,
+      "west": -58.32,
+      "north": -34.68,
+      "east": -58.2,
+      "clause": "(-34.78,-58.32,-34.68,-58.2)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_BUENOS_AIRES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "quilmes",
+      "partido de quilmes"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_NEUQUEN_CAPITAL",
+    "canonical_name": "Ciudad de Neuquén, Neuquén",
+    "display_name": "Neuquén Capital",
+    "country": "ARG",
+    "province": "Neuquén",
+    "department": "Confluencia",
+    "municipality": "Neuquén",
+    "locality": "Neuquén",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "neuquen capital",
+      "neuquén capital",
+      "ciudad de neuquen",
+      "ciudad de neuquén",
+      "neuquen",
+      "neuquén"
+    ],
+    "bbox": {
+      "south": -39.01,
+      "west": -68.18,
+      "north": -38.89,
+      "east": -67.99,
+      "clause": "(-39.01,-68.18,-38.89,-67.99)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_NEUQUEN",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "neuquen capital",
+      "ciudad de neuquen",
+      "neuquen"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_RION_BARILOCHE",
+    "canonical_name": "San Carlos de Bariloche, Río Negro",
+    "display_name": "Bariloche",
+    "country": "ARG",
+    "province": "Río Negro",
+    "department": "Bariloche",
+    "municipality": "Bariloche",
+    "locality": "Bariloche",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "bariloche",
+      "san carlos de bariloche",
+      "bariloche rio negro"
+    ],
+    "bbox": {
+      "south": -41.2,
+      "west": -71.44,
+      "north": -41.08,
+      "east": -71.2,
+      "clause": "(-41.2,-71.44,-41.08,-71.2)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_RIO_NEGRO",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "bariloche",
+      "san carlos de bariloche",
+      "bariloche rio negro"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_RION_VIEDMA",
+    "canonical_name": "Viedma, Río Negro",
+    "display_name": "Viedma",
+    "country": "ARG",
+    "province": "Río Negro",
+    "department": "Adolfo Alsina",
+    "municipality": "Viedma",
+    "locality": "Viedma",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "viedma",
+      "ciudad de viedma"
+    ],
+    "bbox": {
+      "south": -40.85,
+      "west": -63.05,
+      "north": -40.75,
+      "east": -62.95,
+      "clause": "(-40.85,-63.05,-40.75,-62.95)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_RIO_NEGRO",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "viedma",
+      "ciudad de viedma"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_MISIONES_POSADAS",
+    "canonical_name": "Posadas, Misiones",
+    "display_name": "Posadas",
+    "country": "ARG",
+    "province": "Misiones",
+    "department": "Capital",
+    "municipality": "Posadas",
+    "locality": "Posadas",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "posadas",
+      "ciudad de posadas",
+      "posadas misiones"
+    ],
+    "bbox": {
+      "south": -27.44,
+      "west": -55.98,
+      "north": -27.32,
+      "east": -55.84,
+      "clause": "(-27.44,-55.98,-27.32,-55.84)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_MISIONES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "posadas",
+      "ciudad de posadas",
+      "posadas misiones"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_ENTRER_PARANA",
+    "canonical_name": "Paraná, Entre Ríos",
+    "display_name": "Paraná",
+    "country": "ARG",
+    "province": "Entre Ríos",
+    "department": "Paraná",
+    "municipality": "Paraná",
+    "locality": "Paraná",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "parana",
+      "paraná",
+      "ciudad de parana"
+    ],
+    "bbox": {
+      "south": -31.8,
+      "west": -60.59,
+      "north": -31.68,
+      "east": -60.46,
+      "clause": "(-31.8,-60.59,-31.68,-60.46)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_ENTRE_RIOS",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "parana",
+      "ciudad de parana"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_ENTRER_CONCORDIA",
+    "canonical_name": "Concordia, Entre Ríos",
+    "display_name": "Concordia",
+    "country": "ARG",
+    "province": "Entre Ríos",
+    "department": "Concordia",
+    "municipality": "Concordia",
+    "locality": "Concordia",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "concordia",
+      "ciudad de concordia",
+      "concordia entre rios"
+    ],
+    "bbox": {
+      "south": -31.44,
+      "west": -58.08,
+      "north": -31.34,
+      "east": -57.96,
+      "clause": "(-31.44,-58.08,-31.34,-57.96)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_ENTRE_RIOS",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "concordia",
+      "ciudad de concordia",
+      "concordia entre rios"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CORRIENTES_CAPITAL",
+    "canonical_name": "Ciudad de Corrientes, Corrientes",
+    "display_name": "Corrientes Capital",
+    "country": "ARG",
+    "province": "Corrientes",
+    "department": "Capital",
+    "municipality": "Corrientes",
+    "locality": "Corrientes",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "corrientes capital",
+      "ciudad de corrientes",
+      "corrientes ciudad",
+      "corrientes"
+    ],
+    "bbox": {
+      "south": -27.54,
+      "west": -58.89,
+      "north": -27.42,
+      "east": -58.76,
+      "clause": "(-27.54,-58.89,-27.42,-58.76)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CORRIENTES",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "corrientes capital",
+      "ciudad de corrientes",
+      "corrientes ciudad",
+      "corrientes"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_JUJUY_SAN_SALVADOR",
+    "canonical_name": "San Salvador de Jujuy, Jujuy",
+    "display_name": "San Salvador de Jujuy",
+    "country": "ARG",
+    "province": "Jujuy",
+    "department": "Doctor Manuel Belgrano",
+    "municipality": "San Salvador de Jujuy",
+    "locality": "San Salvador de Jujuy",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "san salvador de jujuy",
+      "jujuy capital",
+      "ciudad de jujuy"
+    ],
+    "bbox": {
+      "south": -24.25,
+      "west": -65.36,
+      "north": -24.14,
+      "east": -65.24,
+      "clause": "(-24.25,-65.36,-24.14,-65.24)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_JUJUY",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "san salvador de jujuy",
+      "jujuy capital",
+      "ciudad de jujuy"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CHACO_RESISTENCIA",
+    "canonical_name": "Resistencia, Chaco",
+    "display_name": "Resistencia",
+    "country": "ARG",
+    "province": "Chaco",
+    "department": "San Fernando",
+    "municipality": "Resistencia",
+    "locality": "Resistencia",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "resistencia",
+      "resistencia chaco",
+      "ciudad de resistencia"
+    ],
+    "bbox": {
+      "south": -27.51,
+      "west": -59.06,
+      "north": -27.39,
+      "east": -58.92,
+      "clause": "(-27.51,-59.06,-27.39,-58.92)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CHACO",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "resistencia",
+      "resistencia chaco",
+      "ciudad de resistencia"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SANTIAGO_CAPITAL",
+    "canonical_name": "Ciudad de Santiago del Estero, Santiago del Estero",
+    "display_name": "Santiago del Estero Capital",
+    "country": "ARG",
+    "province": "Santiago del Estero",
+    "department": "Capital",
+    "municipality": "Santiago del Estero",
+    "locality": "Santiago del Estero",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "santiago del estero capital",
+      "ciudad de santiago del estero",
+      "santiago del estero"
+    ],
+    "bbox": {
+      "south": -27.85,
+      "west": -64.32,
+      "north": -27.73,
+      "east": -64.2,
+      "clause": "(-27.85,-64.32,-27.73,-64.2)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SANTIAGO_DEL_ESTERO",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "santiago del estero capital",
+      "ciudad de santiago del estero",
+      "santiago del estero"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SAN_JUAN_CAPITAL",
+    "canonical_name": "Ciudad de San Juan, San Juan",
+    "display_name": "San Juan Capital",
+    "country": "ARG",
+    "province": "San Juan",
+    "department": "Capital",
+    "municipality": "San Juan",
+    "locality": "San Juan",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "san juan capital",
+      "ciudad de san juan",
+      "san juan ciudad",
+      "arg / san juan capital"
+    ],
+    "bbox": {
+      "south": -31.58,
+      "west": -68.58,
+      "north": -31.48,
+      "east": -68.47,
+      "clause": "(-31.58,-68.58,-31.48,-68.47)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SAN_JUAN",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "san juan capital",
+      "ciudad de san juan",
+      "san juan ciudad",
+      "arg / san juan capital"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SAN_LUIS_CAPITAL",
+    "canonical_name": "Ciudad de San Luis, San Luis",
+    "display_name": "San Luis Capital",
+    "country": "ARG",
+    "province": "San Luis",
+    "department": "Juan Martín de Pueyrredón",
+    "municipality": "San Luis",
+    "locality": "San Luis",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "san luis capital",
+      "ciudad de san luis",
+      "san luis ciudad",
+      "san luis"
+    ],
+    "bbox": {
+      "south": -33.36,
+      "west": -66.4,
+      "north": -33.24,
+      "east": -66.28,
+      "clause": "(-33.36,-66.4,-33.24,-66.28)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SAN_LUIS",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "san luis capital",
+      "ciudad de san luis",
+      "san luis ciudad",
+      "san luis"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_FORMOSA_CAPITAL",
+    "canonical_name": "Ciudad de Formosa, Formosa",
+    "display_name": "Formosa Capital",
+    "country": "ARG",
+    "province": "Formosa",
+    "department": "Formosa",
+    "municipality": "Formosa",
+    "locality": "Formosa",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "formosa capital",
+      "ciudad de formosa",
+      "formosa ciudad",
+      "formosa"
+    ],
+    "bbox": {
+      "south": -26.24,
+      "west": -57.24,
+      "north": -26.12,
+      "east": -57.12,
+      "clause": "(-26.24,-57.24,-26.12,-57.12)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_FORMOSA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "formosa capital",
+      "ciudad de formosa",
+      "formosa ciudad",
+      "formosa"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_LA_PAMPA_SANTA_ROSA",
+    "canonical_name": "Santa Rosa, La Pampa",
+    "display_name": "Santa Rosa",
+    "country": "ARG",
+    "province": "La Pampa",
+    "department": "Capital",
+    "municipality": "Santa Rosa",
+    "locality": "Santa Rosa",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "santa rosa",
+      "santa rosa la pampa",
+      "ciudad de santa rosa"
+    ],
+    "bbox": {
+      "south": -36.67,
+      "west": -64.35,
+      "north": -36.56,
+      "east": -64.23,
+      "clause": "(-36.67,-64.35,-36.56,-64.23)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_LA_PAMPA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "santa rosa",
+      "santa rosa la pampa",
+      "ciudad de santa rosa"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CATAMARCA_CAPITAL",
+    "canonical_name": "San Fernando del Valle de Catamarca, Catamarca",
+    "display_name": "Catamarca Capital",
+    "country": "ARG",
+    "province": "Catamarca",
+    "department": "Capital",
+    "municipality": "San Fernando del Valle de Catamarca",
+    "locality": "San Fernando del Valle de Catamarca",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "catamarca capital",
+      "san fernando del valle de catamarca",
+      "ciudad de catamarca",
+      "catamarca"
+    ],
+    "bbox": {
+      "south": -28.52,
+      "west": -65.84,
+      "north": -28.41,
+      "east": -65.72,
+      "clause": "(-28.52,-65.84,-28.41,-65.72)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CATAMARCA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "catamarca capital",
+      "san fernando del valle de catamarca",
+      "ciudad de catamarca",
+      "catamarca"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_LA_RIOJA_CAPITAL",
+    "canonical_name": "Ciudad de La Rioja, La Rioja",
+    "display_name": "La Rioja Capital",
+    "country": "ARG",
+    "province": "La Rioja",
+    "department": "Capital",
+    "municipality": "La Rioja",
+    "locality": "La Rioja",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "la rioja capital",
+      "ciudad de la rioja",
+      "la rioja ciudad",
+      "la rioja"
+    ],
+    "bbox": {
+      "south": -29.47,
+      "west": -66.91,
+      "north": -29.36,
+      "east": -66.8,
+      "clause": "(-29.47,-66.91,-29.36,-66.8)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_LA_RIOJA",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "la rioja capital",
+      "ciudad de la rioja",
+      "la rioja ciudad",
+      "la rioja"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CHUBUT_COMODORO",
+    "canonical_name": "Comodoro Rivadavia, Chubut",
+    "display_name": "Comodoro Rivadavia",
+    "country": "ARG",
+    "province": "Chubut",
+    "department": "Escalante",
+    "municipality": "Comodoro Rivadavia",
+    "locality": "Comodoro Rivadavia",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "comodoro rivadavia",
+      "comodoro",
+      "ciudad de comodoro rivadavia"
+    ],
+    "bbox": {
+      "south": -45.94,
+      "west": -67.57,
+      "north": -45.79,
+      "east": -67.42,
+      "clause": "(-45.94,-67.57,-45.79,-67.42)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CHUBUT",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "comodoro rivadavia",
+      "comodoro",
+      "ciudad de comodoro rivadavia"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_CHUBUT_PUERTO_MADRYN",
+    "canonical_name": "Puerto Madryn, Chubut",
+    "display_name": "Puerto Madryn",
+    "country": "ARG",
+    "province": "Chubut",
+    "department": "Biedma",
+    "municipality": "Puerto Madryn",
+    "locality": "Puerto Madryn",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "puerto madryn",
+      "madryn",
+      "ciudad de puerto madryn"
+    ],
+    "bbox": {
+      "south": -42.82,
+      "west": -65.09,
+      "north": -42.72,
+      "east": -64.98,
+      "clause": "(-42.82,-65.09,-42.72,-64.98)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_CHUBUT",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "puerto madryn",
+      "madryn",
+      "ciudad de puerto madryn"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_SANTA_CRUZ_RIO_GALLEGOS",
+    "canonical_name": "Río Gallegos, Santa Cruz",
+    "display_name": "Río Gallegos",
+    "country": "ARG",
+    "province": "Santa Cruz",
+    "department": "Güer Aike",
+    "municipality": "Río Gallegos",
+    "locality": "Río Gallegos",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "rio gallegos",
+      "río gallegos",
+      "ciudad de rio gallegos"
+    ],
+    "bbox": {
+      "south": -51.67,
+      "west": -69.29,
+      "north": -51.56,
+      "east": -69.15,
+      "clause": "(-51.67,-69.29,-51.56,-69.15)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_SANTA_CRUZ",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "rio gallegos",
+      "ciudad de rio gallegos"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_TDF_USHUAIA",
+    "canonical_name": "Ushuaia, Tierra del Fuego",
+    "display_name": "Ushuaia",
+    "country": "ARG",
+    "province": "Tierra del Fuego",
+    "department": "Ushuaia",
+    "municipality": "Ushuaia",
+    "locality": "Ushuaia",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "ushuaia",
+      "ciudad de ushuaia"
+    ],
+    "bbox": {
+      "south": -54.87,
+      "west": -68.39,
+      "north": -54.76,
+      "east": -68.24,
+      "clause": "(-54.87,-68.39,-54.76,-68.24)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_TIERRA_DEL_FUEGO",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "ushuaia",
+      "ciudad de ushuaia"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  },
+  {
+    "geography_id": "ARG_TDF_RIO_GRANDE",
+    "canonical_name": "Río Grande, Tierra del Fuego",
+    "display_name": "Río Grande",
+    "country": "ARG",
+    "province": "Tierra del Fuego",
+    "department": "Río Grande",
+    "municipality": "Río Grande",
+    "locality": "Río Grande",
+    "admin_level": "MUNICIPALITY",
+    "aliases": [
+      "rio grande",
+      "río grande",
+      "ciudad de rio grande"
+    ],
+    "bbox": {
+      "south": -53.83,
+      "west": -67.76,
+      "north": -53.74,
+      "east": -67.65,
+      "clause": "(-53.83,-67.76,-53.74,-67.65)"
+    },
+    "boundary_source": "IGN_ARGENTINA",
+    "boundary_id": null,
+    "boundary_geometry_ref": null,
+    "parent_geography_id": "ARG_PROV_TIERRA_DEL_FUEGO",
+    "confidence": 1,
+    "provenance": "IGN_INDEC_OFFICIAL",
+    "validation_state": "VALIDATED",
+    "normalized_aliases": [
+      "rio grande",
+      "ciudad de rio grande"
+    ],
+    "updated_at": "2026-10-03T18:04:37.700Z"
+  }
+]

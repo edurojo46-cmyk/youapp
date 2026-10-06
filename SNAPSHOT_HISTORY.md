@@ -353,3 +353,45 @@ Este documento constituye el registro maestro inmutable de versiones protegidas,
 
 
 
+
+---
+
+## ATLAS_IP_SNAPSHOT_2026-09-16_102705 — Atlas Industrial Architecture IP Protection Checkpoint
+- **Fecha / Hora:** Wed Sep 16 2026 10:27:05 GMT-0300 (hora estándar de Argentina) (2026-09-16T13:27:05.239Z)
+- **Git HEAD:** `923adbe62033b61d6cfa53e50ce42cdf5c35eb99`
+- **Git Branch:** `main`
+- **Archivo ZIP:** `ATLAS_IP_SNAPSHOT_2026-09-16_102705.zip`
+- **SHA256 ZIP:** `c54847a8bd63e10d3be0fbaf295ab32eb51f1f9530f25ae00c1a4417c152ae11`
+- **Archivo Git Bundle:** `ATLAS_SOURCE_HISTORY_2026-09-16_102705.bundle`
+- **SHA256 Git Bundle:** `bb94c503ed21d7fcaf0989a710a8b9d2c5ea6214c65dfe4bab523b0e434fbe9a`
+- **Archivos Incluidos:** 1632 (12.70 MB)
+- **SECRETS_INCLUDED:** 0
+- **Motivo:** IP PROTECTION CHECKPOINT — ATLAS INDUSTRIAL ARCHITECTURE
+- **Estado:** FROZEN / CERTIFIED 🧊
+
+---
+
+## ATLAS_INDUSTRIAL_ESTABLISHMENT_PHYSICAL_LKG_2026-10-06 — Atlas Industrial Physical Known-Good State
+- **Fecha / Hora:** Tue Oct 06 2026 11:08:16 GMT-0300 (hora estándar de Argentina) (2026-10-06T14:08:16.344Z)
+- **Git HEAD:** `923adbe62033b61d6cfa53e50ce42cdf5c35eb99`
+- **Git Branch:** `main`
+- **Archivo ZIP:** `ATLAS_INDUSTRIAL_ESTABLISHMENT_PHYSICAL_LKG_2026-10-06.zip`
+- **SHA256 ZIP:** `1e4fa74fb2a5a762fa4253434976d36dc96dfa037f4fe2d09c3bddb8e13680be`
+- **Archivo Git Bundle:** `ATLAS_INDUSTRIAL_ESTABLISHMENT_PHYSICAL_LKG_2026-10-06.bundle`
+- **SHA256 Git Bundle:** `dc55e4eddf540cbc87a6e7190236e87b3fec580e38efa211a35f8343a5825b7d`
+- **Archivos Incluidos:** 3200 (30.47 MB)
+- **SECRETS_INCLUDED:** 0
+- **Verificación Física en Vivo:**
+  - **Misión:** `#4_00B681` (`LIBRERIAS CABA`, Target = 1000)
+  - **URL:** `http://localhost:5175/buscaindustrial`
+  - **Scanned:** `279`
+  - **Core Existing:** `139`
+  - **Certified New:** `130`
+  - **Runtime Backend PID:** `36128` (Puerto 5174)
+  - **Runtime Frontend PID:** `40332` (Puerto 5175)
+  - **Build TypeScript:** `npx tsc --noEmit PASS`
+- **Observaciones Registradas:**
+  - `UI_SCANNED = 279`, `VISIBLE_ACCOUNTED = 139 + 130 = 269`, `VISIBLE_DIFFERENCE = 10` (posible conteo visual de filas probe).
+  - `UI_SPEED = 0 reg/sec` mientras la búsqueda física continúa en segundo plano.
+- **Motivo:** FREEZE CURRENT PHYSICAL KNOWN-GOOD STATE (ESTABLISHMENT ACQUISITION WORKING)
+- **Estado:** FROZEN / CERTIFIED LKG 🧊

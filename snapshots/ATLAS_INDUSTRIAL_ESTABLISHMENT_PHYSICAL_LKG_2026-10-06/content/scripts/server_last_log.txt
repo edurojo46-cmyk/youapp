@@ -1,0 +1,58 @@
+﻿Backend Search Server running on http://localhost:5174
+[AtlasLocal Schema Check] atlas_organization_members.organization_id references: atlas_organizations
+[AtlasConceptRegistry] Loaded 838 concepts from database.
+[AtlasGeographyRegistry] Ingested 65 canonical geographies from database.
+[AtlasSemanticCompiler.compileAsync] query: Cochera / Playa de estacionamiento | requiresFallback: true | state: EXECUTION_READY
+[AtlasSemanticFallback] Invoked for query: cochera / playa de estacionamiento | Key present: true
+[AtlasSemanticCompiler.compileAsync] candidate from fallback: RECEIVED
+[AtlasSemanticCompiler.compileAsync] query: GARAGE en ARG_CABA | requiresFallback: true | state: SEMANTICS_RESOLVED_SOURCE_GAP
+[AtlasSemanticFallback] Invoked for query: garage en arg_caba | Key present: true
+[AtlasSemanticCompiler.compileAsync] candidate from fallback: RECEIVED
+[AutonomousSourceDiscovery] Mirror https://overpass-api.de/api/interpreter failed: The operation was aborted due to timeout
+[AutonomousSourceDiscovery] Mirror https://z.overpass-api.de/api/interpreter failed: The operation was aborted due to timeout
+[AutonomousSourceDiscovery] Consecutive Overpass mirrors timed out. Fast-failing Overpass to protect latency budget.
+[AtlasSemanticCompiler.compileAsync] query: GARAGE | requiresFallback: true | state: SEMANTICS_RESOLVED_SOURCE_GAP
+[AtlasSemanticFallback] Invoked for query: garage | Key present: true
+[AtlasSemanticCompiler.compileAsync] candidate from fallback: RECEIVED
+[AtlasSemanticCompiler.compileAsync] query: GARAGE en CABA | requiresFallback: false | state: SEMANTICS_RESOLVED_SOURCE_GAP
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PLANNING -> CORE_LOOKUP (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: CORE_LOOKUP -> SOURCE_PLANNING (OK)
+[AtlasSourceKnowledgePlanner] Matched 7 known validated source(s) from SSOT: SRC_CKAN_PORTAL_BD572121C1 (Buenos Aires Data - Playas de Estacionamiento y Garages), SRC_GOBIERNO DE LA CIUDAD DE BUENOS AIRES_QKEGRGF0YS (BA Data - Estacionamientos Comerciales CABA), SRC_CKAN_PORTAL_6E02508C0F (BA Data - Estacionamientos Comerciales CABA), SRC_PORTAL DE DATOS ABIERTOS DE LA CIUDAD DE BUENOS AIRES_QNVLBM9ZIE (Buenos Aires Data - Estacionamientos Comerciales), SRC_CKAN_PORTAL_8E56C7A403 (Buenos Aires Data - Estacionamientos Comerciales), SRC_CKAN_PORTAL_228A0A6096 (Buenos Aires Data â€” Playas de Estacionamiento y Garages), SRC_PORTAL DE DATOS ABIERTOS GCBA_QNVLBM9ZIE (Buenos Aires Data - Playas de Estacionamiento y Garages)
+[SOURCE_KM_FIRST] Injected 7 known validated sources into mission MISS_1791202631041_E3FEF6 frontier.
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: SOURCE_PLANNING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[AutonomousSourceDiscovery] Mirror https://overpass-api.de/api/interpreter failed: The operation was aborted due to timeout
+[AutonomousSourceDiscovery] Mirror https://z.overpass-api.de/api/interpreter failed: The operation was aborted due to timeout
+[AutonomousSourceDiscovery] Consecutive Overpass mirrors timed out. Fast-failing Overpass to protect latency budget.
+[PROBE_FAILED] Source SRC_OSM_PUBLIC_ESTABLISHMENTS probe failed: OSM_OVERPASS_ZERO_PROBE_RECORDS. MISSION CONTINUES!
+[AutonomousSourceDiscovery] Mirror https://overpass-api.de/api/interpreter failed: The operation was aborted due to timeout
+[AutonomousSourceDiscovery] Mirror https://z.overpass-api.de/api/interpreter failed: The operation was aborted due to timeout
+[AutonomousSourceDiscovery] Consecutive Overpass mirrors timed out. Fast-failing Overpass to protect latency budget.
+[PROBE_FAILED] Source SRC_OSM_PUBLIC_ESTABLISHMENTS probe failed: OSM_OVERPASS_ZERO_PROBE_RECORDS. MISSION CONTINUES!
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> EXPANDING_SOURCE_PLAN (OK)
+[AtlasAISourceRadar] SECOND-USE ZERO-AI: Found 12 previously learned sources in SSOT for "servicios_automotores". GEMINI CALLS = 0.
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: EXPANDING_SOURCE_PLAN -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: ACQUIRING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791202631041_E3FEF6 phase transition: PROBING -> ACQUIRING (OK)
+[IndustrialDiscoveryService] Source frontier empty and all expansions exhausted.
+[MissionOrchestrator] TERMINATING mission MISS_1791202631041_E3FEF6: status=SOURCE_FRONTIER_EXHAUSTED_WITH_PROOF, condition=SOURCE_FRONTIER_EXHAUSTED_WITH_PROOF, gap=20

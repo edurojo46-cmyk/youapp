@@ -1,0 +1,123 @@
+[
+  {
+    "assetId": "ebd0f6b9-94eb-4973-ad5a-2425e349fb4b",
+    "providerContentId": "j3YbX-e13yg",
+    "proposedEntityId": "fito_paez",
+    "proposedWorkId": "polaroid_de_locura_ordinaria",
+    "contentRole": "PRIMARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "WORK_METADATA_REPAIR"
+  },
+  {
+    "assetId": "ad55182b-a7d9-45e4-a160-4d5443fb21b4",
+    "providerContentId": "LubhYQRXlzc",
+    "proposedEntityId": "fito_paez",
+    "proposedWorkId": "brillante_sobre_el_mic",
+    "contentRole": "PRIMARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "WORK_METADATA_REPAIR"
+  },
+  {
+    "assetId": "6bacaa96-02f9-4c7d-8c49-3115a16855d9",
+    "providerContentId": "2vWpH4akaL8",
+    "proposedEntityId": "fito_paez",
+    "proposedVenueId": "velez",
+    "contentRole": "PRIMARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "VENUE_METADATA_REPAIR"
+  },
+  {
+    "assetId": "2ff91126-1ebb-4e1e-b9f8-e890ecf1c7ca",
+    "providerContentId": "VDfF_ZywNJc",
+    "proposedEntityId": "fito_paez",
+    "proposedWorkId": "el_amor_despues_del_amor",
+    "contentRole": "PRIMARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "WORK_METADATA_REPAIR"
+  },
+  {
+    "assetId": "68b8405f-ca95-4e49-a772-bfafb524ddb4",
+    "providerContentId": "x28abxd",
+    "proposedEntityId": "the_beatles",
+    "proposedContentType": "MAKING_OF",
+    "contentRole": "PRIMARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "CONTENT_TYPE_REPAIR"
+  },
+  {
+    "assetId": "b5e068f8-3e10-4830-a0a8-6cfacf0ba7f5",
+    "providerContentId": "y2uBzWkFAN8",
+    "proposedEntityId": "patricio_rey",
+    "proposedWorkId": "y_sus_redonditos",
+    "contentRole": "PRIMARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "ENTITY_ALIAS_REPAIR"
+  },
+  {
+    "assetId": "60c6c5ab-fdc7-41ec-8f09-74d953335c3e",
+    "providerContentId": "x5qo2rx",
+    "proposedEntityId": "carlos_gardel",
+    "proposedWorkId": "una_cabeza",
+    "contentRole": "SECONDARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "CONTEXTUAL_MENTION"
+  },
+  {
+    "assetId": "adc73094-9059-4367-aa80-6253153a46a6",
+    "providerContentId": "x2yfs82",
+    "proposedEntityId": "queen",
+    "proposedWorkId": "the_march_of_the_black_queen",
+    "contentRole": "SECONDARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "CONTEXTUAL_MENTION"
+  },
+  {
+    "assetId": "89f1e4f4-e3b4-4b4b-b95c-99dfe57cc95d",
+    "providerContentId": "ashes-to-ashes-tv-series-2008-2010",
+    "proposedEntityId": "david_bowie",
+    "proposedWorkId": "the_laughing_gnome",
+    "contentRole": "SECONDARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "CONTEXTUAL_MENTION"
+  },
+  {
+    "assetId": "cbe901ea-a6f6-4e31-9011-b011b4101f28",
+    "providerContentId": "x3zgq6h",
+    "proposedEntityId": "soda_stereo",
+    "proposedWorkId": "texturas",
+    "contentRole": "SECONDARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "CONTEXTUAL_MENTION"
+  },
+  {
+    "assetId": "7fc383eb-50d6-4d03-b452-d5aeef7d88df",
+    "providerContentId": "x6bqj1d",
+    "proposedEntityId": "luis_alberto_spinetta",
+    "proposedWorkId": "luis_alberto",
+    "proposedVenueId": "teatro_colon",
+    "contentRole": "SECONDARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "CONTEXTUAL_MENTION"
+  },
+  {
+    "assetId": "334e49f1-35d1-4ce7-82aa-de68a0a6c3a5",
+    "providerContentId": "x8gynvp",
+    "proposedEntityId": "queen",
+    "proposedContentType": "DOCUMENTARY",
+    "contentRole": "SECONDARY",
+    "status": "PROPOSED",
+    "semanticVersion": "v1.4",
+    "gapType": "CONTEXTUAL_MENTION"
+  }
+]

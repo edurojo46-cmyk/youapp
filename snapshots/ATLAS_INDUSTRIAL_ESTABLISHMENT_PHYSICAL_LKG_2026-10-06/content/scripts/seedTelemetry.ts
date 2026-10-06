@@ -1,0 +1,100 @@
+import fs from 'fs';
+import path from 'path';
+
+// Generate synthetic telemetry for B-3.2 empirical validation
+async function seedTelemetry() {
+  console.log('Generating telemetry_seed.json...');
+
+  const seeds = [
+    // 1. VIMEO gets high utility for Art/Short Film
+    {
+      provider: 'vimeo',
+      context_level: 'intent',
+      intent: 'UNKNOWN', // Fallback for art/short films which usually lack explicit intent
+      topic_cluster: null,
+      language: null,
+      freshness: null,
+      content_format: null,
+      sample_size: 347,
+      calls: 347,
+      successes: 256,
+      candidates: 1000,
+      eligible_candidates: 800,
+      top20_entries: 224,
+      top5_entries: 152,
+      avg_latency_ms: 550,
+      top20_conversion: 0.28,
+      top5_conversion: 0.19,
+      learned_utility: 82 // HIGH CONFIDENCE, high utility
+    },
+    // 2. ARCHIVE gets high utility for History/Documentary
+    {
+      provider: 'archive',
+      context_level: 'intent',
+      intent: 'HISTORY',
+      topic_cluster: null,
+      language: null,
+      freshness: null,
+      content_format: null,
+      sample_size: 528,
+      calls: 528,
+      successes: 450,
+      candidates: 2000,
+      eligible_candidates: 1500,
+      top20_entries: 900,
+      top5_entries: 600,
+      avg_latency_ms: 1200,
+      top20_conversion: 0.60,
+      top5_conversion: 0.40,
+      learned_utility: 89 // HIGH CONFIDENCE, high utility
+    },
+    // 3. DAILYMOTION gets moderate utility for News
+    {
+      provider: 'dailymotion',
+      context_level: 'intent',
+      intent: 'NEWS',
+      topic_cluster: null,
+      language: null,
+      freshness: null,
+      content_format: null,
+      sample_size: 215,
+      calls: 215,
+      successes: 100,
+      candidates: 1200,
+      eligible_candidates: 500,
+      top20_entries: 100,
+      top5_entries: 20,
+      avg_latency_ms: 800,
+      top20_conversion: 0.20,
+      top5_conversion: 0.04,
+      learned_utility: 55 // MEDIUM CONFIDENCE, moderate utility
+    },
+    // 4. ATLAS gets high utility globally
+    {
+      provider: 'atlas',
+      context_level: 'global',
+      intent: null,
+      topic_cluster: null,
+      language: null,
+      freshness: null,
+      content_format: null,
+      sample_size: 1500,
+      calls: 1500,
+      successes: 1400,
+      candidates: 5000,
+      eligible_candidates: 4500,
+      top20_entries: 3000,
+      top5_entries: 1500,
+      avg_latency_ms: 100,
+      top20_conversion: 0.66,
+      top5_conversion: 0.33,
+      learned_utility: 95 // HIGH CONFIDENCE, exceptional utility
+    }
+  ];
+
+  const destPath = path.join(process.cwd(), 'telemetry_seed.json');
+  fs.writeFileSync(destPath, JSON.stringify(seeds, null, 2));
+  console.log(`Successfully generated ${destPath}`);
+}
+
+seedTelemetry().catch(console.error);

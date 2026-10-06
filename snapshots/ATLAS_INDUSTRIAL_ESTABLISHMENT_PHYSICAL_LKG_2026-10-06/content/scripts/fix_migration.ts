@@ -1,0 +1,18 @@
+import fs from 'fs';
+const file = 'supabase/migrations/20260910181000_atlas_person_search_provenance.sql';
+const content = fs.readFileSync(file, 'utf8');
+
+const prefix = `
+DROP FUNCTION IF EXISTS public.search_canonical_persons_v1(TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, INT, TEXT, TEXT, TEXT, TEXT, NUMERIC, UUID, UUID, TEXT, NUMERIC, TEXT, TEXT, NUMERIC, INT, INT, TEXT, BOOLEAN, INT, INT);
+DROP FUNCTION IF EXISTS public.search_admin_all_persons_v1(TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, INT, TEXT, TEXT, TEXT, TEXT, NUMERIC, UUID, UUID, TEXT, NUMERIC, TEXT, TEXT, NUMERIC, INT, INT, TEXT, BOOLEAN, INT, INT);
+DROP FUNCTION IF EXISTS public.search_canonical_persons_v1(TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, INT, TEXT, TEXT, TEXT, TEXT, NUMERIC, UUID, UUID, TEXT, NUMERIC, TEXT, TEXT, NUMERIC, INT, INT, TEXT, BOOLEAN, INT, INT, BOOLEAN);
+DROP FUNCTION IF EXISTS public.search_admin_all_persons_v1(TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, BOOLEAN, TEXT, INT, TEXT, TEXT, TEXT, TEXT, NUMERIC, UUID, UUID, TEXT, NUMERIC, TEXT, TEXT, NUMERIC, INT, INT, TEXT, BOOLEAN, INT, INT, TEXT);
+
+`;
+
+if (!content.includes('DROP FUNCTION IF EXISTS')) {
+    fs.writeFileSync(file, prefix + content);
+    console.log('Fixed migration.');
+} else {
+    console.log('Already fixed.');
+}

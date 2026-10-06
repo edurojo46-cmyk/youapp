@@ -1,0 +1,19 @@
+import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+
+const env = fs.readFileSync('.env', 'utf8');
+let url = '', key = '';
+for (const l of env.split('\n')) {
+  if (l.startsWith('VITE_SUPABASE_URL=')) url = l.split('=').slice(1).join('=').trim().replace(/['"]/g, '');
+  if (l.startsWith('SUPABASE_SERVICE_ROLE_KEY=')) key = l.split('=').slice(1).join('=').trim().replace(/['"]/g, '');
+}
+const sb = createClient(url, key, { auth: { persistSession: false } });
+
+async function main() {
+  const { data, error } = await sb.rpc('commit_canonical_with_search_outbox', {
+      p_identity_rows: [],
+      p_outbox_rows: []
+  });
+  console.log(data);
+}
+main();

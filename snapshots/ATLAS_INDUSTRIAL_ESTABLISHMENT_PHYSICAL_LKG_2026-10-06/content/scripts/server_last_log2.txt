@@ -1,0 +1,35 @@
+﻿Backend Search Server running on http://localhost:5174
+[AtlasLocal Schema Check] atlas_organization_members.organization_id references: atlas_organizations
+[AtlasConceptRegistry] Loaded 838 concepts from database.
+[AtlasGeographyRegistry] Ingested 65 canonical geographies from database.
+[AtlasSemanticCompiler.compileAsync] query: GARAGE en CABA | requiresFallback: false | state: SEMANTICS_RESOLVED_SOURCE_GAP
+[MissionOrchestrator] Mission MISS_1791203781253_3812ED phase transition: PLANNING -> CORE_LOOKUP (OK)
+[MissionOrchestrator] Mission MISS_1791203781253_3812ED phase transition: CORE_LOOKUP -> SOURCE_PLANNING (OK)
+[AtlasSourceKnowledgePlanner] Matched 7 known validated source(s) from SSOT: SRC_CKAN_PORTAL_BD572121C1 (Buenos Aires Data - Playas de Estacionamiento y Garages), SRC_GOBIERNO DE LA CIUDAD DE BUENOS AIRES_QKEGRGF0YS (BA Data - Estacionamientos Comerciales CABA), SRC_CKAN_PORTAL_6E02508C0F (BA Data - Estacionamientos Comerciales CABA), SRC_PORTAL DE DATOS ABIERTOS DE LA CIUDAD DE BUENOS AIRES_QNVLBM9ZIE (Buenos Aires Data - Estacionamientos Comerciales), SRC_CKAN_PORTAL_8E56C7A403 (Buenos Aires Data - Estacionamientos Comerciales), SRC_CKAN_PORTAL_228A0A6096 (Buenos Aires Data â€” Playas de Estacionamiento y Garages), SRC_PORTAL DE DATOS ABIERTOS GCBA_QNVLBM9ZIE (Buenos Aires Data - Playas de Estacionamiento y Garages)
+[SOURCE_KM_FIRST] Injected 7 known validated sources into mission MISS_1791203781253_3812ED frontier.
+[MissionOrchestrator] Mission MISS_1791203781253_3812ED phase transition: SOURCE_PLANNING -> PROBING (OK)
+[MissionOrchestrator] Mission MISS_1791203781253_3812ED phase transition: PROBING -> ACQUIRING (OK)
+[IndustrialDiscoveryService] Fatal error in mission loop MISS_1791203781253_3812ED: error: CONSTITUTIONAL_DEFENSE_IN_DEPTH_VIOLATION: Evidence fingerprint mismatch! Decision 6a613c8c-07ee-4718-a788-d2e7ab838bcd was authorized for evidence fingerprint 3c200d377ab1a8c1bfe2d0a8885d700e1565839005c8dd05cf09e8e0a9f73c18, but current record computes e820ad9063396899a9a95a9532a59c9212d9c6a35df970160f1291fe53895173.
+    at C:\Users\Eduardo\YOUAPP\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async IndustrialDiscoveryService.persistCertifiedCandidate (C:\Users\Eduardo\YOUAPP\server\services\industrial\IndustrialDiscoveryService.ts:1609:5)
+    at async IndustrialDiscoveryService.runDiscoveryLoop (C:\Users\Eduardo\YOUAPP\server\services\industrial\IndustrialDiscoveryService.ts:1417:13) {
+  length: 459,
+  severity: 'ERROR',
+  code: 'P0001',
+  detail: undefined,
+  hint: undefined,
+  position: undefined,
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: 'PL/pgSQL function fn_enforce_constitutional_authorization() line 98 at RAISE',
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'pl_exec.c',
+  line: '3911',
+  routine: 'exec_stmt_raise'
+}
+[MissionOrchestrator] TERMINATING mission MISS_1791203781253_3812ED: status=FAILED, condition=ALL_EXECUTABLE_SOURCES_TECHNICALLY_FAILED, gap=20

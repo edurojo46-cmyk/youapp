@@ -1,0 +1,24 @@
+-- ==========================================
+-- PHASE 10H-A1 POSTGREST AUTHENTICATOR GRANT
+-- ==========================================
+-- Forward migration: add EXECUTE for authenticator role.
+-- 
+-- Supabase PostgREST connects as 'authenticator' (rolinherit=false),
+-- then issues SET LOCAL ROLE service_role/anon/authenticated.
+-- Without a direct grant to 'authenticator', PostgREST cannot route
+-- the call and returns error 42883 (function not found).
+-- 
+-- Security boundary remains intact:
+-- The SECURITY DEFINER function enforces tenant isolation and source
+-- policy authority internally. PostgREST routing is a transport layer,
+-- not a trust boundary.
+-- 
+-- Callers that should be denied:
+-- - anon/authenticated direct INSERT to tables: denied by RLS + REVOKE
+-- - anon calling ingest_outcome_event with bad tenant: denied by internal
+--   tenant resolution + policy checks inside the function
+-- 
+-- NOTE: The function uses p_tenant_id as explicit input, not from auth.
+-- The intended callers are trusted server-side connectors only (service_role).
+
+GRANT EXECUTE ON FUNCTION public.ingest_outcome_event TO authenticator;

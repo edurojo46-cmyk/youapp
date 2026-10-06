@@ -1,0 +1,400 @@
+<USER_REQUEST>
+========================================================
+ATLAS — SOURCE KNOWLEDGE FIRST PLANNER V1
+ROOT FIX — IMPLEMENT NOW
+========================================================
+
+ROOT CAUSE YA DEMOSTRADO.
+
+NO más diagnóstico.
+
+Problema:
+
+IndustrialDiscoveryService.runDiscoveryLoop
+no consulta
+public.atlas_source_knowledge_map
+al construir el Source Plan inicial.
+
+Como consecuencia:
+
+fuentes ya conocidas,
+validadas,
+enumerables
+y ejecutables
+
+desaparecen de la misión.
+
+Luego Atlas depende de:
+
+OSM
++
+AI/Web fallback
+
+y el fallback además usa
+matching textual rígido.
+
+Eso produjo un terminal FALSO:
+
+NO_VALIDATED_SOURCE_EXISTS_AFTER_DISCOVERY
+
+aunque existía una fuente válida.
+
+========================================================
+1. SOURCE KNOWLEDGE MAP FIRST
+========================================================
+
+Toda misión debe comenzar:
+
+MissionIR
+→ Source Knowledge Map
+→ compatible known sources
+→ SourceCapabilityIR
+→ Source Frontier
+
+ANTES de:
+
+OSM fallback
+AI Source Radar
+Web Search Discovery.
+
+========================================================
+2. STRUCTURED MATCHING — NO TITLE ILIKE AS AUTHORITY
+========================================================
+
+NO seleccionar fuentes principalmente por:
+
+source_name ILIKE '%garage%'
+
+o términos textuales rígidos.
+
+Matching principal:
+
+entity_type
+row_unit
+relation capability
+geography containment
+enumeration capability
+connector availability
+public access
+validation state
+health state
+concept/source mappings
+ontology/synonyms/tags.
+
+El nombre de la fuente puede ayudar,
+pero NO ser requisito.
+
+========================================================
+3. ONTOLOGY-AWARE CONCEPT MATCH
+========================================================
+
+Mission concept:
+
+SERVICIOS_AUTOMOTORES
+
+puede contener subtype:
+
+garages y playas de estacionamiento.
+
+La fuente:
+
+Estacionamientos Comerciales
+
+debe poder hacer match
+por significado/registry mapping,
+aunque no contenga la palabra
+"garage".
+
+Usar Concept Registry / mappings persistentes.
+
+NO hardcodear:
+
+garage -> estacionamiento.
+
+========================================================
+4. SOURCE KM SSOT
+========================================================
+
+public.atlas_source_knowledge_map
+es SSOT.
+
+Si una fuente está:
+
+VALIDATED = TRUE
+ENABLED = TRUE
+CAN_PRODUCE_ENTITY_ROWS = TRUE
+SUPPORTS_ENUMERATION = TRUE
+CONNECTOR_EXECUTABLE = TRUE
+
+y es compatible con MissionIR,
+
+debe entrar al Source Frontier.
+
+========================================================
+5. KNOWN SOURCE FAST PATH
+========================================================
+
+Para fuente ya conocida:
+
+NO AI
+NO Web discovery
+NO deep source rediscovery
+NO source-name inference.
+
+Camino:
+
+MissionIR
+→ Source KM
+→ SourceCapabilityIR
+→ ConnectorResolver
+→ ConnectorExecutor
+→ HTTP.
+
+========================================================
+6. PRESERVE FULL CAPABILITY IR
+========================================================
+
+Al insertar fuente en frontier conservar:
+
+source_id
+source archetype
+access mode
+entity types
+row unit
+geography scope
+enumeration capability
+connector family
+evidence capability
+health.
+
+No reconstruir parcialmente
+desde nombre + URL.
+
+========================================================
+7. GEOGRAPHY CONTAINMENT
+========================================================
+
+Si source scope contiene
+la geografía solicitada:
+
+SOURCE_GEOGRAPHY contains MISSION_GEOGRAPHY
+
+la fuente es compatible.
+
+No exigir igualdad exacta.
+
+========================================================
+8. TERMINAL INVARIANT
+========================================================
+
+Prohibido:
+
+NO_VALIDATED_SOURCE_EXISTS_AFTER_DISCOVERY
+
+si existe:
+
+KNOWN_VALIDATED_EXECUTABLE_SOURCE_COUNT > 0.
+
+Si ocurre:
+
+SOURCE_PLANNER_INVARIANT_FAILURE.
+
+Release blocker.
+
+========================================================
+9. AI RADAR IS FALLBACK ONLY
+========================================================
+
+AI Source Radar entra sólo si:
+
+known compatible executable sources = 0
+
+o
+
+known sources ejecutadas
+dejan gap positivo.
+
+Nunca antes.
+
+========================================================
+10. FALLBACK MATCHING
+========================================================
+
+Cuando sí haga falta Radar/Source KM fuzzy lookup:
+
+usar:
+
+canonical concept
+subtypes
+synonyms
+aliases
+entity type
+relation
+source tags
+
+no sólo:
+
+raw query
++
+canonical parent concept.
+
+========================================================
+11. PHYSICAL REGRESSION
+========================================================
+
+Después del fix:
+
+TARGET_TEST = 20
+
+desde:
+
+http://localhost:5175/buscaindustrial
+
+GARAGE CABA.
+
+Esperado:
+
+SOURCE_KM_MATCHES > 0
+
+SRC_CKAN_PORTAL_8E56C7A403
+entra en Source Plan
+
+entra en Frontier
+
+connector resolved
+
+connector invoked
+
+HTTP sent
+
+rows received > 0.
+
+No exigir todavía 20 nuevos.
+
+Sólo demostrar
+que el conocimiento aprendido
+vuelve a ejecutarse.
+
+========================================================
+12. GENERALIZATION
+========================================================
+
+Luego 5 conceptos distintos
+con fuentes ya conocidas en Source KM.
+
+No mappings nuevos durante test.
+
+Cada uno debe demostrar:
+
+KNOWN_SOURCE_REUSED = TRUE
+AI_CALLS = 0
+WEB_CALLS = 0
+
+cuando la fuente conocida
+es suficiente.
+
+========================================================
+13. SECOND USE RULE
+========================================================
+
+Una fuente aprendida
+debe abaratar la próxima misión.
+
+FIRST USE:
+discovery may be required.
+
+SECOND USE:
+Source KM directly.
+
+Nunca redescubrir indefinidamente
+la misma fuente.
+
+========================================================
+14. SECURITY
+========================================================
+
+Durante el diagnóstico anterior
+se usó manual pg.Pool / DATABASE_URL.
+
+PROHIBIDO repetir.
+
+Usar exclusivamente:
+
+server/db.ts
+dbPool
+
+No inspeccionar .env.
+No direct DATABASE_URL.
+No new pg.Pool.
+
+========================================================
+RETURN
+========================================================
+
+BREVE.
+
+SOURCE_KM_FIRST_PLANNER_IMPLEMENTED =
+
+INITIAL_SOURCE_PLAN_READS_SOURCE_KM =
+
+STRUCTURED_SOURCE_MATCHING_IMPLEMENTED =
+
+ONTOLOGY_AWARE_SOURCE_MATCHING =
+
+TITLE_ILIKE_REQUIRED = FALSE
+
+KNOWN_SOURCE_FAST_PATH =
+
+GARAGE_SOURCE_KM_MATCHES =
+
+GARAGE_CKAN_SOURCE_IN_PLAN =
+
+GARAGE_CKAN_SOURCE_IN_FRONTIER =
+
+GARAGE_CONNECTOR_RESOLVED =
+
+GARAGE_CONNECTOR_INVOKED =
+
+GARAGE_HTTP_SENT =
+
+GARAGE_ROWS_RECEIVED =
+
+GARAGE_FALSE_NO_SOURCE_TERMINAL_FIXED =
+
+KNOWN_SOURCE_AI_CALLS =
+
+KNOWN_SOURCE_WEB_CALLS =
+
+BLIND_KNOWN_SOURCE_CASES =
+BLIND_KNOWN_SOURCE_PASS =
+
+CATEGORY_PATCHES = 0
+
+SOURCE_PLANNER_INVARIANT_GATE =
+
+TRUE_BROWSER_GARAGE_PASS =
+
+INDUSTRIAL_SEARCH_V1_CLOSED = FALSE
+
+REAL_1K_STARTED = FALSE
+REAL_10K_STARTED = FALSE
+REAL_100K_STARTED = FALSE
+
+NO continuar automáticamente.
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-10-05T08:22:21-03:00.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\Eduardo\YOUAPP\scripts\audit_works_graph_v2.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\Eduardo\YOUAPP\src\lib\atlasBootstrap\worksGraphTypes.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\Eduardo\YOUAPP\src\components\SyncedTVPlayer.tsx (LANGUAGE_TSX)
+- c:\Users\Eduardo\YOUAPP\src\lib\atlasHarvester\neighborExpansion.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\Eduardo\YOUAPP\supabase_schema.sql (LANGUAGE_UNSPECIFIED)
+Browser State:
+  Page 1D8938A825FB826604C27A5AE044CDC8 (Ingresa tu e‑mail o teléfono para iniciar sesión) - https://www.mercadolibre.com.ar/login/identification?challenge_id=129cff75-5292-... [ACTIVE]
+    Viewport: 1264x693, Page Height: 693
+  Page 45805262232C55A8DB521306A2A82A74 (Atlas — Plataforma Central de Inteligencia & CRM B2B) - http://localhost:5175/buscaindustrial
+    Viewport: 1264x693, Page Height: 991
+</ADDITIONAL_METADATA>

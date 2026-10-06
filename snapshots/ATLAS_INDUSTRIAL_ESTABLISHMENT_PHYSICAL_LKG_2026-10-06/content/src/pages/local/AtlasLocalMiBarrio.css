@@ -1,0 +1,897 @@
+/* ==========================================================================
+   ATLAS LOCAL - MI BARRIO DASHBOARD (CLEAN & MODERN LIGHT THEME)
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  --amb-bg: #edf2f7;
+  --amb-card-bg: #ffffff;
+  --amb-text-primary: #0f172a;
+  --amb-text-secondary: #64748b;
+  --amb-text-muted: #94a3b8;
+  --amb-blue-primary: #2563eb;
+  --amb-blue-hover: #1d4ed8;
+  --amb-blue-soft: #f0f7ff;
+  --amb-blue-border: #dbeafe;
+  --amb-border-subtle: #e2e8f0;
+  --amb-border-light: #f1f5f9;
+  --amb-shadow-card: 0 2px 8px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.02);
+  --amb-shadow-hover: 0 8px 20px -3px rgba(15, 23, 42, 0.08);
+  --amb-radius-card: 18px;
+  --amb-radius-inner: 12px;
+  --amb-radius-pill: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.amb-page-wrapper {
+  min-height: 100vh;
+  background-color: var(--amb-bg);
+  color: var(--amb-text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  padding: 12px 16px 40px 16px;
+}
+
+/* Outer Shell Card */
+.amb-app-canvas {
+  max-width: 1420px;
+  margin: 0 auto;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  padding-bottom: 24px;
+}
+
+/* ==========================================================================
+   TOP GLOBAL HEADER BAR
+   ========================================================================== */
+
+.amb-top-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 12px 24px;
+}
+
+.amb-top-bar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.amb-top-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.amb-logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--amb-text-primary);
+}
+
+.amb-logo-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.amb-logo-text {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.amb-location-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--amb-radius-pill);
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1e293b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.amb-location-pill:hover {
+  background: #e2e8f0;
+}
+
+.amb-top-center {
+  flex: 1;
+  max-width: 480px;
+}
+
+.amb-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.amb-search-icon {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.amb-search-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 16px 0 40px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--amb-radius-pill);
+  font-size: 0.82rem;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.amb-search-input:focus {
+  background: #ffffff;
+  border-color: var(--amb-blue-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.amb-search-input::placeholder {
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+.amb-top-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.amb-nav-items {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.amb-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #475569;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.amb-nav-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.amb-nav-btn--active {
+  background: var(--amb-blue-primary) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-radius: 8px;
+}
+
+.amb-user-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.amb-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--amb-border-subtle);
+}
+
+.amb-user-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   MAIN DASHBOARD GRID (2 COLUMNS: LEFT 74% + RIGHT 26%)
+   ========================================================================== */
+
+.amb-dashboard-container {
+  padding: 16px 20px 0 20px;
+}
+
+.amb-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .amb-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.amb-left-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.amb-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   HERO CARD
+   ========================================================================== */
+
+.amb-hero-card {
+  background: var(--amb-card-bg);
+  border-radius: var(--amb-radius-card);
+  padding: 24px 28px;
+  border: 1px solid #f1f5f9;
+  box-shadow: var(--amb-shadow-card);
+  display: grid;
+  grid-template-columns: 1.18fr 1fr;
+  gap: 24px;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .amb-hero-card {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+}
+
+.amb-hero-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.amb-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.amb-tag-pill-badge {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #2563eb;
+  padding: 3px 10px;
+  border-radius: var(--amb-radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.amb-hero-title {
+  font-size: 2.75rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--amb-blue-primary);
+  margin: 0;
+  line-height: 1.05;
+}
+
+.amb-hero-subtitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 8px 0 4px 0;
+  line-height: 1.25;
+}
+
+.amb-hero-desc {
+  font-size: 0.84rem;
+  color: var(--amb-text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.amb-hero-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.amb-stat-pill {
+  flex: 1;
+  min-width: 105px;
+  background: var(--amb-blue-soft);
+  border: 1px solid var(--amb-blue-border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.15s ease;
+}
+
+.amb-stat-pill:hover {
+  transform: translateY(-2px);
+}
+
+.amb-stat-icon-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--amb-blue-primary);
+  flex-shrink: 0;
+}
+
+.amb-stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.amb-stat-number {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+}
+
+.amb-stat-label {
+  font-size: 0.65rem;
+  color: var(--amb-text-secondary);
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.amb-hero-image-wrap {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  height: 205px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.amb-hero-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.amb-hero-script-overlay {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  text-align: right;
+  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  line-height: 1.18;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.95), 0 0 6px rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+}
+
+.amb-hero-location-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  border-radius: var(--amb-radius-pill);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ==========================================================================
+   BARRIOS SELECTOR / STRIP
+   ========================================================================== */
+
+.amb-barrios-strip {
+  background: var(--amb-card-bg);
+  border-radius: var(--amb-radius-card);
+  padding: 12px 16px;
+  border: 1px solid #f1f5f9;
+  box-shadow: var(--amb-shadow-card);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.amb-strip-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.amb-strip-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.amb-barrio-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--amb-radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.amb-barrio-chip--active {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #2563eb;
+}
+
+.amb-barrio-chip--inactive {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.amb-barrio-chip--inactive:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.amb-strip-right {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+/* ==========================================================================
+   SECTION COMMON HEADERS
+   ========================================================================== */
+
+.amb-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.amb-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.amb-section-icon {
+  font-size: 1.15rem;
+}
+
+.amb-section-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.amb-section-subtitle {
+  font-size: 0.76rem;
+  color: var(--amb-text-secondary);
+  margin-top: 1px;
+}
+
+.amb-section-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--amb-blue-primary);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.amb-section-link:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   OFERTAS GRID
+   ========================================================================== */
+
+.amb-offers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 960px) {
+  .amb-offers-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .amb-offers-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.amb-offer-card {
+  background: var(--amb-card-bg);
+  border-radius: var(--amb-radius-card);
+  border: 1px solid var(--amb-border-subtle);
+  overflow: hidden;
+  box-shadow: var(--amb-shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.amb-offer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--amb-shadow-hover);
+}
+
+.amb-offer-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 135px;
+  background: #f1f5f9;
+  overflow: hidden;
+}
+
+.amb-offer-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.amb-offer-card:hover .amb-offer-img {
+  transform: scale(1.04);
+}
+
+.amb-offer-badge-pill {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  border-radius: var(--amb-radius-pill);
+  padding: 3px 8px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.amb-offer-price-tag {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  color: #34d399;
+  font-weight: 800;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.amb-offer-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.amb-commerce-line {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 2px;
+}
+
+.amb-offer-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 4px 0;
+  line-height: 1.25;
+}
+
+.amb-offer-desc {
+  font-size: 0.74rem;
+  color: var(--amb-text-secondary);
+  line-height: 1.35;
+  margin: 0 0 10px 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.amb-offer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.amb-btn-detail {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--amb-blue-primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.amb-btn-detail:hover {
+  text-decoration: underline;
+}
+
+.amb-btn-share {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.amb-btn-share:hover {
+  background: #dcfce7;
+}
+
+/* ==========================================================================
+   COMERCIOS VERIFICADOS GRID
+   ========================================================================== */
+
+.amb-businesses-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 960px) {
+  .amb-businesses-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .amb-businesses-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.amb-biz-card {
+  background: var(--amb-card-bg);
+  border-radius: var(--amb-radius-card);
+  border: 1px solid var(--amb-border-light);
+  padding: 12px 14px;
+  box-shadow: var(--amb-shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.amb-biz-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--amb-shadow-hover);
+}
+
+.amb-biz-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.amb-biz-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #f1f5f9;
+}
+
+.amb-biz-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.amb-biz-cat-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--amb-blue-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.amb-biz-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.amb-biz-addr {
+  font-size: 0.72rem;
+  color: var(--amb-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.amb-biz-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid #f8fafc;
+}
+
+/* ==========================================================================
+   RIGHT SIDEBAR
+   ========================================================================== */
+
+.amb-sidebar-card {
+  background: var(--amb-card-bg);
+  border-radius: var(--amb-radius-card);
+  padding: 16px;
+  border: 1px solid #f1f5f9;
+  box-shadow: var(--amb-shadow-card);
+}
+
+.amb-sidebar-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.amb-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.amb-action-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.amb-action-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.amb-action-btn--primary {
+  background: var(--amb-blue-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.amb-action-btn--primary:hover {
+  background: var(--amb-blue-hover);
+}
+
+.amb-action-btn--outline {
+  background: #ffffff;
+  border: 1px solid var(--amb-border-subtle);
+  color: #1e293b;
+}
+
+.amb-action-btn--outline:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* Neighborhood Info pill list */
+.amb-info-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.amb-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  padding: 6px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.amb-info-row:last-child {
+  border-bottom: none;
+}
+
+.amb-info-label {
+  color: var(--amb-text-secondary);
+}
+
+.amb-info-value {
+  font-weight: 700;
+  color: #0f172a;
+}

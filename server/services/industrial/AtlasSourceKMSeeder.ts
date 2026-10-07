@@ -124,7 +124,12 @@ export const PRODUCTIVE_STATIC_SOURCES: ProductiveSourceSeed[] = [
     geographic_granularity: 'CITY_PROVINCE',
     queryability: { by_id: true, by_name: true, free_text: true, by_concept: true, by_geography: true },
     public_access_confirmed: true,
-    field_telemetry: { filename: 'refar_establecimientos_farmacias.csv', parser_type: 'CSV' }
+    field_telemetry: { 
+      filename: 'refar_establecimientos_farmacias.csv', 
+      parser_type: 'CSV',
+      categories_supported: ['PHARMACY', 'HEALTH', 'SALUD_Y_FARMACIA', 'FARMACIA', 'FARMACIAS'],
+      relations_supported: ['ESTABLISHMENT_SERVICE', 'SELLER', 'RETAILER']
+    }
   },
   // 3. IDECOR (Veterinarias Habilitadas Córdoba)
   {
@@ -157,7 +162,12 @@ export const PRODUCTIVE_STATIC_SOURCES: ProductiveSourceSeed[] = [
     geographic_granularity: 'CITY_PROVINCE',
     queryability: { by_id: true, by_name: true, free_text: true, by_concept: true, by_geography: true },
     public_access_confirmed: true,
-    field_telemetry: { filename: 'cordoba_veterinarias_idecor.json', parser_type: 'GEOJSON' }
+    field_telemetry: { 
+      filename: 'cordoba_veterinarias_idecor.json', 
+      parser_type: 'GEOJSON',
+      categories_supported: ['VETERINARY', 'ZOOTERAPICOS'],
+      relations_supported: ['ESTABLISHMENT_SERVICE', 'SERVICE_PROVIDER']
+    }
   },
   // 4. CAFABYT (Fabricantes Industriales de Bulones ADIMRA)
   {
@@ -190,7 +200,12 @@ export const PRODUCTIVE_STATIC_SOURCES: ProductiveSourceSeed[] = [
     geographic_granularity: 'NATIONAL_AND_PROVINCIAL',
     queryability: { by_id: true, by_name: true, free_text: true, by_concept: true, by_geography: true },
     public_access_confirmed: true,
-    field_telemetry: { filename: 'cafabyt_fabricantes_bulones.json', parser_type: 'JSON' }
+    field_telemetry: { 
+      filename: 'cafabyt_fabricantes_bulones.json', 
+      parser_type: 'JSON',
+      categories_supported: ['FASTENERS_MANUFACTURING', 'METALURGICA'],
+      relations_supported: ['MANUFACTURER']
+    }
   },
   // 5. SIPRO MUEBLES (Fabricantes de Mobiliario y Madera)
   {
@@ -223,7 +238,12 @@ export const PRODUCTIVE_STATIC_SOURCES: ProductiveSourceSeed[] = [
     geographic_granularity: 'NATIONAL_AND_PROVINCIAL',
     queryability: { by_id: true, by_name: true, free_text: true, by_concept: true, by_geography: true },
     public_access_confirmed: true,
-    field_telemetry: { filename: 'sipro_proveedores.csv', parser_type: 'CSV' }
+    field_telemetry: { 
+      filename: 'sipro_proveedores.csv', 
+      parser_type: 'CSV',
+      categories_supported: ['FURNITURE_MANUFACTURING', 'MADERA'],
+      relations_supported: ['MANUFACTURER']
+    }
   },
   // 6. BA GASTRO (Locales Gastronómicos Habilitados GCBA)
   {
@@ -256,7 +276,12 @@ export const PRODUCTIVE_STATIC_SOURCES: ProductiveSourceSeed[] = [
     geographic_granularity: 'CITY_PROVINCE',
     queryability: { by_id: true, by_name: true, free_text: true, by_concept: true, by_geography: true },
     public_access_confirmed: true,
-    field_telemetry: { filename: 'ba_establecimientos_gastronomicos.csv', parser_type: 'CSV' }
+    field_telemetry: { 
+      filename: 'ba_establecimientos_gastronomicos.csv', 
+      parser_type: 'CSV',
+      categories_supported: ['GASTRONOMY', 'RESTAURANTE', 'ALIMENTOS'],
+      relations_supported: ['ESTABLISHMENT_SERVICE', 'SELLER']
+    }
   },
   // 7. GCBA PRENSA (Periodistas de Redacción y Cobertura Pública)
   {
@@ -289,7 +314,12 @@ export const PRODUCTIVE_STATIC_SOURCES: ProductiveSourceSeed[] = [
     geographic_granularity: 'NATIONAL_AND_PROVINCIAL',
     queryability: { by_id: true, by_name: true, free_text: true, by_concept: true, by_geography: true },
     public_access_confirmed: true,
-    field_telemetry: { filename: 'gcba_autoridades_2026.csv', parser_type: 'CSV' }
+    field_telemetry: { 
+      filename: 'gcba_autoridades_2026.csv', 
+      parser_type: 'CSV',
+      categories_supported: ['JOURNALISM_ECONOMICS', 'PRENSA'],
+      relations_supported: ['MEDIA_ROLE']
+    }
   },
   // 8. BA ALOJAMIENTOS EMAIL (Empresas Registradas con Email Público GCBA)
   {

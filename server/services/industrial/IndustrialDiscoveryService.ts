@@ -25,6 +25,7 @@ import { AutonomousSourceDiscovery } from './AutonomousSourceDiscovery.ts';
 import { RoleEvidenceGate } from '../../../src/lib/atlasIntelligence/RoleEvidenceGate.ts';
 import { SpatialPartitionPlanner } from './SpatialPartitionPlanner.ts';
 import { AtlasGeographyRegistry } from './AtlasGeographyRegistry.ts';
+import { AtlasConceptRegistry } from './AtlasConceptRegistry.ts';
 import { UniversalMissionEngine } from './UniversalMissionEngine.ts';
 import { AtlasAISourceRadar } from './AtlasAISourceRadar.ts';
 import { AtlasSourceProbeGate } from './AtlasSourceProbeGate.ts';
@@ -42,6 +43,12 @@ import {
   type TerminalCondition,
   type SourceAttemptState
 } from './MissionOrchestrator.ts';
+import { 
+  AtlasSourceCapabilityMatcher, 
+  type MissionSpec, 
+  type SourceKnowledgeRow, 
+  type SourceCapabilityMatchResult 
+} from './AtlasSourceCapabilityMatcher.ts';
 
 export interface MissionSpecification {
   mission_id: string;
@@ -727,6 +734,8 @@ export class IndustrialDiscoveryService {
    * Core Deterministic Discovery & Qualification Loop
    */
   private async runDiscoveryLoop(missionId: string, targetLimit: number): Promise<void> {
+    // Rule 10: Cap maximum execution target to 100
+    targetLimit = Math.min(Math.max(1, targetLimit), 100);
     let sourcesAttemptedCount = 0;
     let sourcesExhaustedCount = 0;
     let sourcesFailedCount = 0;
@@ -828,79 +837,113 @@ export class IndustrialDiscoveryService {
     // Enter SOURCE_PLANNING
     await orchestrator.transitionPhase(missionId, 'SOURCE_PLANNING');
 
+    const conceptRegistry = AtlasConceptRegistry.getInstance();
+    const candidateConceptId = (semSpec as any).object?.concept_id ||
+      (semSpec as any).semantic_object?.properties?.concept_id ||
+      (uniSpec as any)?.object?.concept_id;
+
+    let resolvedCategory = semSpec.category;
+    if (candidateConceptId && conceptRegistry.getConcept(candidateConceptId)) {
+      resolvedCategory = candidateConceptId;
+    } else if (semSpec.category && conceptRegistry.getConcept(semSpec.category)) {
+      resolvedCategory = semSpec.category;
+    } else if (uniSpec?.category && conceptRegistry.getConcept(uniSpec.category)) {
+      resolvedCategory = uniSpec.category;
+    } else if (criteria.category && conceptRegistry.getConcept(criteria.category)) {
+      resolvedCategory = criteria.category;
+    } else {
+      resolvedCategory = candidateConceptId || semSpec.category || uniSpec?.category || criteria.category || null;
+    }
+    semSpec.category = resolvedCategory;
+
     // Build initial SOURCE_FRONTIER
-    // 0. SOURCE KNOWLEDGE MAP FIRST (SSOT public.atlas_source_knowledge_map)
-    // Strictly evaluate known, validated, executable sources before any fallback
-    try {
-      const kmPlanner = AtlasSourceKnowledgePlanner.getInstance(this.dbPool);
-      const plannedKnown = await kmPlanner.planKnownSources(semSpec, currentMission.objective);
-      knownSourcePlannerMatches = plannedKnown.length;
-      for (const ks of plannedKnown) {
+    // SOLE SOURCE SELECTION AUTHORITY: AtlasSourceCapabilityMatcher + public.atlas_source_knowledge_map
+    const missionSpec: MissionSpec = {
+      mission_id: missionId,
+      objective: currentMission.objective,
+      raw_objective: semSpec.raw_objective || currentMission.objective,
+      normalized_objective: semSpec.normalized_objective || currentMission.objective,
+      row_unit: semSpec.row_unit || rowUnit,
+      entity_type: semSpec.entity_type || (rowUnit === 'ESTABLISHMENT' ? 'ESTABLISHMENT' : 'COMPANY'),
+      category: resolvedCategory,
+      entity_subtype: semSpec.entity_subtype,
+      relation: semSpec.relation || relationType,
+      product: semSpec.product,
+      service: semSpec.service,
+      geography: semSpec.geography || currentMission.geography || 'ARG_CABA',
+      target: targetLimit,
+      required_evidence: semSpec.required_evidence,
+      roles_required: semSpec.roles_required,
+      qualifiers: semSpec.qualifiers
+    };
+
+    const capabilityMatcher = AtlasSourceCapabilityMatcher.getInstance();
+    const kmRes = await this.dbPool.query(`
+      SELECT 
+        source_id, canonical_url, source_name, source_family, source_universe,
+        owner_organization, geography_scope, protocol, access_method, public_status,
+        permitted_status, schema_signature, supported_motor_template, estimated_records,
+        estimated_unique_entities, reliability_score, quality_score, current_status,
+        entity_capabilities, source_graph_relations, overlap_memory, field_telemetry,
+        tesla_motor_capabilities, source_roles, can_produce_entity_rows,
+        entity_types_supported, row_unit_supported, geographic_granularity,
+        queryability, public_access_confirmed
+      FROM public.atlas_source_knowledge_map;
+    `);
+
+    const matchedSources: Array<{ row: SourceKnowledgeRow; matchResult: SourceCapabilityMatchResult }> = [];
+    for (const r of kmRes.rows) {
+      const matchRes = capabilityMatcher.match(missionSpec, r);
+      if (r.source_id === 'SRC_REFAR_ESTABLECIMIENTOS_FARMACIAS') {
+        console.log(`[MATCHER_DEBUG] REFAR evaluation in mission ${missionId}:`, JSON.stringify(matchRes));
+        console.log(`[MATCHER_DEBUG] missionSpec:`, JSON.stringify(missionSpec));
+      }
+      // Strictly enforce Invariant 2: UNKNOWN != MATCH. Only strict MATCH is executed.
+      if (matchRes.decision === 'MATCH') {
+        matchedSources.push({ row: r, matchResult: matchRes });
+      }
+    }
+
+    if (matchedSources.length > 0) {
+      // Sort by suitability score descending, then reliability
+      matchedSources.sort((a, b) => {
+        if (b.matchResult.suitability_score !== a.matchResult.suitability_score) {
+          return b.matchResult.suitability_score - a.matchResult.suitability_score;
+        }
+        return Number(b.row.reliability_score || 0) - Number(a.row.reliability_score || 0);
+      });
+
+      console.log(`[MATCHER_AUTHORITY] AtlasSourceCapabilityMatcher matched ${matchedSources.length} sources for mission ${missionId}:`,
+        matchedSources.map(m => `${m.row.source_id} (score=${m.matchResult.suitability_score})`)
+      );
+
+      knownSourcePlannerMatches = matchedSources.length;
+      for (const m of matchedSources) {
+        const ks = m.row;
         orchestrator.pushFrontierPath(missionId, {
           path_id: `PATH_KM_${ks.source_id}`,
           source_id: ks.source_id,
-          resource: ks.canonical_url || ks.source_name,
-          connector: ks.connector_family || 'CKAN_API',
-          access_mode: ks.access_mode || 'DOWNLOADABLE_DATASET',
-          role: ks.role || semSpec.relation,
-          priority: Math.max(90, ks.priority) // Top priority for verified SSOT sources
+          resource: ks.canonical_url || ks.source_name || ks.source_id,
+          connector: ks.supported_motor_template || ks.source_family || 'OPEN_DATA_CSV',
+          access_mode: ks.access_method || 'DIRECT',
+          role: ks.source_roles?.[0] || semSpec.relation,
+          priority: Math.round(m.matchResult.suitability_score * 100)
         });
       }
-      if (knownSourcePlannerMatches > 0) {
-        console.log(`[SOURCE_KM_FIRST] Injected ${knownSourcePlannerMatches} known validated sources into mission ${missionId} frontier.`);
-      }
-    } catch (kmErr: any) {
-      console.warn(`[SOURCE_KM_FIRST] Non-blocking warning during Source KM initial planning:`, kmErr.message);
+    } else {
+      console.warn(`[MATCHER_AUTHORITY] Zero sources matched capability requirements for mission ${missionId}. Reporting SOURCE_GAP.`);
+      // Rule 9: If zero MATCH sources, report SOURCE_GAP and stop cleanly.
+      await this.dbPool.query(`
+        UPDATE public.atlas_discovery_missions
+        SET status = 'COMPLETED',
+            criteria = jsonb_set(COALESCE(criteria, '{}'::jsonb), '{gap_status}', '"SOURCE_GAP"'::jsonb),
+            terminal_reason = 'SOURCE_GAP_NO_CAPABLE_SOURCE',
+            updated_at = NOW()
+        WHERE mission_id = $1;
+      `, [missionId]);
+      await orchestrator.transitionPhase(missionId, 'TERMINATED');
+      return;
     }
-
-    // 1. Registered declared sources from suitabilityGate
-    const suitabilityScores = suitabilityGate.evaluateSuitability(semSpec);
-    for (const v of suitabilityScores) {
-      if (v.suitability === 'STRONG' || v.suitability === 'SUPPORTED' || v.suitability_score >= 0.5) {
-        orchestrator.pushFrontierPath(missionId, {
-          path_id: `PATH_${v.source_id}`,
-          source_id: v.source_id,
-          resource: v.source_name,
-          connector: v.parser_type || 'REGISTERED',
-          access_mode: 'DIRECT',
-          role: semSpec.relation,
-          priority: Math.round(v.suitability_score * 100)
-        });
-      }
-    }
-
-    // 2. Open spatial/directory registry (OSM) for establishments and physical businesses
-    const isPhysicalEntity = rowUnit === 'ESTABLISHMENT' || rowUnit === 'COMPANY' || semSpec.entity_type === 'ESTABLISHMENT' || semSpec.entity_type === 'COMPANY';
-    if (isPhysicalEntity) {
-      orchestrator.pushFrontierPath(missionId, {
-        path_id: 'PATH_SRC_OSM_PUBLIC_ESTABLISHMENTS',
-        source_id: 'SRC_OSM_PUBLIC_ESTABLISHMENTS',
-        resource: 'Overpass Open Geo-Registry',
-        connector: 'OSM_OVERPASS',
-        access_mode: 'SPATIAL',
-        role: semSpec.relation,
-        priority: 75
-      });
-    }
-
-    // 3. Autonomous discovery sources
-    try {
-      const discovered = await AutonomousSourceDiscovery.getInstance().discoverSources(semSpec);
-      for (const disc of discovered) {
-        orchestrator.pushFrontierPath(missionId, {
-          path_id: `PATH_DISC_${disc.source_id}`,
-          source_id: disc.source_id,
-          resource: disc.source_name,
-          connector: 'AUTONOMOUS_CONNECTOR',
-          access_mode: 'DISCOVERED',
-          role: semSpec.relation,
-          priority: 70
-        });
-      }
-    } catch (discErr) {
-      console.warn(`[IndustrialDiscoveryService] Autonomous discovery warning:`, discErr);
-    }
-
 
     sourcesAttemptedCount = 0;
     sourcesExhaustedCount = 0;
@@ -918,44 +961,11 @@ export class IndustrialDiscoveryService {
 
       let currentPath = orchestrator.popNextViablePath(missionId);
 
-      // Expansion if frontier empty and gap remains (max 1 AI call)
-      if (!currentPath && (targetLimit - certified) > 0 && !discoveryExpansionAttempted) {
-        discoveryExpansionAttempted = true;
-        await orchestrator.transitionPhase(missionId, 'EXPANDING_SOURCE_PLAN');
-        aiUsed = true;
-        try {
-          const radar = AtlasAISourceRadar.getInstance(this.dbPool);
-          const radarResult = await radar.generateSourceHypotheses({
-            raw_objective: currentMission.objective,
-            concept: semSpec.category || semSpec.object || currentMission.objective,
-            geography: currentMission.geography || semSpec.geography || 'ARG_CABA',
-            row_unit: semSpec.row_unit || 'PERSON',
-            sources_tried: orchestrator.getFrontier(missionId).map(p => p.source_id),
-            objective_gap: targetLimit - certified
-          });
-          if (radarResult.hypotheses && radarResult.hypotheses.length > 0) {
-            for (const hyp of radarResult.hypotheses) {
-              orchestrator.pushFrontierPath(missionId, {
-                path_id: `PATH_AI_${hyp.source_name.replace(/\s+/g, '_')}`,
-                source_id: hyp.source_name,
-                resource: hyp.possible_public_url || hyp.source_name,
-                connector: 'AI_RADAR_HYPOTHESIS',
-                access_mode: 'DOWNLOADABLE_DATASET',
-                role: semSpec.relation,
-                priority: 60
-              });
-            }
-          }
-        } catch (expErr: any) {
-          console.warn('[IndustrialDiscoveryService] Source expansion warning:', expErr.message);
-        }
-        currentPath = orchestrator.popNextViablePath(missionId);
-      }
-
       if (!currentPath) {
-        console.log('[IndustrialDiscoveryService] Source frontier empty and all expansions exhausted.');
+        console.log('[IndustrialDiscoveryService] Source frontier empty and all matching sources executed.');
         break;
       }
+
 
       sourcesAttemptedCount++;
       orchestrator.markPathState(missionId, currentPath.path_id, 'PROBING');
@@ -1013,6 +1023,7 @@ export class IndustrialDiscoveryService {
           const decl = suitabilityGate.getDeclaration(currentPath.source_id);
           if (decl) {
             const probeRes = suitabilityGate.probeSource(currentPath.source_id, semSpec, PROBE_LIMIT);
+            console.log(`[PROBE_DEBUG] ${currentPath.source_id} probeRes:`, JSON.stringify(probeRes));
             probeRowsFound = Math.max(probeRes.probed_count, probeRes.candidates_sample.length);
             orchestrator.recordProbeRows(missionId, probeRowsFound);
             await orchestrator.notifyProgress(missionId, { force: true });
@@ -1361,7 +1372,7 @@ export class IndustrialDiscoveryService {
           const certCandidate = {
             productId,
             name: cand.product_name || cand.company_name,
-            category: cand.category || 'GENERAL_UNSPECIFIED',
+            category: cand.category || semSpec.category || 'GENERAL_UNSPECIFIED',
             description: `${cand.company_name} en ${cand.city || 'Argentina'}, ${cand.province || 'Nacional'}`,
             rawAttributes: {
               company_name: cand.company_name,
@@ -1370,15 +1381,17 @@ export class IndustrialDiscoveryService {
               role: cand.role || null,
               row_unit: rowUnit,
               entity_type: cand.entity_type || semSpec.entity_type,
-              target_sector: cand.category || null,
+              target_sector: semSpec.category || cand.category || null,
               rubros: cand.rubros || cand.category || null,
               expected_category: semSpec.category,
               expected_relation: semSpec.relation,
               source_id: currentPath.source_id,
-              evidence: cand.evidence || {
+              evidence: {
+                ...(cand.evidence || {}),
+                certificate_id: cand.evidence?.certificate_id || cand.cuit || cand.osm_id || `${currentPath.source_id}-${productId}`,
                 source_id: currentPath.source_id,
-                url: cand.source_url || currentPath.resource,
-                provenance: 'SOURCE_OBSERVED',
+                url: cand.evidence?.url || cand.source_url || currentPath.resource,
+                provenance: cand.evidence?.provenance || 'SOURCE_OBSERVED',
                 cuit: cand.cuit,
                 address: cand.address,
                 email: cand.email,

@@ -51,7 +51,7 @@ const NATURAL_PRESETS = [
   'Buscame proveedores para hoteles de Argentina'
 ];
 
-const QUANTITY_PRESETS = [1000, 10000, 50000, 100000];
+const QUANTITY_PRESETS = [50, 100, 1000, 10000, 50000, 100000];
 
 export const isTerminalStatus = (status?: string, reason?: string | null): boolean => {
   if (!status) return false;
@@ -582,7 +582,7 @@ export default function IndustrialDiscoveryModal({
   const [entityType, setEntityType] = useState('COMPANY');
   const [geography, setGeography] = useState('ARG_NACIONAL');
   const userExplicitlyChangedGeo = useRef(false);
-  const [targetQuantity, setTargetQuantity] = useState<number>(100000);
+  const [targetQuantity, setTargetQuantity] = useState<number>(50);
 
   // Universal Plan Preview State (Requirements 2, 7, 8, 17)
   const [planPreview, setPlanPreview] = useState<any>(null);

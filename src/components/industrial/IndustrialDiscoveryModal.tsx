@@ -89,7 +89,8 @@ export const isTerminalStatus = (status?: string, reason?: string | null): boole
     'SOURCE_COVERAGE_LIMITED',
     'EXECUTION_START_FAILED',
     'WORKER_UNAVAILABLE',
-    'GEOGRAPHY_CONTRACT_VIOLATION'
+    'GEOGRAPHY_CONTRACT_VIOLATION',
+    'SOURCE_GAP_NO_CAPABLE_SOURCE'
   ].includes(status) || Boolean(reason && !['RUNNING', 'STARTING'].includes(status));
 };
 
@@ -104,7 +105,7 @@ export function getMissionStatusPillLabel(mission: MissionMetrics): string {
     const phase = (mission as any).mission_phase;
     if (phase === 'PROBING') return '🔍 VALIDANDO FUENTES...';
     if (phase === 'ACQUIRING') return '⚡ BUSCANDO RESULTADOS...';
-    if (phase === 'EXPANDING_SOURCE_PLAN') return '🌐 AMPLIANDO PLAN...';
+    if (phase === 'EXPANDING_SOURCE_PLAN' || phase === 'SOURCE_DISCOVERY') return '🔍 BUSCANDO Y VERIFICANDO FUENTES...';
     return '⚡ EN EJECUCIÓN';
   }
   if (mission.status === 'PAUSED') return '⏸ PAUSADA';
@@ -155,6 +156,8 @@ export function getMissionStatusPillLabel(mission: MissionMetrics): string {
       return '⚠️ COBERTURA LIMITADA';
     case 'NO_SUITABLE_SOURCE_FOUND':
       return '⚠️ SIN FUENTE ADECUADA';
+    case 'SOURCE_GAP_NO_CAPABLE_SOURCE':
+      return '⚠️ SIN FUENTES CAPACES';
     case 'NEEDS_ONTOLOGY_RESOLUTION':
       return 'ℹ️ RESOLUCIÓN PENDIENTE';
     case 'NEEDS_USER_CLARIFICATION':
@@ -376,17 +379,20 @@ export function renderMissionTerminalState(mission: MissionMetrics): React.React
     );
   }
 
-  // 10. NO_SUITABLE_SOURCE_FOUND
-  if (reason === 'NO_SUITABLE_SOURCE_FOUND') {
+  // 10. NO_SUITABLE_SOURCE_FOUND / SOURCE_GAP_NO_CAPABLE_SOURCE
+  if (reason === 'NO_SUITABLE_SOURCE_FOUND' || reason === 'SOURCE_GAP_NO_CAPABLE_SOURCE') {
+    const isSourceGap = reason === 'SOURCE_GAP_NO_CAPABLE_SOURCE';
     return (
       <div id="idm-terminal-banner" className="idm-terminal-card idm-terminal-card--no-suitable">
         <span style={{ fontSize: '26px', lineHeight: 1 }}>🛡️</span>
         <div style={{ flex: 1 }}>
           <strong style={{ color: '#f87171', fontSize: '15px', display: 'block', marginBottom: '4px' }}>
-            No encontramos todavía una fuente adecuada
+            {isSourceGap ? 'No se encontraron fuentes públicas verificables suficientes' : 'No encontramos todavía una fuente adecuada'}
           </strong>
           <p style={{ margin: 0, color: '#e2e8f0', fontSize: '13px', lineHeight: '1.45' }}>
-            {msg || 'Atlas no localizó datos públicos con la evidencia verificable requerida para esta búsqueda.'}
+            {msg || (isSourceGap
+              ? 'Atlas intentó recuperar y validar fuentes públicas disponibles pero ninguna cumplió con los requisitos de evidencia y enumerabilidad requeridos.'
+              : 'Atlas no localizó datos públicos con la evidencia verificable requerida para esta búsqueda.')}
           </p>
           {renderDiagnosticBadge(reason)}
         </div>

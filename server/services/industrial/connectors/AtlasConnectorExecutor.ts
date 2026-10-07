@@ -493,6 +493,60 @@ export class AtlasConnectorExecutor {
   /**
    * Generic Paginated Directory Parser
    */
+  /**
+   * Generic Structural Entity Card Validation:
+   * Rejects site navigation, headers, footers, country pickers, and bare <li><a> elements.
+   * Requires structural entity markers (card container or business attributes).
+   */
+  private extractEntityFromNode($: cheerio.Root, el: cheerio.Element): { nombre: string; direccion: string; telefono: string; website?: string; rubro?: string } | null {
+    const $el = $(el);
+
+    // 1. Structural exclusion: reject elements located inside page navigation / chrome
+    if ($el.closest('header, footer, nav, aside, [role="navigation"], [role="banner"], [role="contentinfo"], .footer, .header, .nav, .menu, .sidebar, .breadcrumbs, .pagination').length > 0) {
+      return null;
+    }
+
+    // 2. Extract title / company name
+    const title = $el.find('h2, h3, h4, .title, .nombre, .business-name, .company-name').first().text().trim() ||
+                  ($el.is('.card, .item, .socio, .empresa, .result, .listing, .business') ? $el.find('a').first().text().trim() : '');
+
+    if (!title || title.length < 3 || title.length > 120) {
+      return null;
+    }
+
+    // 3. Generic site chrome / navigation filter (reject common non-entity link text)
+    const lower = title.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const genericChromePatterns = [
+      /^(terminos|condiciones|politica|privacidad|cookies|aviso legal|legales|copyright)/,
+      /^(contacto|contactenos|contacta|acerca de|sobre nosotros|quienes somos|ayuda|faq|preguntas)/,
+      /^(iniciar sesion|login|registrate|registro|mi cuenta|perfil|carrito|comprar)/,
+      /^(anunciate|publicite|publica|tienda online|guias?|redes sociales|descargar)/,
+      /^(argentina|chile|colombia|peru|uruguay|brasil|mexico|espana|bolivia|paraguay|ecuador|venezuela|panama|guatemala|nicaragua|el salvador|honduras|costa rica)$/
+    ];
+    if (genericChromePatterns.some(p => p.test(lower))) {
+      return null;
+    }
+
+    const address = $el.find('.address, .direccion, .ubicacion, .localidad, address').text().trim();
+    const phone = $el.find('.phone, .tel, .telefono, a[href^="tel:"]').text().trim();
+    const website = $el.find('a[href^="http"]:not([href*="paginasamarillas"]):not([href*="google"]):not([href*="facebook"])').attr('href') || '';
+    const rubro = $el.find('.rubro, .category, .categoria, .actividad').text().trim();
+
+    // 4. Structural validation:
+    // Must be an explicit business container OR possess contact/location attributes
+    const isExplicitCard = $el.is('.card, .item, .socio, .empresa, .result, .listing, .business, [itemtype*="LocalBusiness"]');
+    const hasAttributes = Boolean(address || phone || website || rubro);
+
+    if (isExplicitCard || hasAttributes) {
+      return { nombre: title, direccion: address, telefono: phone, website, rubro };
+    }
+
+    return null;
+  }
+
+  /**
+   * Generic Paginated Directory Parser
+   */
   public parsePaginatedDirectory(data: any, capabilityIR: SourceCapabilityIR, missionIR?: AtlasMissionIR, maxRows = 200): StandardizedDiscoveredEntity[] {
     if (typeof data === 'string' && data.includes('<table')) {
       return this.parseHtmlTable(data, capabilityIR, missionIR, maxRows);
@@ -500,14 +554,17 @@ export class AtlasConnectorExecutor {
     if (typeof data === 'string' && data.includes('<')) {
       const $ = cheerio.load(data);
       const items: any[] = [];
-      $('.card, .item, .socio, .empresa, li').each((_, el) => {
-        const title = $(el).find('h2, h3, h4, .title, .nombre, a').first().text().trim();
-        const address = $(el).find('.address, .direccion, .ubicacion').text().trim();
-        const phone = $(el).find('.phone, .tel, .telefono').text().trim();
-        if (title.length > 2) {
-          items.push({ nombre: title, direccion: address, telefono: phone });
-        }
+      $('.card, .item, .socio, .empresa, .result, .listing, .business, [itemtype*="LocalBusiness"]').each((_, el) => {
+        const ent = this.extractEntityFromNode($, el);
+        if (ent) items.push(ent);
       });
+      // Fallback only if no explicit card classes match, but still subject to strict structural validation
+      if (items.length === 0) {
+        $('article, div.row, div.col, li').each((_, el) => {
+          const ent = this.extractEntityFromNode($, el);
+          if (ent) items.push(ent);
+        });
+      }
       return items.slice(0, maxRows).map((it, i) => this.mapRawRowToEntity(it, i, capabilityIR, missionIR));
     }
     return this.parseJsonOrGeoJson(data, capabilityIR, missionIR, maxRows);
@@ -574,8 +631,8 @@ export class AtlasConnectorExecutor {
     const lat = latRaw ? parseFloat(String(latRaw)) : null;
     const lon = lonRaw ? parseFloat(String(lonRaw)) : null;
 
-    const rowUnit = capabilityIR.row_units[0] || 'ESTABLISHMENT';
-    const entityType = capabilityIR.entity_types[0] || 'COMPANY';
+    const rowUnit = capabilityIR.row_units?.[0] || 'ESTABLISHMENT';
+    const entityType = capabilityIR.entity_types?.[0] || 'COMPANY';
 
     return {
       name,

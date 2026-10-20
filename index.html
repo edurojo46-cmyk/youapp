@@ -23,6 +23,9 @@
         }
       })();
     </script>
+    <script>
+      window.process = window.process || { env: { NODE_ENV: 'development' } };
+    </script>
 
     <!-- PWA & Fullscreen sin barra de URL en móvil -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, minimum-scale=1.0, maximum-scale=1.0" />
@@ -62,6 +65,18 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="background:#07090e; color:#e2e8f0; padding:2rem; font-family:sans-serif; text-align:center;">
+        <h2>Atlas Broadcast &amp; YouApp TV</h2>
+        <p>Next-generation live streaming, broadcast automation, and social video distribution platform.</p>
+        <p style="margin-top:1rem;">
+          <a href="/terms.html" style="color:#38bdf8; margin: 0 10px;">Terms of Service</a> |
+          <a href="/privacy.html" style="color:#38bdf8; margin: 0 10px;">Privacy Policy</a> |
+          <a href="/atlas.html" style="color:#38bdf8; margin: 0 10px;">Atlas Broadcast</a>
+        </p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+

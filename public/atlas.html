@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atlas Broadcast — Multi-Channel Social Video &amp; Syndication Platform</title>
+  <meta name="description" content="Atlas Broadcast: Advanced broadcast automation, multi-network live feed syndication, and direct video publishing for verified creators and media teams.">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(18, 24, 38, 0.7);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #2563eb;
+      --accent-glow: rgba(37, 99, 235, 0.4);
+      --highlight: #38bdf8;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .container {
+      max-width: 960px;
+      width: 100%;
+    }
+    header {
+      text-align: center;
+      padding: 4rem 1rem 3rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--highlight);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 0.35rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .pulse {
+      width: 8px;
+      height: 8px;
+      background-color: var(--success);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--success);
+    }
+    h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 1.25rem;
+      letter-spacing: -0.02em;
+    }
+    h1 span {
+      background: linear-gradient(135deg, #38bdf8 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p.lead {
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      max-width: 680px;
+      margin: 0 auto 2.5rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+    .card-icon {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      font-size: 1.25rem;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+    .tech-pill {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      margin-top: 0.5rem;
+      margin-right: 0.25rem;
+    }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2.5rem 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .footer-links a {
+      color: var(--text);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-links a:hover {
+      color: var(--highlight);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="badge">
+        <span class="pulse"></span> Production Ready &bull; Social Video Platform
+      </div>
+      <h1><span>Atlas Broadcast</span> Engine</h1>
+      <p class="lead">
+        Next-generation multi-network video distribution and broadcast automation platform by YouApp TV.
+      </p>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <h3>TikTok Content Posting API</h3>
+        <p>
+          Direct video uploading and publishing with official OAuth 2.0 PKCE authentication, allowing verified creators to syndicate content seamlessly.
+        </p>
+        <div>
+          <span class="tech-pill">video.upload</span>
+          <span class="tech-pill">video.publish</span>
+          <span class="tech-pill">Direct Post</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">📡</div>
+        <h3>Multi-Channel Syndication</h3>
+        <p>
+          Simultaneous broadcasting and scheduling across connected social video ecosystems including TikTok, Meta (Instagram / Facebook), and YouTube.
+        </p>
+        <div>
+          <span class="tech-pill">Live Ingestion</span>
+          <span class="tech-pill">Scheduled Queues</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <h3>Enterprise Privacy &amp; Governance</h3>
+        <p>
+          Built from the ground up on minimal-permission principles. Credential isolation with zero persistent plain-text secrets and instant user revocation.
+        </p>
+        <div>
+          <span class="tech-pill">OAuth 2.0 / PKCE</span>
+          <span class="tech-pill">Zero Data Resale</span>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="footer-links">
+        <a href="/terms.html">Terms of Service</a>
+        <a href="/privacy.html">Privacy Policy</a>
+        <a href="https://youapptv.com">YouApp TV Main Platform</a>
+        <a href="mailto:support@youapptv.com">Developer Support</a>
+      </div>
+      <p>&copy; 2026 Atlas Broadcast &amp; YouApp TV &bull; Built &amp; Operated by Eduardo Rojo</p>
+    </footer>
+  </div>
+</body>
+</html>

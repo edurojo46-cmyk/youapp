@@ -42,13 +42,25 @@ jobs:
           VITE_ATLAS_PUBLIC_URL: https://youapptv.com
           ATLAS_PUBLIC_URL: https://youapptv.com
         run: |
-          npm run build
+          npm run build 2>&1 | tee build.log || true
+          cat build.log
+          if [ ! -d "dist" ]; then
+            echo "DIST NOT CREATED!"
+            exit 1
+          fi
           cp dist/index.html dist/404.html
           mkdir -p dist/recomendados
           cp dist/index.html dist/recomendados/index.html
           mkdir -p dist/productos-recomendados
           cp dist/index.html dist/productos-recomendados/index.html
           [ -f public/CNAME ] && cp public/CNAME dist/CNAME || true
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

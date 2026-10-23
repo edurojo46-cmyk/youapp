@@ -120,8 +120,19 @@ class AtlasMercadoLibreLinkHubService {
   }
 
   getYouTubeProfileUrl(): string {
-    const baseUrl = getProductBaseUrl('ATLAS');
-    return `${baseUrl}/recomendados`;
+    let baseUrl = 'https://youapptv.com';
+    try {
+      if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ATLAS_PUBLIC_URL) {
+        baseUrl = import.meta.env.VITE_ATLAS_PUBLIC_URL;
+      } else if (typeof process !== 'undefined' && process.env?.ATLAS_PUBLIC_URL) {
+        baseUrl = process.env.ATLAS_PUBLIC_URL;
+      } else {
+        baseUrl = getProductBaseUrl('ATLAS');
+      }
+    } catch {
+      baseUrl = 'https://youapptv.com';
+    }
+    return `${baseUrl.replace(/\/+$/, '')}/recomendados`;
   }
 }
 

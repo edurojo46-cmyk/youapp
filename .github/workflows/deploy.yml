@@ -43,7 +43,10 @@ jobs:
           ATLAS_PUBLIC_URL: https://youapptv.com
         run: |
           npm run build 2>&1 | tee build.log || true
-          cat build.log
+          echo "### Build Log Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat build.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
           if [ ! -d "dist" ]; then
             echo "DIST NOT CREATED!"
             exit 1

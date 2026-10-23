@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -43,10 +43,12 @@ jobs:
           ATLAS_PUBLIC_URL: https://youapptv.com
         run: |
           npm run build 2>&1 | tee build.log || true
-          echo "### Build Log Output" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat build.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -B build-debug
+          git add -f build.log
+          git commit -m "debug: capture build log" || true
+          git push -f https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git build-debug || true
           if [ ! -d "dist" ]; then
             echo "DIST NOT CREATED!"
             exit 1

@@ -1,0 +1,798 @@
+/* ─── ATLAS LOCAL PERFIL CSS (Apple-like Minimalist Clean) ─── */
+.perfil-page-root {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Top Navbar ─── */
+.perfil-navbar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+}
+
+.perfil-navbar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.perfil-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.perfil-brand-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.perfil-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.perfil-brand-title {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.perfil-brand-subtitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0284c7;
+  letter-spacing: -0.01em;
+}
+
+.perfil-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.perfil-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 6px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.perfil-back-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* ─── Main Container ─── */
+.perfil-main-container {
+  max-width: 860px;
+  width: 100%;
+  margin: 28px auto;
+  padding: 0 20px 48px;
+  box-sizing: border-box;
+}
+
+/* ─── Owner Notice Banner ─── */
+.perfil-owner-banner {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: #166534;
+}
+
+.perfil-owner-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.perfil-owner-banner-badge {
+  background: #22c55e;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Hero Header Card ─── */
+.perfil-header-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 32px;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.perfil-header-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 50%, #0ea5e9 100%);
+}
+
+.perfil-header-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.perfil-user-meta {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.perfil-avatar-wrap {
+  position: relative;
+}
+
+.perfil-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px -2px rgba(2, 132, 199, 0.35);
+  border: 3px solid #ffffff;
+  object-fit: cover;
+}
+
+.perfil-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.perfil-name-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.perfil-display-name {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: #0f172a;
+  margin: 0;
+}
+
+.perfil-badge-barrio {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.perfil-bio-text {
+  font-size: 15px;
+  line-height: 1.45;
+  color: #334155;
+  margin: 0;
+  max-width: 540px;
+  word-break: break-word;
+}
+
+.perfil-bio-empty {
+  font-size: 14px;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 0;
+}
+
+/* ─── Administered Business Box ─── */
+.perfil-business-box {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #92400e;
+}
+
+.perfil-business-label {
+  font-weight: 700;
+  color: #78350f;
+}
+
+.perfil-business-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.perfil-business-link {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0284c7;
+  text-decoration: none;
+  background: #ffffff;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  transition: all 0.15s;
+}
+
+.perfil-business-link:hover {
+  background: #f1f5f9;
+  border-color: #0284c7;
+}
+
+/* ─── Followed Interests Row ─── */
+.perfil-interests-box {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.perfil-interests-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.perfil-interest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ─── Action Buttons ─── */
+.perfil-btn-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: #0284c7;
+  color: #ffffff;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.perfil-btn-edit:hover {
+  background: #0369a1;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+
+/* ─── Profile Tabs ─── */
+.perfil-tabs-bar {
+  display: flex;
+  gap: 8px;
+  margin: 24px 0 20px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 2px;
+}
+
+.perfil-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.perfil-tab-btn:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+
+.perfil-tab-btn.active {
+  color: #0284c7;
+  font-weight: 700;
+}
+
+.perfil-tab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #0284c7;
+  border-radius: 3px 3px 0 0;
+}
+
+/* ─── Tab Content Cards ─── */
+.perfil-section-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  margin-bottom: 18px;
+}
+
+.perfil-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.perfil-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.perfil-info-item {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.perfil-info-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.perfil-info-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.perfil-empty-tab {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
+.perfil-empty-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.perfil-empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 6px;
+}
+
+.perfil-empty-desc {
+  font-size: 13px;
+  color: #64748b;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+/* ─── Modal / Drawer: Edit Profile ─── */
+.perfil-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.perfil-modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+  border: 1px solid #e2e8f0;
+  animation: perfilModalIn 0.2s ease-out;
+}
+
+@keyframes perfilModalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.perfil-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.perfil-modal-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.perfil-modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.perfil-modal-close-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.perfil-modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.perfil-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.perfil-form-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.perfil-char-counter {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.perfil-char-counter.warning {
+  color: #eab308;
+}
+
+.perfil-char-counter.limit {
+  color: #dc2626;
+}
+
+.perfil-input-text,
+.perfil-textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.perfil-input-text:focus,
+.perfil-textarea:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.perfil-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.perfil-form-help {
+  font-size: 11px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* ─── Privacy Toggles Group ─── */
+.perfil-privacy-group {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.perfil-privacy-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  margin: 0;
+}
+
+.perfil-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.perfil-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.perfil-toggle-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.perfil-toggle-desc {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* iOS-style toggle switch */
+.apple-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.apple-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.apple-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: 0.2s;
+  border-radius: 24px;
+}
+
+.apple-slider::before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.apple-switch input:checked + .apple-slider {
+  background-color: #0284c7;
+}
+
+.apple-switch input:checked + .apple-slider::before {
+  transform: translateX(20px);
+}
+
+.perfil-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  background: #f8fafc;
+  border-radius: 0 0 20px 20px;
+}
+
+.perfil-btn-cancel {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.perfil-btn-cancel:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.perfil-btn-save {
+  background: #0284c7;
+  border: none;
+  color: #ffffff;
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+  transition: all 0.15s;
+}
+
+.perfil-btn-save:hover:not(:disabled) {
+  background: #0369a1;
+}
+
+.perfil-btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── Mobile Responsiveness (390px strict) ─── */
+@media (max-width: 640px) {
+  .perfil-main-container {
+    padding: 0 16px 36px;
+    margin: 16px auto;
+  }
+
+  .perfil-header-card {
+    padding: 20px 16px;
+  }
+
+  .perfil-header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+
+  .perfil-user-meta {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 14px;
+  }
+
+  .perfil-user-details {
+    align-items: center;
+  }
+
+  .perfil-name-row {
+    justify-content: center;
+  }
+
+  .perfil-display-name {
+    font-size: 22px;
+  }
+
+  .perfil-bio-text {
+    text-align: center;
+  }
+
+  .perfil-business-box {
+    justify-content: center;
+  }
+
+  .perfil-interests-box {
+    justify-content: center;
+  }
+
+  .perfil-btn-edit {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .perfil-tabs-bar {
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .perfil-tabs-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .perfil-tab-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .perfil-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

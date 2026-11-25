@@ -1,5 +1,7 @@
 import React from 'react';
-import { Sparkles, Bookmark, Plus, Subtitles, Share2, Compass, List } from 'lucide-react';
+import { Sparkles, Bookmark, Plus, Share2, Compass, List } from 'lucide-react';
+import { usePlayerStore } from '../../store/usePlayerStore';
+import { shareYouAppVideo } from '../../lib/tv/youappShareHelper';
 
 interface PlayerActionBarProps {
   onContextClick?: () => void;
@@ -30,7 +32,22 @@ export function PlayerActionBar({
       <button className="action-btn epistemic-action-btn" onClick={onContextClick} title="Contexto y rigor epistemológico del contenido">
         <Compass size={14} className="text-cyan-400" /> Contexto
       </button>
-      <button className="action-btn" onClick={onShareClick}>
+      <button
+        className="action-btn"
+        onClick={() => {
+          if (onShareClick) {
+            onShareClick();
+            return;
+          }
+          const st = usePlayerStore.getState();
+          void shareYouAppVideo({
+            videoId: st.currentBlock?.providerContentId || '',
+            startSec: st.currentTime,
+            title: st.currentBlock?.title || 'YOUAPP TV',
+            channelName: 'YOUAPP TV'
+          });
+        }}
+      >
         <Share2 size={14} /> Compartir
       </button>
       

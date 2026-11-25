@@ -243,7 +243,7 @@ export default function StreamingDetail() {
                 <button
                   className="mp-btn-secondary"
                   onClick={() => {
-                    navigate('/programartv');
+                    navigate('/mitv');
                   }}
                   style={{ background: 'rgba(255,255,255,0.1)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }}
                 >

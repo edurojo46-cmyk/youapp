@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
-
 @import './styles/youapp-tokens.css';
 @import './styles/youapp-tv.css';
 
@@ -46,7 +44,7 @@
 }
 
 body {
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--you-font-sans);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
@@ -55,11 +53,28 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+.font-atlas-display {
+  font-family: var(--you-font-display);
+  letter-spacing: -0.025em;
+}
+
+.you-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
+  font-family: var(--you-font-display);
   font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
 }
 
 h1 { font-size: 2.5rem; }
@@ -185,4 +200,71 @@ p {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* ==========================================================================
+   PRODUCT CSS BOUNDARIES & THEME SCOPES
+   ========================================================================== */
+
+.app-root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* 1. ATLAS PLATFORM SCOPE (Clean, white, subtle sky blue, minimalist) */
+.atlas-app {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-surface: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-subtle: #e2e8f0;
+  --accent-atlas: #0284c7;
+  --accent-atlas-hover: #0369a1;
+  --accent-atlas-subtle: #e0f2fe;
+
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* 2. BUSCADOR INDUSTRIAL SCOPE (Compatible with Atlas design system) */
+.industrial-app {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-surface: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --border-subtle: #e2e8f0;
+  --accent-industrial: #0284c7;
+  --accent-industrial-hover: #0369a1;
+
+  background-color: #f8fafc;
+  color: var(--text-primary);
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Fix: Override the dark YouApp body background within industrial context.
+   The body has background: #0a0a0f from YouApp theme tokens, which leaks
+   as a black flash when navigating Industrial routes. */
+body:has(.industrial-app) {
+  background-color: #f8fafc;
+}
+
+/* 3. YOUAPP STREAMING SCOPE (Preserves media dark theme) */
+.youapp-app {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #14141f;
+  --text-primary: #ffffff;
+  --text-secondary: #a0a0b0;
+  --text-muted: #666677;
+
+  background: radial-gradient(circle at 50% 0%, var(--bg-secondary), var(--bg-primary) 70%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  width: 100%;
 }

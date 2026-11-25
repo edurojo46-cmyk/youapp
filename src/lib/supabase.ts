@@ -1,7 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || 'https://jtnurafmngaxdwlzpvxv.supabase.co';
-const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) || 'sb_publishable_IWSDC0aWUR8cvOPrwYSaqg_JU8aASm8';
+const getEnvVar = (name: string) => {
+  let val = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env[name] : undefined;
+  if (!val && typeof process !== 'undefined' && process.env) {
+    val = process.env[name];
+  }
+  if (!val) {
+    throw new Error(`Missing required configuration: ${name}`);
+  }
+  return val;
+};
+
+export const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+export const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
 // Creamos el cliente de Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

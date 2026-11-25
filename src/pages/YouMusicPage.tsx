@@ -1,0 +1,2836 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  ArrowDown,
+  ArrowUp,
+  BookmarkCheck,
+  Check,
+  ExternalLink,
+  ListMusic,
+  Music,
+  Pencil,
+  Play,
+  Plus,
+  Radio,
+  Search,
+  Share2,
+  SkipBack,
+  SkipForward,
+  Smartphone,
+  Sparkles,
+  Trash2,
+  Tv,
+  Volume2,
+  VolumeX,
+  X
+} from 'lucide-react';
+import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
+import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
+import { useSignalStore } from '../lib/tv/signalStore';
+import { persistSignal } from '../lib/tv/signalPersistence';
+import { supabase } from '../lib/supabase';
+import type { ScheduleBlock } from '../lib/tv/signalTypes';
+import {
+  buildPlaylistShareUrl,
+  buildSingleSongShareUrl,
+  loadYouMusicWorkspace,
+  loadYouMusicWorkspaceFromCloud,
+  resolveYouTubePointer,
+  saveYouMusicWorkspace,
+  type YouMusicPlaylist,
+  type YouMusicPointerItem,
+  type YouMusicWorkspace
+} from '../lib/tv/youMusicPlaylistStore';
+import atlasMusicCatalog from '../data/atlasMusicChannels.json';
+
+type AtlasMusicVideo = {
+  videoId: string;
+  title: string;
+  publishedAt: string;
+  thumbnail: string;
+  watchUrl: string;
+};
+
+type AtlasMusicChannel = {
+  channelId: string;
+  name: string;
+  artistLabel: string;
+  genre: string;
+  channelUrl: string;
+  thumbnail: string;
+  wikidataQid: string;
+  verifiedVia: string;
+  verifiedAt: string;
+  videos: AtlasMusicVideo[];
+};
+
+const ATLAS_MUSIC_CHANNELS: AtlasMusicChannel[] = Array.isArray(atlasMusicCatalog?.channels)
+  ? (atlasMusicCatalog.channels as AtlasMusicChannel[])
+  : [];
+const ATLAS_GENRES = ['Todos', 'Rock', 'Pop', 'Jazz', 'Latino', 'Clásica'] as const;
+
+export default function YouMusicPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const setSignal = useSignalStore((s) => s.setSignal);
+
+  const [workspace, setWorkspace] = useState<YouMusicWorkspace>(() => loadYouMusicWorkspace());
+  const [urlInput, setUrlInput] = useState('');
+  const [customSongName, setCustomSongName] = useState('');
+  const [isAdding, setIsAdding] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [isRenamingPlaylist, setIsRenamingPlaylist] = useState(false);
+  const [renamePlaylistDraft, setRenamePlaylistDraft] = useState('');
+  const [editingSongId, setEditingSongId] = useState<string | null>(null);
+  const [editingSongDraft, setEditingSongDraft] = useState('');
+  const [atlasGenreFilter, setAtlasGenreFilter] = useState<string>('Todos');
+  const [atlasSearchQuery, setAtlasSearchQuery] = useState('');
+  const [atlasVisibleCount, setAtlasVisibleCount] = useState(24);
+  const [playlistVisibleCount, setPlaylistVisibleCount] = useState(50);
+
+  // Catálogo en vivo desde Supabase `youapp_index` (los 10.000 canales / 46.423+ videos 100% YouTube)
+  const [cloudAtlasChannels, setCloudAtlasChannels] = useState<AtlasMusicChannel[]>([]);
+  const [cloudAtlasTotalVideos, setCloudAtlasTotalVideos] = useState<number>(0);
+  const [cloudAtlasLoading, setCloudAtlasLoading] = useState<boolean>(false);
+  const [cloudAtlasHasMore, setCloudAtlasHasMore] = useState<boolean>(false);
+  const cloudAtlasOffsetRef = useRef<number>(0);
+
+  const mapRowsToAtlasChannels = useCallback((rows: any[], baseChannels: AtlasMusicChannel[] = []): AtlasMusicChannel[] => {
+    const byChannel = new Map<string, AtlasMusicChannel>();
+    for (const ch of baseChannels) {
+      byChannel.set(ch.channelId, { ...ch, videos: [...ch.videos] });
+    }
+    const genreLabelMap: Record<string, string> = {
+      rock: 'Rock',
+      pop: 'Pop',
+      jazz: 'Jazz',
+      latino: 'Latino',
+      clasica: 'Clásica'
+    };
+    for (const r of rows) {
+      const vidId = String(r?.video_id || '').trim();
+      const chId = String(r?.creator_id || r?.creator_name || vidId).trim();
+      if (!vidId || !chId) continue;
+      const tags: string[] = Array.isArray(r?.tags) ? r.tags.map((t: unknown) => String(t).toLowerCase()) : [];
+      const detectedGenreKey = tags.find((t) => t in genreLabelMap) || 'pop';
+      const genre = genreLabelMap[detectedGenreKey] || 'Música';
+      const thumb = String(r?.thumbnail_url || `https://i.ytimg.com/vi/${vidId}/hqdefault.jpg`);
+      const watchUrl = `https://www.youtube.com/watch?v=${vidId}`;
+      const videoObj: AtlasMusicVideo = {
+        videoId: vidId,
+        title: String(r?.title || 'Video musical'),
+        publishedAt: String(r?.published_at || ''),
+        thumbnail: thumb,
+        watchUrl
+      };
+      const existing = byChannel.get(chId);
+      if (existing) {
+        if (existing.videos.length < 3 && !existing.videos.some((v) => v.videoId === vidId)) {
+          existing.videos.push(videoObj);
+        }
+      } else {
+        byChannel.set(chId, {
+          channelId: chId,
+          name: String(r?.creator_name || 'Canal Musical'),
+          artistLabel: String(r?.creator_name || 'Canal Musical'),
+          genre,
+          channelUrl: chId.startsWith('UC')
+            ? `https://www.youtube.com/channel/${chId}`
+            : watchUrl,
+          thumbnail: thumb,
+          wikidataQid: '',
+          verifiedVia: 'supabase:youapp_index',
+          verifiedAt: String(r?.published_at || ''),
+          videos: [videoObj]
+        });
+      }
+    }
+    return Array.from(byChannel.values());
+  }, []);
+
+  const fetchCloudAtlasPage = useCallback(
+    async (opts: { reset: boolean; genre: string; search: string }) => {
+      const PAGE_ROWS = 120;
+      const from = opts.reset ? 0 : cloudAtlasOffsetRef.current;
+      const to = from + PAGE_ROWS - 1;
+      setCloudAtlasLoading(true);
+      try {
+        const tagFilters = ['atlas-pointer-compact'];
+        if (opts.genre !== 'Todos') {
+          const gNorm = opts.genre
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase();
+          tagFilters.push(gNorm);
+        }
+        let q = supabase
+          .from('youapp_index')
+          .select('video_id,title,creator_id,creator_name,tags,thumbnail_url,published_at', { count: 'exact' })
+          .contains('tags', tagFilters);
+
+        const cleanSearch = opts.search.trim().replace(/[,%()]/g, ' ').trim();
+        if (cleanSearch) {
+          q = q.or(`creator_name.ilike.%${cleanSearch}%,title.ilike.%${cleanSearch}%`);
+        }
+
+        const { data, count, error } = await q.order('updated_at', { ascending: false }).range(from, to);
+        if (error || !Array.isArray(data)) {
+          return;
+        }
+        const total = typeof count === 'number' ? count : 0;
+        setCloudAtlasTotalVideos(total);
+        cloudAtlasOffsetRef.current = from + data.length;
+        setCloudAtlasHasMore(from + data.length < total);
+        setCloudAtlasChannels((prev) => mapRowsToAtlasChannels(data, opts.reset ? [] : prev));
+      } finally {
+        setCloudAtlasLoading(false);
+      }
+    },
+    [mapRowsToAtlasChannels]
+  );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchCloudAtlasPage({ reset: true, genre: atlasGenreFilter, search: atlasSearchQuery });
+    }, atlasSearchQuery.trim() ? 260 : 0);
+    return () => window.clearTimeout(timer);
+  }, [atlasGenreFilter, atlasSearchQuery, fetchCloudAtlasPage]);
+
+  const filteredAtlasChannels = useMemo(() => {
+    if (cloudAtlasChannels.length > 0 || cloudAtlasTotalVideos > 0) {
+      return cloudAtlasChannels;
+    }
+    const base =
+      atlasGenreFilter === 'Todos'
+        ? ATLAS_MUSIC_CHANNELS
+        : ATLAS_MUSIC_CHANNELS.filter((ch) => ch.genre === atlasGenreFilter);
+    const q = atlasSearchQuery.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(
+      (ch) =>
+        ch.name.toLowerCase().includes(q) ||
+        ch.artistLabel.toLowerCase().includes(q) ||
+        ch.genre.toLowerCase().includes(q) ||
+        ch.videos.some((v) => v.title.toLowerCase().includes(q))
+    );
+  }, [cloudAtlasChannels, cloudAtlasTotalVideos, atlasGenreFilter, atlasSearchQuery]);
+
+  const visibleAtlasChannels = useMemo(
+    () =>
+      cloudAtlasChannels.length > 0
+        ? filteredAtlasChannels
+        : filteredAtlasChannels.slice(0, atlasVisibleCount),
+    [cloudAtlasChannels.length, filteredAtlasChannels, atlasVisibleCount]
+  );
+
+  const handlePlayAtlasMusicVideo = useCallback(
+    (video: AtlasMusicVideo, channelName: string) => {
+      const currentWs = loadYouMusicWorkspace();
+      let targetIndex = 0;
+      const incoming: YouMusicPointerItem = {
+        id: `atlas-${video.videoId}`,
+        videoId: video.videoId,
+        title: video.title,
+        author: channelName,
+        thumbnailUrl: video.thumbnail,
+        sourceUrl: video.watchUrl,
+        addedAt: new Date().toISOString()
+      };
+      const nextWs: YouMusicWorkspace = {
+        ...currentWs,
+        playlists: currentWs.playlists.map((pl) => {
+          if (pl.id !== currentWs.activePlaylistId) return pl;
+          const idx = pl.items.findIndex((x) => x.videoId === video.videoId);
+          if (idx >= 0) {
+            targetIndex = idx;
+            return pl;
+          }
+          targetIndex = pl.items.length;
+          return {
+            ...pl,
+            items: [...pl.items, incoming],
+            updatedAt: new Date().toISOString()
+          };
+        })
+      };
+      setSharedPlaylist(null);
+      setWorkspace(saveYouMusicWorkspace(nextWs));
+      setCurrentIndex(targetIndex);
+      setToast(`Reproduciendo en tu Señal Musical: «${video.title}»`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    []
+  );
+
+  const handleAddAtlasChannelToMusicSignal = useCallback((ch: AtlasMusicChannel) => {
+    const currentWs = loadYouMusicWorkspace();
+    let addedCount = 0;
+    let targetPlaylistName = 'Señal Musical';
+    const nextWs: YouMusicWorkspace = {
+      ...currentWs,
+      playlists: currentWs.playlists.map((pl) => {
+        if (pl.id !== currentWs.activePlaylistId) return pl;
+        targetPlaylistName = pl.name;
+        const existingIds = new Set(pl.items.map((x) => x.videoId));
+        const newItems: YouMusicPointerItem[] = [];
+        for (const vid of ch.videos.slice(0, 3)) {
+          if (existingIds.has(vid.videoId)) continue;
+          existingIds.add(vid.videoId);
+          newItems.push({
+            id: `atlas-${vid.videoId}`,
+            videoId: vid.videoId,
+            title: vid.title,
+            author: ch.name,
+            thumbnailUrl: vid.thumbnail,
+            sourceUrl: vid.watchUrl,
+            addedAt: new Date().toISOString()
+          });
+        }
+        addedCount = newItems.length;
+        if (newItems.length === 0) return pl;
+        return {
+          ...pl,
+          items: [...pl.items, ...newItems],
+          updatedAt: new Date().toISOString()
+        };
+      })
+    };
+    setSharedPlaylist(null);
+    setWorkspace(saveYouMusicWorkspace(nextWs));
+    setToast(
+      addedCount > 0
+        ? `Sumado «${ch.name}» (${addedCount} temas) a tu Señal Musical «${targetPlaylistName}».`
+        : `Los temas de «${ch.name}» ya estaban en tu Señal Musical «${targetPlaylistName}».`
+    );
+  }, []);
+
+  const handleAddSingleAtlasVideoToMusicSignal = useCallback(
+    (video: AtlasMusicVideo, channelName: string) => {
+      const currentWs = loadYouMusicWorkspace();
+      let alreadyExists = false;
+      let targetPlaylistName = 'Señal Musical';
+      const nextWs: YouMusicWorkspace = {
+        ...currentWs,
+        playlists: currentWs.playlists.map((pl) => {
+          if (pl.id !== currentWs.activePlaylistId) return pl;
+          targetPlaylistName = pl.name;
+          if (pl.items.some((x) => x.videoId === video.videoId)) {
+            alreadyExists = true;
+            return pl;
+          }
+          return {
+            ...pl,
+            items: [
+              ...pl.items,
+              {
+                id: `atlas-${video.videoId}`,
+                videoId: video.videoId,
+                title: video.title,
+                author: channelName,
+                thumbnailUrl: video.thumbnail,
+                sourceUrl: video.watchUrl,
+                addedAt: new Date().toISOString()
+              }
+            ],
+            updatedAt: new Date().toISOString()
+          };
+        })
+      };
+      setSharedPlaylist(null);
+      setWorkspace(saveYouMusicWorkspace(nextWs));
+      setToast(
+        alreadyExists
+          ? `«${video.title}» ya estaba en tu Señal Musical «${targetPlaylistName}».`
+          : `Sumado a tu Señal Musical «${targetPlaylistName}»: ${video.title}`
+      );
+    },
+    []
+  );
+
+  const handleAddAllFilteredAtlasToMusicSignal = useCallback(() => {
+    if (filteredAtlasChannels.length === 0) return;
+    const currentWs = loadYouMusicWorkspace();
+    let addedCount = 0;
+    let targetPlaylistName = 'Señal Musical';
+    // Si son más de 50 canales (ej. los 1.000), sumamos el tema principal de cada canal para mantener la lista ágil y variada;
+    // si son 50 o menos, sumamos los 3 temas de cada canal.
+    const perChannelCap = filteredAtlasChannels.length > 50 ? 1 : 3;
+    const nowIso = new Date().toISOString();
+
+    const nextWs: YouMusicWorkspace = {
+      ...currentWs,
+      playlists: currentWs.playlists.map((pl) => {
+        if (pl.id !== currentWs.activePlaylistId) return pl;
+        targetPlaylistName = pl.name;
+        const existingIds = new Set(pl.items.map((x) => x.videoId));
+        const newItems: YouMusicPointerItem[] = [];
+        for (const ch of filteredAtlasChannels) {
+          for (const vid of ch.videos.slice(0, perChannelCap)) {
+            if (existingIds.has(vid.videoId)) continue;
+            existingIds.add(vid.videoId);
+            newItems.push({
+              id: `atlas-${vid.videoId}`,
+              videoId: vid.videoId,
+              title: vid.title,
+              author: ch.name,
+              thumbnailUrl: vid.thumbnail,
+              sourceUrl: vid.watchUrl,
+              addedAt: nowIso
+            });
+          }
+        }
+        addedCount = newItems.length;
+        if (newItems.length === 0) return pl;
+        return {
+          ...pl,
+          items: [...pl.items, ...newItems],
+          updatedAt: nowIso
+        };
+      })
+    };
+
+    setSharedPlaylist(null);
+    setWorkspace(saveYouMusicWorkspace(nextWs));
+    setToast(
+      addedCount > 0
+        ? `¡Sumados ${addedCount} temas (${filteredAtlasChannels.length} canales${atlasGenreFilter !== 'Todos' ? ` de ${atlasGenreFilter}` : ''}) a tu Señal Musical «${targetPlaylistName}»!`
+        : `Todos esos canales ya estaban en tu Señal Musical «${targetPlaylistName}».`
+    );
+  }, [filteredAtlasChannels, atlasGenreFilter]);
+
+  // Playlist compartida por URL (?pl=Nombre&ids=id1,id2... o ?v=id)
+  const [sharedPlaylist, setSharedPlaylist] = useState<YouMusicPlaylist | null>(null);
+  const musicBookmarkletRef = useRef<HTMLAnchorElement | null>(null);
+  const handledMusicAddRef = useRef<string | null>(null);
+
+  // Bookmarklet "+ Music" para PC (1 clic desde YouTube / YouTube Music)
+  useEffect(() => {
+    const el = musicBookmarkletRef.current;
+    if (!el || typeof window === 'undefined') return;
+    const origin = window.location.origin;
+    el.setAttribute(
+      'href',
+      `javascript:(function(){var u=location.href;window.open('${origin}/youmusic?add='+encodeURIComponent(u),'youapp_music');})();`
+    );
+  }, []);
+
+  // MODO CORRER V1 — Screen Wake Lock (mantener pantalla encendida sin alterar el reproductor YouTube)
+  const isWakeLockSupported =
+    typeof navigator !== 'undefined' &&
+    'wakeLock' in navigator &&
+    typeof (navigator as Navigator & { wakeLock?: { request?: unknown } }).wakeLock?.request ===
+      'function';
+  const [runModeEnabled, setRunModeEnabled] = useState(false);
+  const [wakeLockActive, setWakeLockActive] = useState(false);
+  const [wakeLockNotice, setWakeLockNotice] = useState<string | null>(null);
+  const wakeLockSentinelRef = useRef<{
+    release: () => Promise<void>;
+    addEventListener?: (type: string, listener: () => void) => void;
+  } | null>(null);
+
+  const releaseWakeLock = useCallback(async () => {
+    const sentinel = wakeLockSentinelRef.current;
+    wakeLockSentinelRef.current = null;
+    if (sentinel) {
+      try {
+        await sentinel.release();
+      } catch {
+        // Ignorar si el navegador ya lo liberó
+      }
+    }
+    setWakeLockActive(false);
+  }, []);
+
+  const requestWakeLock = useCallback(async () => {
+    if (!isWakeLockSupported) {
+      setWakeLockActive(false);
+      setWakeLockNotice(
+        'Tu navegador no permite bloquear el apagado automático. Mantené la app visible mientras escuchás.'
+      );
+      return;
+    }
+    try {
+      const nav = navigator as Navigator & {
+        wakeLock: {
+          request: (type: 'screen') => Promise<{
+            release: () => Promise<void>;
+            addEventListener?: (type: string, listener: () => void) => void;
+          }>;
+        };
+      };
+      const sentinel = await nav.wakeLock.request('screen');
+      wakeLockSentinelRef.current = sentinel;
+      setWakeLockActive(true);
+      setWakeLockNotice(null);
+      sentinel.addEventListener?.('release', () => {
+        if (wakeLockSentinelRef.current === sentinel) {
+          wakeLockSentinelRef.current = null;
+        }
+        setWakeLockActive(false);
+      });
+    } catch {
+      setWakeLockActive(false);
+      setWakeLockNotice(
+        'El sistema no permitió mantener la pantalla activa (puede deberse a ahorro de batería o permisos).'
+      );
+    }
+  }, [isWakeLockSupported]);
+
+  useEffect(() => {
+    if (!runModeEnabled) {
+      void releaseWakeLock();
+      setWakeLockNotice(null);
+      return;
+    }
+
+    void requestWakeLock();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void requestWakeLock();
+      } else {
+        void releaseWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      void releaseWakeLock();
+    };
+  }, [runModeEnabled, requestWakeLock, releaseWakeLock]);
+
+  const handleToggleRunMode = () => {
+    if (!isWakeLockSupported && !runModeEnabled) {
+      setWakeLockNotice(
+        'Este navegador no es compatible con mantener la pantalla activa (requiere Chrome Android o Safari 16.4+ en HTTPS).'
+      );
+      return;
+    }
+    setRunModeEnabled((prev) => {
+      const next = !prev;
+      setToast(
+        next
+          ? 'Modo Correr activado: mantendremos la pantalla encendida.'
+          : 'Modo Correr desactivado.'
+      );
+      return next;
+    });
+  };
+
+  // Sincronización con Supabase (nube) al abrir
+  useEffect(() => {
+    loadYouMusicWorkspaceFromCloud()
+      .then((merged) => {
+        if (merged) setWorkspace(merged);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Recepción automática /youmusic?add=<URL> (desde botón "+ Music" en PC o Compartir en Android)
+  useEffect(() => {
+    const addUrl = searchParams.get('add')?.trim();
+    if (!addUrl || handledMusicAddRef.current === addUrl) return;
+    handledMusicAddRef.current = addUrl;
+
+    let cancelled = false;
+    setIsAdding(true);
+    setErrorMsg(null);
+    resolveYouTubePointer(addUrl)
+      .then((res) => {
+        if (cancelled) return;
+        if (!res.ok) {
+          setErrorMsg(res.error);
+          setSearchParams({}, { replace: true });
+          return;
+        }
+        const customT = searchParams.get('t')?.trim();
+        const incoming: YouMusicPointerItem = customT ? { ...res.item, title: customT } : res.item;
+        const currentWs = loadYouMusicWorkspace();
+        let targetIndex = 0;
+        let exists = false;
+        const nextWs: YouMusicWorkspace = {
+          ...currentWs,
+          playlists: currentWs.playlists.map((pl) => {
+            if (pl.id !== currentWs.activePlaylistId) return pl;
+            const idx = pl.items.findIndex((x) => x.videoId === incoming.videoId);
+            if (idx >= 0) {
+              targetIndex = idx;
+              exists = true;
+              return pl;
+            }
+            targetIndex = pl.items.length;
+            return {
+              ...pl,
+              items: [...pl.items, incoming],
+              updatedAt: new Date().toISOString()
+            };
+          })
+        };
+        setSharedPlaylist(null);
+        setWorkspace(saveYouMusicWorkspace(nextWs));
+        setCurrentIndex(targetIndex);
+        setSearchParams({}, { replace: true });
+        setToast(
+          exists
+            ? `«${incoming.title}» ya estaba en tu playlist.`
+            : `Reproduciendo en YOU MUSIC: «${incoming.title}»`
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setIsAdding(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams]);
+
+  // Soporte de enlaces compartidos (?v=... o ?pl=...&ids=...)
+  useEffect(() => {
+    const singleVid = searchParams.get('v')?.trim();
+    const idsParam = searchParams.get('ids')?.trim();
+    const plName = searchParams.get('pl')?.trim() || 'Playlist compartida';
+
+    if (singleVid && /^[A-Za-z0-9_-]{11}$/.test(singleVid)) {
+      const item: YouMusicPointerItem = {
+        id: `shared-${singleVid}`,
+        videoId: singleVid,
+        title: searchParams.get('t')?.trim() || `Canción compartida (${singleVid})`,
+        author: searchParams.get('a')?.trim() || 'YouTube Oficial',
+        thumbnailUrl: `https://i.ytimg.com/vi/${singleVid}/hqdefault.jpg`,
+        sourceUrl: `https://www.youtube.com/watch?v=${singleVid}`,
+        addedAt: new Date().toISOString()
+      };
+      setSharedPlaylist({
+        id: `shared-v-${singleVid}`,
+        name: 'Canción compartida',
+        items: [item],
+        updatedAt: new Date().toISOString()
+      });
+      setCurrentIndex(0);
+      return;
+    }
+
+    if (idsParam) {
+      const validIds = idsParam
+        .split(',')
+        .map((x) => x.trim())
+        .filter((x) => /^[A-Za-z0-9_-]{11}$/.test(x))
+        .slice(0, 30);
+      if (validIds.length > 0) {
+        let cancelled = false;
+        Promise.all(validIds.map((id) => resolveYouTubePointer(id)))
+          .then((resolved) => {
+            if (cancelled) return;
+            const items = resolved
+              .filter((r): r is { ok: true; item: YouMusicPointerItem } => r.ok)
+              .map((r) => r.item);
+            if (items.length > 0) {
+              setSharedPlaylist({
+                id: `shared-pl-${Date.now().toString(36)}`,
+                name: plName,
+                items,
+                updatedAt: new Date().toISOString()
+              });
+              setCurrentIndex(0);
+            }
+          })
+          .catch(() => {});
+        return () => {
+          cancelled = true;
+        };
+      }
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), 3200);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  const activeOwnPlaylist = useMemo(
+    () =>
+      workspace.playlists.find((p) => p.id === workspace.activePlaylistId) ||
+      workspace.playlists[0],
+    [workspace]
+  );
+
+  const displayedPlaylist = sharedPlaylist || activeOwnPlaylist;
+  const items = useMemo(
+    () => displayedPlaylist?.items || [],
+    [displayedPlaylist?.items]
+  );
+  const safeIndex = items.length > 0 ? Math.min(currentIndex, items.length - 1) : 0;
+  const currentItem = items[safeIndex] || null;
+
+  const savedMusicalSignalPlaylists = useMemo(
+    () => workspace.playlists.filter((p) => p.savedInMusicalSignal),
+    [workspace.playlists]
+  );
+
+  const syncPlaylistAsSignal = (pl: YouMusicPlaylist) => {
+    if (!pl.items.length) return;
+    const signalId = `signal-mi-senal-musical-${pl.id.replace(/^pl-/, '')}`;
+    const schedule: ScheduleBlock[] = pl.items.map((it, idx) => ({
+      id: `${signalId}-blk-${idx}`,
+      position: idx,
+      startOffsetSec: idx * 240,
+      durationSec: 240,
+      topic: `Mi Señal Musical · ${pl.name}`,
+      role: 'explainer',
+      contentItem: {
+        id: it.videoId,
+        providerId: it.videoId,
+        type: 'video',
+        provider: 'youtube',
+        title: it.title,
+        thumbnailUrl: it.thumbnailUrl,
+        thumbnail: it.thumbnailUrl,
+        videoUrl: it.sourceUrl,
+        channelName: it.author,
+        channelTitle: it.author,
+        channelId: `yt-${it.videoId}`,
+        isLive: false,
+        isVerified: true
+      } as any
+    }));
+    const musicalSignal: any = {
+      id: signalId,
+      name: `Mi Señal Musical · ${pl.name}`,
+      seedVersion: 5,
+      prompt: `Playlist musical guardada desde YOU MUSIC · ${pl.name}`,
+      visibility: 'public',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      schedule
+    };
+    setSignal(musicalSignal, { saveToOwn: true });
+    void persistSignal(musicalSignal);
+  };
+
+  const handleSaveToMiSenalMusical = () => {
+    if (!activeOwnPlaylist) return;
+    if (activeOwnPlaylist.items.length === 0) {
+      setToast('Agregá al menos una canción antes de guardarla en Mi Señal Musical.');
+      return;
+    }
+    const updatedPl: YouMusicPlaylist = {
+      ...activeOwnPlaylist,
+      savedInMusicalSignal: true,
+      updatedAt: new Date().toISOString()
+    };
+    updateWorkspace((prev) => ({
+      ...prev,
+      playlists: prev.playlists.map((pl) =>
+        pl.id === activeOwnPlaylist.id ? updatedPl : pl
+      )
+    }));
+    syncPlaylistAsSignal(updatedPl);
+    setToast(`«${updatedPl.name}» guardada en «Mi Señal Musical» (y disponible en Mi Señal).`);
+  };
+
+  const handleRemoveFromMiSenalMusical = (plId: string) => {
+    updateWorkspace((prev) => ({
+      ...prev,
+      playlists: prev.playlists.map((pl) =>
+        pl.id === plId ? { ...pl, savedInMusicalSignal: false } : pl
+      )
+    }));
+    setToast('Quitada de Mi Señal Musical.');
+  };
+
+  const [playerVolume, setPlayerVolume] = useState(100);
+  const [isMuted, setIsMuted] = useState(false);
+  const playerIframeRef = useRef<HTMLIFrameElement | null>(null);
+
+  const postYouTubeCommand = useCallback((func: string, args: unknown[] = []) => {
+    const win = playerIframeRef.current?.contentWindow;
+    if (!win) return;
+    try {
+      win.postMessage(JSON.stringify({ event: 'command', func, args }), 'https://www.youtube.com');
+    } catch {
+      // Ignorar si el iframe todavía no terminó de montar
+    }
+  }, []);
+
+  const handleVolumeChange = (nextVol: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(nextVol)));
+    setPlayerVolume(clamped);
+    if (clamped === 0) {
+      setIsMuted(true);
+      postYouTubeCommand('mute');
+      postYouTubeCommand('setVolume', [0]);
+    } else {
+      setIsMuted(false);
+      postYouTubeCommand('unMute');
+      postYouTubeCommand('setVolume', [clamped]);
+    }
+  };
+
+  const handleToggleMute = () => {
+    if (isMuted || playerVolume === 0) {
+      const restored = playerVolume > 0 ? playerVolume : 80;
+      setIsMuted(false);
+      setPlayerVolume(restored);
+      postYouTubeCommand('unMute');
+      postYouTubeCommand('setVolume', [restored]);
+    } else {
+      setIsMuted(true);
+      postYouTubeCommand('mute');
+    }
+  };
+
+  // URL oficial de YouTube IFrame Player: SIEMPRE pone currentItem.videoId primero
+  // para que reproduzca exactamente la canción seleccionada y luego siga con el resto
+  const youtubeEmbedSrc = useMemo(() => {
+    if (!currentItem) return '';
+    const remainingIds = [
+      ...items.slice(safeIndex + 1).map((i) => i.videoId),
+      ...items.slice(0, safeIndex).map((i) => i.videoId)
+    ]
+      .filter((id) => id !== currentItem.videoId)
+      .slice(0, 24);
+
+    const params = new URLSearchParams({
+      autoplay: '1',
+      rel: '0',
+      modestbranding: '1',
+      playsinline: '1',
+      enablejsapi: '1'
+    });
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      params.set('origin', window.location.origin);
+    }
+    if (remainingIds.length > 0) {
+      params.set('playlist', [currentItem.videoId, ...remainingIds].join(','));
+    }
+    return `https://www.youtube.com/embed/${encodeURIComponent(
+      currentItem.videoId
+    )}?${params.toString().replace(/%2C/gi, ',')}`;
+  }, [currentItem, items, safeIndex]);
+
+  const updateWorkspace = (updater: (prev: YouMusicWorkspace) => YouMusicWorkspace) => {
+    setWorkspace((prev) => saveYouMusicWorkspace(updater(prev)));
+  };
+
+  const handleAddYouTubeUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!urlInput.trim() || isAdding) return;
+    setErrorMsg(null);
+    setIsAdding(true);
+
+    try {
+      const res = await resolveYouTubePointer(urlInput);
+      if (!res.ok) {
+        setErrorMsg(res.error);
+        return;
+      }
+
+      const newItem: YouMusicPointerItem = customSongName.trim()
+        ? { ...res.item, title: customSongName.trim() }
+        : res.item;
+      if (sharedPlaylist) {
+        setSharedPlaylist(null);
+        setSearchParams({}, { replace: true });
+      }
+
+      let targetIndex = 0;
+      updateWorkspace((prev) => {
+        const nextPlaylists = prev.playlists.map((pl) => {
+          if (pl.id !== prev.activePlaylistId) return pl;
+          const existingIdx = pl.items.findIndex((x) => x.videoId === newItem.videoId);
+          if (existingIdx >= 0) {
+            targetIndex = existingIdx;
+            return pl;
+          }
+          targetIndex = pl.items.length;
+          return {
+            ...pl,
+            items: [...pl.items, newItem],
+            updatedAt: new Date().toISOString()
+          };
+        });
+        return { ...prev, playlists: nextPlaylists };
+      });
+
+      setCurrentIndex(targetIndex);
+      setUrlInput('');
+      setCustomSongName('');
+      setToast(`Puntero guardado: «${newItem.title}»`);
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleRemoveItem = (videoId: string) => {
+    updateWorkspace((prev) => ({
+      ...prev,
+      playlists: prev.playlists.map((pl) =>
+        pl.id !== prev.activePlaylistId
+          ? pl
+          : {
+              ...pl,
+              items: pl.items.filter((it) => it.videoId !== videoId),
+              updatedAt: new Date().toISOString()
+            }
+      )
+    }));
+  };
+
+  const handleMoveItem = (index: number, delta: -1 | 1) => {
+    const nextIdx = index + delta;
+    if (nextIdx < 0 || nextIdx >= items.length) return;
+    updateWorkspace((prev) => ({
+      ...prev,
+      playlists: prev.playlists.map((pl) => {
+        if (pl.id !== prev.activePlaylistId) return pl;
+        const copy = [...pl.items];
+        const [moved] = copy.splice(index, 1);
+        copy.splice(nextIdx, 0, moved);
+        return { ...pl, items: copy, updatedAt: new Date().toISOString() };
+      })
+    }));
+    if (safeIndex === index) setCurrentIndex(nextIdx);
+    else if (safeIndex === nextIdx) setCurrentIndex(index);
+  };
+
+  const handleCreatePlaylist = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = newPlaylistName.trim();
+    if (!cleaned) return;
+    const newId = `pl-${Date.now().toString(36)}`;
+    updateWorkspace((prev) => ({
+      activePlaylistId: newId,
+      playlists: [
+        ...prev.playlists,
+        {
+          id: newId,
+          name: cleaned,
+          items: [],
+          updatedAt: new Date().toISOString()
+        }
+      ]
+    }));
+    setSharedPlaylist(null);
+    setSearchParams({}, { replace: true });
+    setCurrentIndex(0);
+    setNewPlaylistName('');
+    setIsCreatingPlaylist(false);
+    setToast(`Playlist «${cleaned}» creada.`);
+  };
+
+  const handleRenamePlaylist = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = renamePlaylistDraft.trim();
+    if (!cleaned || !activeOwnPlaylist) {
+      setIsRenamingPlaylist(false);
+      return;
+    }
+    updateWorkspace((prev) => ({
+      ...prev,
+      playlists: prev.playlists.map((pl) =>
+        pl.id === prev.activePlaylistId
+          ? { ...pl, name: cleaned, updatedAt: new Date().toISOString() }
+          : pl
+      )
+    }));
+    setIsRenamingPlaylist(false);
+    setToast(`Playlist renombrada a «${cleaned}».`);
+  };
+
+  const handleRenameSong = (e: React.FormEvent, itemId: string) => {
+    e.preventDefault();
+    const cleaned = editingSongDraft.trim();
+    if (!cleaned) {
+      setEditingSongId(null);
+      return;
+    }
+    updateWorkspace((prev) => ({
+      ...prev,
+      playlists: prev.playlists.map((pl) =>
+        pl.id !== prev.activePlaylistId
+          ? pl
+          : {
+              ...pl,
+              items: pl.items.map((it) => (it.id === itemId ? { ...it, title: cleaned } : it)),
+              updatedAt: new Date().toISOString()
+            }
+      )
+    }));
+    setEditingSongId(null);
+    setToast(`Nombre actualizado a «${cleaned}».`);
+  };
+
+  const handleDeleteActivePlaylist = () => {
+    if (!activeOwnPlaylist || workspace.playlists.length <= 1) return;
+    const removedName = activeOwnPlaylist.name;
+    updateWorkspace((prev) => {
+      const remaining = prev.playlists.filter((p) => p.id !== prev.activePlaylistId);
+      return {
+        playlists: remaining,
+        activePlaylistId: remaining[0]?.id || prev.activePlaylistId
+      };
+    });
+    setCurrentIndex(0);
+    setToast(`Playlist «${removedName}» eliminada.`);
+  };
+
+  const handleSaveSharedPlaylist = () => {
+    if (!sharedPlaylist) return;
+    const savedId = `pl-${Date.now().toString(36)}`;
+    updateWorkspace((prev) => ({
+      activePlaylistId: savedId,
+      playlists: [
+        ...prev.playlists,
+        {
+          ...sharedPlaylist,
+          id: savedId,
+          updatedAt: new Date().toISOString()
+        }
+      ]
+    }));
+    setSharedPlaylist(null);
+    setSearchParams({}, { replace: true });
+    setToast(`«${sharedPlaylist.name}» guardada en tus playlists.`);
+  };
+
+  const handleShare = async (kind: 'song' | 'playlist') => {
+    if (kind === 'song' && currentItem) {
+      const url = buildSingleSongShareUrl(currentItem);
+      try {
+        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+          await navigator.share({
+            title: `${currentItem.title} · YOU MUSIC`,
+            text: `Escuchá «${currentItem.title}» en YOU MUSIC`,
+            url
+          });
+          return;
+        }
+      } catch {
+        // fallback portapapeles
+      }
+      await navigator.clipboard?.writeText(url).catch(() => {});
+      setToast('Enlace de la canción copiado al portapapeles.');
+      return;
+    }
+
+    if (kind === 'playlist' && displayedPlaylist && displayedPlaylist.items.length > 0) {
+      const url = buildPlaylistShareUrl(displayedPlaylist);
+      try {
+        if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+          await navigator.share({
+            title: `${displayedPlaylist.name} · YOU MUSIC`,
+            text: `Escuchá mi playlist «${displayedPlaylist.name}» en YOU MUSIC`,
+            url
+          });
+          return;
+        }
+      } catch {
+        // fallback portapapeles
+      }
+      await navigator.clipboard?.writeText(url).catch(() => {});
+      setToast(`Enlace de la playlist «${displayedPlaylist.name}» copiado.`);
+    }
+  };
+
+  const ambientThumbUrl =
+    currentItem?.thumbnailUrl || savedMusicalSignalPlaylists[0]?.items[0]?.thumbnailUrl || '';
+
+  return (
+    <div className="ymv1-page">
+      {/* Fondo atmosférico difuminado estilo cristal Apple */}
+      <div
+        className="ymv1-ambient-bg"
+        aria-hidden="true"
+        style={ambientThumbUrl ? { backgroundImage: `url(${ambientThumbUrl})` } : undefined}
+      />
+      <div className="ymv1-ambient-veil" aria-hidden="true" />
+
+      {/* Cabecera minimalista Apple Glass */}
+      <header className="ymv1-header">
+        <div className="ymv1-header-left">
+          <button
+            type="button"
+            className="ymv1-logo-btn"
+            onClick={() => navigate('/misenal1')}
+            title="Volver a Mi Señal"
+          >
+            <YouAppOfficialLogo theme="dark" />
+          </button>
+          <span className="ymv1-pill-brand">YOU MUSIC</span>
+        </div>
+
+        <nav className="ymv1-nav">
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/misenal1')}>
+            MI SEÑAL
+          </button>
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/mitv')}>
+            MITV
+          </button>
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/reels')}>
+            REELS
+          </button>
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/lecturas')}>
+            LECTURAS
+          </button>
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/dial')}>
+            YOU DIAL
+          </button>
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/my-lists')}>
+            MIS LISTAS
+          </button>
+          <button
+            type="button"
+            className="ymv1-nav-btn"
+            onClick={() => navigate('/search')}
+            title="Buscar en YOUAPP"
+            aria-label="Buscar"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '7px 10px' }}
+          >
+            <Search size={16} />
+          </button>
+        </nav>
+
+        <TvUserSessionMenu variant="glass" />
+      </header>
+
+      <main className="ymv1-main">
+        {toast && (
+          <div className="ymv1-toast" role="status">
+            <Check size={14} />
+            <span>{toast}</span>
+          </div>
+        )}
+
+        {sharedPlaylist && (
+          <div className="ymv1-shared-bar">
+            <span>
+              <Sparkles size={14} color="#0071e3" />
+              <strong>{sharedPlaylist.name}</strong> ({sharedPlaylist.items.length}{' '}
+              {sharedPlaylist.items.length === 1 ? 'canción' : 'canciones'})
+            </span>
+            <div className="ymv1-shared-actions">
+              <button
+                type="button"
+                className="ymv1-btn-primary"
+                onClick={handleSaveSharedPlaylist}
+              >
+                <Plus size={14} /> Guardar en mis playlists
+              </button>
+              <button
+                type="button"
+                className="ymv1-btn-secondary"
+                onClick={() => {
+                  setSharedPlaylist(null);
+                  setSearchParams({}, { replace: true });
+                  setCurrentIndex(0);
+                }}
+              >
+                Volver a mi playlist
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 0. ARRIBA DE TODO: MIS SEÑALES MUSICALES */}
+        <section className="ymv1-musical-signal-card" aria-label="Mi Señal Musical">
+          <div className="ymv1-ms-head">
+            <div className="ymv1-ms-title">
+              <span className="ymv1-ms-badge">
+                <Radio size={12} /> MI SEÑAL MUSICAL
+              </span>
+              <h2>Tus señales musicales guardadas</h2>
+            </div>
+            <span className="ymv1-ms-count">
+              {savedMusicalSignalPlaylists.length}{' '}
+              {savedMusicalSignalPlaylists.length === 1 ? 'señal musical' : 'señales musicales'}
+            </span>
+          </div>
+
+          {savedMusicalSignalPlaylists.length === 0 ? (
+            <div className="ymv1-empty">
+              <Radio size={26} color="#0071e3" />
+              <strong>Todavía no guardaste ninguna señal musical.</strong>
+              <span>
+                Armá tu playlist abajo y tocá <strong>Guardar en Mi Señal Musical</strong> para
+                tenerla siempre acá arriba y en tu selector de <strong>Mi Señal</strong>.
+              </span>
+            </div>
+          ) : (
+            <div className="ymv1-ms-grid">
+              {savedMusicalSignalPlaylists.map((pl) => {
+                const coverThumb = pl.items[0]?.thumbnailUrl;
+                const signalId = `signal-mi-senal-musical-${pl.id.replace(/^pl-/, '')}`;
+                return (
+                  <div key={pl.id} className="ymv1-ms-item">
+                    <div
+                      className="ymv1-ms-cover"
+                      style={coverThumb ? { backgroundImage: `url(${coverThumb})` } : undefined}
+                      onClick={() => {
+                        setSharedPlaylist(null);
+                        setSearchParams({}, { replace: true });
+                        updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
+                        setCurrentIndex(0);
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSharedPlaylist(null);
+                          updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
+                          setCurrentIndex(0);
+                        }
+                      }}
+                    >
+                      <span className="ymv1-ms-play-chip">
+                        <Play size={13} fill="#ffffff" color="#ffffff" /> Escuchar
+                      </span>
+                    </div>
+                    <div className="ymv1-ms-body">
+                      <strong>{pl.name}</strong>
+                      <span>
+                        {pl.items.length} {pl.items.length === 1 ? 'canción' : 'canciones'} ·
+                        Punteros YouTube
+                      </span>
+                      <div className="ymv1-ms-actions">
+                        <button
+                          type="button"
+                          className="ymv1-pill-btn"
+                          onClick={() => {
+                            syncPlaylistAsSignal(pl);
+                            navigate(`/misenal1?signal=${encodeURIComponent(signalId)}`);
+                          }}
+                          title="Abrir esta señal musical en Mi Señal"
+                        >
+                          <Tv size={12} /> Abrir en Mi Señal
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-icon-btn"
+                          onClick={() => handleRemoveFromMiSenalMusical(pl.id)}
+                          title="Quitar de Mi Señal Musical"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* 1. REPRODUCTOR OFICIAL VISIBLE DE YOUTUBE (CON AVANCE CONTINUO DE PLAYLIST) */}
+        {currentItem && (
+          <section className="ymv1-player-card">
+            <div className="ymv1-video-wrap">
+              <iframe
+                ref={playerIframeRef}
+                key={`${displayedPlaylist?.id || 'pl'}-${currentItem.videoId}-${safeIndex}`}
+                title={`YouTube · ${currentItem.title}`}
+                src={youtubeEmbedSrc}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                onLoad={() => {
+                  window.setTimeout(() => {
+                    if (isMuted || playerVolume === 0) {
+                      postYouTubeCommand('mute');
+                    } else {
+                      postYouTubeCommand('unMute');
+                      postYouTubeCommand('setVolume', [playerVolume]);
+                    }
+                  }, 450);
+                }}
+              />
+            </div>
+
+            <div className="ymv1-now-bar">
+              <div className="ymv1-now-meta">
+                <strong>{currentItem.title}</strong>
+                <span>
+                  {currentItem.author} · Pista {safeIndex + 1} de {items.length}
+                </span>
+              </div>
+
+              <div className="ymv1-now-controls">
+                <button
+                  type="button"
+                  className="ymv1-ctrl-btn"
+                  disabled={items.length <= 1}
+                  onClick={() =>
+                    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length)
+                  }
+                  title="Canción anterior"
+                >
+                  <SkipBack size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="ymv1-ctrl-btn"
+                  disabled={items.length <= 1}
+                  onClick={() => setCurrentIndex((prev) => (prev + 1) % items.length)}
+                  title="Siguiente canción"
+                >
+                  <SkipForward size={16} />
+                </button>
+                <div className="ymv1-vol-control" aria-label="Control de volumen">
+                  <button
+                    type="button"
+                    className="ymv1-vol-icon-btn"
+                    onClick={handleToggleMute}
+                    title={isMuted || playerVolume === 0 ? 'Activar sonido' : 'Silenciar'}
+                  >
+                    {isMuted || playerVolume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                  </button>
+                  <button
+                    type="button"
+                    className="ymv1-vol-step-btn"
+                    onClick={() => handleVolumeChange((isMuted ? 0 : playerVolume) - 10)}
+                    title="Bajar volumen"
+                    aria-label="Bajar volumen"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={isMuted ? 0 : playerVolume}
+                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                    aria-label="Volumen del reproductor"
+                    className="ymv1-vol-slider"
+                  />
+                  <button
+                    type="button"
+                    className="ymv1-vol-step-btn"
+                    onClick={() => handleVolumeChange((isMuted ? 0 : playerVolume) + 10)}
+                    title="Subir volumen"
+                    aria-label="Subir volumen"
+                  >
+                    +
+                  </button>
+                  <span className="ymv1-vol-pct">{isMuted ? 0 : playerVolume}%</span>
+                </div>
+                <button
+                  type="button"
+                  className="ymv1-pill-btn"
+                  onClick={() => void handleShare('song')}
+                  title="Compartir esta canción"
+                >
+                  <Share2 size={13} /> Compartir
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 1B. MODO CORRER V1 — MANTENER PANTALLA ENCENDIDA (SCREEN WAKE LOCK) */}
+        <section className="ymv1-run-card" aria-label="Modo Correr">
+          <div className="ymv1-run-info">
+            <span className={`ymv1-run-icon ${wakeLockActive ? 'active' : ''}`}>
+              <Smartphone size={16} />
+            </span>
+            <div className="ymv1-run-text">
+              <div className="ymv1-run-title-row">
+                <strong>Modo Correr · Mantener pantalla encendida</strong>
+                <span className="ymv1-run-tag">V1</span>
+              </div>
+              <span>
+                {wakeLockNotice
+                  ? wakeLockNotice
+                  : wakeLockActive
+                    ? 'Pantalla activa mientras YOU MUSIC siga visible · Puede aumentar el consumo de batería.'
+                    : 'Evita el bloqueo automático cuando es compatible · Puede aumentar el consumo de batería.'}
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={`ymv1-run-toggle ${runModeEnabled ? 'active' : ''}`}
+            onClick={handleToggleRunMode}
+            aria-pressed={runModeEnabled}
+            title={
+              runModeEnabled
+                ? 'Desactivar Modo Correr'
+                : 'Activar Modo Correr para mantener la pantalla encendida'
+            }
+          >
+            <span className="ymv1-run-dot" />
+            <span>{runModeEnabled ? (wakeLockActive ? 'Activado' : 'En espera') : 'Activar'}</span>
+          </button>
+        </section>
+
+        {/* 2. BARRA DISIMULADA: SUMAR CANCIÓN POR URL -> PUNTERO EN MI PLAYLIST */}
+        <section className="ymv1-add-card" aria-label="Agregar canción desde YouTube">
+          <form className="ymv1-add-form" onSubmit={handleAddYouTubeUrl}>
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="+ Pegá una URL de YouTube (Queen, Soda Stereo, León Gieco, Beatles…)"
+              aria-label="Pegar enlace de YouTube"
+            />
+            <button type="submit" className="ymv1-add-submit" disabled={isAdding}>
+              <Plus size={14} />
+              <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
+            </button>
+            <a
+              ref={musicBookmarkletRef}
+              href="#music-bookmarklet"
+              className="ymv1-bookmarklet-pill"
+              onClick={(e) => {
+                e.preventDefault();
+                setToast(
+                  'Arrastrá «+ Music» a tu barra de marcadores para sumar canciones en 1 clic desde YouTube.'
+                );
+              }}
+              title="Arrastrá este botón a tu barra de marcadores para sumar canciones desde YouTube en 1 clic"
+            >
+              <Plus size={12} /> Music
+            </a>
+          </form>
+
+          {errorMsg && <div className="ymv1-error">{errorMsg}</div>}
+        </section>
+
+        {/* 3. SELECTOR DE PLAYLISTS + MI PLAYLIST */}
+        <section className="ymv1-playlist-card">
+          <div className="ymv1-pl-top">
+            <div className="ymv1-pl-tabs" role="tablist" aria-label="Mis playlists">
+              {workspace.playlists.map((pl) => {
+                const isSelected = !sharedPlaylist && pl.id === activeOwnPlaylist?.id;
+                return (
+                  <button
+                    key={pl.id}
+                    type="button"
+                    className={`ymv1-pl-tab ${isSelected ? 'active' : ''}`}
+                    onClick={() => {
+                      setSharedPlaylist(null);
+                      setSearchParams({}, { replace: true });
+                      updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
+                      setCurrentIndex(0);
+                    }}
+                  >
+                    <ListMusic size={13} />
+                    <span>{pl.name}</span>
+                    <em>{pl.items.length}</em>
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                className="ymv1-pl-new-btn"
+                onClick={() => setIsCreatingPlaylist((v) => !v)}
+              >
+                <Plus size={13} /> Nueva lista
+              </button>
+            </div>
+
+            {items.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                {!sharedPlaylist && (
+                  <button
+                    type="button"
+                    className="ymv1-btn-primary"
+                    style={{ padding: '7px 13px', fontSize: '12px', borderRadius: '999px' }}
+                    onClick={handleSaveToMiSenalMusical}
+                  >
+                    <BookmarkCheck size={13} />
+                    <span>
+                      {activeOwnPlaylist?.savedInMusicalSignal
+                        ? 'Actualizar en Mi Señal Musical'
+                        : 'Guardar en Mi Señal Musical'}
+                    </span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ymv1-pill-btn"
+                  onClick={() => void handleShare('playlist')}
+                >
+                  <Share2 size={13} /> Compartir playlist
+                </button>
+              </div>
+            )}
+          </div>
+
+          {isCreatingPlaylist && (
+            <form className="ymv1-new-pl-form" onSubmit={handleCreatePlaylist}>
+              <input
+                type="text"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                placeholder="Nombre de tu playlist (ej. Rock Nacional, Folklore, Clásicos…)"
+                autoFocus
+              />
+              <button type="submit" className="ymv1-btn-primary">
+                Crear
+              </button>
+            </form>
+          )}
+
+          <div className="ymv1-pl-header">
+            {isRenamingPlaylist && !sharedPlaylist ? (
+              <form className="ymv1-inline-rename" onSubmit={handleRenamePlaylist}>
+                <input
+                  type="text"
+                  value={renamePlaylistDraft}
+                  onChange={(e) => setRenamePlaylistDraft(e.target.value)}
+                  placeholder="Nombre de la playlist…"
+                  autoFocus
+                />
+                <button type="submit" className="ymv1-icon-btn" title="Guardar nombre">
+                  <Check size={15} color="#0071e3" />
+                </button>
+                <button
+                  type="button"
+                  className="ymv1-icon-btn"
+                  onClick={() => setIsRenamingPlaylist(false)}
+                  title="Cancelar"
+                >
+                  <X size={15} />
+                </button>
+              </form>
+            ) : (
+              <div className="ymv1-pl-title-wrap">
+                <h2
+                  onClick={() => {
+                    if (sharedPlaylist) return;
+                    setRenamePlaylistDraft(displayedPlaylist?.name || 'Mi playlist');
+                    setIsRenamingPlaylist(true);
+                  }}
+                  style={{ cursor: sharedPlaylist ? 'default' : 'pointer' }}
+                  title={sharedPlaylist ? undefined : 'Clic para cambiar el nombre de la playlist'}
+                >
+                  {displayedPlaylist?.name || 'Mi playlist'}
+                </h2>
+                {!sharedPlaylist && (
+                  <>
+                    <button
+                      type="button"
+                      className="ymv1-icon-btn"
+                      onClick={() => {
+                        setRenamePlaylistDraft(displayedPlaylist?.name || 'Mi playlist');
+                        setIsRenamingPlaylist(true);
+                      }}
+                      title="Cambiar nombre de la playlist"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                    {workspace.playlists.length > 1 && (
+                      <button
+                        type="button"
+                        className="ymv1-icon-btn"
+                        onClick={handleDeleteActivePlaylist}
+                        title="Eliminar esta playlist"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            <span>
+              {items.length} {items.length === 1 ? 'canción' : 'canciones'}
+            </span>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="ymv1-empty">
+              <Music size={28} color="#86868b" />
+              <strong>Tu lista aparecerá acá cuando pegues el primer enlace.</strong>
+              <span>
+                Buscá cualquier canción en YouTube, copiá la URL y pegala arriba para empezar a
+                escuchar.
+              </span>
+            </div>
+          ) : (
+            <div className="ymv1-list">
+              {items.slice(0, playlistVisibleCount).map((item, idx) => {
+                const isPlayingRow = idx === safeIndex;
+                return (
+                  <div
+                    key={item.id}
+                    className={`ymv1-row ${isPlayingRow ? 'active' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      className="ymv1-thumb-btn"
+                      onClick={() => setCurrentIndex(idx)}
+                      aria-label={`Reproducir ${item.title}`}
+                    >
+                      <img src={item.thumbnailUrl} alt={item.title} loading="lazy" />
+                      <span className="ymv1-thumb-play">
+                        <Play size={13} fill="#ffffff" color="#ffffff" />
+                      </span>
+                    </button>
+
+                    {editingSongId === item.id && !sharedPlaylist ? (
+                      <form
+                        className="ymv1-inline-rename"
+                        style={{ flex: 1 }}
+                        onSubmit={(e) => handleRenameSong(e, item.id)}
+                      >
+                        <input
+                          type="text"
+                          value={editingSongDraft}
+                          onChange={(e) => setEditingSongDraft(e.target.value)}
+                          autoFocus
+                        />
+                        <button type="submit" className="ymv1-icon-btn" title="Guardar nombre">
+                          <Check size={14} color="#0071e3" />
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-icon-btn"
+                          onClick={() => setEditingSongId(null)}
+                          title="Cancelar"
+                        >
+                          <X size={14} />
+                        </button>
+                      </form>
+                    ) : (
+                      <div
+                        className="ymv1-row-meta"
+                        onClick={() => setCurrentIndex(idx)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setCurrentIndex(idx);
+                          }
+                        }}
+                      >
+                        <strong>{item.title}</strong>
+                        <span>
+                          {item.author} · {isPlayingRow ? 'Reproduciendo ahora' : `#${idx + 1}`}
+                        </span>
+                      </div>
+                    )}
+
+                    {!sharedPlaylist && (
+                      <div className="ymv1-row-actions">
+                        <button
+                          type="button"
+                          className="ymv1-icon-btn"
+                          onClick={() => {
+                            setEditingSongId(item.id);
+                            setEditingSongDraft(item.title);
+                          }}
+                          title="Cambiar nombre de la canción"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-icon-btn"
+                          disabled={idx === 0}
+                          onClick={() => handleMoveItem(idx, -1)}
+                          title="Subir"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-icon-btn"
+                          disabled={idx === items.length - 1}
+                          onClick={() => handleMoveItem(idx, 1)}
+                          title="Bajar"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-icon-btn"
+                          onClick={() => handleRemoveItem(item.videoId)}
+                          title="Quitar de la playlist"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {items.length > playlistVisibleCount && (
+                <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 8 }}>
+                  <button
+                    type="button"
+                    className="ymv1-atlas-genre-chip active"
+                    onClick={() => setPlaylistVisibleCount((n) => n + 50)}
+                  >
+                    Ver 50 más ({Math.min(playlistVisibleCount, items.length)} de {items.length})
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* CATÁLOGO AUTOMÁTICO ATLAS — CANALES MUSICALES EN VIVO DESDE SUPABASE `youapp_index` */}
+        {(ATLAS_MUSIC_CHANNELS.length > 0 || cloudAtlasChannels.length > 0) && (
+          <section className="ymv1-atlas-section" aria-label="Canales musicales descubiertos por ATLAS">
+            <div className="ymv1-atlas-head">
+              <div>
+                <div className="ymv1-atlas-eyebrow">
+                  <Sparkles size={12} /> ATLAS · BASE NUBE `youapp_index` (
+                  {cloudAtlasTotalVideos > 0
+                    ? `${cloudAtlasTotalVideos.toLocaleString('es-AR')} videos 100 % YouTube · 10.000 canales`
+                    : `${ATLAS_MUSIC_CHANNELS.length} canales locales`}
+                  )
+                </div>
+                <h2>Canales musicales en YOUAPP</h2>
+                <p>
+                  Conectado en vivo a tu base nube <strong>youapp_index</strong> (punteros compactados 100 % YouTube, 0 cuota). Buscá cualquier artista, filtrá por género y sumalos a tus <strong>Señales Musicales</strong>.
+                </p>
+              </div>
+              <div className="ymv1-atlas-genres" role="tablist" aria-label="Filtrar por género musical">
+                <input
+                  type="search"
+                  value={atlasSearchQuery}
+                  onChange={(e) => {
+                    setAtlasSearchQuery(e.target.value);
+                    setAtlasVisibleCount(24);
+                  }}
+                  placeholder="Filtrar artista o banda…"
+                  aria-label="Filtrar canales musicales"
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    background: 'rgba(255,255,255,0.08)',
+                    color: '#fff',
+                    fontSize: 12,
+                    minWidth: 170,
+                    outline: 'none'
+                  }}
+                />
+                {ATLAS_GENRES.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    role="tab"
+                    aria-selected={atlasGenreFilter === g}
+                    className={`ymv1-atlas-genre-chip ${atlasGenreFilter === g ? 'active' : ''}`}
+                    onClick={() => {
+                      setAtlasGenreFilter(g);
+                      setAtlasVisibleCount(24);
+                    }}
+                  >
+                    {g}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="ymv1-atlas-genre-chip active"
+                  onClick={handleAddAllFilteredAtlasToMusicSignal}
+                  title={`Sumar los ${filteredAtlasChannels.length} canales visibles a tu Señal Musical activa`}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                >
+                  <Plus size={13} /> Sumar todos ({filteredAtlasChannels.length})
+                </button>
+              </div>
+            </div>
+
+            <div className="ymv1-atlas-grid">
+              {visibleAtlasChannels.map((ch) => (
+                <article key={ch.channelId} className="ymv1-atlas-card">
+                  <div className="ymv1-atlas-card-top">
+                    <img src={ch.thumbnail} alt={ch.name} className="ymv1-atlas-cover" loading="lazy" />
+                    <div className="ymv1-atlas-card-title">
+                      <span className="ymv1-atlas-badge">{ch.genre}</span>
+                      <h3>{ch.name}</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <a
+                          href={ch.channelUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ymv1-atlas-ext"
+                          title="Abrir canal oficial en YouTube"
+                        >
+                          Canal oficial <ExternalLink size={11} />
+                        </a>
+                        <button
+                          type="button"
+                          className="ymv1-atlas-vid-add"
+                          onClick={() => handleAddAtlasChannelToMusicSignal(ch)}
+                          title="Sumar los 3 temas de este canal a tu Señal Musical activa"
+                        >
+                          <Plus size={11} /> Sumar canal
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="ymv1-atlas-videos">
+                    {ch.videos.slice(0, 3).map((vid) => (
+                      <div key={vid.videoId} className="ymv1-atlas-vid-row">
+                        <button
+                          type="button"
+                          className="ymv1-atlas-vid-play"
+                          onClick={() => handlePlayAtlasMusicVideo(vid, ch.name)}
+                          title={`Escuchar «${vid.title}» en YOU MUSIC`}
+                        >
+                          <Play size={12} fill="currentColor" />
+                          <span>{vid.title}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-atlas-vid-add"
+                          onClick={() => handleAddSingleAtlasVideoToMusicSignal(vid, ch.name)}
+                          title="Sumar este tema a tu Señal Musical activa"
+                        >
+                          <Plus size={12} /> Señal Musical
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {(cloudAtlasHasMore || (cloudAtlasChannels.length === 0 && filteredAtlasChannels.length > atlasVisibleCount)) && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+                <button
+                  type="button"
+                  disabled={cloudAtlasLoading}
+                  className="ymv1-atlas-genre-chip active"
+                  onClick={() => {
+                    if (cloudAtlasChannels.length > 0) {
+                      void fetchCloudAtlasPage({
+                        reset: false,
+                        genre: atlasGenreFilter,
+                        search: atlasSearchQuery
+                      });
+                    } else {
+                      setAtlasVisibleCount((n) => n + 24);
+                    }
+                  }}
+                >
+                  {cloudAtlasLoading
+                    ? 'Cargando desde youapp_index…'
+                    : cloudAtlasChannels.length > 0
+                    ? `Cargar más canales desde la nube (${visibleAtlasChannels.length} cargados · ${cloudAtlasTotalVideos.toLocaleString('es-AR')} videos disponibles)`
+                    : `Cargar más canales (${visibleAtlasChannels.length} de ${filteredAtlasChannels.length})`}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+      </main>
+
+      <style>{`
+        .ymv1-page {
+          position: relative;
+          min-height: 100dvh;
+          background: #14161a;
+          color: #f5f5f7;
+          font-family: var(--you-font-sans, 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif);
+          -webkit-font-smoothing: antialiased;
+          padding-bottom: 56px;
+          overflow-x: hidden;
+          isolation: isolate;
+        }
+        .ymv1-atlas-section {
+          margin-top: 28px;
+          padding: 20px;
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .ymv1-atlas-head {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: space-between;
+          align-items: flex-end;
+          gap: 14px;
+        }
+        .ymv1-atlas-eyebrow {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          color: #64d2ff;
+          margin-bottom: 4px;
+        }
+        .ymv1-atlas-head h2 {
+          margin: 0 0 4px;
+          font-size: 20px;
+          color: #ffffff;
+        }
+        .ymv1-atlas-head p {
+          margin: 0;
+          font-size: 12.8px;
+          color: rgba(245, 245, 247, 0.72);
+          max-width: 640px;
+        }
+        .ymv1-atlas-genres {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .ymv1-atlas-genre-chip {
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(245, 245, 247, 0.85);
+          font-size: 12px;
+          font-weight: 650;
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .ymv1-atlas-genre-chip.active,
+        .ymv1-atlas-genre-chip:hover {
+          background: #0071e3;
+          border-color: #64d2ff;
+          color: #ffffff;
+        }
+        .ymv1-atlas-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 14px;
+        }
+        .ymv1-atlas-card {
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          padding: 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .ymv1-atlas-card-top {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+        }
+        .ymv1-atlas-cover {
+          width: 78px;
+          height: 52px;
+          border-radius: 10px;
+          object-fit: cover;
+          flex-shrink: 0;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+        .ymv1-atlas-card-title {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .ymv1-atlas-badge {
+          align-self: flex-start;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: rgba(100, 210, 255, 0.18);
+          color: #8ee0ff;
+          font-size: 10.5px;
+          font-weight: 700;
+        }
+        .ymv1-atlas-card-title h3 {
+          margin: 0;
+          font-size: 14.5px;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymv1-atlas-ext {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.68);
+          text-decoration: none;
+        }
+        .ymv1-atlas-ext:hover {
+          color: #64d2ff;
+        }
+        .ymv1-atlas-videos {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .ymv1-atlas-vid-row {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .ymv1-atlas-vid-play {
+          flex: 1;
+          min-width: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 6px 10px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.06);
+          color: #f5f5f7;
+          font-size: 12px;
+          text-align: left;
+          cursor: pointer;
+        }
+        .ymv1-atlas-vid-play:hover {
+          background: rgba(255, 255, 255, 0.14);
+          border-color: rgba(100, 210, 255, 0.45);
+        }
+        .ymv1-atlas-vid-play span {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymv1-atlas-vid-add {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          padding: 6px 9px;
+          border-radius: 10px;
+          border: 1px solid rgba(100, 210, 255, 0.42);
+          background: rgba(0, 113, 227, 0.25);
+          color: #d8f3ff;
+          font-size: 11px;
+          font-weight: 700;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+        .ymv1-atlas-vid-add:hover {
+          background: #0071e3;
+          color: #ffffff;
+        }
+        .ymv1-ambient-bg {
+          position: fixed;
+          inset: -24px;
+          z-index: 0;
+          background-color: #1c1e24;
+          background-image:
+            radial-gradient(ellipse 42% 46% at 24% 20%, rgba(214, 224, 238, 0.52) 0%, transparent 62%),
+            radial-gradient(ellipse 44% 46% at 76% 32%, rgba(92, 134, 184, 0.44) 0%, transparent 64%),
+            radial-gradient(ellipse 50% 42% at 50% 88%, rgba(164, 174, 188, 0.42) 0%, transparent 65%),
+            linear-gradient(155deg, #161920 0%, #232a36 48%, #15181e 100%);
+          background-size: cover;
+          background-position: center;
+          filter: blur(22px) brightness(0.76);
+          transform: scale(1.06) translateZ(0);
+          contain: strict;
+          pointer-events: none;
+        }
+        .ymv1-ambient-veil {
+          position: fixed;
+          inset: 0;
+          z-index: 0;
+          background: linear-gradient(
+            180deg,
+            rgba(18, 20, 24, 0.36) 0%,
+            rgba(22, 24, 28, 0.24) 48%,
+            rgba(14, 16, 20, 0.46) 100%
+          );
+          pointer-events: none;
+        }
+        .ymv1-header {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 10px 22px;
+          background: rgba(24, 26, 30, 0.42);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+        }
+        .ymv1-header-left, .ymv1-nav {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .ymv1-logo-btn {
+          border: none;
+          background: transparent;
+          padding: 0;
+          cursor: pointer;
+          display: inline-flex;
+        }
+        .ymv1-pill-brand {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          color: #64d2ff;
+          background: rgba(10, 132, 255, 0.18);
+          border: 1px solid rgba(100, 210, 255, 0.28);
+          padding: 3px 9px;
+          border-radius: 999px;
+        }
+        .ymv1-nav-btn {
+          border: none;
+          background: transparent;
+          color: rgba(245, 245, 247, 0.8);
+          font-size: 13px;
+          font-weight: 500;
+          padding: 6px 11px;
+          border-radius: 999px;
+          cursor: pointer;
+        }
+        .ymv1-nav-btn:hover {
+          background: rgba(255, 255, 255, 0.12);
+          color: #ffffff;
+        }
+        .ymv1-main {
+          position: relative;
+          z-index: 1;
+          max-width: 820px;
+          margin: 0 auto;
+          padding: 22px 16px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .ymv1-toast {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 9px 14px;
+          border-radius: 999px;
+          background: rgba(28, 28, 30, 0.78);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          color: #ffffff;
+          font-size: 12.5px;
+          font-weight: 600;
+          align-self: flex-start;
+        }
+        .ymv1-shared-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          flex-wrap: wrap;
+          padding: 12px 16px;
+          border-radius: 18px;
+          background: rgba(10, 132, 255, 0.18);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(100, 210, 255, 0.34);
+          font-size: 13px;
+          color: #f5f5f7;
+        }
+        .ymv1-shared-bar span {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .ymv1-shared-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        /* Paneles translúcidos Apple Glass sobre fondo atmosférico difuminado */
+        .ymv1-add-card, .ymv1-player-card, .ymv1-playlist-card, .ymv1-musical-signal-card, .ymv1-run-card {
+          position: relative;
+          color: #f5f5f7;
+          background: linear-gradient(
+            155deg,
+            rgba(255, 255, 255, 0.16) 0%,
+            rgba(255, 255, 255, 0.10) 100%
+          );
+          backdrop-filter: blur(28px) saturate(165%);
+          -webkit-backdrop-filter: blur(28px) saturate(165%);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          border-radius: 22px;
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.26),
+            0 12px 32px rgba(0, 0, 0, 0.22);
+        }
+        .ymv1-run-card {
+          padding: 13px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .ymv1-run-info {
+          display: flex;
+          align-items: center;
+          gap: 11px;
+          min-width: 0;
+          flex: 1;
+        }
+        .ymv1-run-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.14);
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          color: #f5f5f7;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .ymv1-run-icon.active {
+          background: rgba(48, 209, 88, 0.22);
+          border-color: rgba(48, 209, 88, 0.58);
+          color: #30d158;
+        }
+        .ymv1-run-text {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        .ymv1-run-title-row {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          flex-wrap: wrap;
+        }
+        .ymv1-run-title-row strong {
+          font-size: 14px;
+          font-weight: 650;
+          color: #ffffff;
+        }
+        .ymv1-run-tag {
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          color: #64d2ff;
+          background: rgba(10, 132, 255, 0.2);
+          border: 1px solid rgba(100, 210, 255, 0.34);
+          padding: 1px 7px;
+          border-radius: 999px;
+        }
+        .ymv1-run-text > span {
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.76);
+        }
+        .ymv1-run-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 8px 15px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          background: rgba(255, 255, 255, 0.14);
+          color: #ffffff;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .ymv1-run-toggle:hover {
+          background: rgba(255, 255, 255, 0.22);
+        }
+        .ymv1-run-toggle.active {
+          background: rgba(48, 209, 88, 0.24);
+          border-color: rgba(48, 209, 88, 0.65);
+          color: #d7ffe1;
+        }
+        .ymv1-run-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.55);
+        }
+        .ymv1-run-toggle.active .ymv1-run-dot {
+          background: #30d158;
+          box-shadow: 0 0 8px rgba(48, 209, 88, 0.9);
+        }
+        .ymv1-add-card {
+          padding: 7px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          box-shadow: none;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .ymv1-add-form {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: nowrap;
+        }
+        .ymv1-add-form input {
+          flex: 1;
+          min-width: 0;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: none;
+          background: transparent;
+          font-size: 13px;
+          color: #f5f5f7;
+          outline: none;
+        }
+        .ymv1-add-form input::placeholder {
+          color: rgba(245, 245, 247, 0.56);
+        }
+        .ymv1-add-form input:focus {
+          background: rgba(255, 255, 255, 0.08);
+        }
+        .ymv1-add-submit {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.14);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .ymv1-add-submit:hover:not(:disabled) {
+          background: #0071e3;
+          border-color: #0a84ff;
+        }
+        .ymv1-new-pl-form input {
+          flex: 1;
+          min-width: 220px;
+          padding: 11px 16px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.34);
+          background: rgba(255, 255, 255, 0.9);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+          font-size: 14px;
+          color: #1d1d1f;
+          outline: none;
+        }
+        .ymv1-new-pl-form input:focus {
+          background: #ffffff;
+          border-color: #0a84ff;
+          box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.28);
+        }
+        .ymv1-btn-primary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 10px 18px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: #0071e3;
+          color: #ffffff;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+          box-shadow: 0 6px 18px rgba(0, 113, 227, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+        }
+        .ymv1-btn-primary:hover:not(:disabled) {
+          background: #0a84ff;
+        }
+        .ymv1-bookmarklet-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 11px;
+          border-radius: 999px;
+          background: rgba(10, 132, 255, 0.26);
+          border: 1px solid rgba(100, 210, 255, 0.55);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+          cursor: grab;
+          white-space: nowrap;
+        }
+        .ymv1-bookmarklet-pill:hover {
+          background: #0071e3;
+        }
+        .ymv1-btn-secondary {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 9px 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.26);
+          background: rgba(255, 255, 255, 0.14);
+          color: #ffffff;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .ymv1-error {
+          padding: 9px 12px;
+          border-radius: 12px;
+          background: rgba(255, 69, 58, 0.2);
+          border: 1px solid rgba(255, 69, 58, 0.4);
+          color: #ffd3d0;
+          font-size: 12.5px;
+          font-weight: 600;
+        }
+        .ymv1-player-card {
+          overflow: hidden;
+        }
+        .ymv1-video-wrap {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          background: #000000;
+        }
+        .ymv1-video-wrap iframe {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          border: 0;
+        }
+        .ymv1-now-bar {
+          padding: 14px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+        .ymv1-now-meta {
+          min-width: 0;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .ymv1-now-meta strong {
+          font-size: 15px;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymv1-now-meta span {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.78);
+        }
+        .ymv1-now-controls {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .ymv1-ctrl-btn {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.36);
+          background: rgba(255, 255, 255, 0.16);
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .ymv1-ctrl-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        .ymv1-vol-control {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px 4px 7px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.34);
+          background: rgba(255, 255, 255, 0.14);
+          color: #ffffff;
+        }
+        .ymv1-vol-icon-btn, .ymv1-vol-step-btn {
+          border: none;
+          background: transparent;
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          padding: 2px 4px;
+          border-radius: 999px;
+          font-size: 14px;
+          font-weight: 700;
+          line-height: 1;
+        }
+        .ymv1-vol-icon-btn:hover, .ymv1-vol-step-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+        .ymv1-vol-slider {
+          width: 72px;
+          accent-color: #0a84ff;
+          cursor: pointer;
+        }
+        .ymv1-vol-pct {
+          font-size: 11px;
+          font-weight: 600;
+          color: rgba(245, 245, 247, 0.85);
+          min-width: 30px;
+          text-align: right;
+          font-variant-numeric: tabular-nums;
+        }
+        .ymv1-pill-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.38);
+          background: rgba(255, 255, 255, 0.18);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 600;
+          text-decoration: none;
+          cursor: pointer;
+        }
+        .ymv1-pill-btn:hover {
+          background: rgba(255, 255, 255, 0.28);
+        }
+        .ymv1-playlist-card {
+          padding: 16px 20px 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .ymv1-pl-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .ymv1-pl-tabs {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .ymv1-pl-tab {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.34);
+          background: rgba(255, 255, 255, 0.14);
+          color: rgba(255, 255, 255, 0.88);
+          font-size: 12.5px;
+          font-weight: 620;
+          cursor: pointer;
+        }
+        .ymv1-pl-tab.active {
+          background: rgba(255, 255, 255, 0.92);
+          color: #1d1d1f;
+          border-color: #ffffff;
+        }
+        .ymv1-pl-tab em {
+          font-style: normal;
+          opacity: 0.75;
+          font-size: 11px;
+        }
+        .ymv1-pl-new-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 11px;
+          border-radius: 999px;
+          border: 1px dashed rgba(255, 255, 255, 0.55);
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .ymv1-new-pl-form {
+          display: flex;
+          gap: 8px;
+        }
+        .ymv1-pl-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding-top: 4px;
+        }
+        .ymv1-pl-title-wrap {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          min-width: 0;
+        }
+        .ymv1-inline-rename {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .ymv1-inline-rename input {
+          padding: 6px 10px;
+          border-radius: 10px;
+          border: 1px solid #0071e3;
+          background: #ffffff;
+          font-size: 14px;
+          font-weight: 600;
+          color: #1d1d1f;
+          outline: none;
+          min-width: 180px;
+          flex: 1;
+        }
+        .ymv1-pl-header h2 {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 720;
+          color: #ffffff;
+        }
+        .ymv1-pl-header span {
+          font-size: 12.5px;
+          color: rgba(255, 255, 255, 0.78);
+          font-weight: 600;
+        }
+        .ymv1-empty {
+          padding: 36px 16px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 6px;
+          color: rgba(255, 255, 255, 0.8);
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.14);
+          border: 1px solid rgba(255, 255, 255, 0.34);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+        }
+        .ymv1-empty strong {
+          color: #ffffff;
+          font-size: 14px;
+        }
+        .ymv1-empty span {
+          font-size: 12.5px;
+          max-width: 420px;
+        }
+        .ymv1-list {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+        }
+        .ymv1-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 8px 10px;
+          border-radius: 15px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+        .ymv1-row.active {
+          background: rgba(10, 132, 255, 0.24);
+          border-color: rgba(100, 210, 255, 0.52);
+        }
+        .ymv1-thumb-btn {
+          position: relative;
+          width: 68px;
+          height: 44px;
+          border-radius: 9px;
+          border: none;
+          padding: 0;
+          overflow: hidden;
+          background: #000;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .ymv1-thumb-btn img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .ymv1-thumb-play {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.28);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .ymv1-row-meta {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          cursor: pointer;
+        }
+        .ymv1-row-meta strong {
+          font-size: 13.5px;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymv1-row-meta span {
+          font-size: 11.5px;
+          color: rgba(255, 255, 255, 0.76);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymv1-row-actions {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+        }
+        .ymv1-icon-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: 999px;
+          border: none;
+          background: transparent;
+          color: rgba(255, 255, 255, 0.82);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .ymv1-icon-btn:hover:not(:disabled) {
+          background: rgba(255, 255, 255, 0.18);
+          color: #ffffff;
+        }
+        .ymv1-icon-btn:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+        .ymv1-musical-signal-card {
+          padding: 18px 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .ymv1-ms-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .ymv1-ms-title {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .ymv1-ms-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 10.5px;
+          font-weight: 700;
+          letter-spacing: 0.07em;
+          color: #64d2ff;
+        }
+        .ymv1-ms-title h2 {
+          margin: 0;
+          font-size: 17px;
+          font-weight: 680;
+          color: #ffffff;
+        }
+        .ymv1-ms-count {
+          font-size: 12px;
+          font-weight: 600;
+          color: #f5f5f7;
+          background: rgba(255, 255, 255, 0.14);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          padding: 4px 10px;
+          border-radius: 999px;
+        }
+        .ymv1-ms-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+          gap: 12px;
+        }
+        .ymv1-ms-item {
+          border-radius: 16px;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.11);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 20px rgba(0, 0, 0, 0.16);
+          display: flex;
+          flex-direction: column;
+        }
+        .ymv1-ms-cover {
+          height: 112px;
+          background: linear-gradient(135deg, #1d1d1f 0%, #0071e3 100%);
+          background-size: cover;
+          background-position: center;
+          position: relative;
+          display: flex;
+          align-items: flex-end;
+          padding: 10px;
+          cursor: pointer;
+        }
+        .ymv1-ms-play-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.72);
+          color: #ffffff;
+          font-size: 11.5px;
+          font-weight: 650;
+        }
+        .ymv1-ms-body {
+          padding: 11px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .ymv1-ms-body strong {
+          font-size: 14px;
+          color: #ffffff;
+        }
+        .ymv1-ms-body span {
+          font-size: 11.5px;
+          color: rgba(255, 255, 255, 0.78);
+        }
+        .ymv1-ms-actions {
+          margin-top: 6px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+        }
+        @media (max-width: 680px) {
+          .ymv1-nav {
+            display: none;
+          }
+          .ymv1-add-form {
+            flex-direction: column;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}

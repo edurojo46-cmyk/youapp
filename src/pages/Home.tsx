@@ -1,42 +1,69 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Search, Tv, Grid, Radio, Plus, Play, Brain, BarChart2, Bookmark,
-  SplitSquareHorizontal, Film, GraduationCap, List, PlaySquare, Star, User, Calendar, Mic, Settings,
-  SkipBack, Pause, SkipForward, Maximize, Bell, Sparkles, ChevronRight, ChevronLeft, MonitorPlay, Video, Music, Heart, Clock
+import {
+  Search,
+  Tv,
+  Radio,
+  Film,
+  Maximize,
+  ChevronRight,
+  ChevronLeft,
+  MonitorPlay,
+  Video,
+  Music,
+  BookOpen,
+  Compass,
+  Bookmark
 } from 'lucide-react';
 import { YOUTUBE_VIDEO_POOLS } from '../lib/youtube';
 import { UNIVERSAL_CATALOG } from '../lib/universalChannels';
-import { useStore } from '../store/useStore';
+import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
+import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
+import { CuratedSignalsDiscoverSection } from '../components/tv/CuratedSignalsDiscoverSection';
+import { AtlasForYouPlanner } from '../components/tv/AtlasForYouPlanner';
 
 const HUD_ITEMS = [
-  { id: 'agrandar', icon: Maximize, label: 'Agrandar', route: '/programartv' },
-  { id: 'buscar', icon: Search, label: 'Buscar', route: '/search' },
-  { id: 'misenal', icon: Bookmark, label: 'Mi Señal', route: '/create-signal' },
-  { id: 'programacion', icon: Calendar, label: 'Programación', route: '/program' },
-  { id: 'envivo', icon: Radio, label: 'En Vivo', route: '/live' },
-  { id: 'algoritmo', icon: Brain, label: 'Mi Algoritmo', route: '/my-algorithm' },
-  { id: 'remote', icon: Tv, label: 'You Remote', route: '/remote' },
-  { id: 'listas', icon: List, label: 'Listas', route: '/my-lists' },
-  { id: 'momentos', icon: Clock, label: 'Momentos', route: '/moments' },
-  { id: 'favoritos', icon: Heart, label: 'Favoritos', route: '/favorites' },
+  { id: 'buscar', icon: Search, label: 'BUSCAR', route: '/search', angleDeg: -90 },
+  { id: 'mitv', icon: Tv, label: 'MITV', route: '/mitv', angleDeg: -45 },
+  { id: 'music', icon: Music, label: 'YOU MUSIC', route: '/youmusic', angleDeg: 0 },
+  { id: 'reels', icon: Film, label: 'REELS', route: '/reels', angleDeg: 45 },
+  { id: 'lecturas', icon: BookOpen, label: 'LECTURAS', route: '/lecturas', angleDeg: 90 },
+  { id: 'dial', icon: Compass, label: 'YOU DIAL', route: '/dial', angleDeg: 135 },
+  { id: 'misenal', icon: Radio, label: 'MI SEÑAL', route: '/misenal1', angleDeg: 180 },
+  { id: 'agrandar', icon: Maximize, label: 'AGRANDAR', route: '/mitv', angleDeg: 225 },
 ];
 
-function HomeIcon(props: any) {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-  );
+function describeAnnularSector(
+  cx: number,
+  cy: number,
+  rInner: number,
+  rOuter: number,
+  startDeg: number,
+  endDeg: number
+): string {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const x1 = cx + rOuter * Math.cos(toRad(startDeg));
+  const y1 = cy + rOuter * Math.sin(toRad(startDeg));
+  const x2 = cx + rOuter * Math.cos(toRad(endDeg));
+  const y2 = cy + rOuter * Math.sin(toRad(endDeg));
+  const x3 = cx + rInner * Math.cos(toRad(endDeg));
+  const y3 = cy + rInner * Math.sin(toRad(endDeg));
+  const x4 = cx + rInner * Math.cos(toRad(startDeg));
+  const y4 = cy + rInner * Math.sin(toRad(startDeg));
+  const largeArc = endDeg - startDeg > 180 ? 1 : 0;
+  return [
+    `M ${x1.toFixed(2)} ${y1.toFixed(2)}`,
+    `A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`,
+    `L ${x3.toFixed(2)} ${y3.toFixed(2)}`,
+    `A ${rInner} ${rInner} 0 ${largeArc} 0 ${x4.toFixed(2)} ${y4.toFixed(2)}`,
+    'Z'
+  ].join(' ');
 }
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user } = useStore();
-  
+
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const mediaRef = useRef<HTMLAudioElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -52,16 +79,7 @@ export default function Home() {
     }
   };
 
-  // Video properties for Nature theme
   const audioSource = ""; // Eliminado para evitar 403 y conflictos de AbortError cruzado
-  const videoSource = "https://assets.mixkit.co/videos/preview/mixkit-beautiful-mountain-landscape-with-a-river-4235-large.mp4"; // Bright Mountain Video
-
-  const handlePlay = () => {
-    setIsPlaying(true);
-    if (audioSource && mediaRef.current) {
-      mediaRef.current.play().catch(e => console.warn("Audio autoplay blocked:", e));
-    }
-  };
 
   const handleTimeUpdate = () => {
     if (mediaRef.current) {
@@ -70,91 +88,88 @@ export default function Home() {
     }
   };
 
+  const orbAmbientThumb = '/home-keynote-stage-bg.jpg';
+
   return (
     <div className="home-layout">
+      <div
+        className="home-ambient-bg"
+        aria-hidden="true"
+        style={{ backgroundImage: `url(${orbAmbientThumb})` }}
+      />
+      <div className="home-ambient-veil" aria-hidden="true" />
+
       {/* ── TOP NAV ── */}
       <nav className="home-navbar">
-        <div className="logo-area">
-          <span className="logo-you">Y O U</span>
-          <span className="logo-app">A P P</span>
-          <span className="logo-tv">T V</span>
-        </div>
+        <YouAppOfficialLogo theme="dark" />
         
         <div className="nav-links">
-          <button className="nav-link active" onClick={() => navigate('/')}>Inicio</button>
-          <button className="nav-link" onClick={() => navigate('/search')}>Explorar</button>
-          <button className="nav-link" onClick={() => navigate('/live')}>En Vivo</button>
-          <button className="nav-link" onClick={() => navigate('/my-algorithm')}>Mi Señal</button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/misenal1')} title="MI SEÑAL" aria-label="MI SEÑAL">
+            <Radio size={17} />
+          </button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/mitv')} title="MITV" aria-label="MITV">
+            <Tv size={17} />
+          </button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/youmusic')} title="YOU MUSIC" aria-label="YOU MUSIC">
+            <Music size={17} />
+          </button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/reels')} title="REELS" aria-label="REELS">
+            <Film size={17} />
+          </button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/lecturas')} title="LECTURAS" aria-label="LECTURAS">
+            <BookOpen size={17} />
+          </button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/dial')} title="YOU DIAL" aria-label="YOU DIAL">
+            <Compass size={17} />
+          </button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/my-lists')} title="MIS LISTAS" aria-label="MIS LISTAS">
+            <Bookmark size={17} />
+          </button>
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/search')} title="BUSCAR" aria-label="BUSCAR">
+            <Search size={17} />
+          </button>
         </div>
 
         <div className="user-area">
-          <button className="icon-btn">
-            <Bell size={20} />
-          </button>
-          {(user as any)?.avatar_url ? (
-            <img src={(user as any).avatar_url} alt="Profile" className="avatar" />
-          ) : (
-            <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Profile" className="avatar" />
-          )}
+          <TvUserSessionMenu variant="glass" />
         </div>
       </nav>
 
-      {/* ── SEARCH BAR ── */}
-      <div className="home-search-container">
-        <div className="search-input-wrapper">
-          <Search size={20} className="search-icon" />
-          <input 
-            type="text" 
-            placeholder="¿Qué querés ver hoy?" 
-            className="search-input"
-          />
-          <button className="btn-ai-search" onClick={() => navigate('/search')}>
-            <Sparkles size={16} /> Buscar con IA
-          </button>
-        </div>
-      </div>
-
       {/* ── MAIN MIDDLE SECTION ── */}
       <div className="home-middle-section">
-        
-        <div className="left-welcome" style={{ visibility: 'hidden' }}>
-          {/* Espaciador para mantener el aro centrado */}
-        </div>
-
         {/* ── DIAL (ARO) ── */}
         <div className="center-dial">
           <div className="dial-wrapper">
             
-            {/* El Aro Físico (10 segmentos) */}
-            <div className="dial-physical-ring">
-              {Array.from({ length: 10 }).map((_, i) => {
-                // 10 segmentos = 36 grados cada uno
-                // Desfasamos la mitad (18 grados) para que el ícono quede en el centro del segmento
-                const angleDeg = -90 + 18 + (i * 36);
+            {/* El Aro Físico de Cristal Limpio */}
+            <div className="dial-physical-ring" />
+
+            {/* 8 Sectores Interactivos con Líneas Divisorias y Hover en Todo el Espacio */}
+            <svg className="dial-sectors-svg" viewBox="0 0 740 740" aria-hidden="true">
+              {HUD_ITEMS.map((item) => {
+                const d = describeAnnularSector(370, 370, 280, 369, item.angleDeg - 22.5, item.angleDeg + 22.5);
+                const isActive = hoveredItem === item.id;
                 return (
-                  <div 
-                    key={`spoke-${i}`} 
-                    className="dial-spoke"
-                    style={{ transform: `rotate(${angleDeg}deg)` }}
+                  <path
+                    key={`sector-${item.id}`}
+                    d={d}
+                    className={`dial-sector-path ${isActive ? 'active' : ''}`}
+                    onMouseEnter={() => setHoveredItem(item.id)}
+                    onMouseLeave={() => setHoveredItem(null)}
+                    onClick={() => navigate(item.route)}
                   />
                 );
               })}
-            </div>
+            </svg>
 
-            {/* Anillo de Íconos y Textos */}
+            {/* Anillo de Íconos (solo Buscar y Agrandar) */}
             <div className="dial-ring">
-              {HUD_ITEMS.map((item, index) => {
-                // 10 items -> 36 grados cada uno
-                const angleDeg = -90 + (index * 36);
-                const angleRad = (angleDeg * Math.PI) / 180;
-                
-                // Radio exacto del centro del borde físico
-                const ringRadius = 315;
+              {HUD_ITEMS.map((item) => {
+                const angleRad = (item.angleDeg * Math.PI) / 180;
+                const ringRadius = 325;
                 const x = Math.cos(angleRad) * ringRadius;
                 const y = Math.sin(angleRad) * ringRadius;
 
-                // Adjust rotation for text so it faces up or reads nicely
-                // For simplicity, we just keep icons upright
                 return (
                   <div 
                     key={item.id}
@@ -162,12 +177,13 @@ export default function Home() {
                     style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
                   >
                     <button 
-                      className={`dial-icon-btn ${hoveredItem === item.id || item.id === 'inicio' ? 'active' : ''}`}
+                      className={`dial-icon-btn ${hoveredItem === item.id ? 'active' : ''}`}
                       onMouseEnter={() => setHoveredItem(item.id)}
                       onMouseLeave={() => setHoveredItem(null)}
                       onClick={() => navigate(item.route)}
+                      title={item.label}
                     >
-                      <item.icon size={28} strokeWidth={1.5} className="ring-icon" />
+                      <item.icon size={24} strokeWidth={1.7} className="ring-icon" />
                       <span className="ring-label">{item.label}</span>
                     </button>
                   </div>
@@ -189,61 +205,27 @@ export default function Home() {
               <div className="orb-bg">
                 <iframe 
                   className="orb-bg-video"
-                  src="https://www.youtube.com/embed/BHACKCNDMW8?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&loop=1&playlist=BHACKCNDMW8"
+                  src="https://www.youtube.com/embed/BHACKCNDMW8?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&loop=1&playlist=BHACKCNDMW8&modestbranding=1"
                   allow="autoplay; encrypted-media"
-                  style={{ width: '150%', height: '150%', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', border: 'none' }}
+                  style={{ width: '195%', height: '195%', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none', border: 'none' }}
                 />
-                <audio 
-                  ref={mediaRef}
-                  src={audioSource}
-                  onTimeUpdate={handleTimeUpdate}
-                  onEnded={() => setIsPlaying(false)}
-                />
-                
-                <div className={`orb-overlay ${isPlaying ? 'playing' : ''}`}>
-                  {!isPlaying ? (
-                    <button className="orb-play-btn" onClick={handlePlay}>
-                      <Play size={40} fill="currentColor" />
-                    </button>
-                  ) : (
-                    <button className="orb-play-btn hidden" onClick={() => {
-                      mediaRef.current?.pause();
-                      setIsPlaying(false);
-                    }}>
-                      <Pause size={40} fill="currentColor" />
-                    </button>
-                  )}
-                  
-                  <div className="orb-info-bottom">
-                    <h3>Naturaleza Relajante</h3>
-                    <p>En Vivo · Sonidos Ambientales</p>
-                    <div className="progress-times">
-                      <span>{Math.floor((mediaRef.current?.currentTime || 0) / 60)}:{(Math.floor(mediaRef.current?.currentTime || 0) % 60).toString().padStart(2, '0')}</span>
-                      <span>{Math.floor((mediaRef.current?.duration || 0) / 60) || 0}:{(Math.floor(mediaRef.current?.duration || 0) % 60 || 0).toString().padStart(2, '0')}</span>
-                    </div>
-                  </div>
-                </div>
+                {audioSource && (
+                  <audio 
+                    ref={mediaRef}
+                    src={audioSource}
+                    onTimeUpdate={handleTimeUpdate}
+                  />
+                )}
               </div>
             </div>
 
           </div>
         </div>
-
-        <div className="right-card-area">
-           <div className="floating-ia-card">
-              <div className="card-header">
-                <Sparkles size={20} className="text-blue" /> 
-                <div className="card-titles">
-                   <h4>IA</h4>
-                   <span>Tu asistente inteligente</span>
-                </div>
-              </div>
-              <p>Descubrí contenido<br/>hecho para vos.</p>
-              <ChevronRight size={20} className="card-chevron" />
-           </div>
-        </div>
-
       </div>
+
+      {/* ── MI SEÑAL VIVA: 3 SEÑALES CURADAS POR PERSONAS ── */}
+      <AtlasForYouPlanner />
+      <CuratedSignalsDiscoverSection />
 
       {/* ── BOTTOM GRID SECTION ── */}
       <div className="home-bottom-grid">
@@ -254,11 +236,17 @@ export default function Home() {
             <ChevronRight size={16} className="text-gray" />
           </div>
           {(() => {
-            const vid = YOUTUBE_VIDEO_POOLS.ciencia[1] || YOUTUBE_VIDEO_POOLS.musica[4];
+            const vid = {
+              id: '0cjWa3Eizqw',
+              title: '¿Qué es la Rerum Novarum? · Historia social',
+              author: 'Justicia Social TV',
+              duration: '10:00',
+              time: 'En tu señal'
+            };
             return (
               <div 
                 className="video-card-unified" 
-                onClick={() => navigate(`/ai-summary/yt-${vid.id}`)}
+                onClick={() => navigate(`/ai-summary/${vid.id}`, { state: vid })}
               >
                 <div className="img-wrapper">
                   <img src={`https://i.ytimg.com/vi/${vid.id}/hqdefault.jpg`} alt={vid.title} />
@@ -319,24 +307,28 @@ export default function Home() {
             <div className="carousel-controls" style={{ display: 'flex', gap: '8px' }}>
               <button 
                 onClick={() => scroll('left')} 
-                style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                className="home-carousel-btn"
               >
-                <ChevronLeft size={16} className="text-gray" />
+                <ChevronLeft size={16} />
               </button>
               <button 
                 onClick={() => scroll('right')}
-                style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+                className="home-carousel-btn"
               >
-                <ChevronRight size={16} className="text-gray" />
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>
           <div className="horizontal-scroll" ref={scrollRef} style={{ scrollBehavior: 'smooth' }}>
-            {Object.values(YOUTUBE_VIDEO_POOLS).flat().slice(0, 15).map((vid, i) => (
+            {[
+              { id: '0cjWa3Eizqw', title: '¿Qué es la Rerum Novarum? · Justicia Social', author: 'Justicia Social TV', duration: '10:00' },
+              { id: 'RPYfIrlMYos', title: 'Papa León XIV · Discursos Completos en Argentina', author: 'Justicia Social TV', duration: '08:00' },
+              ...Object.values(YOUTUBE_VIDEO_POOLS).flat().slice(0, 13)
+            ].map((vid, i) => (
               <div 
                 key={`${vid.id}-${i}`} 
                 className="video-card-unified"
-                onClick={() => navigate(`/ai-summary/yt-${vid.id}`)}
+                onClick={() => navigate(`/ai-summary/${vid.id}`, { state: vid })}
                 style={{ minWidth: '180px' }}
               >
                  <div className="img-wrapper">
@@ -354,185 +346,201 @@ export default function Home() {
       </div>
 
       <style>{`
-        /* NEUMORPHIC / SKEUOMORPHIC LIGHT THEME */
+        /* APPLE GLASS DARK FROSTED SKIN (Unificado con Mi Señal / MiTV / YOU MUSIC / Reels / Lecturas) */
         .home-layout {
-          min-height: 100vh;
-          background: #e2e8f0; /* Subtle light gray-blue background */
-          background: radial-gradient(circle at 50% -20%, #f1f5f9, #cbd5e1);
-          color: #1e293b;
+          position: relative;
+          isolation: isolate;
+          min-height: 100dvh;
+          background-color: #14161a;
+          color: #f5f5f7;
           display: flex;
           flex-direction: column;
-          font-family: 'Outfit', system-ui, sans-serif;
+          font-family: var(--you-font-sans, 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif);
+          -webkit-font-smoothing: antialiased;
           overflow-x: hidden;
-          padding-bottom: 40px;
+          padding-bottom: 48px;
+        }
+        .home-ambient-bg {
+          position: fixed;
+          inset: -14px;
+          z-index: 0;
+          background-color: #16293a;
+          background-size: cover;
+          background-position: center;
+          opacity: 1;
+          filter: brightness(0.74) contrast(1.08);
+          transform: scale(1.02) translateZ(0);
+          contain: strict;
+          pointer-events: none;
+          overflow: hidden;
+          transition: background-image 0.45s ease;
+        }
+        .home-ambient-veil {
+          position: fixed;
+          inset: 0;
+          z-index: 1;
+          background: linear-gradient(
+            180deg,
+            rgba(18, 22, 30, 0.24) 0%,
+            rgba(22, 26, 34, 0.16) 48%,
+            rgba(14, 18, 26, 0.36) 100%
+          );
+          pointer-events: none;
+        }
+        .home-layout > *:not(.home-ambient-bg):not(.home-ambient-veil) {
+          position: relative;
+          z-index: 2;
         }
 
-        /* ── NAVBAR ── */
+        /* ── NAVBAR (Cristal puro nítido sin desenfoque) ── */
         .home-navbar {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 24px 48px;
+          gap: 16px;
+          padding: 12px 32px;
+          background: transparent;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.22);
+          box-shadow: none;
+          position: sticky;
+          top: 0;
+          z-index: 60;
         }
-
-        .logo-area {
-          display: flex;
-          gap: 6px;
-          font-size: 1.2rem;
-          font-weight: 800;
-          letter-spacing: 4px;
-        }
-        .logo-tv { color: #3b82f6; }
 
         .nav-links {
           display: flex;
-          gap: 32px;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
         }
         .nav-link {
-          background: none;
-          border: none;
-          color: #64748b;
-          font-size: 1rem;
-          font-weight: 500;
+          background: transparent;
+          border: 1px solid transparent;
+          color: rgba(245, 245, 247, 0.82);
+          font-size: 12.5px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
           cursor: pointer;
-          position: relative;
-          padding-bottom: 8px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
         }
+        .nav-link.nav-icon-only {
+          width: 36px;
+          height: 36px;
+          padding: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+        .nav-link:hover,
         .nav-link.active {
-          color: #0f172a;
-          font-weight: 600;
-        }
-        .nav-link.active::after {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: 10%;
-          width: 80%;
-          height: 3px;
-          background: #3b82f6;
-          border-radius: 3px;
+          color: #ffffff;
+          background: rgba(255, 255, 255, 0.16);
+          border-color: rgba(100, 210, 255, 0.55);
         }
 
         .user-area {
           display: flex;
           align-items: center;
-          gap: 20px;
+          gap: 12px;
         }
         .icon-btn {
-          background: none;
-          border: none;
-          color: #64748b;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          color: rgba(245, 245, 247, 0.85);
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
           cursor: pointer;
-          display: flex;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.16s ease, color 0.16s ease;
         }
-        .avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          object-fit: cover;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        .icon-btn:hover {
+          background: rgba(255, 255, 255, 0.16);
+          color: #ffffff;
         }
 
         /* ── SEARCH BAR ── */
         .home-search-container {
           display: flex;
           justify-content: center;
-          margin-top: 10px;
-          margin-bottom: 20px;
+          margin-top: 22px;
+          margin-bottom: 18px;
+          padding: 0 20px;
         }
         .search-input-wrapper {
           display: flex;
           align-items: center;
-          background: #f8fafc;
-          border-radius: 99px;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.07) 0%,
+            rgba(255, 255, 255, 0.015) 50%,
+            rgba(255, 255, 255, 0.05) 100%
+          );
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          border-radius: 999px;
           padding: 6px 6px 6px 20px;
-          width: 600px;
-          box-shadow: 
-            inset 0 2px 4px rgba(0,0,0,0.02),
-            0 4px 10px rgba(0,0,0,0.05),
-            0 0 0 1px rgba(255,255,255,0.7);
+          width: 100%;
+          max-width: 600px;
+          border-top: 1.5px solid rgba(255, 255, 255, 0.72);
+          border-left: 1.5px solid rgba(255, 255, 255, 0.50);
+          border-right: 1.5px solid rgba(255, 255, 255, 0.36);
+          border-bottom: 1.5px solid rgba(255, 255, 255, 0.48);
+          box-shadow:
+            inset 0 1px 1px rgba(255, 255, 255, 0.72),
+            0 12px 30px rgba(0, 0, 0, 0.18);
         }
-        .search-icon { color: #94a3b8; }
+        .search-icon { color: rgba(245, 245, 247, 0.55); }
         .search-input {
           flex: 1;
           background: transparent;
           border: none;
-          padding: 0 16px;
-          font-size: 1rem;
-          color: #334155;
+          padding: 0 14px;
+          font-size: 0.96rem;
+          color: #f5f5f7;
           outline: none;
         }
-        .search-input::placeholder { color: #94a3b8; }
+        .search-input::placeholder { color: rgba(245, 245, 247, 0.52); }
         
         .btn-ai-search {
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 8px;
-          background: #eff6ff;
-          color: #2563eb;
-          border: 1px solid #bfdbfe;
-          border-radius: 99px;
-          padding: 10px 20px;
-          font-weight: 600;
-          font-size: 0.9rem;
+          gap: 7px;
+          background: #0071e3;
+          color: #ffffff;
+          border: 1px solid rgba(100, 210, 255, 0.55);
+          border-radius: 999px;
+          padding: 9px 18px;
+          font-weight: 700;
+          font-size: 0.85rem;
           cursor: pointer;
-          transition: all 0.2s;
+          box-shadow: 0 4px 14px rgba(0, 113, 227, 0.35);
+          transition: background 0.16s ease;
         }
         .btn-ai-search:hover {
-          background: #dbeafe;
+          background: #0a84ff;
         }
 
         /* ── MIDDLE SECTION ── */
         .home-middle-section {
           display: flex;
-          justify-content: space-between;
+          justify-content: center;
           align-items: center;
-          padding: 0 60px;
-          margin-top: 20px;
+          padding: 0 32px;
+          margin-top: 12px;
           position: relative;
         }
+        .text-blue { color: #64d2ff; }
 
-        .left-welcome {
-          flex: 1;
-          max-width: 300px;
-          z-index: 10;
-        }
-        .left-welcome h2 {
-          font-size: 2.5rem;
-          font-weight: 700;
-          line-height: 1.1;
-          color: #334155;
-          margin-bottom: 16px;
-        }
-        .left-welcome p {
-          font-size: 1.1rem;
-          color: #64748b;
-          line-height: 1.4;
-          margin-bottom: 24px;
-        }
-        .btn-outline-ai {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          padding: 12px 24px;
-          border-radius: 99px;
-          font-weight: 600;
-          color: #475569;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-          transition: all 0.2s;
-        }
-        .btn-outline-ai:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 16px rgba(0,0,0,0.08);
-        }
-        .text-blue { color: #3b82f6; }
-
-        /* ── CENTER DIAL (SKEUOMORPHIC RING) ── */
+        /* ── CENTER DIAL (APPLE GLASS FROSTED RING) ── */
         .center-dial {
-          flex: 2;
           display: flex;
           justify-content: center;
           align-items: center;
@@ -541,40 +549,52 @@ export default function Home() {
 
         .dial-wrapper {
           position: relative;
-          width: 680px;
-          height: 680px;
+          width: 740px;
+          height: 740px;
           display: flex;
           align-items: center;
           justify-content: center;
-          flex-shrink: 0; /* Evitar que se comprima y se vuelva ovalado */
+          flex-shrink: 0;
         }
 
-        /* The Metallic Outer Ring */
+        /* The Frosted Crystal Glass Outer Ring (cristal puro nítido sin desenfoque) */
         .dial-physical-ring {
           position: absolute;
           box-sizing: border-box;
           width: 100%;
           height: 100%;
           border-radius: 50%;
-          border: 50px solid #f8fafc;
-          box-shadow: 
-            inset 0 4px 10px rgba(0,0,0,0.05), /* Inner shadow */
-            inset 0 -4px 10px rgba(255,255,255,1), /* Inner highlight */
-            0 20px 40px rgba(0,0,0,0.1), /* Outer drop shadow */
-            0 0 0 1px rgba(255,255,255,0.8), /* Outer crisp edge */
-            inset 0 0 0 1px rgba(226,232,240,0.8); /* Inner crisp edge */
-          background: linear-gradient(135deg, #ffffff, #e2e8f0); /* Metallic gradient */
+          background: rgba(255, 255, 255, 0.04);
+          -webkit-mask-image: radial-gradient(circle, transparent 278px, #000 280px);
+          mask-image: radial-gradient(circle, transparent 278px, #000 280px);
+          border: 1.5px solid rgba(255, 255, 255, 0.68);
+          box-shadow:
+            inset 0 1px 8px rgba(255, 255, 255, 0.24),
+            0 12px 32px rgba(0, 0, 0, 0.16);
           z-index: 1;
         }
 
-        /* The dividers for the 10 segments */
-        .dial-spoke {
+        /* Sectores SVG interactivos con líneas divisorias y hover en toda la porción */
+        .dial-sectors-svg {
           position: absolute;
-          top: -50px; left: calc(50% - 1px);
-          width: 2px; height: 50px;
-          background: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(0,0,0,0.05));
-          transform-origin: center 340px; /* 680/2 */
-          z-index: 2;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 3;
+          pointer-events: none;
+        }
+        .dial-sector-path {
+          fill: transparent;
+          stroke: rgba(255, 255, 255, 0.34);
+          stroke-width: 1.25;
+          pointer-events: all;
+          cursor: pointer;
+          transition: fill 0.18s ease, stroke 0.18s ease;
+        }
+        .dial-sector-path:hover,
+        .dial-sector-path.active {
+          fill: rgba(255, 255, 255, 0.22);
+          stroke: rgba(100, 210, 255, 0.85);
         }
 
         /* The icons placed on the ring */
@@ -601,41 +621,38 @@ export default function Home() {
           justify-content: center;
           gap: 4px;
           cursor: pointer;
-          color: #64748b;
+          color: rgba(245, 245, 247, 0.8);
           transition: all 0.2s;
         }
         .dial-icon-btn .ring-icon {
-          color: #475569;
+          color: rgba(245, 245, 247, 0.85);
           transition: color 0.2s;
         }
         .dial-icon-btn .ring-label {
-          font-size: 0.75rem;
-          font-weight: 500;
-          color: #64748b;
-          opacity: 0.8;
+          font-size: 0.72rem;
+          font-weight: 600;
+          color: rgba(245, 245, 247, 0.72);
           white-space: nowrap;
         }
         
         .dial-icon-btn.active .ring-icon,
         .dial-icon-btn:hover .ring-icon {
-          color: #3b82f6; /* Blue accent */
+          color: #64d2ff;
         }
         .dial-icon-btn.active .ring-label,
         .dial-icon-btn:hover .ring-label {
-          color: #3b82f6;
-          opacity: 1;
+          color: #64d2ff;
         }
         .dial-icon-btn.active {
           position: relative;
         }
-        /* Top blue dash for active "Inicio" like in mockup */
         .dial-icon-btn.active::before {
           content: '';
           position: absolute;
           top: -15px;
           width: 20px;
-          height: 4px;
-          background: #3b82f6;
+          height: 3px;
+          background: #64d2ff;
           border-radius: 4px;
         }
 
@@ -763,51 +780,21 @@ export default function Home() {
         }
 
 
-        /* ── RIGHT FLOATING CARD ── */
-        .right-card-area {
-          flex: 1;
-          max-width: 300px;
-          display: flex;
-          justify-content: flex-end;
-          z-index: 10;
-        }
-        .floating-ia-card {
-          background: #ffffff;
-          border-radius: 20px;
-          padding: 24px;
-          width: 260px;
-          box-shadow: 
-            0 10px 30px rgba(0,0,0,0.04),
-            0 1px 3px rgba(0,0,0,0.02);
-          border: 1px solid rgba(255,255,255,0.8);
-          position: relative;
-        }
-        .card-header {
+        .home-carousel-btn {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          color: #f5f5f7;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
           display: flex;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 16px;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.16s ease;
         }
-        .card-titles h4 {
-          margin: 0;
-          font-size: 1rem;
-          font-weight: 700;
-          color: #1e293b;
-        }
-        .card-titles span {
-          font-size: 0.75rem;
-          color: #64748b;
-        }
-        .floating-ia-card p {
-          font-size: 0.95rem;
-          line-height: 1.4;
-          margin: 0;
-        }
-        .card-chevron {
-          position: absolute;
-          bottom: 24px;
-          right: 24px;
-          color: #94a3b8;
+        .home-carousel-btn:hover {
+          background: rgba(255, 255, 255, 0.16);
         }
 
         /* ── BOTTOM GRID ── */
@@ -815,8 +802,8 @@ export default function Home() {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 24px;
-          padding: 40px 60px;
-          margin-top: 40px;
+          padding: 32px 48px;
+          margin-top: 28px;
           width: 100%;
         }
         .grid-col {
@@ -829,31 +816,47 @@ export default function Home() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 20px;
+          margin-bottom: 16px;
         }
         .section-header h3 {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: #475569;
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #f5f5f7;
           margin: 0;
         }
-        .text-gray { color: #94a3b8; }
+        .text-gray { color: rgba(245, 245, 247, 0.58); }
 
-        /* Unified Video Card */
+        /* Unified Video Card (Cristal biselado Glassmorphism con canto luminoso doble) */
         .video-card-unified {
-          background: #ffffff;
-          border-radius: 12px;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.08) 0%,
+            rgba(255, 255, 255, 0.02) 50%,
+            rgba(255, 255, 255, 0.06) 100%
+          );
+          border-radius: 22px;
           overflow: hidden;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-          border: 1px solid rgba(255,255,255,0.8);
+          border-top: 1.5px solid rgba(255, 255, 255, 0.78);
+          border-left: 1.5px solid rgba(255, 255, 255, 0.56);
+          border-right: 1.5px solid rgba(255, 255, 255, 0.42);
+          border-bottom: 1.5px solid rgba(255, 255, 255, 0.54);
+          box-shadow:
+            inset 0 1px 1px rgba(255, 255, 255, 0.85),
+            inset 0 -1px 2px rgba(255, 255, 255, 0.45),
+            inset 0 0 18px rgba(255, 255, 255, 0.12),
+            0 16px 40px rgba(0, 0, 0, 0.26);
           cursor: pointer;
-          transition: transform 0.2s, box-shadow 0.2s;
+          transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
           display: flex;
           flex-direction: column;
         }
         .video-card-unified:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+          transform: translateY(-3px);
+          box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.95),
+            inset 0 -1px 3px rgba(255, 255, 255, 0.55),
+            inset 0 0 22px rgba(255, 255, 255, 0.18),
+            0 20px 46px rgba(0, 0, 0, 0.32);
         }
         .video-card-unified .img-wrapper {
           position: relative;
@@ -868,9 +871,9 @@ export default function Home() {
         .video-card-unified .time-badge {
           position: absolute;
           bottom: 8px; right: 8px;
-          background: rgba(0,0,0,0.8);
-          color: white;
-          padding: 4px 6px;
+          background: rgba(0, 0, 0, 0.78);
+          color: #ffffff;
+          padding: 3px 6px;
           border-radius: 6px;
           font-size: 0.7rem;
           font-weight: 600;
@@ -882,31 +885,43 @@ export default function Home() {
         }
         .video-card-unified .card-info h4 {
           margin: 0 0 4px 0;
-          font-size: 0.95rem;
-          color: #1e293b;
+          font-size: 0.92rem;
+          color: #f5f5f7;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .video-card-unified .card-info p {
           margin: 0;
-          font-size: 0.8rem;
-          color: #64748b;
+          font-size: 0.78rem;
+          color: rgba(245, 245, 247, 0.62);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
-        /* Tu Programación */
+        /* Tu Programación (Cristal biselado Glassmorphism) */
         .program-list-card {
-          background: #ffffff;
-          border-radius: 20px;
-          padding: 16px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-          border: 1px solid rgba(255,255,255,0.8);
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.08) 0%,
+            rgba(255, 255, 255, 0.02) 50%,
+            rgba(255, 255, 255, 0.06) 100%
+          );
+          border-radius: 22px;
+          padding: 14px;
+          border-top: 1.5px solid rgba(255, 255, 255, 0.78);
+          border-left: 1.5px solid rgba(255, 255, 255, 0.56);
+          border-right: 1.5px solid rgba(255, 255, 255, 0.42);
+          border-bottom: 1.5px solid rgba(255, 255, 255, 0.54);
+          box-shadow:
+            inset 0 1px 1px rgba(255, 255, 255, 0.85),
+            inset 0 -1px 2px rgba(255, 255, 255, 0.45),
+            inset 0 0 18px rgba(255, 255, 255, 0.12),
+            0 16px 40px rgba(0, 0, 0, 0.26);
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
         }
         .program-item {
           display: flex;
@@ -918,10 +933,10 @@ export default function Home() {
           position: relative;
         }
         .program-item:hover {
-          background: #f8fafc;
+          background: rgba(255, 255, 255, 0.08);
         }
         .program-item.active {
-          background: #eff6ff;
+          background: rgba(0, 113, 227, 0.22);
         }
         .active-indicator {
           position: absolute;
@@ -930,53 +945,71 @@ export default function Home() {
           transform: translateY(-50%);
           width: 4px;
           height: 24px;
-          background: #3b82f6;
+          background: #64d2ff;
           border-radius: 4px;
         }
         .prog-time {
           font-weight: 700;
-          color: #3b82f6;
-          font-size: 0.9rem;
-          min-width: 44px;
+          color: #64d2ff;
+          font-size: 0.85rem;
+          min-width: 46px;
         }
         .prog-info h4 {
           margin: 0 0 2px 0;
-          font-size: 0.9rem;
-          color: #1e293b;
+          font-size: 0.88rem;
+          color: #f5f5f7;
         }
         .prog-info p {
           margin: 0;
-          font-size: 0.75rem;
-          color: #64748b;
+          font-size: 0.74rem;
+          color: rgba(245, 245, 247, 0.62);
         }
 
         /* Explorar */
         .explore-list {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 10px;
         }
         .explore-btn {
           display: flex;
           align-items: center;
           gap: 12px;
-          background: #ffffff;
-          border: 1px solid rgba(255,255,255,0.8);
-          padding: 16px 20px;
-          border-radius: 16px;
-          font-size: 0.95rem;
-          font-weight: 500;
-          color: #334155;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.08) 0%,
+            rgba(255, 255, 255, 0.02) 50%,
+            rgba(255, 255, 255, 0.06) 100%
+          );
+          border-top: 1.5px solid rgba(255, 255, 255, 0.78);
+          border-left: 1.5px solid rgba(255, 255, 255, 0.56);
+          border-right: 1.5px solid rgba(255, 255, 255, 0.42);
+          border-bottom: 1.5px solid rgba(255, 255, 255, 0.54);
+          padding: 14px 18px;
+          border-radius: 20px;
+          font-size: 0.92rem;
+          font-weight: 600;
+          color: #ffffff;
+          text-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
           cursor: pointer;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-          transition: all 0.2s;
+          box-shadow:
+            inset 0 1px 1px rgba(255, 255, 255, 0.85),
+            inset 0 -1px 2px rgba(255, 255, 255, 0.45),
+            inset 0 0 16px rgba(255, 255, 255, 0.12),
+            0 12px 32px rgba(0, 0, 0, 0.22);
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
         .explore-btn:hover {
           transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+          box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.95),
+            inset 0 -1px 3px rgba(255, 255, 255, 0.55),
+            inset 0 0 22px rgba(255, 255, 255, 0.20),
+            0 16px 38px rgba(0, 0, 0, 0.28);
         }
         .explore-btn .arrow {
           margin-left: auto;
+          color: rgba(245, 245, 247, 0.55);
         }
 
         /* Recomendado para vos (Horizontal scroll) */
@@ -1024,9 +1057,9 @@ export default function Home() {
             overflow: visible;
           }
           .dial-wrapper {
-            transform: scale(0.48);
-            margin-top: -176px;
-            margin-bottom: -176px;
+            transform: scale(0.45);
+            margin-top: -195px;
+            margin-bottom: -195px;
           }
 
           .right-card-area {

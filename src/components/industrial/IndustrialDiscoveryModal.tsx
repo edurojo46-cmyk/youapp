@@ -39,6 +39,7 @@ interface IndustrialDiscoveryModalProps {
   onClose: () => void;
   initialObjective?: string;
   onNavigateToResults?: (missionId: string) => void;
+  onMissionStarted?: (missionId: string) => void;
 }
 
 const NATURAL_PRESETS = [
@@ -55,11 +56,13 @@ const QUANTITY_PRESETS = [50, 100, 1000, 10000, 50000, 100000];
 
 export const isTerminalStatus = (status?: string, reason?: string | null): boolean => {
   if (!status) return false;
-  if (status === 'RUNNING' || status === 'STARTING') return false;
+  if (status === 'RUNNING' || status === 'STARTING' || status === 'WAITING_NEXT_GENERATION') return false;
   return [
     'TARGET_REACHED',
+    'COMPLETED_TARGET_REACHED',
     'COMPLETED_WITH_NEW_ROWS',
     'COMPLETED',
+    'INTERRUPTED',
     'SOURCE_FRONTIER_EXHAUSTED',
     'SOURCE_FRONTIER_EXHAUSTED_WITH_PROOF',
     'NO_VALIDATED_SOURCE_EXISTS_AFTER_DISCOVERY',
@@ -91,7 +94,7 @@ export const isTerminalStatus = (status?: string, reason?: string | null): boole
     'WORKER_UNAVAILABLE',
     'GEOGRAPHY_CONTRACT_VIOLATION',
     'SOURCE_GAP_NO_CAPABLE_SOURCE'
-  ].includes(status) || Boolean(reason && !['RUNNING', 'STARTING'].includes(status));
+  ].includes(status) || Boolean(reason && !['RUNNING', 'STARTING', 'WAITING_NEXT_GENERATION'].includes(status));
 };
 
 export function getMissionStatusPillClass(mission: MissionMetrics): string {
@@ -113,12 +116,17 @@ export function getMissionStatusPillLabel(mission: MissionMetrics): string {
 
   const reason = (mission.terminal_reason || mission.status || '').trim();
 
-  // Strict User Cancellation: ONLY if explicit user action!
+  // Strict User Cancellation: ONLY if explicit user action or CANCELLED status!
   const isExplicitUserCancel =
     reason === 'USER_CANCELLED_WITH_EXPLICIT_USER_ACTION' ||
-    (reason === 'USER_CANCELLED' && (mission.cancel_origin === 'USER_EXPLICIT' || (mission as any).cancel_origin === 'HTTP_POST_USER_CANCEL' || !(mission as any).cancel_origin));
+    reason === 'USER_CANCELLED' ||
+    reason === 'CANCELLED' ||
+    reason.toUpperCase().includes('CANCEL') ||
+    mission.status === 'CANCELLED' ||
+    mission.status?.toUpperCase().includes('CANCEL') ||
+    (mission.cancel_origin === 'USER_EXPLICIT' || (mission as any).cancel_origin === 'HTTP_POST_USER_CANCEL' || !(mission as any).cancel_origin);
 
-  if (isExplicitUserCancel) {
+  if (isExplicitUserCancel && (reason.toUpperCase().includes('CANCEL') || mission.status?.toUpperCase().includes('CANCEL'))) {
     return '✕ CANCELADA';
   }
 
@@ -183,30 +191,70 @@ export function renderMissionTerminalState(mission: MissionMetrics): React.React
   const numCertified = (mission.certified_new_searchable || mission.qualified_count || 0).toLocaleString('es-AR');
   const numTarget = (mission.target_new_records || 0).toLocaleString('es-AR');
 
-  const renderDiagnosticBadge = (code: string) => (
-    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-      <span style={{
-        fontSize: '11px',
-        fontWeight: 600,
-        fontFamily: 'monospace',
-        padding: '2px 8px',
-        borderRadius: '4px',
-        background: 'rgba(255, 255, 255, 0.08)',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
-        color: '#94a3b8'
-      }}>
-        TERMINAL_REASON: {code}
-      </span>
-      {mission.completed_at && (
-        <span style={{ fontSize: '11px', color: '#64748b' }}>
-          Finalizado: {new Date(mission.completed_at).toLocaleTimeString('es-AR')}
-        </span>
-      )}
-    </div>
-  );
+  const renderDiagnosticBadge = (code: string) => {
+    const truth = (mission as any).physical_truth || mission.criteria?.physical_truth;
+    const serverInstance = (mission as any).server_instance_id || truth?.server_instance_id || (typeof window !== 'undefined' ? (window as any).__ATLAS_SERVER_INSTANCE_ID__ : null);
+    const codeSha = (mission as any).code_commit_sha || truth?.code_commit_sha || (typeof window !== 'undefined' ? (window as any).__ATLAS_CODE_COMMIT_SHA__ : null);
 
-  // 1. TARGET_REACHED / COMPLETED_WITH_NEW_ROWS
-  if (reason === 'TARGET_REACHED' || reason === 'COMPLETED_WITH_NEW_ROWS' || (reason === 'COMPLETED' && (mission.certified_new_searchable || 0) > 0)) {
+    return (
+      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            fontFamily: 'monospace',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            background: 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            color: '#94a3b8'
+          }}>
+            TERMINAL_REASON: {code}
+          </span>
+          {mission.completed_at && (
+            <span style={{ fontSize: '11px', color: '#64748b' }}>
+              Finalizado: {new Date(mission.completed_at).toLocaleTimeString('es-AR')}
+            </span>
+          )}
+        </div>
+
+        {truth && (
+          <div id="idm-physical-truth-card" style={{
+            padding: '10px 12px',
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontFamily: 'monospace'
+          }}>
+            <div style={{ color: '#38bdf8', fontWeight: 700, marginBottom: '6px' }}>
+              🏛️ MISSION_TRUTH_LEDGER (SINGLE PHYSICAL TRUTH)
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px', color: '#cbd5e1' }}>
+              <div>Certificados: <strong style={{ color: '#38bdf8' }}>{truth.certified_physical}</strong></div>
+              <div>Persistidos: <strong style={{ color: '#38bdf8' }}>{truth.persisted_physical}</strong></div>
+              <div>Searchable: <strong style={{ color: '#38bdf8' }}>{truth.searchable_physical}</strong></div>
+              <div>Escaneados: <strong style={{ color: '#38bdf8' }}>{truth.scanned_physical}</strong> (Rechazados: {truth.rejected_physical || 0})</div>
+              <div>Cache Mode: <strong style={{ color: truth.cache_mode === 'COLD' ? '#60a5fa' : '#34d399' }}>{truth.cache_mode}</strong> (Net: {truth.network_rows} | Cache: {truth.cache_rows})</div>
+              <div>Accounting: <strong style={{ color: (truth.unaccounted_candidates || 0) === 0 ? '#34d399' : '#f87171' }}>{(truth.unaccounted_candidates || 0) === 0 ? 'COMPLETE (0 UNACCOUNTED)' : `${truth.unaccounted_candidates} UNACCOUNTED`}</strong></div>
+              {serverInstance && <div>Server: <span style={{ color: '#94a3b8' }}>{String(serverInstance).slice(0, 24)}...</span></div>}
+              {codeSha && <div>Commit: <span style={{ color: '#94a3b8' }}>{String(codeSha).slice(0, 10)}</span></div>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 1. TARGET_REACHED / COMPLETED_TARGET_REACHED / COMPLETED_WITH_NEW_ROWS
+  if (
+    reason === 'TARGET_REACHED' ||
+    reason === 'COMPLETED_TARGET_REACHED' ||
+    mission.status === 'COMPLETED_TARGET_REACHED' ||
+    reason === 'COMPLETED_WITH_NEW_ROWS' ||
+    (reason === 'COMPLETED' && (mission.certified_new_searchable || 0) > 0)
+  ) {
+    const totalAvail = (mission.duplicate_existing_count || 0) + (mission.certified_new_searchable || mission.qualified_count || 0);
     return (
       <div id="idm-terminal-banner" className="idm-terminal-card idm-terminal-card--success">
         <span style={{ fontSize: '26px', lineHeight: 1 }}>🎉</span>
@@ -215,9 +263,32 @@ export function renderMissionTerminalState(mission: MissionMetrics): React.React
             ¡Misión cumplida con éxito!
           </strong>
           <p style={{ margin: 0, color: '#e2e8f0', fontSize: '13px', lineHeight: '1.45' }}>
-            {msg || `Se han certificado, deduplicado e indexado los ${numCertified} registros netos nuevos solicitados.`}
+            {msg || `Se han certificado, deduplicado e indexado ${numCertified} registros netos nuevos (${totalAvail} disponibles en catálogo con los ya existentes).`}
           </p>
-          {renderDiagnosticBadge(reason)}
+          {renderDiagnosticBadge(reason || mission.status || 'COMPLETED_TARGET_REACHED')}
+        </div>
+      </div>
+    );
+  }
+
+  // 1b. INTERRUPTED / RECOVERY_REQUIRED (Projects NEW + MATCHING_EXISTING)
+  if (
+    reason === 'INTERRUPTED' ||
+    reason === 'RECOVERY_REQUIRED' ||
+    mission.status === 'INTERRUPTED'
+  ) {
+    const totalAvail = (mission.duplicate_existing_count || 0) + (mission.certified_new_searchable || mission.qualified_count || 0);
+    return (
+      <div id="idm-terminal-banner" className="idm-terminal-card idm-terminal-card--mixed">
+        <span style={{ fontSize: '26px', lineHeight: 1 }}>🛡️</span>
+        <div style={{ flex: 1 }}>
+          <strong style={{ color: '#38bdf8', fontSize: '15px', display: 'block', marginBottom: '4px' }}>
+            Búsqueda finalizada / Resultados preservados
+          </strong>
+          <p style={{ margin: 0, color: '#e2e8f0', fontSize: '13px', lineHeight: '1.45' }}>
+            {msg || `Se preservaron y proyectan ${totalAvail} registros (${numCertified} nuevos certificados + ${mission.duplicate_existing_count || 0} coincidentes existentes).`}
+          </p>
+          {renderDiagnosticBadge(reason || 'RECOVERY_REQUIRED')}
         </div>
       </div>
     );
@@ -436,10 +507,16 @@ export function renderMissionTerminalState(mission: MissionMetrics): React.React
     );
   }
 
-  // 13. USER_CANCELLED (STRICT REQUIREMENT 3: ONLY IF EXPLICIT USER ACTION)
+  // 13. USER_CANCELLED
   const isExplicitUserCancel =
     reason === 'USER_CANCELLED_WITH_EXPLICIT_USER_ACTION' ||
-    (reason === 'USER_CANCELLED' && (mission.cancel_origin === 'USER_EXPLICIT' || (mission as any).cancel_origin === 'HTTP_POST_USER_CANCEL' || !(mission as any).cancel_origin));
+    reason === 'USER_CANCELLED' ||
+    reason === 'CANCELLED' ||
+    reason.toUpperCase().includes('CANCEL') ||
+    mission.status === 'CANCELLED' ||
+    mission.status?.toUpperCase().includes('CANCEL') ||
+    (mission as any).cancel_origin === 'USER_EXPLICIT' ||
+    (mission as any).cancel_origin === 'HTTP_POST_USER_CANCEL';
 
   if (isExplicitUserCancel) {
     return (
@@ -573,7 +650,8 @@ export default function IndustrialDiscoveryModal({
   isOpen,
   onClose,
   initialObjective = '',
-  onNavigateToResults
+  onNavigateToResults,
+  onMissionStarted
 }: IndustrialDiscoveryModalProps) {
   const navigate = useNavigate();
 
@@ -588,7 +666,7 @@ export default function IndustrialDiscoveryModal({
   const [entityType, setEntityType] = useState('COMPANY');
   const [geography, setGeography] = useState('ARG_NACIONAL');
   const userExplicitlyChangedGeo = useRef(false);
-  const [targetQuantity, setTargetQuantity] = useState<number>(50);
+  const [targetQuantity, setTargetQuantity] = useState<number | undefined>(undefined);
 
   // Universal Plan Preview State (Requirements 2, 7, 8, 17)
   const [planPreview, setPlanPreview] = useState<any>(null);
@@ -675,6 +753,8 @@ export default function IndustrialDiscoveryModal({
   useEffect(() => {
     if (initialObjective && initialObjective.trim()) {
       setObjective(initialObjective.trim());
+      activeMissionIdRef.current = null;
+      setActiveMission(null);
       setStep('BUILDER');
     }
   }, [initialObjective]);
@@ -689,12 +769,11 @@ export default function IndustrialDiscoveryModal({
       try {
         const result = await safeJsonFetch<any>('/api/industrial/missions/active');
         if (result.ok && isMounted && result.data?.mission && !activeMissionIdRef.current) {
-          const activeObj = (result.data.mission.objective || '').toLowerCase().trim();
-          const currentQuery = (initialObjective || objective || '').toLowerCase().trim();
-          // ONLY enter PROGRESS if the mission is RUNNING or STARTING and matches the current query objective!
-          if ((result.data.mission.status === 'RUNNING' || result.data.mission.status === 'STARTING') && activeObj && activeObj === currentQuery) {
-            activeMissionIdRef.current = result.data.mission.mission_id;
-            setActiveMission(result.data.mission);
+          const m = result.data.mission;
+          const isOngoing = Boolean(m && ['RUNNING', 'STARTING', 'PAUSED'].includes(m.status));
+          if (isOngoing) {
+            activeMissionIdRef.current = m.mission_id;
+            setActiveMission(m);
             setStep('PROGRESS');
           }
         }
@@ -704,6 +783,11 @@ export default function IndustrialDiscoveryModal({
     }
 
     if (isOpen) {
+      if (activeMission && isTerminalStatus(activeMission.status, activeMission.terminal_reason)) {
+        activeMissionIdRef.current = null;
+        setActiveMission(null);
+        setStep('BUILDER');
+      }
       checkActiveMission();
     }
 
@@ -728,11 +812,60 @@ export default function IndustrialDiscoveryModal({
             console.error(`[MISSION_IDENTITY_INVARIANT_FAILURE] Polled mission ID ${result.data.mission.mission_id} does not match locked mission ${lockedMissionId}`);
             return;
           }
-          setActiveMission(result.data.mission);
-          if (isTerminalStatus(result.data.mission.status, result.data.mission.terminal_reason)) {
+
+          const isTerm = isTerminalStatus(result.data.mission.status, result.data.mission.terminal_reason);
+          if (isTerm) {
             // Mission reached terminal state.
-            // DO NOT switch to another mission or kick to builder!
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
+            // REQUIREMENT 11 & 12: FORCE PHYSICAL RECONCILIATION
+            // Replace provisional live telemetry counters with authoritative physical truth
+            let truth = result.data.physical_truth;
+            if (!truth) {
+              const truthRes = await safeJsonFetch<any>(`/api/industrial/missions/${lockedMissionId}/truth`);
+              if (truthRes.ok && truthRes.data?.physical_truth) {
+                truth = truthRes.data.physical_truth;
+              }
+            }
+
+            const serverInstance = result.data.server_instance_id || truth?.server_instance_id;
+            const codeSha = result.data.code_commit_sha || truth?.code_commit_sha;
+
+            if (truth) {
+              const certifiedCount = truth.searchable_physical ?? truth.new_certified ?? truth.certified_new_searchable ?? result.data.mission.certified_new_searchable ?? 0;
+              const scannedCount = truth.scanned_physical ?? truth.scanned_count ?? truth.scanned ?? result.data.mission.scanned_count ?? 0;
+              const candidatesCount = truth.candidates_physical ?? truth.candidates_found ?? truth.candidates ?? result.data.mission.candidates_count ?? 0;
+              const existingCount = truth.existing_physical ?? truth.duplicate_existing_count ?? truth.mission_matching_existing ?? result.data.mission.duplicate_existing_count ?? 0;
+              const rejectedCount = truth.rejected_physical ?? truth.rejected_count ?? truth.rejected ?? result.data.mission.rejected_count ?? 0;
+              const terminalReason = truth.derived_terminal_reason ?? truth.terminal_reason ?? result.data.mission.terminal_reason;
+
+              const reconciledMission = {
+                ...result.data.mission,
+                certified_new_searchable: certifiedCount,
+                true_net_new_count: certifiedCount,
+                scanned_count: scannedCount,
+                discovered_count: scannedCount,
+                candidates_count: candidatesCount,
+                duplicate_existing_count: existingCount,
+                rejected_count: rejectedCount,
+                terminal_reason: terminalReason,
+                physical_truth: truth,
+                server_instance_id: serverInstance,
+                code_commit_sha: codeSha
+              };
+              setActiveMission(reconciledMission);
+
+              // Expose to window for testing / audit verification
+              if (typeof window !== 'undefined') {
+                (window as any).__ATLAS_PHYSICAL_TRUTH__ = truth;
+                (window as any).__ATLAS_SERVER_INSTANCE_ID__ = serverInstance;
+                (window as any).__ATLAS_CODE_COMMIT_SHA__ = codeSha;
+              }
+            } else {
+              setActiveMission(result.data.mission);
+            }
+          } else {
+            setActiveMission(result.data.mission);
           }
         }
       } catch (e) {
@@ -762,16 +895,22 @@ export default function IndustrialDiscoveryModal({
     }
     setActionError(null);
     setIsCompiling(true);
+    activeMissionIdRef.current = null;
+    setActiveMission(null);
 
     try {
+      const effectiveGeo = userExplicitlyChangedGeo.current 
+        ? geography 
+        : ((universalSpec?.geography && universalSpec.geography !== 'ARG_NACIONAL') ? universalSpec.geography : geography);
+
       const result = await safeJsonFetch<any>('/api/industrial/missions/spec', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           objective: objective.trim(),
           entity_type: entityType,
-          geography,
-          target_new_records: targetQuantity,
+          geography: effectiveGeo,
+          target_new_records: targetQuantity || 1000,
           environment: 'PRODUCTION'
         })
       });
@@ -783,6 +922,10 @@ export default function IndustrialDiscoveryModal({
       activeMissionIdRef.current = result.data.mission.mission_id;
       setActiveMission(result.data.mission);
       setStep('CONFIRMATION');
+      
+      // FIX: Deterministic single contract. Call Start immediately with the parsed ID.
+      await handleStartMission(result.data.mission.mission_id);
+
     } catch (err: any) {
       setActionError(err.message || 'Error al preparar la misión.');
     } finally {
@@ -791,13 +934,15 @@ export default function IndustrialDiscoveryModal({
   };
 
   // Step 2: Start Mission (Second Click Confirmation Authority)
-  const handleStartMission = async () => {
-    if (!activeMission?.mission_id) return;
+  const handleStartMission = async (overrideMissionId?: string | any) => {
+    // Si viene de onClick, overrideMissionId es un evento
+    const targetId = typeof overrideMissionId === 'string' ? overrideMissionId : (activeMission?.mission_id || activeMissionIdRef.current);
+    if (!targetId) return;
     setIsActionLoading(true);
     setActionError(null);
 
     try {
-      const result = await safeJsonFetch<any>(`/api/industrial/missions/${activeMission.mission_id}/start`, {
+      const result = await safeJsonFetch<any>(`/api/industrial/missions/${targetId}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ allowedTarget: targetQuantity })
@@ -810,8 +955,10 @@ export default function IndustrialDiscoveryModal({
       activeMissionIdRef.current = result.data.mission.mission_id;
       setActiveMission(result.data.mission);
       setStep('PROGRESS');
+      onMissionStarted?.(targetId);
     } catch (err: any) {
       setActionError(err.message || 'No se pudo iniciar la misión.');
+      // Si falla, mostramos el error en la UI y la misión no queda silenciosamente en LISTA
     } finally {
       setIsActionLoading(false);
     }
@@ -938,7 +1085,7 @@ export default function IndustrialDiscoveryModal({
         {step === 'BUILDER' && (
           <div className="idm-body">
             <div className="idm-title-block">
-              <span className="idm-badge-primary">MISIÓN DE ADQUISICIÓN V1</span>
+              <span className="idm-badge-primary">MISIÓN DE ADQUISICIÓN V2</span>
               <h2>Ampliar Base Industrial</h2>
               <p className="idm-subtitle">
                 Descubre hasta <strong>100.000 nuevos registros</strong> verificados y calificados constitucionalmente,
@@ -1315,7 +1462,7 @@ export default function IndustrialDiscoveryModal({
             <div className="idm-field">
               <div className="idm-label-row">
                 <label className="idm-label">Cantidad objetivo de nuevos registros certificados</label>
-                <span className="idm-badge-limit">Máximo V1: 100.000</span>
+                <span className="idm-badge-limit">Máximo V2: 100.000</span>
               </div>
               <div className="idm-presets-row">
                 {QUANTITY_PRESETS.map(qty => (
@@ -1613,80 +1760,86 @@ export default function IndustrialDiscoveryModal({
 
             {/* Controls */}
             <div className="idm-actions">
-              {activeMission.status === 'RUNNING' && (
-                <>
-                  <button
-                    type="button"
-                    className="idm-btn-secondary"
-                    onClick={handlePauseMission}
-                    disabled={isActionLoading}
-                  >
-                    ⏸ Pausar misión
-                  </button>
-                  <button
-                    type="button"
-                    className="idm-btn-danger"
-                    onClick={handleCancelMission}
-                    disabled={isActionLoading}
-                  >
-                    ✕ Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="idm-btn-secondary"
-                    onClick={onClose}
-                  >
-                    Minimizar (sigue en segundo plano)
-                  </button>
-                </>
-              )}
+              {(() => {
+                const isActive = ['STARTING', 'RUNNING', 'WAITING_NEXT_GENERATION'].includes(activeMission.status);
+                const hasPhysicalActivity = (activeMission.scanned_count || activeMission.discovered_count || 0) > 0;
+                const isPauseAvailable = ['RUNNING', 'WAITING_NEXT_GENERATION'].includes(activeMission.status) || (activeMission.status === 'STARTING' && hasPhysicalActivity);
+                const isCancelAvailable = isActive;
+                const availableResults = (activeMission.duplicate_existing_count || 0) + (activeMission.certified_new_searchable || activeMission.qualified_count || 0);
+                const isViewResultsAvailable = availableResults > 0;
+                
+                return (
+                  <>
+                    {isPauseAvailable && (
+                      <button
+                        type="button"
+                        className="idm-btn-secondary"
+                        onClick={handlePauseMission}
+                        disabled={isActionLoading}
+                      >
+                        ⏸ Pausar misión
+                      </button>
+                    )}
 
-              {activeMission.status === 'PAUSED' && (
-                <>
-                  <button
-                    type="button"
-                    className="idm-btn-primary"
-                    onClick={handleResumeMission}
-                    disabled={isActionLoading}
-                  >
-                    ▶ Reanudar misión
-                  </button>
-                  <button
-                    type="button"
-                    className="idm-btn-danger"
-                    onClick={handleCancelMission}
-                    disabled={isActionLoading}
-                  >
-                    ✕ Cancelar
-                  </button>
-                </>
-              )}
+                    {activeMission.status === 'PAUSED' && (
+                      <button
+                        type="button"
+                        className="idm-btn-primary"
+                        onClick={handleResumeMission}
+                        disabled={isActionLoading}
+                      >
+                        ▶ Reanudar misión
+                      </button>
+                    )}
 
-              {isTerminalStatus(activeMission.status, activeMission.terminal_reason) && (
-                <>
-                  <button
-                    type="button"
-                    className="idm-btn-secondary"
-                    onClick={() => {
-                      activeMissionIdRef.current = null;
-                      setActiveMission(null);
-                      setStep('BUILDER');
-                    }}
-                  >
-                    Nueva misión
-                  </button>
-                  {activeMission.certified_new_searchable > 0 && (
-                    <button
-                      type="button"
-                      id="idm-btn-ver-resultados"
-                      className="idm-btn-primary idm-btn-results"
-                      onClick={handleViewResults}
-                    >
-                      🔍 Ver {formatNumber(activeMission.certified_new_searchable)} nuevos resultados
-                    </button>
-                  )}
-                </>
-              )}
+                    {(isCancelAvailable || activeMission.status === 'PAUSED') && (
+                      <button
+                        type="button"
+                        className="idm-btn-danger"
+                        onClick={handleCancelMission}
+                        disabled={isActionLoading}
+                      >
+                        ✕ Cancelar
+                      </button>
+                    )}
+
+                    {isTerminalStatus(activeMission.status, activeMission.terminal_reason) && (
+                      <button
+                        type="button"
+                        className="idm-btn-secondary"
+                        onClick={() => {
+                          activeMissionIdRef.current = null;
+                          setActiveMission(null);
+                          setStep('BUILDER');
+                        }}
+                      >
+                        Nueva misión
+                      </button>
+                    )}
+
+                    {isActive && (
+                      <button
+                        type="button"
+                        className="idm-btn-secondary"
+                        onClick={onClose}
+                      >
+                        Minimizar (sigue en segundo plano)
+                      </button>
+                    )}
+
+                    {isViewResultsAvailable && (
+                      <button
+                        type="button"
+                        id="idm-btn-ver-resultados"
+                        className="idm-btn-primary idm-btn-results"
+                        onClick={handleViewResults}
+                      >
+                        🔍 Ver {formatNumber(availableResults)} resultados actuales
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
           </div>

@@ -16,6 +16,16 @@ import { resolveEntityV2, CANONICAL_ENTITIES_V2, resolveVenueFromEntityGraph, ch
 import { lookupCanonicalWork } from './canonicalWorksCatalog';
 import { resolveTypos } from './typoResolver';
 
+
+export type WorkCandidate = {
+  text: string;
+  sourceSpan: string;
+  evidenceType: "QUOTED_SPAN" | "ALBUM_CUE" | "SONG_CUE" | "SINGLE_CUE" | "FILM_CUE" | "SHOW_CUE" | "VIDEO_FOR_CUE" | "EXACT_KNOWN_WORK";
+  inferredWorkType: "SONG" | "ALBUM" | "FILM" | "TV_SHOW" | "UNKNOWN";
+  contextualRisk: number;
+  confidence: number;
+};
+
 export interface ExactWorkDetection {
   baseIntent: 'GENERIC' | 'ENTITY' | 'ENTITY_OBJECT';
   isExactWork: boolean;
@@ -79,6 +89,11 @@ export const TOPIC_PATTERNS: Array<{
     category: 'DOCUMENTAL',
     regex: /\b(documental(es)?|biografia|biografía|vida\s+y\s+obra)\b/i,
     label: 'documental'
+  },
+  {
+    category: 'MAKING_OF' as any,
+    regex: /\b(making\s*of|como\s*se\s*hizo|cómo\s*se\s*hizo|detras\s*de\s*escena|detrás\s*de\s*escena|behind\s*the\s*scenes)\b/i,
+    label: 'making of'
   }
 ];
 
@@ -127,6 +142,28 @@ function toTitleCase(str: string): string {
   return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase());
 }
 
+
+export function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&#0?39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#x27;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#160;/g, ' ')
+    .replace(/&nbsp;/g, ' ');
+}
+
+export function normalizeSemanticInput(raw: string): string {
+  let s = decodeHtmlEntities(raw);
+  s = s.replace(/[\u2018\u2019\u201A\u201B\u2032\u2035]/g, "'");
+  s = s.replace(/[\u201C\u201D\u201E\u201F\u2033\u2036]/g, '"');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
 export function unaccentAndNormalize(str: string): string {
   return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
@@ -136,7 +173,7 @@ export class ExactWorkSearchGate {
    * Detecta si la consulta del usuario apunta a una entidad, obra exacta o entidad + título residual
    */
   detectExactWork(query: string, intentData?: QueryUnderstanding): ExactWorkDetection {
-    let rawTrimmed = (query || '').trim();
+    let rawTrimmed = normalizeSemanticInput(query || '');
     
     // -- TYPO RESOLUTION (Fuzzy Candidate Resolution) --
     // Solo aplica correcciones controladas sobre diccionarios existentes.
@@ -357,20 +394,55 @@ export class ExactWorkSearchGate {
         };
       }
 
-      // Caso C: Obra no catalogada formalmente en Works Graph -> EXACT_ENTITY_TITLE
+      
+      // Caso C: Fallback residual
+      // V2-W1: Bloquear fabricación residual si hay negative cues o si no hay comillas/cues explícitas.
+      const negativeCues = ['plays classics', 'reacts to', 'interview with', 'watch', 'trailer', 'bonus performance', 'cover story', 'tour', 'future', 'legacy', 'controversy', 'talks about', 'live at', 'live in'];
+      const hasNegativeCue = negativeCues.some(cue => cleanResidual.toLowerCase().includes(cue));
+      
+      const quotedSpanMatch = rawTrimmed.match(/['"“‘](.*?)['"”’]/);
+      let workCand: WorkCandidate | undefined = undefined;
+      
+      if (!hasNegativeCue && quotedSpanMatch && quotedSpanMatch[1].length > 2) {
+          workCand = {
+              text: quotedSpanMatch[1],
+              sourceSpan: quotedSpanMatch[0],
+              evidenceType: 'QUOTED_SPAN',
+              inferredWorkType: 'UNKNOWN',
+              contextualRisk: 0.2,
+              confidence: 0.85
+          };
+      }
+      
+      if (workCand) {
+          return {
+            baseIntent: 'ENTITY_OBJECT',
+            isExactWork: false,
+            isExactEntityTitle: true,
+            detectionType: 'EXACT_ENTITY_TITLE',
+            canonicalEntity: entityName,
+            residualTitle: workCand.text,
+            constraints: constraints.length > 0 ? constraints : undefined,
+            venue: detectedVenue,
+            entityConfidence,
+            workConfidence: workCand.confidence,
+            workTokens: substantiveTokens,
+            corrections: typoCorrection ? typoCorrection.corrections : undefined
+          };
+      }
+      
       return {
-        baseIntent: 'ENTITY_OBJECT',
-        isExactWork: false,
-        isExactEntityTitle: true,
-        detectionType: 'EXACT_ENTITY_TITLE',
-        canonicalEntity: entityName,
-        residualTitle: toTitleCase(cleanResidual),
-        constraints: constraints.length > 0 ? constraints : undefined,
-        venue: detectedVenue,
-        entityConfidence,
-        workConfidence: 0.85,
-        workTokens: substantiveTokens,
-        corrections: typoCorrection ? typoCorrection.corrections : undefined
+          baseIntent: 'ENTITY',
+          isExactWork: false,
+          isExactEntityTitle: false,
+          detectionType: 'EXACT_ENTITY',
+          canonicalEntity: entityName,
+          constraints: constraints.length > 0 ? constraints : undefined,
+          venue: detectedVenue,
+          entityConfidence,
+          workConfidence: 0.0,
+          workTokens: [],
+          corrections: typoCorrection ? typoCorrection.corrections : undefined
       };
     }
 
@@ -1110,7 +1182,7 @@ export class ExactWorkSearchGate {
       const isConstraintOk = constraintFidelity >= 75 && isVenueOk;
 
       const isExactEntityWork = (
-        workDetection.detectionType === 'EXACT_ENTITY_WORK' &&
+        (workDetection.detectionType === 'EXACT_ENTITY_WORK' || c.semanticMatch?.isExactEntityWork) &&
         passesRole &&
         isArtistOk &&
         isWorkOk &&
@@ -1118,7 +1190,7 @@ export class ExactWorkSearchGate {
       );
 
       const isExactEntityTitle = (
-        workDetection.detectionType === 'EXACT_ENTITY_TITLE' &&
+        (workDetection.detectionType === 'EXACT_ENTITY_TITLE' || c.semanticMatch?.isExactEntityTitle) &&
         passesRole &&
         isArtistOk &&
         isTitleOk &&
@@ -1442,7 +1514,7 @@ export class ExactWorkSearchGate {
       }
 
       if (gates.entity.requireExplicitEntityVisibleMatch) {
-        if (!candidate.semanticMatch?.explicitEntityTitleMatch) {
+        if (!candidate.semanticMatch?.explicitEntityTitleMatch && !candidate.semanticMatch?.isExactEntityWork) {
           scores.entityIdentity = 0; // Fail the gate
           return { passed: false, reason: 'wrongEntity', scores }; // Explicit entity title match strictly required
         }
@@ -1455,6 +1527,12 @@ export class ExactWorkSearchGate {
         objectScore = candidate.semanticMatch?.workFidelity || candidate.workFidelityScore || 0;
       } else {
         objectScore = candidate.semanticMatch?.titleFidelity || candidate.titleFidelityScore || 0;
+        if (objectScore < gates.object.minFidelity) {
+          const wFid = candidate.semanticMatch?.workFidelity || candidate.workFidelityScore || 0;
+          if (wFid >= gates.object.minFidelity && (candidate.semanticMatch?.isExactEntityWork || candidate.isExactEntityWork)) {
+            objectScore = wFid;
+          }
+        }
       }
       scores.object = objectScore;
 

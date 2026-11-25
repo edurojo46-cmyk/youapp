@@ -12,6 +12,8 @@ interface SignalTimelineProps {
   onRigorClick?: () => void;
   entityName?: string;
   onBlockContextClick?: (block: ScheduleBlock) => void;
+  onSelectBlock?: (blockId: string) => void;
+  onRemoveBlock?: (blockId: string) => void;
 }
 
 export function SignalTimeline({
@@ -22,7 +24,9 @@ export function SignalTimeline({
   onMapClick,
   onRigorClick,
   entityName = 'Tema',
-  onBlockContextClick
+  onBlockContextClick,
+  onSelectBlock,
+  onRemoveBlock
 }: SignalTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -158,6 +162,8 @@ export function SignalTimeline({
                 isPast={index < currentIndex}
                 entityName={entityName}
                 onContextClick={() => onBlockContextClick?.(block)}
+                onSelectClick={onSelectBlock ? () => onSelectBlock(block.id) : undefined}
+                onRemoveClick={onRemoveBlock ? () => onRemoveBlock(block.id) : undefined}
               />
             </div>
           ))}

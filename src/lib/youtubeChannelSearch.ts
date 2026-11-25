@@ -52,9 +52,7 @@ export interface ChannelPlayableInfo {
 }
 
 // ─── 1. POOL DE API KEYS & ROTACIÓN AUTOMÁTICA ──────────────────────────────────
-const DEFAULT_KEY_POOL = [
-  'AIzaSyBMhLs1XEBfInBFB7vQ3DjMZfP-2OCM1xw'
-];
+const DEFAULT_KEY_POOL: string[] = [];
 
 const exhaustedKeys = new Map<string, number>();
 
@@ -137,6 +135,55 @@ const normQuery = (s: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+
+// ─── 3. TIER EDGE FUNCTION PROPIA EN SUPABASE (0 CORS, 0 CUOTA) ───────────────
+let edgeSearchUnavailable = false;
+
+async function fetchYouTubeViaOwnEdge(query: string, limit: number): Promise<YTVideoResult[]> {
+  if (edgeSearchUnavailable) return [];
+  const baseUrl = String(import.meta.env.VITE_SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  const anonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  if (!baseUrl || !anonKey) return [];
+
+  try {
+    const res = await fetch(`${baseUrl}/functions/v1/youtube-search`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`
+      },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(4500)
+    });
+    if (res.status === 404) {
+      edgeSearchUnavailable = true;
+      return [];
+    }
+    if (!res.ok) return [];
+    const data = await res.json();
+    const videos = Array.isArray(data?.videos) ? data.videos : [];
+    return videos
+      .slice(0, limit)
+      .map((v: any): YTVideoResult => ({
+        videoId: String(v?.id || v?.videoId || '').trim(),
+        title: String(v?.title || 'Video de YouTube'),
+        description: String(v?.description || ''),
+        thumbnail: String(v?.thumbnail || `https://i.ytimg.com/vi/${v?.id || ''}/hqdefault.jpg`),
+        channelTitle: String(v?.channelTitle || 'YouTube'),
+        channelId: String(v?.channelId || ''),
+        publishedAt: String(v?.publishedText || ''),
+        videoUrl: `https://www.youtube.com/embed/${v?.id || v?.videoId || ''}`,
+        durationText: String(v?.durationText || ''),
+        viewsText: String(v?.viewsText || ''),
+        isLive: Boolean(v?.isLive),
+        isVerified: Boolean(v?.isVerified)
+      }))
+      .filter((v: YTVideoResult) => /^[A-Za-z0-9_-]{11}$/.test(v.videoId));
+  } catch {
+    return [];
+  }
+}
 
 // ─── 3. BASE DE CONOCIMIENTO MUSICAL & CULTURAL (ARGENTINA & MUNDO) ───────────
 const CURATED_KNOWLEDGE_TOPICS: Array<{
@@ -697,12 +744,14 @@ export async function searchYouTubeVideos(
       if (videoRenderers.length > 0) {
         const list = videoRenderers.slice(0, limit).map((vr: any) => ({
           videoId: vr.videoId,
-          title: vr.title?.runs?.[0]?.text || vr.title?.simpleText || 'Video',
-          description: vr.detailedMetadataSnippets?.[0]?.snippetText?.runs?.[0]?.text || '',
+          title: vr.title?.runs?.map((r: any) => r.text).join('') || vr.title?.simpleText || 'Video',
+          description: vr.detailedMetadataSnippets?.[0]?.snippetText?.runs?.map((r: any) => r.text).join('') || '',
           thumbnail: vr.thumbnail?.thumbnails?.slice(-1)[0]?.url || '',
           channelTitle: vr.ownerText?.runs?.[0]?.text || vr.shortBylineText?.runs?.[0]?.text || '',
           channelId: vr.ownerText?.runs?.[0]?.navigationEndpoint?.browseEndpoint?.browseId || '',
           publishedAt: vr.publishedTimeText?.simpleText || '',
+          durationText: vr.lengthText?.simpleText || vr.lengthText?.runs?.map((r: any) => r.text).join('') || '',
+          viewsText: vr.viewCountText?.simpleText || vr.shortViewCountText?.simpleText || '',
           videoUrl: `https://www.youtube.com/embed/${vr.videoId}`,
           isLive: Boolean(vr.badges?.some((b: any) => b.metadataBadgeRenderer?.label?.toLowerCase().includes('live') || b.metadataBadgeRenderer?.label?.toLowerCase().includes('vivo')))
         })).filter((v: YTVideoResult) => Boolean(v.videoId));
@@ -712,6 +761,15 @@ export async function searchYouTubeVideos(
       }
     } catch {}
   }
+
+  // 3b. TIER Edge Function Propia en Supabase (Producción sin proxies públicos)
+  try {
+    const edgeVideos = await fetchYouTubeViaOwnEdge(q, limit);
+    if (edgeVideos.length > 0) {
+      saveToCache(cacheKey, edgeVideos, 7200);
+      return edgeVideos;
+    }
+  } catch {}
 
   // 4. TIER CORS Proxy Scraper (Producción GitHub Pages)
   try {

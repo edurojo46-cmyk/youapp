@@ -29,7 +29,7 @@ export default function AiSummary() {
   const [aiData, setAiData] = useState<AiData | null>(null);
   const [summaryMode, setSummaryMode] = useState<'short'|'medium'|'detailed'>('medium');
   const [error, setError] = useState('');
-  const [playerActive, setPlayerActive] = useState(false);
+  const [playerActive, setPlayerActive] = useState(true);
   const [seekTime, setSeekTime] = useState(0);
 
 
@@ -46,22 +46,23 @@ export default function AiSummary() {
       // location.state may carry { title, description, thumbnail, author } from navigation.
       const navState = (location.state as any) || {};
 
-      let ytId = id || '';
+      const cleanParamId = (id || '').replace(/^(yt-|mood-|live-)/i, '');
+      let ytId = cleanParamId;
       let title = navState.title || '';
       let description = navState.description || '';
       let thumbnail = navState.thumbnail || '';
       let author = navState.author || '';
 
       // Detect if id is a Supabase UUID (36 chars with dashes) rather than a YouTube video ID
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id || '');
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanParamId);
 
       if (isUUID || !title) {
         // Build the right query: by UUID or by YouTube video ID in URL
         let query = supabase.from('youapp_index').select('id, title, description, thumbnail, url');
         if (isUUID) {
-          query = query.eq('id', id);
+          query = query.eq('id', cleanParamId);
         } else {
-          query = query.ilike('url', `%${id}%`);
+          query = query.ilike('url', `%${cleanParamId}%`);
         }
         const { data } = await query.limit(1).maybeSingle();
 
@@ -71,7 +72,7 @@ export default function AiSummary() {
           thumbnail = data.thumbnail || thumbnail;
 
           // Extract YouTube video ID from stored URL if we don't have it yet
-          if (isUUID || !ytId || ytId === id) {
+          if (isUUID || !ytId || ytId === cleanParamId) {
             const urlMatch = data.url?.match(/(?:embed\/|[?&]v=|youtu\.be\/)([^/?&]+)/);
             if (urlMatch) ytId = urlMatch[1];
           }
@@ -92,34 +93,28 @@ export default function AiSummary() {
         } catch { /* ignore */ }
       }
 
-      if (!title) title = navState.title || 'Video sin título';
-      if (!thumbnail) thumbnail = `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`;
+      if (!title) title = navState.title || 'Reproduciendo en YOUAPP TV';
+      if (!thumbnail) thumbnail = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
 
       setVideoData({ ytId, title, description, thumbnail, author });
+      setLoading(false);
 
-      // Guard: only call AI if we have a meaningful title
-      if (!title || title === 'Video sin título') {
-        setError('No se pudo obtener información del video para generar el resumen.');
-        return;
-      }
-
-      // Fetch AI analysis from edge function
-      const { data: aiResponse, error: aiError } = await supabase.functions.invoke('ai-gateway', {
-        body: { 
-          action: 'analyze_video', 
-          title, 
-          description: description || `Video de YouTube: ${title}` // always give context
+      // Fetch AI analysis from edge function (non-blocking for video playback)
+      try {
+        const { data: aiResponse, error: aiError } = await supabase.functions.invoke('ai-gateway', {
+          body: { 
+            action: 'analyze_video', 
+            title, 
+            description: description || `Video de YouTube: ${title}`
+          }
+        });
+        if (!aiError && aiResponse && !aiResponse.error) {
+          setAiData(aiResponse);
         }
-      });
-      
-      if (aiError) throw new Error(`Error de IA: ${aiError.message}`);
-      if (aiResponse?.error) throw new Error(`Error de IA: ${aiResponse.error}`);
-
-      setAiData(aiResponse);
+      } catch { /* non-blocking */ }
 
     } catch (err: any) {
       console.error(err);
-      setError(err.message);
     } finally {
       setLoading(false);
     }

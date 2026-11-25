@@ -1,20 +1,27 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { CustomSignal, ScheduleBlock } from './signalTypes';
-import { persistScheduleMutation, logSignalEvent } from './signalPersistence';
+import { persistSignal, persistScheduleMutation, logSignalEvent } from './signalPersistence';
 
 export interface SignalState {
   activeSignal: CustomSignal | null;
+  savedSignalsById: Record<string, CustomSignal>;
   currentBlockId: string | null;
   currentBlockIndex: number;
   persistStatus: 'local' | 'saving' | 'saved' | 'failed';
 
   // Actions
-  setSignal: (signal: CustomSignal) => void;
+  setSignal: (signal: CustomSignal, options?: { saveToOwn?: boolean }) => void;
+  removeSavedSignal: (signalId: string) => void;
+  mergeCloudSignals: (signals: CustomSignal[]) => void;
+  renameSignal: (newName: string) => void;
+  getSavedSignal: (signalId: string) => CustomSignal | null;
   setPersistStatus: (status: 'local' | 'saving' | 'saved' | 'failed') => void;
   next: () => void;
   previous: () => void;
   reorder: (fromIndex: number, toIndex: number) => void;
+  moveChannelGroup: (channelKey: string, direction: 'up' | 'down') => void;
+  removeChannelGroup: (channelKey: string) => void;
   remove: (blockId: string) => void;
   replace: (blockId: string, newBlock: ScheduleBlock) => void;
   insert: (block: ScheduleBlock, afterPosition: number) => void;
@@ -51,18 +58,94 @@ export const useSignalStore = create<SignalState>()(
   persist(
     (set, get) => ({
       activeSignal: null,
+      savedSignalsById: {},
       currentBlockId: null,
       currentBlockIndex: 0,
       persistStatus: 'local',
 
       setPersistStatus: (status) => set({ persistStatus: status }),
 
-      setSignal: (signal) => {
-        set({
+      getSavedSignal: (signalId) => {
+        if (!signalId) return null;
+        const map = get().savedSignalsById || {};
+        if (map[signalId]) return map[signalId];
+        return (
+          Object.values(map).find(
+            (s) => s?.id === signalId || (s as any)?.clientSignalId === signalId
+          ) || null
+        );
+      },
+
+      setSignal: (signal, options) => {
+        const shouldSave = options?.saveToOwn !== false;
+        set((state) => ({
           activeSignal: signal,
+          savedSignalsById: shouldSave
+            ? {
+                ...(state.savedSignalsById || {}),
+                [signal.id]: signal
+              }
+            : state.savedSignalsById || {},
           currentBlockId: signal.schedule[0]?.id || null,
           currentBlockIndex: 0,
+        }));
+      },
+
+      removeSavedSignal: (signalId) => {
+        if (!signalId) return;
+        set((state) => {
+          const nextSaved = { ...(state.savedSignalsById || {}) };
+          delete nextSaved[signalId];
+          return { savedSignalsById: nextSaved };
         });
+      },
+
+      mergeCloudSignals: (signals: CustomSignal[]) => {
+        if (!signals?.length) return;
+        set((state) => {
+          const nextSaved = { ...(state.savedSignalsById || {}) };
+          for (const cloudSig of signals) {
+            const localSig = nextSaved[cloudSig.id];
+            const cloudTs = Date.parse(cloudSig.updated_at || '') || 0;
+            const localTs = Date.parse(localSig?.updated_at || '') || 0;
+            if (!localSig || cloudTs > localTs) {
+              nextSaved[cloudSig.id] = cloudSig;
+            }
+          }
+          const activeId = state.activeSignal?.id;
+          const updatedActive =
+            activeId && nextSaved[activeId] && nextSaved[activeId] !== state.activeSignal
+              ? nextSaved[activeId]
+              : state.activeSignal;
+          return {
+            savedSignalsById: nextSaved,
+            activeSignal: updatedActive,
+            persistStatus: 'saved'
+          };
+        });
+      },
+
+      renameSignal: (newName: string) => {
+        const cleaned = newName.trim();
+        if (!cleaned) return;
+        const { activeSignal } = get();
+        if (!activeSignal) return;
+        const updatedSignal: CustomSignal = {
+          ...activeSignal,
+          name: cleaned,
+          updated_at: new Date().toISOString()
+        };
+        set((state) => ({
+          activeSignal: updatedSignal,
+          savedSignalsById: {
+            ...(state.savedSignalsById || {}),
+            [updatedSignal.id]: updatedSignal
+          },
+          persistStatus: 'saving'
+        }));
+        persistSignal(updatedSignal)
+          .then((ok) => set({ persistStatus: ok ? 'saved' : 'local' }))
+          .catch(() => set({ persistStatus: 'local' }));
       },
 
       next: () => {
@@ -123,15 +206,108 @@ export const useSignalStore = create<SignalState>()(
           }
         }
 
-        set({
-          activeSignal: { ...activeSignal, schedule: newSchedule },
+        const updatedSignal = { ...activeSignal, schedule: newSchedule, updated_at: new Date().toISOString() };
+        set((state) => ({
+          activeSignal: updatedSignal,
+          savedSignalsById: {
+            ...(state.savedSignalsById || {}),
+            [updatedSignal.id]: updatedSignal
+          },
           currentBlockIndex: newIndex,
           currentBlockId: newBlockId
-        });
+        }));
 
         // Optimistic persistence
         persistScheduleMutation(activeSignal.id, newSchedule.map(b => b.id));
         logSignalEvent(activeSignal.id, null, 'block_reordered', { fromIndex, toIndex });
+      },
+
+      moveChannelGroup: (channelKey: string, direction: 'up' | 'down') => {
+        const { activeSignal, currentBlockId } = get();
+        if (!activeSignal) return;
+        const normKey = channelKey.trim().toLowerCase();
+
+        const groups: { key: string; blocks: ScheduleBlock[] }[] = [];
+        const byKey = new Map<string, { key: string; blocks: ScheduleBlock[] }>();
+        for (const blk of activeSignal.schedule) {
+          const chName =
+            blk.contentItem.channelTitle ||
+            (blk.contentItem as any).channelName ||
+            activeSignal.name ||
+            'canal original';
+          const k = chName.trim().toLowerCase();
+          let g = byKey.get(k);
+          if (!g) {
+            g = { key: k, blocks: [] };
+            byKey.set(k, g);
+            groups.push(g);
+          }
+          g.blocks.push(blk);
+        }
+
+        const idx = groups.findIndex((g) => g.key === normKey);
+        if (idx === -1) return;
+        const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (targetIdx < 0 || targetIdx >= groups.length) return;
+
+        const [moved] = groups.splice(idx, 1);
+        groups.splice(targetIdx, 0, moved);
+
+        const flat = groups.flatMap((g) => g.blocks);
+        const newSchedule = recalculateOffsets(flat);
+        let newIndex = currentBlockId ? newSchedule.findIndex((b) => b.id === currentBlockId) : 0;
+        let newBlockId = currentBlockId;
+        if (newIndex === -1) {
+          newIndex = 0;
+          newBlockId = newSchedule[0]?.id || null;
+        }
+
+        const updatedSignal = { ...activeSignal, schedule: newSchedule, updated_at: new Date().toISOString() };
+        set((state) => ({
+          activeSignal: updatedSignal,
+          savedSignalsById: {
+            ...(state.savedSignalsById || {}),
+            [updatedSignal.id]: updatedSignal
+          },
+          currentBlockIndex: newIndex,
+          currentBlockId: newBlockId
+        }));
+        persistScheduleMutation(activeSignal.id, newSchedule.map((b) => b.id));
+      },
+
+      removeChannelGroup: (channelKey: string) => {
+        const { activeSignal, currentBlockId } = get();
+        if (!activeSignal) return;
+        const normKey = channelKey.trim().toLowerCase();
+
+        const remaining = activeSignal.schedule.filter((blk) => {
+          const chName =
+            blk.contentItem.channelTitle ||
+            (blk.contentItem as any).channelName ||
+            activeSignal.name ||
+            'canal original';
+          return chName.trim().toLowerCase() !== normKey;
+        });
+
+        const newSchedule = recalculateOffsets(remaining);
+        let newIndex = currentBlockId ? newSchedule.findIndex((b) => b.id === currentBlockId) : 0;
+        let newBlockId = currentBlockId;
+        if (newIndex === -1) {
+          newIndex = 0;
+          newBlockId = newSchedule[0]?.id || null;
+        }
+
+        const updatedSignal = { ...activeSignal, schedule: newSchedule, updated_at: new Date().toISOString() };
+        set((state) => ({
+          activeSignal: updatedSignal,
+          savedSignalsById: {
+            ...(state.savedSignalsById || {}),
+            [updatedSignal.id]: updatedSignal
+          },
+          currentBlockIndex: Math.max(0, newIndex),
+          currentBlockId: newBlockId
+        }));
+        persistScheduleMutation(activeSignal.id, newSchedule.map((b) => b.id));
       },
 
       remove: (blockId: string) => {
@@ -153,11 +329,16 @@ export const useSignalStore = create<SignalState>()(
           newIndex = newSchedule.findIndex(b => b.id === currentBlockId);
         }
 
-        set({
-          activeSignal: { ...activeSignal, schedule: newSchedule },
+        const updatedSignal = { ...activeSignal, schedule: newSchedule, updated_at: new Date().toISOString() };
+        set((state) => ({
+          activeSignal: updatedSignal,
+          savedSignalsById: {
+            ...(state.savedSignalsById || {}),
+            [updatedSignal.id]: updatedSignal
+          },
           currentBlockIndex: Math.max(0, newIndex),
           currentBlockId: newBlockId
-        });
+        }));
 
         // Optimistic persistence
         persistScheduleMutation(activeSignal.id, newSchedule.map(b => b.id));
@@ -210,11 +391,16 @@ export const useSignalStore = create<SignalState>()(
           newBlockId = newSchedule[0]?.id || null;
         }
 
-        set({
-          activeSignal: { ...activeSignal, schedule: newSchedule },
+        const updatedSignal = { ...activeSignal, schedule: newSchedule, updated_at: new Date().toISOString() };
+        set((state) => ({
+          activeSignal: updatedSignal,
+          savedSignalsById: {
+            ...(state.savedSignalsById || {}),
+            [updatedSignal.id]: updatedSignal
+          },
           currentBlockIndex: newIndex,
           currentBlockId: newBlockId
-        });
+        }));
 
         // Optimistic persistence
         persistScheduleMutation(activeSignal.id, newSchedule.map(b => b.id));
@@ -223,7 +409,7 @@ export const useSignalStore = create<SignalState>()(
     }),
     {
       name: 'youapp_tv_signal_store',
-      storage: createJSONStorage(() => sessionStorage), // or localStorage
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

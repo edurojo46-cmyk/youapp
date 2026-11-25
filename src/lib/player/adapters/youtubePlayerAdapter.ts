@@ -1,4 +1,5 @@
 import type { PlayerAdapter, PlaybackItem, PlaybackCapabilities, PlayerEventListener, PlayerEvent } from '../playerTypes';
+import { isUnplayableYouTubeError, reportUnplayableYouTubeVideo } from '../videoResilience';
 
 declare global {
   interface Window {
@@ -157,6 +158,9 @@ export class YouTubePlayerAdapter implements PlayerAdapter {
           onError: (e: any) => {
             if (this.isDestroyed || currentGen !== this.generation) return;
             console.error(`[YT] ERROR (gen=${currentGen}) -> code: ${e.data}, expectedVideoId: "${this.videoId}"`);
+            if (isUnplayableYouTubeError(e?.data) && this.videoId) {
+              void reportUnplayableYouTubeVideo(this.videoId, e.data, 'YouAppPlayer');
+            }
             this.emit({ type: 'error', payload: e.data });
           }
         }

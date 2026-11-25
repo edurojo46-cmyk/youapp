@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Search, Compass, Bookmark, Radio, Settings, ChevronDown, Layers } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { YouAppOfficialLogo } from '../ui/YouAppOfficialLogo';
 
 export const StreamingSidebar: React.FC = () => {
   const navigate = useNavigate();
@@ -13,9 +14,8 @@ export const StreamingSidebar: React.FC = () => {
   return (
     <aside className="mp-sidebar-left">
       <div>
-        <div className="mp-logo" onClick={() => navigate('/mi-plataforma')} style={{ cursor: 'pointer' }}>
-          <span>YOU</span>
-          <span className="mp-logo-badge">APP</span>
+        <div className="mp-logo" style={{ cursor: 'pointer' }}>
+          <YouAppOfficialLogo theme="light" size="sm" />
         </div>
 
         <nav>
@@ -67,11 +67,11 @@ export const StreamingSidebar: React.FC = () => {
             </li>
             <li>
               <button
-                className={`mp-nav-item ${isActive('/programartv') ? 'active' : ''}`}
-                onClick={() => navigate('/programartv')}
+                className={`mp-nav-item ${isActive('/mitv') || isActive('/programartv') ? 'active' : ''}`}
+                onClick={() => navigate('/mitv')}
               >
                 <Radio size={18} />
-                <span>Señal</span>
+                <span>MiTV</span>
               </button>
             </li>
             <li>

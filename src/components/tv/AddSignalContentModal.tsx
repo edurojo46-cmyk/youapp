@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { X, Search, Plus, Sparkles, Video, Link as LinkIcon, Check, Film, Tv } from 'lucide-react';
+import { X, Search, Plus, Sparkles, Video, Link as LinkIcon, Check, Film } from 'lucide-react';
 import type { ScheduleBlock } from '../../lib/tv/signalTypes';
 import { supabase } from '../../lib/supabase';
 import { extractYouTubeId } from '../../lib/search/publishers/publisherVideoExtractor';
+import { extractDailymotionVideoId } from '../player/DailymotionOfficialPlayer';
+import { parseUniversalUrl } from '../../lib/universalChannels';
+import { CURATED_SIGNALS_PILOT } from '../../lib/tv/curatedSignalsCatalog';
 
 interface AddSignalContentModalProps {
   isOpen: boolean;
@@ -11,46 +14,268 @@ interface AddSignalContentModalProps {
   existingCount: number;
 }
 
+export async function resolveUrlToScheduleBlock(
+  rawInput: string,
+  existingCount: number,
+  customTitle?: string
+): Promise<{ block: ScheduleBlock; kind: 'video' | 'channel' }> {
+  const cleanUrl = rawInput.trim();
+  const ytId = extractYouTubeId(cleanUrl);
+
+  // 1. Video directo de YouTube (watch, youtu.be, shorts, embed o ID de 11 chars)
+  if (ytId) {
+    let title = customTitle?.trim() || '';
+    let channelName = 'Canal de YouTube';
+    try {
+      const controller = new AbortController();
+      const t = window.setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent(
+          `https://www.youtube.com/watch?v=${ytId}`
+        )}&format=json`,
+        { signal: controller.signal }
+      );
+      window.clearTimeout(t);
+      if (res.ok) {
+        const meta = await res.json();
+        if (!title && meta?.title) title = String(meta.title);
+        if (meta?.author_name) channelName = String(meta.author_name);
+      }
+    } catch {
+      // Fallback silencioso si falla red/oEmbed
+    }
+
+    const block: ScheduleBlock = {
+      id: `block-user-vid-${Date.now()}`,
+      position: existingCount,
+      startOffsetSec: existingCount * 600,
+      durationSec: 600,
+      topic: 'Video agregado por URL',
+      role: 'deep_dive',
+      contentItem: {
+        id: ytId,
+        providerId: ytId,
+        type: 'video',
+        provider: 'youtube',
+        title: title || `Video de YouTube (${ytId})`,
+        thumbnailUrl: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+        thumbnail: `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+        videoUrl: `https://www.youtube.com/watch?v=${ytId}`,
+        channelName,
+        channelTitle: channelName,
+        channelId: `yt-${ytId}`,
+        isLive: false,
+        isVerified: true
+      } as any
+    };
+    return { block, kind: 'video' };
+  }
+
+  // 1b. Video oficial de Dailymotion (dailymotion.com/video/<id>, dai.ly/<id>, geo.dailymotion.com)
+  const dmId = extractDailymotionVideoId(cleanUrl);
+  if (dmId) {
+    const watchUrl = `https://www.dailymotion.com/video/${dmId}`;
+    let title = customTitle?.trim() || '';
+    let channelName = 'Dailymotion';
+    let thumbnail = `https://www.dailymotion.com/thumbnail/video/${dmId}`;
+    try {
+      const controller = new AbortController();
+      const t = window.setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(
+        `https://www.dailymotion.com/services/oembed?url=${encodeURIComponent(watchUrl)}`,
+        { signal: controller.signal }
+      );
+      window.clearTimeout(t);
+      if (res.ok) {
+        const meta = await res.json();
+        if (!title && meta?.title) title = String(meta.title);
+        if (meta?.author_name) channelName = String(meta.author_name);
+        if (meta?.thumbnail_url) thumbnail = String(meta.thumbnail_url);
+      }
+    } catch {
+      // Fallback silencioso
+    }
+
+    const block: ScheduleBlock = {
+      id: `block-user-dm-${Date.now()}`,
+      position: existingCount,
+      startOffsetSec: existingCount * 600,
+      durationSec: 600,
+      topic: 'Video de Dailymotion',
+      role: 'deep_dive',
+      contentItem: {
+        id: dmId,
+        providerId: dmId,
+        type: 'video',
+        provider: 'dailymotion',
+        title: title || `Video de Dailymotion (${dmId})`,
+        thumbnailUrl: thumbnail,
+        thumbnail,
+        videoUrl: watchUrl,
+        originUrl: watchUrl,
+        channelName,
+        channelTitle: channelName,
+        channelId: `dm-${dmId}`,
+        isLive: false,
+        isVerified: true
+      } as any
+    };
+    return { block, kind: 'video' };
+  }
+
+  // 2. Coincidencia con canales reales curados en el piloto (@handle o URL de canal)
+  const lower = cleanUrl.toLowerCase();
+  for (const sig of CURATED_SIGNALS_PILOT) {
+    const ch = sig.channels.find(
+      (c) =>
+        lower.includes(c.originUrl.toLowerCase().replace(/^https?:\/\/(www\.)?/, '')) ||
+        lower.includes(c.channelName.toLowerCase())
+    );
+    if (ch) {
+      const block: ScheduleBlock = {
+        id: `block-user-ch-${Date.now()}`,
+        position: existingCount,
+        startOffsetSec: existingCount * 600,
+        durationSec: ch.durationSec,
+        topic: `Canal agregado · ${sig.tags[0]}`,
+        role: 'deep_dive',
+        contentItem: {
+          id: ch.videoId,
+          providerId: ch.videoId,
+          type: 'video',
+          provider: 'youtube',
+          title: customTitle?.trim() || ch.videoTitle,
+          thumbnailUrl: `https://i.ytimg.com/vi/${ch.videoId}/hqdefault.jpg`,
+          thumbnail: `https://i.ytimg.com/vi/${ch.videoId}/hqdefault.jpg`,
+          videoUrl: `https://www.youtube.com/watch?v=${ch.videoId}`,
+          channelName: ch.channelName,
+          channelTitle: ch.channelName,
+          channelId: ch.id,
+          originUrl: ch.originUrl,
+          isLive: false,
+          isVerified: true
+        } as any
+      };
+      return { block, kind: 'channel' };
+    }
+  }
+
+  // 3. Parser universal multi-plataforma (Canales @handle, Twitch, HLS .m3u8, MP4, TikTok, Instagram)
+  const parsed = parseUniversalUrl(cleanUrl);
+  if (parsed) {
+    const isChannel =
+      Boolean(parsed.channelId) ||
+      parsed.provider === 'twitch' ||
+      parsed.provider === 'hls' ||
+      /@|youtube\.com\/(channel|c|user)\//i.test(cleanUrl);
+    const providerId = parsed.videoId || parsed.channelId || parsed.id;
+    const block: ScheduleBlock = {
+      id: `block-user-uni-${Date.now()}`,
+      position: existingCount,
+      startOffsetSec: existingCount * 600,
+      durationSec: parsed.durationSeconds || 600,
+      topic: isChannel ? 'Canal agregado por URL' : 'Contenido agregado por URL',
+      role: 'deep_dive',
+      contentItem: {
+        id: providerId,
+        providerId,
+        type: 'video',
+        provider: parsed.provider,
+        title: customTitle?.trim() || parsed.currentVideoTitle || parsed.name,
+        thumbnailUrl: parsed.thumbnail || 'https://i.ytimg.com/vi/0cjWa3Eizqw/hqdefault.jpg',
+        thumbnail: parsed.thumbnail || 'https://i.ytimg.com/vi/0cjWa3Eizqw/hqdefault.jpg',
+        videoUrl: parsed.videoUrl,
+        channelName: parsed.name,
+        channelTitle: parsed.name,
+        channelId: parsed.channelId || parsed.id,
+        channelAvatarUrl: parsed.avatarUrl && !parsed.avatarUrl.includes('unsplash.com') ? parsed.avatarUrl : undefined,
+        channelCoverUrl: parsed.thumbnail && !parsed.thumbnail.includes('unsplash.com') ? parsed.thumbnail : undefined,
+        originUrl: cleanUrl.startsWith('http') ? cleanUrl : `https://www.youtube.com/${cleanUrl.startsWith('@') ? cleanUrl : `@${cleanUrl}`}`,
+        isLive: Boolean(parsed.isLive),
+        isVerified: true
+      } as any
+    };
+    return { block, kind: isChannel ? 'channel' : 'video' };
+  }
+
+  // 4. Fallback seguro para cualquier URL directa de video o canal externo
+  const isDirectVideo = /\.(mp4|webm|m3u8)(\?|$)/i.test(cleanUrl);
+  const hostLabel = (() => {
+    try {
+      return new URL(cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`).hostname.replace(/^www\./, '');
+    } catch {
+      return 'Canal externo';
+    }
+  })();
+
+  const block: ScheduleBlock = {
+    id: `block-user-ext-${Date.now()}`,
+    position: existingCount,
+    startOffsetSec: existingCount * 600,
+    durationSec: 600,
+    topic: isDirectVideo ? 'Video externo' : 'Canal externo por URL',
+    role: 'deep_dive',
+    contentItem: {
+      id: `ext-${Date.now()}`,
+      providerId: cleanUrl,
+      type: 'video',
+      provider: isDirectVideo ? (cleanUrl.includes('.m3u8') ? 'hls' : 'direct') : 'youtube',
+      title: customTitle?.trim() || `Señal desde ${hostLabel}`,
+      thumbnailUrl: 'https://i.ytimg.com/vi/0cjWa3Eizqw/hqdefault.jpg',
+      thumbnail: 'https://i.ytimg.com/vi/0cjWa3Eizqw/hqdefault.jpg',
+      videoUrl: cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`,
+      channelName: hostLabel,
+      channelTitle: hostLabel,
+      channelId: `ext-${hostLabel}`,
+      originUrl: cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`,
+      isLive: false,
+      isVerified: true
+    } as any
+  };
+
+  return { block, kind: isDirectVideo ? 'video' : 'channel' };
+}
+
 const QUICK_SUGGESTIONS = [
   {
     id: 'sug-1',
-    title: 'La Renga - Balada Del Diablo y La Muerte (En Vivo)',
-    channelName: 'La Renga Oficial',
-    providerId: 'e499dZ5q3s8',
-    durationSec: 360,
-    thumbnailUrl: 'https://img.youtube.com/vi/e499dZ5q3s8/hqdefault.jpg',
-    videoUrl: 'https://www.youtube.com/watch?v=e499dZ5q3s8',
-    topic: 'Música & Rock'
-  },
-  {
-    id: 'sug-2',
-    title: 'Historia de Roma: De la República al Imperio',
-    channelName: 'Canal Encuentro',
-    providerId: 'EngW7tLk6R8',
-    durationSec: 2400,
-    thumbnailUrl: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=600',
-    videoUrl: 'https://www.youtube.com/watch?v=EngW7tLk6R8',
+    title: 'El Imperio Romano en 10 minutos',
+    channelName: 'Academia Play',
+    providerId: 'UF_yHrFP1Ls',
+    durationSec: 615,
+    thumbnailUrl: 'https://i.ytimg.com/vi/UF_yHrFP1Ls/hqdefault.jpg',
+    videoUrl: 'https://www.youtube.com/watch?v=UF_yHrFP1Ls',
     topic: 'Historia'
   },
   {
+    id: 'sug-2',
+    title: '¿Qué es la Rerum Novarum? · Historia social',
+    channelName: 'Justicia Social TV',
+    providerId: '0cjWa3Eizqw',
+    durationSec: 600,
+    thumbnailUrl: 'https://i.ytimg.com/vi/0cjWa3Eizqw/hqdefault.jpg',
+    videoUrl: 'https://www.youtube.com/watch?v=0cjWa3Eizqw',
+    topic: 'Documental'
+  },
+  {
     id: 'sug-3',
-    title: 'Discurso Histórico del 17 de Octubre - TV Pública',
-    channelName: 'TV Pública / AGN',
-    providerId: 'dQw4w9WgXcQ',
-    durationSec: 1200,
-    thumbnailUrl: 'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=600',
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-    topic: 'Archivo Histórico'
+    title: '¿Qué pasa si nos caemos en un agujero negro?',
+    channelName: 'Kurzgesagt en Español',
+    providerId: 'TFhRXnE2xck',
+    durationSec: 690,
+    thumbnailUrl: 'https://i.ytimg.com/vi/TFhRXnE2xck/hqdefault.jpg',
+    videoUrl: 'https://www.youtube.com/watch?v=TFhRXnE2xck',
+    topic: 'Ciencia'
   },
   {
     id: 'sug-4',
-    title: 'Cosmos: El Universo y la Vida Marina 4K',
-    channelName: 'Ciencia & Naturaleza',
-    providerId: 'r9PeYPHdpNo',
-    durationSec: 2940,
-    thumbnailUrl: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600',
-    videoUrl: 'https://www.youtube.com/watch?v=r9PeYPHdpNo',
-    topic: 'Naturaleza & 4K'
+    title: 'Este fue el primer partido internacional de la historia',
+    channelName: 'La Media Inglesa',
+    providerId: 'ooj-O2otF7I',
+    durationSec: 720,
+    thumbnailUrl: 'https://i.ytimg.com/vi/ooj-O2otF7I/hqdefault.jpg',
+    videoUrl: 'https://www.youtube.com/watch?v=ooj-O2otF7I',
+    topic: 'Fútbol'
   }
 ];
 
@@ -60,9 +285,10 @@ export function AddSignalContentModal({
   onAddBlock,
   existingCount
 }: AddSignalContentModalProps) {
-  const [activeTab, setActiveTab] = useState<'search' | 'url' | 'suggestions'>('suggestions');
+  const [activeTab, setActiveTab] = useState<'search' | 'url' | 'suggestions'>('url');
   const [urlInput, setUrlInput] = useState('');
   const [titleInput, setTitleInput] = useState('');
+  const [isResolvingUrl, setIsResolvingUrl] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -70,40 +296,21 @@ export function AddSignalContentModal({
 
   if (!isOpen) return null;
 
-  const handleAddFromUrl = (e: React.FormEvent) => {
+  const handleAddFromUrl = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUrl = urlInput.trim();
-    if (!cleanUrl) return;
+    if (!cleanUrl || isResolvingUrl) return;
 
-    const ytId = extractYouTubeId(cleanUrl) || cleanUrl;
-    const finalTitle = titleInput.trim() || `Video Agregado (${ytId})`;
-
-    const newBlock: ScheduleBlock = {
-      id: `block-user-${Date.now()}`,
-      position: existingCount,
-      startOffsetSec: existingCount * 600,
-      durationSec: 600,
-      topic: 'Personalizado',
-      role: 'deep_dive',
-      contentItem: {
-        id: ytId,
-        providerId: ytId,
-        type: 'video',
-        provider: 'youtube',
-        title: finalTitle,
-        thumbnailUrl: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
-        videoUrl: cleanUrl.startsWith('http') ? cleanUrl : `https://www.youtube.com/watch?v=${ytId}`,
-        channelName: 'Mi Canal',
-        channelId: 'user_channel',
-        isLive: false,
-        isVerified: true
-      }
-    };
-
-    onAddBlock(newBlock);
-    setUrlInput('');
-    setTitleInput('');
-    onClose();
+    setIsResolvingUrl(true);
+    try {
+      const { block } = await resolveUrlToScheduleBlock(cleanUrl, existingCount, titleInput);
+      onAddBlock(block);
+      setUrlInput('');
+      setTitleInput('');
+      onClose();
+    } finally {
+      setIsResolvingUrl(false);
+    }
   };
 
   const handleSearchAtlas = async (e: React.FormEvent) => {
@@ -203,16 +410,16 @@ export function AddSignalContentModal({
         {/* Tabs */}
         <div className="modal-tabs">
           <button 
+            className={`tab-btn ${activeTab === 'url' ? 'active' : ''}`}
+            onClick={() => setActiveTab('url')}
+          >
+            <LinkIcon size={16} /> Pegar URL (Video o Canal)
+          </button>
+          <button 
             className={`tab-btn ${activeTab === 'suggestions' ? 'active' : ''}`}
             onClick={() => setActiveTab('suggestions')}
           >
             <Sparkles size={16} /> Sugerencias Rápidas
-          </button>
-          <button 
-            className={`tab-btn ${activeTab === 'url' ? 'active' : ''}`}
-            onClick={() => setActiveTab('url')}
-          >
-            <LinkIcon size={16} /> Pegar Enlace YouTube
           </button>
           <button 
             className={`tab-btn ${activeTab === 'search' ? 'active' : ''}`}
@@ -256,15 +463,17 @@ export function AddSignalContentModal({
 
           {activeTab === 'url' && (
             <form onSubmit={handleAddFromUrl} className="url-form">
-              <p className="tab-desc">Pega cualquier URL de YouTube o ID de video para añadirlo a tu señal:</p>
+              <p className="tab-desc">
+                Pegá cualquier URL de <strong>video</strong> o <strong>canal</strong> (YouTube, <code>@canal</code>, Twitch, HLS/MP4, TikTok o Instagram) para sumarlo a tu señal:
+              </p>
               
               <div className="input-group">
-                <label>URL o ID del Video</label>
+                <label>URL de Video o Canal</label>
                 <div className="input-wrap">
                   <Video size={18} className="input-icon" />
                   <input 
                     type="text" 
-                    placeholder="https://www.youtube.com/watch?v=..."
+                    placeholder="https://youtube.com/watch?v=... o https://youtube.com/@canal"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
                     autoFocus
@@ -273,12 +482,12 @@ export function AddSignalContentModal({
               </div>
 
               <div className="input-group">
-                <label>Título Personalizado (Opcional)</label>
+                <label>Título Personalizado (Opcional — se detecta solo)</label>
                 <div className="input-wrap">
                   <Film size={18} className="input-icon" />
                   <input 
                     type="text" 
-                    placeholder="Ej: Mi Documental Favorito"
+                    placeholder="Ej: Mi Documental o Canal Favorito"
                     value={titleInput}
                     onChange={(e) => setTitleInput(e.target.value)}
                   />
@@ -287,8 +496,8 @@ export function AddSignalContentModal({
 
               <div className="form-actions">
                 <button type="button" className="btn-cancel" onClick={onClose}>Cancelar</button>
-                <button type="submit" className="btn-submit" disabled={!urlInput.trim()}>
-                  <Plus size={16} /> Agregar a Señal
+                <button type="submit" className="btn-submit" disabled={!urlInput.trim() || isResolvingUrl}>
+                  <Plus size={16} /> {isResolvingUrl ? 'Detectando…' : 'Agregar a Mi Señal'}
                 </button>
               </div>
             </form>

@@ -4,6 +4,7 @@ import { useSignalStore } from '../lib/tv/signalStore';
 import { getDraftSignal } from '../lib/tv/draftStore';
 import SmartTVPlayer from '../lib/tv/playback/SmartTVPlayer'; // DEPRECATED: Keep for rollback
 import { YouAppPlayer } from '../components/player/YouAppPlayer';
+import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import type { PlaybackItem } from '../lib/player/playerTypes';
 import { ChevronLeft, ChevronRight, SkipForward, XCircle, Sparkles, Tv } from 'lucide-react';
 
@@ -74,10 +75,13 @@ export default function DynamicLiveZapping() {
     <div style={{ background: 'black', height: '100vh', display: 'flex', flexDirection: 'column', color: 'white', fontFamily: 'Inter, sans-serif' }}>
       
       {/* HEADER OVERLAY */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: 24, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)' }}>
-        <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
-          <ChevronLeft size={24} />
-        </button>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: 24, zIndex: 50, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, transparent 100%)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={() => navigate('/')} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '50%', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', backdropFilter: 'blur(10px)' }}>
+            <ChevronLeft size={24} />
+          </button>
+          <YouAppOfficialLogo theme="dark" size="sm" />
+        </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontWeight: 600, fontSize: 16 }}>{activeSignal.name}</div>
           <div style={{ fontSize: 12, color: '#94a3b8' }}>

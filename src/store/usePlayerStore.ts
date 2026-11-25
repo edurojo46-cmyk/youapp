@@ -24,6 +24,8 @@ export type PlaybackStateType =
 interface PlayerState {
   playbackState: PlaybackStateType;
   isPlaying: boolean;
+  isMuted: boolean;
+  userAudioUnlocked: boolean;
   currentTime: number;
   duration: number;
   currentBlock: PlaybackItem | null;
@@ -41,6 +43,7 @@ interface PlayerState {
   // Actions
   setPlaybackState: (state: PlaybackStateType) => void;
   setIsPlaying: (isPlaying: boolean) => void;
+  setIsMuted: (isMuted: boolean, unlockedByUser?: boolean) => void;
   setProgress: (currentTime: number, duration: number) => void;
   setCurrentBlock: (block: PlaybackItem | null) => void;
   setPlaybackContext: (context: Partial<PlayerState>) => void;
@@ -51,6 +54,8 @@ interface PlayerState {
 export const usePlayerStore = create<PlayerState>((set) => ({
   playbackState: 'idle',
   isPlaying: false,
+  isMuted: true,
+  userAudioUnlocked: false,
   currentTime: 0,
   duration: 0,
   currentBlock: null,
@@ -65,6 +70,11 @@ export const usePlayerStore = create<PlayerState>((set) => ({
 
   setPlaybackState: (playbackState) => set({ playbackState, isPlaying: playbackState === 'playing' }),
   setIsPlaying: (isPlaying) => set({ isPlaying, playbackState: isPlaying ? 'playing' : 'paused' }),
+  setIsMuted: (isMuted, unlockedByUser = false) =>
+    set((state) => ({
+      isMuted,
+      userAudioUnlocked: unlockedByUser ? !isMuted : state.userAudioUnlocked
+    })),
   setProgress: (currentTime, duration) => set({ currentTime, duration }),
   setCurrentBlock: (block) => set({ currentBlock: block }),
   setPlaybackContext: (context) => set((state) => ({ ...state, ...context })),

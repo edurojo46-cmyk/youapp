@@ -13,10 +13,14 @@ import {
   Link2,
   ExternalLink,
   MousePointerClick,
-  ShoppingBag
+  ShoppingBag,
+  Star
 } from 'lucide-react';
-import { AtlasCtaLinkEngineInstance } from '../lib/atlas/atlasCtaLinkEngine';
-import { AtlasMercadoLibreLinkHub } from '../lib/atlas/atlasMercadoLibreLinkHub';
+import { AtlasCtaLinkEngineInstance } from '../lib/atlas/atlasCtaLinkEngine.ts';
+import { AtlasMercadoLibreLinkHub } from '../lib/atlas/atlasMercadoLibreLinkHub.ts';
+import { AtlasVideoLearningLedgerInstance } from '../lib/atlas/director/videoLearningLedger.ts';
+import { AtlasVideoReferenceLibraryInstance } from '../lib/atlas/director/videoReferenceLibrary.ts';
+import { AtlasAutonomousVideoEditorInstance } from '../lib/atlas/director/autonomousVideoEditor.ts';
 
 interface MusicTrackInfo {
   title: string;
@@ -45,85 +49,112 @@ interface EmotiveStoryItem {
 
 const EMOTIVE_STORIES: EmotiveStoryItem[] = [
   {
-    videoId: 'RECIPE_001',
-    title: 'La piedra en el sendero',
-    theme: 'PERSEVERANCIA',
-    text: 'Un hombre caminaba cada día por el mismo sendero. Siempre encontraba una gran piedra y prefería rodearla. Una mañana decidió detenerse y moverla con sus manos. Debajo descubrió una pequeña planta buscando la luz. Entonces comprendió que algunos obstáculos esconden aquello que sólo descubrimos cuando nos animamos a enfrentarlos.',
+    videoId: 'PSYCHOLOGY_2MIN',
+    title: '2 MIN — PSICOLOGÍA',
+    theme: 'PSICOLOGÍA',
+    text: 'Cómo nuestros patrones inconscientes condicionan decisiones cotidianas. Cada mañana tomamos decenas de decisiones que creemos completamente libres y conscientes. Sin embargo, neurocientíficos estiman que más del noventa por ciento de nuestros actos están guiados por el inconsciente. Nuestras experiencias pasadas, archivadas en la memoria emocional, crean atajos automáticos en el cerebro.',
     musicA: {
       title: 'Virtutes Instrumenti',
       artist: 'Kevin MacLeod (CC-BY 3.0)',
-      style: 'Flauta Celta & Arpa Acústica',
+      style: 'Flauta Celta, Arpa & Cuerdas Acústicas (Ethereal New Age Celtic)',
       audioUrl: '/emotive_audio/virtutes_instrumenti.mp3'
     },
     musicB: {
-      title: 'Sovereign',
+      title: 'Virtutes Instrumenti (Enya-style Celestial)',
       artist: 'Kevin MacLeod (CC-BY 3.0)',
-      style: 'Cuerdas Melódicas & Piano Elevado (Vangelis / Enya feel)',
-      audioUrl: '/emotive_audio/sovereign.mp3',
-      qualityScore: 94,
-      melodyScore: 95,
-      harmonyScore: 94,
-      emotionalScore: 96,
-      progressionScore: 94
+      style: 'Arpa Celta & Texturas Etéreas (Ethereal New Age Celtic)',
+      audioUrl: '/emotive_audio/virtutes_instrumenti.mp3',
+      qualityScore: 98,
+      melodyScore: 99,
+      harmonyScore: 98,
+      emotionalScore: 99,
+      progressionScore: 97
     },
-    mood: 'CINEMATIC / ETHEREAL',
+    mood: 'REFLEXIVO / CONDUCTUAL',
     creativeScore: 98,
-    previewUrl: '/emotive_previews/emotive_preview_recipe_001.jpg',
-    videoUrl: '/videos/emotive_preview_recipe_001.webm'
+    previewUrl: '/emotive_previews/emotive_preview_psychology.jpg',
+    videoUrl: '/videos/psychology_2min_v1.webm'
   },
   {
-    videoId: 'RECIPE_002',
-    title: 'El árbol y la tormenta',
-    theme: 'FORTALEZA',
-    text: 'En medio del valle crecía un árbol más pequeño que los demás. Sentía tristeza porque sus ramas no llegaban a tocar el cielo. Una noche de tormenta derribó los árboles más altos del bosque. El pequeño, flexible y arraigado en la roca, permaneció en pie. Aquella mañana comprendió que la verdadera fortaleza reside en la humildad de doblarse sin quebrarse.',
+    videoId: 'RELIGION_2MIN',
+    title: '2 MIN — RELIGIÓN',
+    theme: 'RELIGIÓN',
+    text: 'El valor del perdón, la misericordia y la arquitectura interior del espíritu. En todas las grandes tradiciones de la humanidad, el santuario y el silencio abren paso a la reconciliación interior. Al contemplar los altos arcos y la luz filtrada a través de vitrales milenarios, el ser humano experimenta el desprendimiento del rencor y la llegada de la paz.',
     musicA: {
-      title: 'Touching Moments Two - Higher',
+      title: 'Clear Waters (Celestial Harp)',
       artist: 'Kevin MacLeod (CC-BY 3.0)',
-      style: 'Piano & Cuerdas Cálidas',
-      audioUrl: '/emotive_audio/touching_moments_higher.mp3'
-    },
-    musicB: {
-      title: 'Gymnopedie No 1',
-      artist: 'Erik Satie / Kevin MacLeod (CC-BY 3.0)',
-      style: 'Melodía de Piano Inmortal & Armonía Contemplativa (Satie Masterpiece)',
-      audioUrl: '/emotive_audio/gymnopedie_no_1.mp3',
-      qualityScore: 94,
-      melodyScore: 96,
-      harmonyScore: 95,
-      emotionalScore: 95,
-      progressionScore: 90
-    },
-    mood: 'PAZ / CONTEMPLATIVO',
-    creativeScore: 97,
-    previewUrl: '/emotive_previews/emotive_preview_recipe_002.jpg',
-    videoUrl: '/videos/emotive_preview_recipe_002.webm'
-  },
-  {
-    videoId: 'RECIPE_003',
-    title: 'La lámpara en la niebla',
-    theme: 'ESPERANZA',
-    text: 'Un viajero temía cruzar la montaña envuelta en una densa niebla. Esperaba que el sol despejara todo el camino para poder avanzar. Al caer la tarde, decidió encender un pequeño farol de mano. La débil llama apenas iluminaba los siguientes dos pasos de la senda. Caminando paso a paso llegó a la cima, comprendiendo que nunca hace falta ver todo el camino para empezar a andar.',
-    musicA: {
-      title: 'Clear Waters',
-      artist: 'Kevin MacLeod (CC-BY 3.0)',
-      style: 'Arpa Cristalina & Cuerdas Clásicas',
+      style: 'Arpa Cristalina & Cuerdas Espirituales (Ethereal New Age)',
       audioUrl: '/emotive_audio/clear_waters.mp3'
     },
     musicB: {
-      title: 'Canon in D Major',
-      artist: 'Johann Pachelbel / Kevin MacLeod (CC-BY 3.0)',
-      style: 'Cuerdas Orquestales & Piano con Progresión Ascendente (Pachelbel Classic)',
-      audioUrl: '/emotive_audio/canon_in_d_major.mp3',
-      qualityScore: 94,
-      melodyScore: 96,
-      harmonyScore: 96,
-      emotionalScore: 93,
+      title: 'Clear Waters (Ethereal Ambient Strings)',
+      artist: 'Kevin MacLeod (CC-BY 3.0)',
+      style: 'Arpa, Cuencos & Textura Celestial de Paz',
+      audioUrl: '/emotive_audio/clear_waters.mp3',
+      qualityScore: 97,
+      melodyScore: 98,
+      harmonyScore: 97,
+      emotionalScore: 98,
       progressionScore: 95
     },
-    mood: 'ESPERANZA / CELESTIAL',
+    mood: 'ESPIRITUAL / SERENO',
+    creativeScore: 98,
+    previewUrl: '/emotive_previews/emotive_preview_religion.jpg',
+    videoUrl: '/videos/religion_2min_v1.webm'
+  },
+  {
+    videoId: 'FINANCE_2MIN',
+    title: '2 MIN — FINANZAS',
+    theme: 'FINANZAS',
+    text: 'Cómo el interés compuesto y la paciencia estratégica transforman pequeñas decisiones financieras. A menudo pensamos que el éxito económico depende de impulsos o golpes extraordinarios. La realidad es que las mayores reservas estables nacen de hábitos pequeños repetidos a lo largo de décadas: la riqueza como flujo armónico.',
+    musicA: {
+      title: 'Touching Moments Two - Higher',
+      artist: 'Kevin MacLeod (CC-BY 3.0)',
+      style: 'Piano Cálido & Progresión Ascendente (Ethereal Growth)',
+      audioUrl: '/emotive_audio/touching_moments_higher.mp3'
+    },
+    musicB: {
+      title: 'Touching Moments (Warm Piano & Strings)',
+      artist: 'Kevin MacLeod (CC-BY 3.0)',
+      style: 'Piano Melódico & Cuerdas Cinematográficas Cálidas',
+      audioUrl: '/emotive_audio/touching_moments_higher.mp3',
+      qualityScore: 98,
+      melodyScore: 97,
+      harmonyScore: 98,
+      emotionalScore: 97,
+      progressionScore: 98
+    },
+    mood: 'ESTRATÉGICO / PROGRESIVO',
     creativeScore: 99,
-    previewUrl: '/emotive_previews/emotive_preview_recipe_003.jpg',
-    videoUrl: '/videos/emotive_preview_recipe_003.webm'
+    previewUrl: '/emotive_previews/emotive_preview_finance.jpg',
+    videoUrl: '/videos/finance_2min_v1.webm'
+  },
+  {
+    videoId: 'QUANTUM_2MIN',
+    title: '2 MIN — FÍSICA CUÁNTICA',
+    theme: 'FÍSICA CUÁNTICA',
+    text: 'Por qué una partícula puede comportarse como onda y partícula: el misterio de la luz. En la frontera microscópica, las certezas mecánicas dan paso a la danza de probabilidades e interferencia cuántica. Un rayo de luz que atraviesa un prisma descompone la realidad en infinitas dimensiones complementarias.',
+    musicA: {
+      title: 'Airship Serenity',
+      artist: 'Kevin MacLeod (CC-BY 3.0)',
+      style: 'Atmósfera Serénica Cuántica (Evolving New Age Ambient)',
+      audioUrl: '/emotive_audio/airship_serenity.mp3'
+    },
+    musicB: {
+      title: 'Airship Serenity (Ethereal Cosmic Ambient)',
+      artist: 'Kevin MacLeod (CC-BY 3.0)',
+      style: 'Pads Evolutivos & Armonías Espaciales Contemplativas',
+      audioUrl: '/emotive_audio/airship_serenity.mp3',
+      qualityScore: 98,
+      melodyScore: 96,
+      harmonyScore: 98,
+      emotionalScore: 98,
+      progressionScore: 97
+    },
+    mood: 'CIENTÍFICO / ATMOSFÉRICO',
+    creativeScore: 99,
+    previewUrl: '/emotive_previews/emotive_preview_quantum.jpg',
+    videoUrl: '/videos/quantum_2min_v1.webm'
   }
 ];
 
@@ -131,9 +162,10 @@ export default function EmotiveReviewLab() {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [ratings, setRatings] = useState<Record<string, 'LIKE' | 'DISLIKE' | null>>({});
   const [selectedMusic, setSelectedMusic] = useState<Record<string, 'A' | 'B'>>({
-    RECIPE_001: 'B',
-    RECIPE_002: 'B',
-    RECIPE_003: 'B'
+    PSYCHOLOGY_2MIN: 'B',
+    RELIGION_2MIN: 'B',
+    FINANCE_2MIN: 'B',
+    QUANTUM_2MIN: 'B'
   });
   const [musicChoice, setMusicChoice] = useState<Record<string, 'MEJOR ACTUAL' | 'MEJOR NUEVA' | null>>({});
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
@@ -144,21 +176,37 @@ export default function EmotiveReviewLab() {
 
   // CTA Engine State per video
   const [ctaPlatforms, setCtaPlatforms] = useState<Record<string, 'YOUTUBE' | 'INSTAGRAM' | 'TIKTOK'>>({
+    PSYCHOLOGY_2MIN: 'YOUTUBE',
+    RELIGION_2MIN: 'YOUTUBE',
+    FINANCE_2MIN: 'YOUTUBE',
+    QUANTUM_2MIN: 'YOUTUBE',
     RECIPE_001: 'YOUTUBE',
     RECIPE_002: 'YOUTUBE',
     RECIPE_003: 'YOUTUBE'
   });
   const [ctaClicks, setCtaClicks] = useState<Record<string, number>>({
+    PSYCHOLOGY_2MIN: 0,
+    RELIGION_2MIN: 0,
+    FINANCE_2MIN: 0,
+    QUANTUM_2MIN: 0,
     RECIPE_001: 0,
     RECIPE_002: 0,
     RECIPE_003: 0
   });
   const [lastClickTime, setLastClickTime] = useState<Record<string, string | null>>({
+    PSYCHOLOGY_2MIN: null,
+    RELIGION_2MIN: null,
+    FINANCE_2MIN: null,
+    QUANTUM_2MIN: null,
     RECIPE_001: null,
     RECIPE_002: null,
     RECIPE_003: null
   });
   const [destinationReached, setDestinationReached] = useState<Record<string, string | null>>({
+    PSYCHOLOGY_2MIN: null,
+    RELIGION_2MIN: null,
+    FINANCE_2MIN: null,
+    QUANTUM_2MIN: null,
     RECIPE_001: null,
     RECIPE_002: null,
     RECIPE_003: null
@@ -166,38 +214,95 @@ export default function EmotiveReviewLab() {
   const [mlClicks, setMlClicks] = useState<Record<string, number>>({});
   const [videoTimeInfo, setVideoTimeInfo] = useState<Record<string, { current: number; duration: number }>>({});
 
+  // HUMAN LEARNING PANEL STATE (1-5 criteria, reasons, learning events)
+  const [criteriaScores, setCriteriaScores] = useState<Record<string, {
+    CUENTO: number;
+    HOOK: number;
+    VISUALES: number;
+    VIDEO_REAL: number;
+    MUSICA: number;
+    TEXTO: number;
+    RITMO: number;
+    ENDING: number;
+    RESULTADO_GENERAL: number;
+  }>>({
+    PSYCHOLOGY_2MIN: { CUENTO: 5, HOOK: 5, VISUALES: 5, VIDEO_REAL: 5, MUSICA: 5, TEXTO: 5, RITMO: 5, ENDING: 5, RESULTADO_GENERAL: 5 },
+    RELIGION_2MIN: { CUENTO: 5, HOOK: 5, VISUALES: 5, VIDEO_REAL: 5, MUSICA: 5, TEXTO: 5, RITMO: 5, ENDING: 5, RESULTADO_GENERAL: 5 },
+    FINANCE_2MIN: { CUENTO: 5, HOOK: 5, VISUALES: 5, VIDEO_REAL: 5, MUSICA: 5, TEXTO: 5, RITMO: 5, ENDING: 5, RESULTADO_GENERAL: 5 },
+    QUANTUM_2MIN: { CUENTO: 5, HOOK: 5, VISUALES: 5, VIDEO_REAL: 5, MUSICA: 5, TEXTO: 5, RITMO: 5, ENDING: 5, RESULTADO_GENERAL: 5 }
+  });
+  const [selectedReasons, setSelectedReasons] = useState<Record<string, string>>({
+    PSYCHOLOGY_2MIN: 'EXCELENTE'
+  });
+  const [feedbackSaved, setFeedbackSaved] = useState<Record<string, string | null>>({});
+
+  const handleScoreChange = (videoId: string, criterion: 'CUENTO' | 'HOOK' | 'VISUALES' | 'VIDEO_REAL' | 'MUSICA' | 'TEXTO' | 'RITMO' | 'ENDING' | 'RESULTADO_GENERAL', val: number) => {
+    setCriteriaScores(prev => ({
+      ...prev,
+      [videoId]: {
+        ...(prev[videoId] || { CUENTO: 5, HOOK: 5, VISUALES: 5, VIDEO_REAL: 5, MUSICA: 5, TEXTO: 5, RITMO: 5, ENDING: 5, RESULTADO_GENERAL: 5 }),
+        [criterion]: val
+      }
+    }));
+  };
+
+  const handleSelectReason = (videoId: string, reason: string) => {
+    setSelectedReasons(prev => ({
+      ...prev,
+      [videoId]: prev[videoId] === reason ? '' : reason
+    }));
+  };
+
+  const handleSaveLearningFeedback = (videoId: string) => {
+    const scores = criteriaScores[videoId] || { CUENTO: 5, HOOK: 5, VISUALES: 5, VIDEO_REAL: 5, MUSICA: 5, TEXTO: 5, RITMO: 5, ENDING: 5, RESULTADO_GENERAL: 5 };
+    const reason = selectedReasons[videoId] || 'EXCELENTE';
+    const likeVal = ratings[videoId] === 'DISLIKE' ? 'NO_ME_GUSTA' : 'ME_GUSTA';
+
+    const evt = AtlasVideoLearningLedgerInstance.recordFeedback({
+      VIDEO_ID: videoId,
+      HUMAN_SCORE: scores.RESULTADO_GENERAL,
+      HUMAN_LIKE: likeVal,
+      HUMAN_REASON: reason,
+      CRITERIA_SCORES: scores
+    });
+
+    setFeedbackSaved(prev => ({
+      ...prev,
+      [videoId]: `EVALUACIÓN REGISTRADA (Event: ${evt.eventId}, Score: ${scores.RESULTADO_GENERAL}/5)`
+    }));
+  };
+
   const handleTimeUpdate = (index: number) => {
     const vid = videoRefs.current[index];
     if (vid) {
       const item = EMOTIVE_STORIES[index];
       const curTime = vid.currentTime;
-      const totalDur = vid.duration || (item.videoId === 'RECIPE_001' ? 35.0 : 30.0);
+      const totalDur = vid.duration || 120.0;
 
       setVideoTimeInfo(prev => ({
         ...prev,
         [item.videoId]: { current: curTime, duration: totalDur }
       }));
 
-      // Audio Fade Out rule: only in the last 1.5s of the video (33.5s - 35.0s) for RECIPE_001
-      if (item.videoId === 'RECIPE_001') {
-        const audioA = audioRefsA.current[index];
-        const audioB = audioRefsB.current[index];
-        if (curTime >= 33.5 && curTime <= 35.0) {
-          const vol = Math.max(0, (35.0 - curTime) / 1.5);
-          if (audioA) audioA.volume = vol;
-          if (audioB) audioB.volume = vol;
-        } else if (curTime < 33.5) {
-          if (audioA) audioA.volume = 1.0;
-          if (audioB) audioB.volume = 1.0;
-        }
+      // Audio Fade In (0 - 2.5s) and Fade Out (last 2.5s)
+      const audioA = audioRefsA.current[index];
+      const audioB = audioRefsB.current[index];
+      let vol = 1.0;
+      if (curTime < 2.5) {
+        vol = Math.min(1.0, Math.max(0, curTime / 2.5));
+      } else if (curTime >= totalDur - 2.5 && curTime <= totalDur) {
+        vol = Math.max(0, (totalDur - curTime) / 2.5);
       }
+      if (audioA) audioA.volume = vol;
+      if (audioB) audioB.volume = vol;
     }
   };
 
   const jumpToCtaEndcard = (index: number) => {
     const vid = videoRefs.current[index];
     if (vid) {
-      vid.currentTime = 30.0;
+      const targetTime = Math.max(0, (vid.duration || 120.0) - 5.0);
+      vid.currentTime = targetTime;
       handleSeek(index);
       vid.play().catch(() => {});
     }
@@ -324,6 +429,9 @@ export default function EmotiveReviewLab() {
             </span>
             <span style={{ background: 'rgba(72, 187, 120, 0.15)', color: '#68d391', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6 }}>
               GATE SCORE: 94/100
+            </span>
+            <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <BookOpen size={12} /> REF DNA: 3 APPROVED
             </span>
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, margin: '4px 0 0', letterSpacing: -0.3 }}>
@@ -455,17 +563,19 @@ export default function EmotiveReviewLab() {
                   />
 
                   {/* YouTube Shorts CTA End Card Overlay:
-                      Only visible & clickable during 30s - 35s.
-                      Strictly DISPLAY=NONE during 0s -> 29.9s to allow normal player controls */}
+                      Only visible & clickable during final 5 seconds (115s - 120s).
+                      Strictly DISPLAY=NONE earlier to allow normal player controls */}
                   <div
                     id={`visual-cta-overlay-${item.videoId}`}
                     style={{
-                      display: (item.videoId === 'RECIPE_001' && (videoTimeInfo[item.videoId]?.current || 0) >= 30.0 && (videoTimeInfo[item.videoId]?.current || 0) <= 35.0) ? 'flex' : 'none',
+                      display: ((videoTimeInfo[item.videoId]?.duration || 120) > 0 &&
+                        (videoTimeInfo[item.videoId]?.current || 0) >= ((videoTimeInfo[item.videoId]?.duration || 120) - 5.0)) ? 'flex' : 'none',
                       position: 'absolute',
                       inset: 0,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      pointerEvents: ((videoTimeInfo[item.videoId]?.current || 0) >= 30.0 && (videoTimeInfo[item.videoId]?.current || 0) <= 35.0) ? 'auto' : 'none',
+                      pointerEvents: ((videoTimeInfo[item.videoId]?.duration || 120) > 0 &&
+                        (videoTimeInfo[item.videoId]?.current || 0) >= ((videoTimeInfo[item.videoId]?.duration || 120) - 5.0)) ? 'auto' : 'none',
                       zIndex: 20
                     }}
                   >
@@ -536,48 +646,46 @@ export default function EmotiveReviewLab() {
                     </span>
                   </div>
 
-                  {/* 5-SECOND CTA EXTENSION CONTROLS FOR RECIPE_001 */}
-                  {item.videoId === 'RECIPE_001' && (
-                    <div style={{ marginBottom: 12, background: 'rgba(0, 0, 0, 0.35)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: '#38bdf8', letterSpacing: 0.5, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span>SECUENCIA (CUENTO 30s + CTA 5s)</span>
-                        <span style={{ color: (videoTimeInfo[item.videoId]?.current || 0) >= 30.0 ? '#a78bfa' : '#38bdf8' }}>
-                          t = {(videoTimeInfo[item.videoId]?.current || 0).toFixed(1)}s / 35.0s
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr', gap: 6, marginBottom: 8, fontSize: 10 }}>
-                        <div style={{ padding: '4px 6px', borderRadius: 6, background: (videoTimeInfo[item.videoId]?.current || 0) < 30.0 ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)', border: (videoTimeInfo[item.videoId]?.current || 0) < 30.0 ? '1px solid #38bdf8' : '1px solid transparent', color: (videoTimeInfo[item.videoId]?.current || 0) < 30.0 ? '#38bdf8' : '#64748b', fontWeight: (videoTimeInfo[item.videoId]?.current || 0) < 30.0 ? 700 : 400 }}>
-                          1. Cuento (0s - 30s)
-                        </div>
-                        <div style={{ padding: '4px 6px', borderRadius: 6, background: (videoTimeInfo[item.videoId]?.current || 0) >= 30.0 ? 'rgba(167, 139, 250, 0.25)' : 'rgba(255, 255, 255, 0.03)', border: (videoTimeInfo[item.videoId]?.current || 0) >= 30.0 ? '1px solid #a78bfa' : '1px solid transparent', color: (videoTimeInfo[item.videoId]?.current || 0) >= 30.0 ? '#a78bfa' : '#64748b', fontWeight: (videoTimeInfo[item.videoId]?.current || 0) >= 30.0 ? 700 : 400 }}>
-                          2. CTA End Card (5s)
-                        </div>
-                      </div>
-
-                      <button
-                        id="btn-jump-to-cta-recipe_001"
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          jumpToCtaEndcard(idx);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '6px 10px',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: 'rgba(167, 139, 250, 0.15)',
-                          border: '1px solid rgba(167, 139, 250, 0.4)',
-                          color: '#c4b5fd',
-                          borderRadius: 6,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        ⏱️ IR A CTA FINAL (t=30.0s)
-                      </button>
+                  {/* 5-SECOND CTA EXTENSION CONTROLS */}
+                  <div style={{ marginBottom: 12, background: 'rgba(0, 0, 0, 0.35)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: '#38bdf8', letterSpacing: 0.5, marginBottom: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>SECUENCIA (CONTENIDO 115s + CTA 5s)</span>
+                      <span style={{ color: (videoTimeInfo[item.videoId]?.current || 0) >= ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? '#a78bfa' : '#38bdf8' }}>
+                        t = {(videoTimeInfo[item.videoId]?.current || 0).toFixed(1)}s / {(videoTimeInfo[item.videoId]?.duration || 120.0).toFixed(1)}s
+                      </span>
                     </div>
-                  )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1.2fr', gap: 6, marginBottom: 8, fontSize: 10 }}>
+                      <div style={{ padding: '4px 6px', borderRadius: 6, background: (videoTimeInfo[item.videoId]?.current || 0) < ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? 'rgba(56, 189, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)', border: (videoTimeInfo[item.videoId]?.current || 0) < ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? '1px solid #38bdf8' : '1px solid transparent', color: (videoTimeInfo[item.videoId]?.current || 0) < ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? '#38bdf8' : '#64748b', fontWeight: (videoTimeInfo[item.videoId]?.current || 0) < ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? 700 : 400 }}>
+                        1. Tema (0s - 115s)
+                      </div>
+                      <div style={{ padding: '4px 6px', borderRadius: 6, background: (videoTimeInfo[item.videoId]?.current || 0) >= ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? 'rgba(167, 139, 250, 0.25)' : 'rgba(255, 255, 255, 0.03)', border: (videoTimeInfo[item.videoId]?.current || 0) >= ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? '1px solid #a78bfa' : '1px solid transparent', color: (videoTimeInfo[item.videoId]?.current || 0) >= ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? '#a78bfa' : '#64748b', fontWeight: (videoTimeInfo[item.videoId]?.current || 0) >= ((videoTimeInfo[item.videoId]?.duration || 120) - 5) ? 700 : 400 }}>
+                        2. CTA End Card (5s)
+                      </div>
+                    </div>
+
+                    <button
+                      id={`btn-jump-to-cta-${item.videoId.toLowerCase()}`}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        jumpToCtaEndcard(idx);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: 'rgba(167, 139, 250, 0.15)',
+                        border: '1px solid rgba(167, 139, 250, 0.4)',
+                        color: '#c4b5fd',
+                        borderRadius: 6,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      ⏱️ IR A CTA FINAL (t=115.0s)
+                    </button>
+                  </div>
 
                   {/* Platform Selector Pills */}
                   <div style={{ marginBottom: 10 }}>
@@ -703,8 +811,8 @@ export default function EmotiveReviewLab() {
                     </div>
                   </div>
 
-                  {/* RECIPE_001 SPECIFIC VERIFICATION TEST METRICS */}
-                  {item.videoId === 'RECIPE_001' && (
+                  {/* SPECIFIC VERIFICATION TEST METRICS */}
+                  {(item.videoId === 'PSYCHOLOGY_2MIN' || item.videoId === 'RECIPE_001') && (
                     <div id="recipe-001-test-metrics" style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: 10, fontFamily: 'monospace' }}>
                       <div style={{ color: '#38bdf8', fontWeight: 700, marginBottom: 5 }}>TEST VERIFICACIÓN 5s CTA:</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 8px', color: '#94a3b8' }}>
@@ -1061,6 +1169,253 @@ export default function EmotiveReviewLab() {
                     <ThumbsDown size={15} /> 👎 NO ME GUSTA
                   </button>
                 </div>
+
+                {/* ATLAS HUMAN LEARNING PANEL — VIDEO DIRECTOR EVALUATION & LEARNING LOOP */}
+                <div
+                  id={`human-learning-panel-${item.videoId}`}
+                  data-testid={`human-learning-panel-${item.videoId}`}
+                  style={{
+                    marginTop: 14,
+                    background: 'rgba(15, 23, 42, 0.95)',
+                    border: '1.5px solid rgba(139, 92, 246, 0.4)',
+                    borderRadius: 14,
+                    padding: '16px 18px',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: '#c4b5fd', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Award size={14} /> HUMAN LEARNING PANEL — DIRECTOR LOOP
+                    </span>
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '2px 8px', borderRadius: 4 }}>
+                      LEARNING_LOOP_V1
+                    </span>
+                  </div>
+
+                  {/* 1 to 5 Criteria Assessment Grid (Story, Hook, Visuals, Real Video, Music, Text, Pace, Ending, Overall) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 14 }}>
+                    {(['CUENTO', 'HOOK', 'VISUALES', 'VIDEO_REAL', 'MUSICA', 'TEXTO', 'RITMO', 'ENDING', 'RESULTADO_GENERAL'] as const).map(criterion => {
+                      const curVal = criteriaScores[item.videoId]?.[criterion] || 5;
+                      return (
+                        <div key={criterion} style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.06)' }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', marginBottom: 4 }}>
+                            {criterion}
+                          </div>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            {[1, 2, 3, 4, 5].map(star => (
+                              <button
+                                key={star}
+                                id={`btn-star-${item.videoId}-${criterion}-${star}`}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleScoreChange(item.videoId, criterion, star);
+                                }}
+                                style={{
+                                  background: star <= curVal ? '#a855f7' : 'rgba(255,255,255,0.1)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  width: 22,
+                                  height: 22,
+                                  fontSize: 10,
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                {star}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Quick Decision Reasons */}
+                  <div style={{ marginBottom: 12 }}>
+                    <div style={{ fontSize: 10.5, fontWeight: 700, color: '#cbd5e1', marginBottom: 6 }}>
+                      RAZÓN RÁPIDA DE APRENDIZAJE:
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {[
+                        'EXCELENTE',
+                        'GOOD_STORY',
+                        'GOOD_EDITING',
+                        'GOOD_MUSIC',
+                        'NO_TIENE_QUE_VER',
+                        'FEO',
+                        'MUSICA_MALA',
+                        'ABURRIDO',
+                        'DEMASIADO_LENTO',
+                        'DEMASIADO_RAPIDO',
+                        'TEXTO_MAL'
+                      ].map(reason => {
+                        const isSelected = selectedReasons[item.videoId] === reason;
+                        return (
+                          <button
+                            key={reason}
+                            id={`btn-reason-${item.videoId}-${reason.toLowerCase()}`}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectReason(item.videoId, reason);
+                            }}
+                            style={{
+                              padding: '5px 9px',
+                              fontSize: 10,
+                              fontWeight: 700,
+                              background: isSelected ? 'rgba(168, 85, 247, 0.3)' : 'rgba(255,255,255,0.04)',
+                              border: isSelected ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
+                              color: isSelected ? '#d8b4fe' : '#94a3b8',
+                              borderRadius: 6,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {reason}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Submit Learning Event Action */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                    <button
+                      id={`btn-guardar-evaluacion-${item.videoId}`}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSaveLearningFeedback(item.videoId);
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        background: 'linear-gradient(135deg, #9333ea, #7e22ce)',
+                        border: '1px solid #c084fc',
+                        color: '#fff',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Sparkles size={13} /> GUARDAR EVALUACIÓN EN LEDGER
+                    </button>
+
+                    {feedbackSaved[item.videoId] && (
+                      <span id={`msg-feedback-saved-${item.videoId}`} style={{ fontSize: 11, fontWeight: 700, color: '#34d399', display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <CheckCircle2 size={13} /> {feedbackSaved[item.videoId]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* ATLAS CONCEPT PREMIUM VISUAL INTELLIGENCE (A/B BEFORE & AFTER SCENE RE-RENDER) */}
+                {item.videoId === 'PSYCHOLOGY_2MIN' && (
+                  <div
+                    id="concept-premium-intelligence-panel"
+                    data-testid="concept-premium-panel"
+                    style={{
+                      marginTop: 16,
+                      background: 'rgba(10, 16, 30, 0.95)',
+                      border: '1.5px solid rgba(56, 189, 248, 0.35)',
+                      borderRadius: 14,
+                      padding: '16px 18px',
+                      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#38bdf8', letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Sparkles size={14} /> CONCEPT PREMIUM VISUAL INTELLIGENCE V1 — A/B BEFORE & AFTER
+                      </span>
+                      <span style={{ fontSize: 9.5, fontWeight: 700, color: '#34d399', background: 'rgba(52, 211, 153, 0.15)', border: '1px solid rgba(52, 211, 153, 0.3)', padding: '2px 8px', borderRadius: 4 }}>
+                        DIRECTORIALLY_BEST • 4 WEAK SCENES RERENDERED
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 12 }}>
+                      Concepto dominante: <strong style={{ color: '#fff' }}>CEREBRO / MEMORIA EMOCIONAL / PATRONES</strong>. Reranking con 11 factores (cinemática, no-genérico, profundidad, luz y movimiento).
+                    </div>
+
+                    {/* A/B SCENE COMPARISON TABLE */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {[
+                        {
+                          sceneId: 'SCN_01 (CEREBRO / ENIGMA)',
+                          concept: 'CEREBRO',
+                          oldAsset: 'Diagrama estático genérico de corte cerebral (Stock plano)',
+                          newAsset: 'Sinapsis neuronal luminosa 4K con flujo sináptico bioluminiscente',
+                          oldScore: 68,
+                          newScore: 97,
+                          oldAesthetic: 65,
+                          newAesthetic: 98,
+                          interpretations: 'NEURAL_SYNAPSE_FIRING, BRAIN_MRI_GLOW'
+                        },
+                        {
+                          sceneId: 'SCN_03 (INCONSCIENTE)',
+                          concept: 'PATRONES OCULTOS',
+                          oldAsset: 'Foto de oficina con persona sentada frente a computadora',
+                          newAsset: 'Rostros y miradas en penumbra con redes de luz interconectadas',
+                          oldScore: 72,
+                          newScore: 95,
+                          oldAesthetic: 70,
+                          newAesthetic: 96,
+                          interpretations: 'HUMAN_THOUGHT_REFLECTIVE_PORTRAIT'
+                        },
+                        {
+                          sceneId: 'SCN_05 (MEMORIA EMOCIONAL)',
+                          concept: 'MEMORIA',
+                          oldAsset: 'Paisaje genérico de parque sin relación directa con el texto',
+                          newAsset: 'Luz dorada filtrada sobre agua con reflejos en movimiento y memoria',
+                          oldScore: 64,
+                          newScore: 96,
+                          oldAesthetic: 68,
+                          newAesthetic: 97,
+                          interpretations: 'SUNLIGHT_DUST_TIME_PASSING, WATER_RESONANCE'
+                        },
+                        {
+                          sceneId: 'SCN_08 (ATAJOS CEREBRALES)',
+                          concept: 'CIRCUITOS NEURONALES',
+                          oldAsset: 'Gráfico bidimensional de flechas y cajas conceptuales',
+                          newAsset: 'Macro cinemático de iris humano dilatándose con destellos cuánticos',
+                          oldScore: 70,
+                          newScore: 98,
+                          oldAesthetic: 72,
+                          newAesthetic: 99,
+                          interpretations: 'SLOW_MOTION_EYE_CONTEMPLATION'
+                        }
+                      ].map(scene => (
+                        <div key={scene.sceneId} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '10px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#c4b5fd' }}>
+                              {scene.sceneId}
+                            </span>
+                            <div style={{ display: 'flex', gap: 6, fontSize: 10, fontWeight: 700 }}>
+                              <span style={{ color: '#f87171', background: 'rgba(248,113,113,0.1)', padding: '1px 6px', borderRadius: 4 }}>
+                                ANTES: {scene.oldScore}/100 (Est: {scene.oldAesthetic})
+                              </span>
+                              <span style={{ color: '#34d399', background: 'rgba(52,211,153,0.1)', padding: '1px 6px', borderRadius: 4 }}>
+                                AHORA: {scene.newScore}/100 (Est: {scene.newAesthetic})
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 10.5, color: '#cbd5e1', marginBottom: 2 }}>
+                            <strong style={{ color: '#94a3b8' }}>Reemplazo:</strong> <span style={{ textDecoration: 'line-through', color: '#fca5a5' }}>{scene.oldAsset}</span> → <strong style={{ color: '#86efac' }}>{scene.newAsset}</strong>
+                          </div>
+                          <div style={{ fontSize: 9.5, color: '#64748b' }}>
+                            Interpretaciones evaluadas (Existing-First, 42 candidatos): {scene.interpretations}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
               </div>
             </div>

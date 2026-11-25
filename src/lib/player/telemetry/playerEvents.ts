@@ -1,3 +1,6 @@
+import { useSignalStore } from '../../tv/signalStore';
+import { logSignalEvent } from '../../tv/signalPersistence';
+
 export type AudienceEventType = 
   | 'block_started'
   | 'block_completed'
@@ -16,8 +19,15 @@ export type AudienceEvent = {
   payload?: any;
 };
 
-// Simplified telemetry logger for Phase 5.1
 export const logAudienceEvent = (event: AudienceEvent) => {
-  console.log(`[Audience Telemetry] ${event.type}:`, event.blockId, event.payload || '');
-  // Here we would wire it to the actual Audience Graph in the future
+  const activeSignal = useSignalStore.getState().activeSignal;
+  if (
+    activeSignal?.id &&
+    (event.type === 'block_started' ||
+      event.type === 'block_completed' ||
+      event.type === '50_percent' ||
+      event.type === 'you4_moment_selected')
+  ) {
+    void logSignalEvent(activeSignal.id, event.blockId, event.type, event.payload);
+  }
 };

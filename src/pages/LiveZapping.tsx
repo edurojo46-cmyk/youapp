@@ -20,6 +20,7 @@ import { calculateGlobalChannelSync } from '../utils/tvEngine';
 import SleepTimer from '../components/SleepTimer';
 
 import SyncedTVPlayer from '../components/SyncedTVPlayer';
+import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import EPGGuide from '../components/EPGGuide';
 import AmbientMode from '../components/AmbientMode';
 import ProgramInfoModal from '../components/ProgramInfoModal';
@@ -842,9 +843,12 @@ export default function LiveZapping({ forceQuad }: LiveZappingProps = {}) {
       {/* Selector de Mood TV (Barra Superior de Acciones) - se oculta en fullscreen */}
       {!isZenMode && (!isFullscreen || showFullscreenUI) && (
         <div className="mood-bar glass-panel" onClick={(e) => e.stopPropagation()}>
-          <button className="back-circle-btn" onClick={() => navigate('/')}>
-            <ChevronLeft size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+            <button className="back-circle-btn" onClick={() => navigate('/')} title="Volver al Inicio">
+              <ChevronLeft size={20} />
+            </button>
+            <YouAppOfficialLogo theme="dark" size="sm" />
+          </div>
 
           <div className="mood-scroll">
             {MOODS.map(m => (

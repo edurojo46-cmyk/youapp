@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Tv, Mail, Lock, User as UserIcon, ArrowRight, ShieldCheck } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Mail, Lock, User as UserIcon, ArrowRight, ShieldCheck, KeyRound, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 
-export default function Login() {
-  const [isLoginMode, setIsLoginMode] = useState(true);
+export default function Login({ social = false }: { social?: boolean } = {}) {
+  const location = useLocation();
+  const rawReturnTo = new URLSearchParams(location.search).get('returnTo');
+  const safeReturnTo = rawReturnTo && rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : null;
+  const destination = social ? (safeReturnTo === '/publicador' ? '/publicador' : '/redes') : (safeReturnTo || '/perfil');
+  const navigate = useNavigate();
+  const { user } = useStore();
+
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(
+    location.pathname === '/registro' ? 'register' : 'login'
+  );
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -14,15 +25,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  
-  const navigate = useNavigate();
-  const { user } = useStore();
 
   useEffect(() => {
-    if (user) {
-      navigate('/');
+    if (location.pathname === '/registro') {
+      setMode('register');
+    } else if (location.pathname === '/login') {
+      if (mode === 'register') setMode('login');
     }
-  }, [user, navigate]);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!social && user && user.email) {
+      navigate(destination);
+    }
+  }, [user, navigate, destination, social]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,12 +46,33 @@ export default function Login() {
     setSuccess(null);
 
     // Validation
-    if (!email || !password) {
-      setError('Por favor, completa todos los campos obligatorios.');
+    if (!email) {
+      setError('Por favor, ingresa tu correo electrónico.');
       return;
     }
 
-    if (!isLoginMode) {
+    if (mode === 'forgot') {
+      try {
+        setLoading(true);
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/login`
+        });
+        if (error) throw error;
+        setSuccess('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.');
+      } catch (err: any) {
+        setError(err.message || 'Error al solicitar recuperación de contraseña');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!password) {
+      setError('Por favor, ingresa tu contraseña.');
+      return;
+    }
+
+    if (mode === 'register') {
       if (password !== confirmPassword) {
         setError('Las contraseñas no coinciden.');
         return;
@@ -49,11 +86,14 @@ export default function Login() {
     try {
       setLoading(true);
       
-      if (isLoginMode) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (mode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-      } else {
-        const { error } = await supabase.auth.signUp({ 
+        if (data?.user) {
+          navigate(destination);
+        }
+      } else if (mode === 'register') {
+        const { data, error } = await supabase.auth.signUp({ 
           email, 
           password,
           options: {
@@ -64,10 +104,13 @@ export default function Login() {
         });
         if (error) throw error;
         
-        setSuccess("¡Cuenta creada con éxito! Iniciando sesión...");
-        // After successful signup, many systems auto-login if email confirm is off.
-        // If not, we switch them to login mode.
-        setTimeout(() => setIsLoginMode(true), 2000);
+        if (data?.session) {
+          setSuccess('¡Cuenta creada e iniciada exitosamente! Redirigiendo...');
+          setTimeout(() => navigate(destination), 1000);
+        } else {
+          setSuccess('Si hace falta confirmar tu correo, revisá tu bandeja antes de iniciar sesión.');
+          setTimeout(() => setMode('login'), 2500);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Error en la autenticación');
@@ -76,8 +119,8 @@ export default function Login() {
     }
   };
 
-  const toggleMode = () => {
-    setIsLoginMode(!isLoginMode);
+  const switchTo = (targetMode: 'login' | 'register' | 'forgot') => {
+    setMode(targetMode);
     setError(null);
     setSuccess(null);
     setPassword('');
@@ -95,11 +138,14 @@ export default function Login() {
         <div className="auth-card glass-panel">
           
           <div className="brand-header">
-            <div className="logo-container">
-              <Tv size={32} className="logo-icon" />
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}>
+              <YouAppOfficialLogo theme="dark" />
             </div>
-            <h1>YOUAPP</h1>
-            <p className="subtitle">{isLoginMode ? 'Bienvenido de vuelta' : 'Crea tu cuenta profesional'}</p>
+            <p className="subtitle">
+              {mode === 'login' && (social ? 'Entrá a tu cuenta y continuá con tus redes' : 'Iniciá sesión en tu espacio YOUAPP')}
+              {mode === 'register' && (social ? 'Creá tu cuenta YOUAPP con correo y contraseña' : 'Creá tu cuenta gratis y guardá tus señales')}
+              {mode === 'forgot' && 'Recuperación de contraseña segura'}
+            </p>
           </div>
 
           {error && (
@@ -118,14 +164,14 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="auth-form">
             
-            <div className={`form-fields ${isLoginMode ? 'login-mode' : 'register-mode'}`}>
+            <div className={`form-fields ${mode}-mode`}>
               
-              {!isLoginMode && (
+              {mode === 'register' && (
                 <div className="input-wrapper">
                   <UserIcon size={20} className="input-icon" />
                   <input 
                     type="text" 
-                    placeholder="Tu Nombre (Opcional)" 
+                    placeholder="Nombre completo" 
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="premium-input"
@@ -137,6 +183,8 @@ export default function Login() {
                 <Mail size={20} className="input-icon" />
                 <input 
                   type="email" 
+                  name="email"
+                  autoComplete="email"
                   placeholder="Correo electrónico" 
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -145,19 +193,23 @@ export default function Login() {
                 />
               </div>
               
-              <div className="input-wrapper">
-                <Lock size={20} className="input-icon" />
-                <input 
-                  type="password" 
-                  placeholder="Contraseña" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="premium-input"
-                  required
-                />
-              </div>
+              {mode !== 'forgot' && (
+                <div className="input-wrapper">
+                  <Lock size={20} className="input-icon" />
+                  <input 
+                    type="password" 
+                    name="password"
+                    autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                    placeholder="Contraseña" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="premium-input"
+                    required
+                  />
+                </div>
+              )}
 
-              {!isLoginMode && (
+              {mode === 'register' && (
                 <div className="input-wrapper">
                   <Lock size={20} className="input-icon" />
                   <input 
@@ -166,28 +218,75 @@ export default function Login() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="premium-input"
-                    required={!isLoginMode}
+                    required
                   />
                 </div>
               )}
 
             </div>
 
+            {mode === 'login' && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-8px' }}>
+                <button
+                  type="button"
+                  onClick={() => switchTo('forgot')}
+                  className="toggle-btn"
+                  style={{ fontSize: '13px', opacity: 0.8 }}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+            )}
+
             <button type="submit" className="submit-btn" disabled={loading}>
               <span className="btn-text">
-                {loading ? 'Procesando...' : (isLoginMode ? 'Iniciar Sesión' : 'Registrarme')}
+                {loading ? 'Procesando...' : (
+                  mode === 'login' ? 'Iniciar Sesión' :
+                  mode === 'register' ? 'Registrarme' :
+                  'Enviar Enlace de Recuperación'
+                )}
               </span>
-              {!loading && <ArrowRight size={20} className="btn-icon" />}
+              {!loading && (mode === 'forgot' ? <KeyRound size={18} className="btn-icon" /> : <ArrowRight size={20} className="btn-icon" />)}
             </button>
           </form>
 
           <div className="auth-footer">
-            <p>
-              {isLoginMode ? '¿No tienes una cuenta?' : '¿Ya tienes una cuenta?'}
-            </p>
-            <button type="button" onClick={toggleMode} className="toggle-btn">
-              {isLoginMode ? 'Regístrate aquí' : 'Inicia sesión'}
+            {mode === 'login' && (
+              <>
+                <p>¿No tienes una cuenta?</p>
+                <button type="button" onClick={() => switchTo('register')} className="toggle-btn">
+                  Crear cuenta gratis
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="toggle-btn"
+              style={{ marginTop: 10, opacity: 0.72, fontSize: '12.5px' }}
+            >
+              ← Volver al inicio
             </button>
+
+            {mode === 'register' && (
+              <>
+                <p>¿Ya tienes una cuenta?</p>
+                <button type="button" onClick={() => switchTo('login')} className="toggle-btn">
+                  Inicia sesión aquí
+                </button>
+              </>
+            )}
+
+            {mode === 'forgot' && (
+              <button 
+                type="button" 
+                onClick={() => switchTo('login')} 
+                className="toggle-btn"
+                style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              >
+                <ArrowLeft size={16} /> Volver a Iniciar Sesión
+              </button>
+            )}
           </div>
 
         </div>

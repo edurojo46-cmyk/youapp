@@ -60,7 +60,7 @@ async function probeEdgeFunction(fnName: string, body: object, signal?: AbortSig
 async function probeYouTubeRadar(queryStr: string) {
   const start = Date.now();
   try {
-    const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || 'AIzaSyBMhLs1XEBfInBFB7vQ3DjMZfP-2OCM1xw';
+    const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || '';
     const res = await fetch(
       `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(queryStr)}&type=video&maxResults=5&key=${API_KEY}`,
       { signal: AbortSignal.timeout(8000) }

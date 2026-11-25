@@ -31,16 +31,30 @@ export default function CastModal({
   const [castAvailable, setCastAvailable] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Enviar video al Chromecast según el tipo de medio (HLS/MP4 vs YouTube)
+  const rawVideoId = (() => {
+    const rawUrl = String(currentChannel?.videoUrl || '');
+    const m = rawUrl.match(/(?:embed\/|v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (m) return m[1];
+    const clean = rawUrl.replace('https://www.youtube.com/embed/', '').replace('yt-', '').split('?')[0];
+    return /^[A-Za-z0-9_-]{11}$/.test(clean) ? clean : '';
+  })();
+
+  const isDirectStream = Boolean(
+    currentChannel?.videoUrl && /\.(mp4|m3u8|webm)(\?|$)/i.test(String(currentChannel.videoUrl))
+  );
+
+  // Enviar video al Chromecast según el tipo de medio (HLS/MP4 directo vs YouTube)
   const sendMediaToCast = (castSession: any) => {
     if (!castSession || !window.chrome?.cast || !currentChannel?.videoUrl) return;
 
-    const videoUrl = currentChannel.videoUrl;
-    const isYouTube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be');
-
-    // Si es un video de YouTube, abrir directamente en el receptor de YouTube o sugerir Smart TV
-    if (isYouTube && rawVideoId) {
-      window.open(`https://www.youtube.com/watch?v=${rawVideoId}`, '_blank');
+    const videoUrl = String(currentChannel.videoUrl);
+    if (!isDirectStream) {
+      // CC1AD845 (Default Media Receiver) NO reproduce enlaces de YouTube y dejaría pantalla negra.
+      try {
+        castSession.endSession(true);
+      } catch {
+        // ignore
+      }
       return;
     }
 
@@ -118,11 +132,7 @@ export default function CastModal({
 
   if (!isOpen) return null;
 
-  const rawVideoId = currentChannel?.videoUrl
-    ? currentChannel.videoUrl.replace('https://www.youtube.com/embed/', '').replace('yt-', '').split('?')[0]
-    : '';
-
-  const tvUrl = `${window.location.origin}${window.location.pathname}#/live?room=${pin}`;
+  const tvUrl = `${window.location.origin}/mitv?room=${encodeURIComponent(pin || '1234')}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(tvUrl)}&color=6366f1&bgcolor=0f111a`;
 
   const handleCopy = () => {
@@ -132,6 +142,13 @@ export default function CastModal({
   };
 
   const handleNativeCast = () => {
+    if (!isDirectStream) {
+      alert(
+        'Este canal usa video de YouTube.\n\nGoogle Chromecast (receptor genérico) no puede recibir URLs de YouTube directo y muestra pantalla negra.\n\n✅ Cómo verlo en tu Chromecast en 2 segundos:\nEn Chrome tocá el menú ⋮ (arriba a la derecha) → Guardar y compartir → Transmitir… → elegí tu Chromecast.\n\nAsí transmitís toda la pantalla de YOUAPP (MiTV, Mi Señal y YOU4) con audio y video en HD.'
+      );
+      return;
+    }
+
     if (window.cast && window.cast.framework) {
       try {
         const context = window.cast.framework.CastContext.getInstance();

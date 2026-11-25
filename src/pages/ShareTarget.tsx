@@ -16,9 +16,15 @@ export default function ShareTarget() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const sharedUrl = params.get('url') || '';
-    const sharedTitle = params.get('title') || params.get('text') || '';
-    
+    const rawUrl = params.get('url')?.trim() || '';
+    const rawText = params.get('text')?.trim() || '';
+    // YouTube en Android suele enviar el enlace dentro de `text` y no en `url`
+    const extractedFromText = rawText.match(/https?:\/\/\S+/i)?.[0] || '';
+    const sharedUrl = rawUrl || extractedFromText;
+    const sharedTitle =
+      params.get('title')?.trim() ||
+      (rawText && rawText !== extractedFromText ? rawText.replace(extractedFromText, '').trim() : '');
+
     if (sharedUrl) {
       setUrl(sharedUrl);
       setTitle(sharedTitle);
@@ -79,6 +85,30 @@ export default function ShareTarget() {
     }
   };
 
+  const handleAddToMiTv = () => {
+    const params = new URLSearchParams({ add: url });
+    if (title) params.set('t', title);
+    navigate(`/mitv?${params.toString()}`, { replace: true });
+  };
+
+  const handleAddToReels = () => {
+    const params = new URLSearchParams({ add: url });
+    if (title) params.set('t', title);
+    navigate(`/reels?${params.toString()}`, { replace: true });
+  };
+
+  const handleAddToYouMusic = () => {
+    const params = new URLSearchParams({ add: url });
+    if (title) params.set('t', title);
+    navigate(`/youmusic?${params.toString()}`, { replace: true });
+  };
+
+  const handleAddToLecturas = () => {
+    const params = new URLSearchParams({ add: url });
+    if (title) params.set('t', title);
+    navigate(`/lecturas?${params.toString()}`, { replace: true });
+  };
+
   const handleAddToMySignal = () => {
     // Redirigir a crear señal pasando la URL
     navigate('/create-signal', { state: { initialVideoUrl: url, initialTitle: title } });
@@ -106,11 +136,43 @@ export default function ShareTarget() {
           </div>
         ) : (
           <div className="share-actions">
-            <button className="share-action-btn primary" onClick={handleAddToMySignal} disabled={loading}>
+            <button className="share-action-btn primary" onClick={handleAddToMiTv} disabled={loading}>
+              <div className="icon-wrap blue"><Tv size={24} /></div>
+              <div className="text-wrap">
+                <h4>Enviar a MiTV</h4>
+                <p>Sumarlo directo a tu programación personal</p>
+              </div>
+            </button>
+
+            <button className="share-action-btn" onClick={handleAddToReels} disabled={loading}>
+              <div className="icon-wrap orange"><Tv size={24} /></div>
+              <div className="text-wrap">
+                <h4>Enviar a Reels</h4>
+                <p>Guardarlo en tus colecciones verticales 9:16</p>
+              </div>
+            </button>
+
+            <button className="share-action-btn" onClick={handleAddToYouMusic} disabled={loading}>
+              <div className="icon-wrap red"><Heart size={24} /></div>
+              <div className="text-wrap">
+                <h4>Enviar a YOU MUSIC</h4>
+                <p>Sumar esta canción a tu playlist musical</p>
+              </div>
+            </button>
+
+            <button className="share-action-btn" onClick={handleAddToLecturas} disabled={loading}>
+              <div className="icon-wrap blue"><ListPlus size={24} /></div>
+              <div className="text-wrap">
+                <h4>Enviar a Mis Lecturas</h4>
+                <p>Guardar este artículo, diario o web por tema</p>
+              </div>
+            </button>
+
+            <button className="share-action-btn" onClick={handleAddToMySignal} disabled={loading}>
               <div className="icon-wrap purple"><Tv size={24} /></div>
               <div className="text-wrap">
                 <h4>Agregar a Mi Señal</h4>
-                <p>Prográmalo en tu canal de TV</p>
+                <p>Crear o sumar en tu señal al aire</p>
               </div>
             </button>
 

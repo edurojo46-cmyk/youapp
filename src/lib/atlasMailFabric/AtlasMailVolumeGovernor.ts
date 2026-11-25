@@ -11,7 +11,7 @@
  * 5. Any active HOLD immediately clamps dispatch capacity to 0.
  */
 
-import {
+import type {
   VolumeGovernorTierKey,
   VolumeGovernorTierConfig,
   ReputationEvaluationResult

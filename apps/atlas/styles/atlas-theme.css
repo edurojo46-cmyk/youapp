@@ -1,0 +1,698 @@
+/**
+ * ATLAS CORE OS — UNIFIED APPLE PRO DESIGN SYSTEM & UTILITIES
+ * @apps/atlas/styles/atlas-theme.css
+ *
+ * Apple Dark Monochromatic Design Language (macOS Sequoia / VisionOS Pro inspired):
+ * - Deep Obsidian Dark Canvas (#07090e)
+ * - Multi-layer Glassmorphic Ribbons (backdrop-filter: blur(28px))
+ * - Refined Telemetry HUD with high-legibility typographic hierarchy
+ * - Universal vanilla CSS utility classes for cards, grids, buttons, and badges
+ */
+
+:root {
+  --atlas-bg-base: #07090e;
+  --atlas-bg-surface: #0b0f17;
+  --atlas-bg-card: #0e131d;
+  --atlas-bg-glass: rgba(11, 15, 23, 0.88);
+  --atlas-bg-glass-elevated: rgba(18, 24, 38, 0.75);
+  
+  --atlas-border-subtle: rgba(255, 255, 255, 0.07);
+  --atlas-border-medium: rgba(255, 255, 255, 0.12);
+  --atlas-border-glow: rgba(56, 189, 248, 0.35);
+
+  --atlas-text-primary: #ffffff;
+  --atlas-text-secondary: #94a3b8;
+  --atlas-text-muted: #64748b;
+
+  --atlas-cyan: #38bdf8;
+  --atlas-emerald: #34d399;
+  --atlas-amber: #fbbf24;
+  --atlas-purple: #c084fc;
+  --atlas-rose: #f87171;
+  --atlas-blue: #3b82f6;
+  --atlas-indigo: #6366f1;
+
+  --atlas-radius-sm: 6px;
+  --atlas-radius-md: 10px;
+  --atlas-radius-lg: 16px;
+  --atlas-radius-xl: 20px;
+  --atlas-radius-full: 9999px;
+
+  --atlas-font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Outfit", "Segoe UI", Roboto, sans-serif;
+  --atlas-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+/* ==========================================================================
+   BASE & RESET
+   ========================================================================== */
+
+html, body {
+  background-color: var(--atlas-bg-base) !important;
+  color: var(--atlas-text-primary) !important;
+  font-family: var(--atlas-font-sans) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Custom discreet scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ==========================================================================
+   GLOBAL HEADER & HUD TELEMETRY BAR
+   ========================================================================== */
+
+.atlas-global-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(8, 11, 18, 0.94);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.55);
+}
+
+/* Tier 1: Telemetry & Brand Row */
+.atlas-header-top-row {
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 0 18px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.atlas-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.atlas-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: #ffffff;
+  transition: opacity 0.2s ease;
+}
+
+.atlas-brand-link:hover {
+  opacity: 0.9;
+}
+
+.atlas-brand-icon-box {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.45);
+}
+
+.atlas-brand-title {
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+}
+
+.atlas-brand-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  font-family: var(--atlas-font-mono);
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 2px 6px;
+  border-radius: 5px;
+  letter-spacing: 0.08em;
+}
+
+/* The 7 Telemetry HUD items */
+.atlas-telemetry-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+
+.atlas-telemetry-hud::-webkit-scrollbar {
+  display: none;
+}
+
+.atlas-hud-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  background: rgba(18, 24, 38, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+
+.atlas-hud-chip:hover {
+  background: rgba(26, 35, 54, 0.85);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.atlas-hud-icon-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.atlas-hud-val {
+  font-size: 11.5px;
+  font-weight: 700;
+  font-family: var(--atlas-font-mono);
+  line-height: 1;
+}
+
+.atlas-hud-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #7b889b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--atlas-font-mono);
+  line-height: 1;
+}
+
+/* Tier 2: Segmented Nav & Inline Context Row */
+.atlas-header-nav-row {
+  max-width: 1720px;
+  margin: 0 auto;
+  padding: 0 18px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.atlas-segmented-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 3px;
+  border-radius: 9px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.atlas-segmented-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.atlas-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  color: #94a3b8;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.atlas-nav-tab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.atlas-nav-tab.active {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+
+.atlas-nav-tab.active svg {
+  color: #38bdf8;
+}
+
+/* Inline Context & Breadcrumb Bar on Tier 2 Right */
+.atlas-header-right-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.atlas-inline-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--atlas-font-mono);
+  font-size: 11px;
+  color: #64748b;
+}
+
+.atlas-inline-breadcrumb a {
+  color: #8694a6;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.atlas-inline-breadcrumb a:hover {
+  color: #38bdf8;
+}
+
+.atlas-inline-breadcrumb .active-leaf {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.atlas-inline-breadcrumb .spotlight-pill {
+  background: rgba(56, 189, 248, 0.14);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+/* Context Filters Strip (Appears when active) */
+.atlas-context-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.atlas-context-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(22, 28, 44, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-family: var(--atlas-font-mono);
+  font-size: 10.5px;
+  color: #ffffff;
+}
+
+.atlas-context-tag-key {
+  color: #64748b;
+  font-size: 9.5px;
+}
+
+.atlas-context-tag-val {
+  font-weight: 700;
+}
+
+.atlas-context-tag-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.atlas-context-tag-btn:hover {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   UNIVERSAL LAYOUT & UTILITY CLASSES (NATIVE VANILLA CSS)
+   These provide full styling support for all pages using Tailwind-like classes
+   ========================================================================== */
+
+/* Containers & Dimensions */
+.max-w-7xl { max-width: 80rem; }
+.max-w-6xl { max-width: 72rem; }
+.max-w-5xl { max-width: 64rem; }
+.max-w-4xl { max-width: 56rem; }
+.max-w-3xl { max-width: 48rem; }
+.max-w-2xl { max-width: 42rem; }
+.max-w-xl { max-width: 36rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+.min-h-screen { min-height: 100vh; }
+
+/* Display & Flexbox */
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.block { display: block; }
+.inline-block { display: inline-block; }
+.hidden { display: none; }
+
+.flex-col { flex-direction: column; }
+.flex-row { flex-direction: row; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-nowrap { flex-wrap: nowrap; }
+.flex-1 { flex: 1 1 0%; }
+.flex-shrink-0 { flex-shrink: 0; }
+
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-end { align-items: flex-end; }
+.items-baseline { align-items: baseline; }
+.items-stretch { align-items: stretch; }
+
+.justify-start { justify-content: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.justify-between { justify-content: space-between; }
+.justify-around { justify-content: space-around; }
+
+/* Grid Layouts */
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .lg\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* Gaps */
+.gap-1 { gap: 0.25rem; }
+.gap-1\.5 { gap: 0.375rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-2\.5 { gap: 0.625rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-5 { gap: 1.25rem; }
+.gap-6 { gap: 1.5rem; }
+.gap-8 { gap: 2rem; }
+
+/* Vertical Spacing (space-y-*) */
+.space-y-1 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.25rem; }
+.space-y-1\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.375rem; }
+.space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
+.space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; }
+.space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+.space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.5rem; }
+.space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: 2rem; }
+.space-y-12 > :not([hidden]) ~ :not([hidden]) { margin-top: 3rem; }
+
+/* Horizontal Spacing (space-x-*) */
+.space-x-1 > :not([hidden]) ~ :not([hidden]) { margin-left: 0.25rem; }
+.space-x-2 > :not([hidden]) ~ :not([hidden]) { margin-left: 0.5rem; }
+.space-x-3 > :not([hidden]) ~ :not([hidden]) { margin-left: 0.75rem; }
+.space-x-4 > :not([hidden]) ~ :not([hidden]) { margin-left: 1rem; }
+
+/* Padding */
+.p-0 { padding: 0; }
+.p-1 { padding: 0.25rem; }
+.p-1\.5 { padding: 0.375rem; }
+.p-2 { padding: 0.5rem; }
+.p-2\.5 { padding: 0.625rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+.p-5 { padding: 1.25rem; }
+.p-6 { padding: 1.5rem; }
+.p-8 { padding: 2rem; }
+
+.px-1 { padding-left: 0.25rem; padding-right: 0.25rem; }
+.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.px-2\.5 { padding-left: 0.625rem; padding-right: 0.625rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.px-8 { padding-left: 2rem; padding-right: 2rem; }
+
+.py-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-1\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+
+/* Margin */
+.m-0 { margin: 0; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-6 { margin-top: 1.5rem; }
+.mt-8 { margin-top: 2rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.ml-1 { margin-left: 0.25rem; }
+.ml-2 { margin-left: 0.5rem; }
+.mr-2 { margin-right: 0.5rem; }
+
+/* Typography */
+.text-\[9px\] { font-size: 9px; }
+.text-\[10px\] { font-size: 10px; }
+.text-\[11px\] { font-size: 11px; }
+.text-\[12px\] { font-size: 12px; }
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-base { font-size: 1rem; line-height: 1.5rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+.text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+
+.font-sans { font-family: var(--atlas-font-sans); }
+.font-mono { font-family: var(--atlas-font-mono); }
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.font-extrabold { font-weight: 800; }
+
+.uppercase { text-transform: uppercase; }
+.lowercase { text-transform: lowercase; }
+.capitalize { text-transform: capitalize; }
+
+.tracking-tighter { letter-spacing: -0.05em; }
+.tracking-tight { letter-spacing: -0.025em; }
+.tracking-normal { letter-spacing: 0em; }
+.tracking-wide { letter-spacing: 0.025em; }
+.tracking-wider { letter-spacing: 0.05em; }
+.tracking-widest { letter-spacing: 0.1em; }
+
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Colors: Text */
+.text-white { color: #ffffff; }
+.text-slate-100 { color: #f1f5f9; }
+.text-slate-200 { color: #e2e8f0; }
+.text-slate-300 { color: #cbd5e1; }
+.text-slate-400 { color: #94a3b8; }
+.text-slate-500 { color: #64748b; }
+.text-slate-600 { color: #475569; }
+
+.text-cyan-300 { color: #67e8f9; }
+.text-cyan-400 { color: #22d3ee; }
+.text-cyan-500 { color: #06b6d4; }
+.text-emerald-300 { color: #6ee7b7; }
+.text-emerald-400 { color: #34d399; }
+.text-emerald-500 { color: #10b981; }
+.text-amber-300 { color: #fcd34d; }
+.text-amber-400 { color: #fbbf24; }
+.text-amber-500 { color: #f59e0b; }
+.text-rose-300 { color: #fda4af; }
+.text-rose-400 { color: #fb7185; }
+.text-rose-500 { color: #f43f5e; }
+.text-purple-300 { color: #d8b4fe; }
+.text-purple-400 { color: #c084fc; }
+.text-blue-400 { color: #60a5fa; }
+.text-indigo-400 { color: #818cf8; }
+
+/* Colors: Backgrounds */
+.bg-\[\#07090e\] { background-color: #07090e; }
+.bg-\[\#08090d\] { background-color: #08090d; }
+.bg-slate-950 { background-color: #020617; }
+.bg-slate-900 { background-color: #0f172a; }
+.bg-slate-800 { background-color: #1e293b; }
+
+.bg-white\/\[0\.02\] { background-color: rgba(255, 255, 255, 0.02); }
+.bg-white\/\[0\.03\] { background-color: rgba(255, 255, 255, 0.03); }
+.bg-white\/\[0\.04\] { background-color: rgba(255, 255, 255, 0.04); }
+.bg-white\/\[0\.06\] { background-color: rgba(255, 255, 255, 0.06); }
+.bg-white\/\[0\.08\] { background-color: rgba(255, 255, 255, 0.08); }
+.bg-white\/\[0\.1\] { background-color: rgba(255, 255, 255, 0.1); }
+
+.bg-emerald-500\/10 { background-color: rgba(52, 211, 153, 0.1); }
+.bg-emerald-500\/20 { background-color: rgba(52, 211, 153, 0.2); }
+.bg-amber-500\/10 { background-color: rgba(251, 191, 36, 0.1); }
+.bg-amber-500\/20 { background-color: rgba(251, 191, 36, 0.2); }
+.bg-cyan-500\/10 { background-color: rgba(34, 211, 238, 0.1); }
+.bg-cyan-500\/20 { background-color: rgba(34, 211, 238, 0.2); }
+.bg-cyan-950\/40 { background-color: rgba(8, 51, 68, 0.4); }
+.bg-rose-500\/10 { background-color: rgba(244, 63, 94, 0.1); }
+.bg-rose-500\/20 { background-color: rgba(244, 63, 94, 0.2); }
+.bg-purple-500\/10 { background-color: rgba(192, 132, 252, 0.1); }
+
+/* Gradient backgrounds */
+.bg-gradient-to-r { background-image: linear-gradient(to right, var(--tw-gradient-stops, #06b6d4, #2563eb)); }
+.bg-gradient-to-tr { background-image: linear-gradient(to top right, var(--tw-gradient-stops, #06b6d4, #2563eb)); }
+.from-cyan-600 { --tw-gradient-from: #0891b2; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(8, 145, 178, 0)); }
+.from-cyan-500 { --tw-gradient-from: #06b6d4; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(6, 182, 212, 0)); }
+.to-blue-600 { --tw-gradient-to: #2563eb; }
+.to-blue-500 { --tw-gradient-to: #3b82f6; }
+
+/* Borders & Rounded */
+.border { border-width: 1px; border-style: solid; border-color: rgba(255, 255, 255, 0.08); }
+.border-b { border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: rgba(255, 255, 255, 0.08); }
+.border-t { border-top-width: 1px; border-top-style: solid; border-top-color: rgba(255, 255, 255, 0.08); }
+.border-l { border-left-width: 1px; border-left-style: solid; border-left-color: rgba(255, 255, 255, 0.08); }
+.border-r { border-right-width: 1px; border-right-style: solid; border-right-color: rgba(255, 255, 255, 0.08); }
+
+.border-white\/\[0\.04\] { border-color: rgba(255, 255, 255, 0.04); }
+.border-white\/\[0\.06\] { border-color: rgba(255, 255, 255, 0.06); }
+.border-white\/\[0\.08\] { border-color: rgba(255, 255, 255, 0.08); }
+.border-white\/\[0\.1\] { border-color: rgba(255, 255, 255, 0.1); }
+.border-white\/\[0\.12\] { border-color: rgba(255, 255, 255, 0.12); }
+.border-white\/\[0\.15\] { border-color: rgba(255, 255, 255, 0.15); }
+.border-white\/\[0\.2\] { border-color: rgba(255, 255, 255, 0.2); }
+
+.border-slate-800 { border-color: #1e293b; }
+.border-slate-700 { border-color: #334155; }
+.border-emerald-500\/20 { border-color: rgba(52, 211, 153, 0.2); }
+.border-amber-500\/20 { border-color: rgba(251, 191, 36, 0.2); }
+.border-cyan-500\/20 { border-color: rgba(34, 211, 238, 0.2); }
+.border-cyan-800\/50 { border-color: rgba(21, 94, 117, 0.5); }
+.border-rose-500\/20 { border-color: rgba(244, 63, 94, 0.2); }
+
+.rounded { border-radius: 0.25rem; }
+.rounded-md { border-radius: 0.375rem; }
+.rounded-lg { border-radius: 0.5rem; }
+.rounded-xl { border-radius: 0.75rem; }
+.rounded-2xl { border-radius: 1rem; }
+.rounded-3xl { border-radius: 1.5rem; }
+.rounded-full { border-radius: 9999px; }
+
+/* Interactive & Miscellaneous */
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+.transition-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+.transition-colors { transition-property: color, background-color, border-color; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
+
+.shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); }
+.shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); }
+.shadow-xl { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+
+.backdrop-blur-md { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.backdrop-blur-xl { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-spin { animation: spin 1s linear infinite; }
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* Hover states */
+.hover\:bg-white\/\[0\.08\]:hover { background-color: rgba(255, 255, 255, 0.08); }
+.hover\:bg-cyan-900\/60:hover { background-color: rgba(22, 78, 99, 0.6); }
+.hover\:text-white:hover { color: #ffffff; }
+.hover\:border-white\/\[0\.2\]:hover { border-color: rgba(255, 255, 255, 0.2); }
+
+/* ==========================================================================
+   FORM CONTROLS (APPLE DARK PRO GLASS INPUTS)
+   ========================================================================== */
+
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  background-color: rgba(14, 19, 29, 0.85) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  outline: none !important;
+  transition: all 0.15s ease !important;
+}
+
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
+  background-color: rgba(18, 25, 38, 0.95) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #64748b !important;
+}

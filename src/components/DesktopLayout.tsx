@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import BottomNav from './BottomNav';
+import { TvUserSessionMenu } from './tv/TvUserSessionMenu';
+import { YouAppOfficialLogo } from './ui/YouAppOfficialLogo';
 
 interface DesktopLayoutProps {
   children: React.ReactNode;
@@ -60,18 +62,27 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
       {!isHome && (
         <aside className="dl-sidebar-left">
           <div className="dl-logo">
-          YouApp <span className="dl-logo-badge">TV</span>
-        </div>
+            <YouAppOfficialLogo theme="dark" size="sm" />
+          </div>
 
         <nav className="dl-nav-menu">
+          <button className={`dl-nav-item ${isActive("/redes") ? "active" : ""}`} onClick={() => navigate("/redes")}><Users size={20} /> Mis redes</button>
+          <button className={`dl-nav-item ${isActive("/repetidoras") || isActive("/asociaciones") ? "active" : ""}`} onClick={() => navigate("/repetidoras")}><Radio size={20} /> Repetidoras</button>
+          <button className={`dl-nav-item ${isActive("/publicador") ? "active" : ""}`} onClick={() => navigate("/publicador")}><PlayCircle size={20} /> Publicador</button>
           <button className={`dl-nav-item ${isActive('/') ? 'active' : ''}`} onClick={() => navigate('/')}>
             <Home size={20} /> Inicio
           </button>
-          <button className="dl-nav-item">
-            <Tv size={20} /> Señales
+          <button className={`dl-nav-item ${isActive('/mitv') || isActive('/programartv') ? 'active' : ''}`} onClick={() => navigate('/mitv')}>
+            <Tv size={20} /> MiTV
+          </button>
+          <button className={`dl-nav-item ${isActive('/misenal1') ? 'active' : ''}`} onClick={() => navigate('/misenal1')}>
+            <PlayCircle size={20} /> Mi Señal 1
+          </button>
+          <button className={`dl-nav-item ${isActive('/create-signal') ? 'active' : ''}`} onClick={() => navigate('/create-signal')}>
+            <Plus size={20} /> Crear Señal IA
           </button>
           <button className={`dl-nav-item ${isActive('/search') ? 'active' : ''}`} onClick={() => navigate('/search')}>
-            <Search size={20} /> Buscar
+            <Search size={20} /> Buscar Canales
           </button>
           <button className={`dl-nav-item ${isActive('/explorar') || isActive('/mi-plataforma') ? 'active' : ''}`} onClick={() => navigate('/explorar')}>
             <Compass size={20} /> Explorar
@@ -92,17 +103,17 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           <button className={`dl-nav-item ${isActive('/my-lists') ? 'active' : ''}`} onClick={() => navigate('/my-lists')}>
             <List size={20} /> Mis listas
           </button>
-          <button className="dl-nav-item">
+          <button className="dl-nav-item" onClick={() => navigate('/my-lists')}>
             <Clock size={20} /> Historial
           </button>
-          <button className="dl-nav-item">
-            <Users size={20} /> Seguidores
+          <button className={`dl-nav-item ${isActive('/channels') ? 'active' : ''}`} onClick={() => navigate('/channels')}>
+            <Users size={20} /> Mi Canal / Perfil
           </button>
-          <button className="dl-nav-item">
-            <Grid size={20} /> You4
+          <button className={`dl-nav-item ${isActive('/you4') ? 'active' : ''}`} onClick={() => navigate('/you4')}>
+            <Grid size={20} /> You4 (4 Canales)
           </button>
-          <button className="dl-nav-item">
-            <Crown size={20} /> VIP
+          <button className="dl-nav-item" onClick={() => navigate('/mi-plataforma')}>
+            <Crown size={20} /> Mi Plataforma
           </button>
         </nav>
 
@@ -124,6 +135,9 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
       <main className="dl-main">
         {!isHome && (
           <header className="dl-topbar">
+            <div className="dl-mobile-brand" style={{ display: 'none' }}>
+              <YouAppOfficialLogo theme="dark" size="sm" />
+            </div>
             <div className="dl-search-container">
               <Search size={18} className="dl-search-icon" />
               <input 
@@ -142,14 +156,11 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
               <button className="dl-btn-primary" onClick={() => navigate('/create-signal')}>
                 <Plus size={18} /> Crear
               </button>
-              <button className="dl-btn-icon">
+              <button className="dl-btn-icon" aria-label="Notificaciones">
                 <Bell size={20} />
                 <span className="dl-notification-dot">3</span>
               </button>
-              <div className="dl-profile-dropdown" onClick={() => navigate('/channels')}>
-                <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&q=80" alt="Eduardo" />
-                <span>Eduardo</span>
-              </div>
+              <TvUserSessionMenu />
             </div>
           </header>
         )}
@@ -446,6 +457,8 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           padding: 0 32px;
           border-bottom: 1px solid rgba(255,255,255,0.05);
           flex-shrink: 0;
+          position: relative;
+          z-index: 60;
         }
         .dl-search-container {
           display: flex;
@@ -606,6 +619,10 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
           .dl-sidebar-left,
           .dl-sidebar-right {
             display: none !important;
+          }
+
+          .dl-mobile-brand {
+            display: inline-flex !important;
           }
           
           .dl-topbar {

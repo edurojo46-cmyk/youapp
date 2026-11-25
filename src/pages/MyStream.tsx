@@ -4,6 +4,7 @@ import { ChevronLeft, ThumbsUp, ThumbsDown, Share2, Maximize2, Loader2, Volume2,
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
 import SyncedTVPlayer from '../components/SyncedTVPlayer';
+import { shareYouAppVideo } from '../lib/tv/youappShareHelper';
 
 export default function MyStream() {
   const navigate = useNavigate();
@@ -161,7 +162,17 @@ export default function MyStream() {
               <ThumbsUp size={24} />
             </button>
             <div className="divider"></div>
-            <button className="action-btn" title="Compartir canal">
+            <button
+              className="action-btn"
+              title="Compartir video en YOUAPP"
+              onClick={() => {
+                void shareYouAppVideo({
+                  videoId: currentVideo.id,
+                  title: currentVideo.title,
+                  channelName: currentVideo.source
+                });
+              }}
+            >
               <Share2 size={24} />
             </button>
           </div>

@@ -1,0 +1,29 @@
+[
+  {
+    "VIDEO_ID": "PSYCHOLOGY_2MIN",
+    "TOPIC": "PSICOLOGÍA",
+    "STORY_TITLE": "El mapa de los patrones invisibles",
+    "STORY_STRUCTURE": "INTRO_DEVELOPMENT_CONFLICT_CLIMAX_INSIGHT",
+    "SCENE_COUNT": 14,
+    "VIDEO_RATIO": 1,
+    "IMAGE_RATIO": 0,
+    "MUSIC_PROFILE": {
+      "trackId": "MUS_VIRTUTES",
+      "title": "Virtutes Instrumenti",
+      "status": "APPROVED",
+      "BPM": 74,
+      "EMOTION": "ETHEREAL / PEACE",
+      "INSTRUMENTATION": [
+        "Celtic Flute",
+        "Harp",
+        "Acoustic Strings"
+      ]
+    },
+    "PACE": "MODERATE",
+    "TEXT_DENSITY": "LOW",
+    "AVERAGE_SHOT_DURATION": 8.57,
+    "TRANSITIONS": "CLEAN_CUT",
+    "DIRECTOR_SCORE": 96,
+    "CREATED_AT": "2026-10-23T21:21:15.600Z"
+  }
+]

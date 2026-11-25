@@ -14,7 +14,7 @@
  * Atlas registra el click antes de navegar.
  */
 
-import { getProductBaseUrl } from '../../../packages/config/products';
+import { getProductBaseUrl } from '../../../packages/config/products.ts';
 
 export interface MercadoLibreProduct {
   VIDEO_ID: string;
@@ -29,6 +29,42 @@ export interface MercadoLibreProduct {
 const STORAGE_KEY = 'atlas_ml_creator_hub_products_v1';
 
 export const INITIAL_RECOMMENDED_PRODUCTS: MercadoLibreProduct[] = [
+  {
+    VIDEO_ID: 'PSYCHOLOGY_2MIN',
+    PRODUCT_ID: 'ML-PSYCHOLOGY-001',
+    PRODUCT_TITLE: 'Libro El Obstáculo Es El Camino — Ryan Holiday (Edición Oficial)',
+    PRODUCT_IMAGE: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+    AFFILIATE_URL: 'https://articulo.mercadolibre.com.ar/MLA-1142981290-el-obstaculo-es-el-camino-ryan-holiday-libro-nuevo-_JM?matt_tool=28896014&matt_word=creator_hub',
+    CAMPAIGN_ID: 'CAMP_EMOTIVE_CREATOR_V1',
+    CLICKS: 0
+  },
+  {
+    VIDEO_ID: 'RELIGION_2MIN',
+    PRODUCT_ID: 'ML-RELIGION-001',
+    PRODUCT_TITLE: 'Bonsái Ficus Retusa En Maceta De Cerámica Esmaltada (Resistencia & Fortaleza)',
+    PRODUCT_IMAGE: 'https://images.unsplash.com/photo-1512428813834-c702c7702b78?auto=format&fit=crop&w=600&q=80',
+    AFFILIATE_URL: 'https://articulo.mercadolibre.com.ar/MLA-930419201-bonsai-ficus-retusa-maceta-ceramica-artesanal-_JM?matt_tool=28896014&matt_word=creator_hub',
+    CAMPAIGN_ID: 'CAMP_EMOTIVE_CREATOR_V1',
+    CLICKS: 0
+  },
+  {
+    VIDEO_ID: 'FINANCE_2MIN',
+    PRODUCT_ID: 'ML-FINANCE-001',
+    PRODUCT_TITLE: 'Farol Lámpara Vintage LED Recargable Luz Cálida Portátil (Senderos en la Niebla)',
+    PRODUCT_IMAGE: 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=600&q=80',
+    AFFILIATE_URL: 'https://articulo.mercadolibre.com.ar/MLA-1405298104-farol-vintage-led-recargable-luz-calida-camping-hogar-_JM?matt_tool=28896014&matt_word=creator_hub',
+    CAMPAIGN_ID: 'CAMP_EMOTIVE_CREATOR_V1',
+    CLICKS: 0
+  },
+  {
+    VIDEO_ID: 'QUANTUM_2MIN',
+    PRODUCT_ID: 'ML-QUANTUM-001',
+    PRODUCT_TITLE: 'Prisma Triangular De Cristal Óptico K9 (Dispersión de Luz & Física)',
+    PRODUCT_IMAGE: 'https://images.unsplash.com/photo-1507034589631-9433cc6bc453?auto=format&fit=crop&w=600&q=80',
+    AFFILIATE_URL: 'https://articulo.mercadolibre.com.ar/MLA-1142981290-el-obstaculo-es-el-camino-ryan-holiday-libro-nuevo-_JM?matt_tool=28896014&matt_word=creator_hub',
+    CAMPAIGN_ID: 'CAMP_EMOTIVE_CREATOR_V1',
+    CLICKS: 0
+  },
   {
     VIDEO_ID: 'RECIPE_001',
     PRODUCT_ID: 'ML-RECIPE-001',

@@ -12,6 +12,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Maximize2, Volume2, VolumeX, X, Grid, RefreshCw, Radio, Play } from 'lucide-react';
 import { UNIVERSAL_CATALOG } from '../lib/universalChannels';
+import { YouAppOfficialLogo } from './ui/YouAppOfficialLogo';
 
 interface QuadMultiviewProps {
   channels: any[];
@@ -136,6 +137,8 @@ export default function QuadMultiview({
       {/* Barra Superior del Modo 4 Pantallas */}
       <header className="quad-header glass-panel">
         <div className="quad-header-left">
+          <YouAppOfficialLogo theme="dark" size="sm" />
+          <span style={{ opacity: 0.35, margin: '0 4px' }}>|</span>
           <Grid size={20} className="text-accent glow-icon" />
           <span className="quad-title">MODO 4 EN 1 (YOU4 MULTIVIEW 24/7)</span>
           <span className="quad-hint">• Tocá cualquier pantalla para activar su audio</span>

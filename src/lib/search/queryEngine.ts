@@ -91,17 +91,68 @@ export function fetchYouTubeSingleSuggest(query: string): Promise<string[]> {
   });
 }
 
+async function fetchDailymotionSingleSuggest(query: string): Promise<string[]> {
+  try {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 2400);
+    const url = `https://api.dailymotion.com/videos?search=${encodeURIComponent(query)}&fields=title&limit=5&languages=es`;
+    const res = await fetch(url, { signal: controller.signal });
+    window.clearTimeout(timer);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const list = Array.isArray(data?.list) ? data.list : [];
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of list) {
+      const raw = typeof item?.title === 'string' ? item.title.trim() : '';
+      if (!raw || raw.length < 3) continue;
+      // Recortar títulos largos de Dailymotion para que luzcan limpios en autocompletar
+      const clean = raw.length > 64 ? `${raw.slice(0, 61).trim()}…` : raw;
+      const key = norm(clean);
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(clean);
+      }
+      if (out.length >= 4) break;
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchYouTubeAutocomplete(query: string): Promise<string[]> {
   const q = query.trim();
   if (!q) return [];
 
-  const cached = await getCache<string[]>(`suggest_multi_${norm(q)}`);
+  const cached = await getCache<string[]>(`suggest_multi_yt_dm_${norm(q)}`);
   if (cached) return cached;
 
-  const baseSuggestions = await fetchYouTubeSingleSuggest(q);
-  if (baseSuggestions.length > 0) {
-    await setCache(`suggest_multi_${norm(q)}`, baseSuggestions, 14400000); // 4 hours
-    return baseSuggestions;
+  const [ytSuggestions, dmSuggestions] = await Promise.all([
+    fetchYouTubeSingleSuggest(q),
+    fetchDailymotionSingleSuggest(q)
+  ]);
+
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  const addUnique = (s: string) => {
+    const k = norm(s);
+    if (!k || seen.has(k)) return;
+    seen.add(k);
+    merged.push(s);
+  };
+
+  // Intercalar sugerencias de YouTube + Dailymotion
+  const maxLen = Math.max(ytSuggestions.length, dmSuggestions.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (ytSuggestions[i]) addUnique(ytSuggestions[i]);
+    if (dmSuggestions[i] && merged.length < 8) addUnique(dmSuggestions[i]);
+    if (merged.length >= 8) break;
+  }
+
+  if (merged.length > 0) {
+    await setCache(`suggest_multi_yt_dm_${norm(q)}`, merged, 14400000); // 4 hours
+    return merged;
   }
 
   return [

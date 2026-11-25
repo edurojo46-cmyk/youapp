@@ -170,14 +170,14 @@ export const CANONICAL_ENTITIES_V2: CanonicalEntityDef[] = [
   { id: 'albert_king', name: 'Albert King', entityType: 'solo_artist', aliases: ['Born Under a Bad Sign'], regex: /\b(albert king)\b/i, country: 'US' },
 
   // 🎸 Rock & Pop Universal
-  { id: 'the_beatles', name: 'The Beatles', entityType: 'band', aliases: ['Beatles', 'John Lennon', 'Paul McCartney', 'George Harrison'], regex: /\b(the beatles|beatles|john lennon|paul mccartney|george harrison|ringo starr)\b/i, country: 'UK' },
-  { id: 'pink_floyd', name: 'Pink Floyd', entityType: 'band', aliases: ['Floyd', 'David Gilmour', 'Roger Waters', 'Syd Barrett'], regex: /\b(pink floyd|david gilmour|roger waters|syd barrett)\b/i, country: 'UK' },
+  { id: 'the_beatles', name: 'The Beatles', entityType: 'band', aliases: ['Beatles'], regex: /\b(the beatles|beatles)\b/i, country: 'UK' },
+  { id: 'pink_floyd', name: 'Pink Floyd', entityType: 'band', aliases: ['Floyd'], regex: /\b(pink floyd)\b/i, country: 'UK' },
   { id: 'david_bowie', name: 'David Bowie', entityType: 'solo_artist', aliases: ['Bowie', 'Ziggy Stardust', 'Thin White Duke'], regex: /\b(david bowie|bowie|ziggy stardust)\b/i, country: 'UK' },
-  { id: 'queen', name: 'Queen', entityType: 'band', aliases: ['Freddie Mercury', 'Brian May'], regex: /\b(queen(\s+band)?|freddie mercury|brian may)\b/i, country: 'UK' },
-  { id: 'led_zeppelin', name: 'Led Zeppelin', entityType: 'band', aliases: ['Zeppelin', 'Jimmy Page', 'Robert Plant'], regex: /\b(led zeppelin|jimmy page|robert plant)\b/i, country: 'UK' },
-  { id: 'the_rolling_stones', name: 'The Rolling Stones', entityType: 'band', aliases: ['Rolling Stones', 'Stones', 'Mick Jagger', 'Keith Richards'], regex: /\b(rolling stones|the rolling stones|mick jagger|keith richards)\b/i, country: 'UK' },
-  { id: 'radiohead', name: 'Radiohead', entityType: 'band', aliases: ['Thom Yorke', 'The Smile'], regex: /\b(radiohead|thom yorke|the smile)\b/i, country: 'UK' },
-  { id: 'nirvana', name: 'Nirvana', entityType: 'band', aliases: ['Kurt Cobain', 'Dave Grohl'], regex: /\b(nirvana|kurt cobain|foo fighters)\b/i, country: 'US' },
+  { id: 'queen', name: 'Queen', entityType: 'band', aliases: ['Freddie Mercury', 'Brian May'], regex: /\b(queen(\s+band)?)\b/i, country: 'UK' },
+  { id: 'led_zeppelin', name: 'Led Zeppelin', entityType: 'band', aliases: ['Zeppelin'], regex: /\b(led zeppelin)\b/i, country: 'UK' },
+  { id: 'the_rolling_stones', name: 'The Rolling Stones', entityType: 'band', aliases: ['Rolling Stones', 'Stones'], regex: /\b(rolling stones|the rolling stones)\b/i, country: 'UK' },
+  { id: 'radiohead', name: 'Radiohead', entityType: 'band', aliases: ['The Smile'], regex: /\b(radiohead|the smile)\b/i, country: 'UK' },
+  { id: 'nirvana', name: 'Nirvana', entityType: 'band', aliases: [], regex: /\b(nirvana)\b/i, country: 'US' },
   { id: 'the_cure', name: 'The Cure', entityType: 'band', aliases: ['Robert Smith'], regex: /\b(the cure|robert smith)\b/i, country: 'UK' },
   { id: 'the_doors', name: 'The Doors', entityType: 'band', aliases: ['Jim Morrison', 'Ray Manzarek'], regex: /\b(the doors|jim morrison|ray manzarek)\b/i, country: 'US' },
   { id: 'jimi_hendrix', name: 'Jimi Hendrix', entityType: 'solo_artist', aliases: ['Hendrix', 'Jimi Hendrix Experience'], regex: /\b(jimi hendrix|hendrix)\b/i, country: 'US' },
@@ -270,7 +270,7 @@ export const CANONICAL_ENTITIES_V2: CanonicalEntityDef[] = [
   { id: 'calle_13', name: 'Calle 13', entityType: 'band', aliases: ['Residente', 'Calle 13 Oficial'], regex: /\b(calle 13|residente)\b/i, country: 'PR' },
   { id: 'chayanne', name: 'Chayanne', entityType: 'solo_artist', aliases: ['Elmer Figueroa'], regex: /\b(chayanne)\b/i, country: 'PR' },
   { id: 'michael_jackson', name: 'Michael Jackson', entityType: 'solo_artist', aliases: ['MJ', 'King of Pop'], regex: /\b(michael jackson)\b/i, country: 'US' },
-  { id: 'queen', name: 'Queen', entityType: 'band', aliases: ['Queen Band', 'Freddie Mercury'], regex: /\b(queen(\s+band)?|freddie\s+mercury)\b/i, country: 'GB' },
+  { id: 'queen', name: 'Queen', entityType: 'band', aliases: ['Queen Band'], regex: /\b(queen(\s+band)?)\b/i, country: 'GB' },
   { id: 'luciano_pavarotti', name: 'Luciano Pavarotti', entityType: 'solo_artist', aliases: ['Pavarotti'], regex: /\b(luciano\s+pavarotti|pavarotti)\b/i, country: 'IT' },
 
   // 🏛️ Figuras Públicas, Culturales e Institucionales
@@ -367,6 +367,57 @@ export function resolveEntityV2(title: string, description = '', creator = ''): 
   const text = `${title} ${description} ${creator}`.toLowerCase();
   const evidence: string[] = [];
 
+  // V2-E2: Epithet Detection (e.g. "Nancy Ajram, Queen of Arab Pop")
+  const epithetRegex = /,\s*(queen|king|star|frontman|legend)\s+of\s+[^,:]+/gi;
+  let cleanTitleForEntity = title.replace(epithetRegex, '');
+
+  // V2-E2: Explicit Entity Extraction (Candidate Pipeline)
+  const explicitPatterns = [
+    /^(?:[A-Z][A-Za-z0-9]+'s\s+)?([A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,3})\s*(?:-|,|:|\(|\[)/,
+    /^(?:[A-Z][A-Za-z0-9]+'s\s+)?([A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,3})\s+(?:Plays|Talks|Reacts|Performs|Live|Reunites|Gets|Is|On|plays|talks|reacts|performs|live|reunites|gets|is|on)\b/,
+    /^Interview With\s+([A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,3})/, 
+    /^(?:Watch\s+)?([A-Z][A-Za-z0-9]*(?:\s+[A-Z][A-Za-z0-9]*){0,3})\s+(?:React|react)\b/
+  ];
+
+  let explicitEntityMatch = null;
+  for (const pat of explicitPatterns) {
+    const m = cleanTitleForEntity.match(pat);
+    if (m && m[1] && m[1].trim().length > 3 && !['The', 'A', 'An', 'My', 'Our', 'Watch', 'Watch React'].includes(m[1].trim())) {
+      explicitEntityMatch = m[1].trim();
+      break;
+    }
+  }
+  
+  if (explicitEntityMatch) {
+    const lowExplicit = explicitEntityMatch.toLowerCase();
+    const canonicalMatch = CANONICAL_ENTITIES_V2.find(e => 
+      e.name.toLowerCase() === lowExplicit || e.aliases.some(a => a.toLowerCase() === lowExplicit)
+    );
+    if (canonicalMatch) {
+       evidence.push(`explicit_title_entity_canonical:${canonicalMatch.id}`);
+       return {
+         id: canonicalMatch.id,
+         name: canonicalMatch.name,
+         entityType: canonicalMatch.entityType,
+         confidence: 0.99,
+         evidence,
+         resolvedVia: 'exact_canonical'
+       };
+    } else {
+       evidence.push(`explicit_title_entity_provisional:${lowExplicit}`);
+       return {
+         id: `prov_${lowExplicit.replace(/[^a-z0-9]+/g, '_')}`,
+         name: explicitEntityMatch,
+         entityType: 'solo_artist',
+         confidence: 0.95,
+         evidence,
+         resolvedVia: 'exact_canonical'
+       };
+    }
+  }
+
+  const textWithoutEpithet = cleanTitleForEntity.toLowerCase();
+  
   // NIVEL 0: Provisional Entities Cache (Open-world discovery)
   for (const [normName, prov] of provisionalEntities.entries()) {
     if (text.includes(normName)) {
@@ -384,7 +435,7 @@ export function resolveEntityV2(title: string, description = '', creator = ''): 
 
   // NIVEL 1 & 2: Exact Canonical & Exact Alias Match
   for (const ent of CANONICAL_ENTITIES_V2) {
-    if (ent.regex.test(text)) {
+    if (ent.regex.test(textWithoutEpithet)) {
       evidence.push(`canonical_match:${ent.id}`);
       return {
         id: ent.id,
@@ -398,7 +449,7 @@ export function resolveEntityV2(title: string, description = '', creator = ''): 
     }
 
     for (const alias of ent.aliases) {
-      if (text.includes(alias.toLowerCase())) {
+      if (textWithoutEpithet.includes(alias.toLowerCase())) {
         evidence.push(`alias_match:${alias}`);
         return {
           id: ent.id,

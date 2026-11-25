@@ -1,5 +1,4 @@
-const DEFAULT_YOUTUBE_API_KEY = 'AIzaSyBMhLs1XEBfInBFB7vQ3DjMZfP-2OCM1xw';
-const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || DEFAULT_YOUTUBE_API_KEY;
+const YOUTUBE_API_KEY = (import.meta as any).env?.VITE_YOUTUBE_API_KEY || (typeof process !== 'undefined' ? process.env?.VITE_YOUTUBE_API_KEY : '') || '';
 
 // ── Quota guard: manejo resiliente de cuota ──────────
 let _apiQuotaExceeded = false;
@@ -122,14 +121,14 @@ export const YOUTUBE_VIDEO_POOLS: Record<string, { id: string; title: string; au
   noticias: [
     { id: '3y-Nke9M1Lo', title: '🔴 América Noticias - Transmisión en Vivo HD 24/7', author: 'América TV', duration: 'En Vivo', sec: 99999, views: '84 k espectadores', time: 'EN VIVO', isLive: true },
     { id: 'hw4uHyct4vg', title: '🔴 Crónica TV - Noticias de Último Momento en Directo', author: 'Crónica TV', duration: 'En Vivo', sec: 99999, views: '112 k espectadores', time: 'EN VIVO', isLive: true },
-    { id: 'hXo8a3Gv_6s', title: '🔴 Todo Noticias (TN) - En Vivo las 24 Horas', author: 'Todo Noticias', duration: 'En Vivo', sec: 99999, views: '145 k espectadores', time: 'EN VIVO', isLive: true },
+    { id: 'cb12KmMMDJA', title: '🔴 Todo Noticias (TN) - En Vivo las 24 Horas', author: 'Todo Noticias', duration: 'En Vivo', sec: 99999, views: '145 k espectadores', time: 'EN VIVO', isLive: true },
     { id: 'y6120QOlsfU', title: 'Prensa Libre & Solidaria - Informe Especial de Actualidad', author: 'Prensa Solidaria', duration: '24:15', sec: 1455, views: '230 k vistas', time: 'hace 3 horas' },
     { id: '21X5lGlDOfg', title: 'Debate Central: Economía, Política y Sociedad en Profundidad', author: 'Prensa Solidaria', duration: '45:30', sec: 2730, views: '480 k vistas', time: 'hace 1 día' },
     { id: 'V-_O7nl0Ii0', title: 'Entrevista Exclusiva con Protagonistas del Momento', author: 'Periodismo Digital', duration: '18:40', sec: 1120, views: '95 k vistas', time: 'hace 2 días' },
-    { id: '48ol4kGZ27A', title: 'Resumen Informativo Diario: Lo que tenés que saber hoy', author: 'Noticiero Federal', duration: '14:20', sec: 860, views: '310 k vistas', time: 'hace 5 horas' },
+    { id: '0cjWa3Eizqw', title: 'Resumen Informativo Diario: Lo que tenés que saber hoy', author: 'Noticiero Federal', duration: '14:20', sec: 860, views: '310 k vistas', time: 'hace 5 horas' },
   ],
   musica: [
-    { id: 'jfKfPfyJRdk', title: '🔴 Lofi Girl - beats to relax/study to 24/7 [radio]', author: 'Lofi Girl', duration: 'En Vivo', sec: 99999, views: '38 k espectadores', time: 'EN VIVO', isLive: true },
+    { id: 'BHACKCNDMW8', title: 'Naturaleza 4K y Música Relajante 24/7', author: 'YOUAPP Chill', duration: 'En Vivo', sec: 99999, views: '38 k espectadores', time: 'EN VIVO', isLive: true },
     { id: '4xDzrJKXOOY', title: 'synthwave radio - chill synth / retro beats 24/7', author: 'Lofi Girl', duration: 'En Vivo', sec: 99999, views: '12 k espectadores', time: 'EN VIVO', isLive: true },
     { id: '5yx6BWlEVcY', title: 'Lofi Hip Hop Radio - Beats to Sleep / Chill to', author: 'ChillHop Music', duration: 'En Vivo', sec: 99999, views: '22 k espectadores', time: 'EN VIVO', isLive: true },
     { id: 'kJQP7kiw5Fk', title: 'Luis Fonsi - Despacito ft. Daddy Yankee (Official)', author: 'Luis Fonsi', duration: '04:41', sec: 281, views: '8.4 B vistas', time: 'hace 7 años' },

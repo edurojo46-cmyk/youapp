@@ -1,32 +1,42 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-
-import { 
-  Power, Volume2, VolumeX, Tv, Moon, Grid, Image, 
-  Send, Sparkles, Coffee, Smile, Film, EyeOff, Radio, ChevronUp, ChevronDown, Check, Cast, ChevronLeft, Search
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+  Cast,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Copy,
+  EyeOff,
+  Grid,
+  List,
+  Pause,
+  Play,
+  Power,
+  RotateCcw,
+  RotateCw,
+  Search,
+  Send,
+  Sparkles,
+  Tv,
+  Volume1,
+  Volume2,
+  VolumeX,
+  X
 } from 'lucide-react';
-
-
-import { supabase } from '../lib/supabase';
 import CastModal from '../components/CastModal';
 import { RemoteBridge } from '../utils/remoteBridge';
 import { VERIFIED_24_7_LIVE_CHANNELS, fetchTopViewedVideosByMood } from '../lib/youtube';
+import { loadMiTvWorkspace } from '../lib/tv/miTvStore';
 
-const EMOJIS = ['🔥', '❤️', '👏', '🚀', '🤯', '🍿', '😂', '🎉'];
-
-const MOODS = [
-  { id: 'all', label: '📺 Todos' },
-  { id: 'focus', label: '☕ Focus' },
-  { id: 'relax', label: '🧘 Relax' },
-  { id: 'learn', label: '🧠 Aprender' },
-  { id: 'humor', label: '😂 Humor' },
-  { id: 'cinema', label: '🍿 Cine' },
-];
+const QUICK_EMOJIS = ['🔥', '❤️', '👏', '😂', '🍿', '🚀'];
 
 export default function MobileRemote() {
   const navigate = useNavigate();
   const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(() => {
+
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
     try {
       const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
       const params = new URLSearchParams(window.location.search || hashQuery);
@@ -38,138 +48,59 @@ export default function MobileRemote() {
       return routeSessionId || '1234';
     }
   });
-  const [pinInput, setPinInput] = useState('');
-  const bridgeRef = useRef<RemoteBridge | null>(null);
-  const [isConnected, setIsConnected] = useState(true);
+
+  const [editingPin, setEditingPin] = useState(false);
+  const [pinDraft, setPinDraft] = useState(activeSessionId);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [showCastModal, setShowCastModal] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
+  const [showExtras, setShowExtras] = useState(false);
+
   const [lastAction, setLastAction] = useState<string>('Listo');
-  const [chatMessage, setChatMessage] = useState('');
-  const [selectedMood, setSelectedMood] = useState('all');
-  const [channels, setChannels] = useState<any[]>(VERIFIED_24_7_LIVE_CHANNELS);
-  const [totalChannelsCount, setTotalChannelsCount] = useState<number>(61);
-  const [channelIdx, setChannelIdx] = useState(0);
-  const [syncedChannel, setSyncedChannel] = useState<any>(VERIFIED_24_7_LIVE_CHANNELS[0]);
-  const [isCastMuted, setIsCastMuted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [isQuadActive, setIsQuadActive] = useState(false);
-  const [showPinChange, setShowPinChange] = useState(false);
-  const [showChannelListModal, setShowChannelListModal] = useState(false);
+  const [isZenActive, setIsZenActive] = useState(false);
+  const [tvQuery, setTvQuery] = useState('');
+  const [chatMessage, setChatMessage] = useState('');
 
-  // Cargar todos los canales en el celular para que coincidan con la TV (60+ canales)
-  useEffect(() => {
-    fetchAllChannels();
-  }, []);
+  const [channels, setChannels] = useState<any[]>(() => {
+    const mitv = loadMiTvWorkspace();
+    const fromMiTv = (mitv.channels || []).flatMap((ch) =>
+      (ch.items || []).map((it) => ({
+        id: it.id,
+        name: ch.name,
+        currentVideoTitle: it.title,
+        category: it.slot || 'MiTV',
+        thumbnail: it.thumbnailUrl,
+        videoUrl: it.sourceUrl
+      }))
+    );
+    return [...fromMiTv, ...VERIFIED_24_7_LIVE_CHANNELS];
+  });
+  const [channelIdx, setChannelIdx] = useState(0);
+  const [syncedChannel, setSyncedChannel] = useState<any>(() => channels[0] || VERIFIED_24_7_LIVE_CHANNELS[0]);
 
-  const fetchAllChannels = async () => {
-    try {
-      const { data } = await supabase
-        .from('channels')
-        .select(`
-          id,
-          name,
-          slug,
-          category,
-          programming (
-            id,
-            videos (*)
-          )
-        `)
-        .limit(20);
-
-      const userFormatted = (data || []).map((ch: any) => {
-        const progs = ch.programming || [];
-        if (progs.length === 0) return null;
-        const currentProg = progs[0];
-        const video = currentProg?.videos;
-        if (!video) return null;
-        const rawId = (video.id || '').replace('yt-', '').replace('https://www.youtube.com/embed/', '');
-        return {
-          ...ch,
-          viewerCount: 450,
-          videoUrl: `https://www.youtube.com/embed/${rawId}`,
-          currentVideoTitle: video.title || ch.name,
-        };
-      }).filter(Boolean);
-
-      const real24Live = await fetchTopViewedVideosByMood('live streaming 24/7 radio', 15);
-      const topRelax = await fetchTopViewedVideosByMood('relaxing 4k nature scenery meditation', 15);
-      const topFocus = await fetchTopViewedVideosByMood('lofi hip hop radio beats study', 15);
-
-      const rawChannels = [...VERIFIED_24_7_LIVE_CHANNELS, ...userFormatted];
-      if (Array.isArray(real24Live) && real24Live.length > 0 && real24Live !== VERIFIED_24_7_LIVE_CHANNELS) {
-        rawChannels.push(...real24Live);
-      }
-      if (Array.isArray(topRelax) && topRelax.length > 0 && topRelax !== VERIFIED_24_7_LIVE_CHANNELS) {
-        rawChannels.push(...topRelax);
-      }
-      if (Array.isArray(topFocus) && topFocus.length > 0 && topFocus !== VERIFIED_24_7_LIVE_CHANNELS) {
-        rawChannels.push(...topFocus);
-      }
-
-      const seenUrls = new Set<string>();
-      const uniqueChannels = rawChannels.filter(ch => {
-        if (!ch || !ch.videoUrl) return false;
-        if (seenUrls.has(ch.videoUrl)) return false;
-        seenUrls.add(ch.videoUrl);
-        return true;
-      }).map((ch, idx) => ({
-        ...ch,
-        id: ch.id || `channel-${idx + 1}`
-      }));
-
-      const finalChannels = uniqueChannels.length > 0 ? uniqueChannels : VERIFIED_24_7_LIVE_CHANNELS;
-      setChannels(finalChannels);
-      setTotalChannelsCount(finalChannels.length);
-    } catch (e) {
-      console.warn("Error fetching remote channels:", e);
-      setChannels(VERIFIED_24_7_LIVE_CHANNELS);
-      setTotalChannelsCount(VERIFIED_24_7_LIVE_CHANNELS.length);
-    }
-  };
-
-  // Helper para enviar nuevo canal a Chromecast si está conectado a un dispositivo Cast
-  const streamChannelToChromecast = (ch: any) => {
-    if (!ch || !window.cast?.framework) return;
-    try {
-      const context = window.cast.framework.CastContext.getInstance();
-      const castSession = context.getCurrentSession();
-      if (!castSession || !window.chrome?.cast) return;
-
-      const videoUrl = ch.videoUrl;
-      let contentType = 'video/mp4';
-      if (videoUrl.includes('.m3u8')) contentType = 'application/x-mpegurl';
-
-      const mediaInfo = new window.chrome.cast.media.MediaInfo(videoUrl, contentType);
-      mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
-      mediaInfo.metadata.title = ch.name || 'YouApp TV';
-      mediaInfo.metadata.subtitle = ch.currentVideoTitle || 'En Vivo';
-      if (ch.thumbnail) {
-        mediaInfo.metadata.images = [{ url: ch.thumbnail }];
-      }
-
-      const req = new window.chrome.cast.media.LoadRequest(mediaInfo);
-      req.autoplay = true;
-      castSession.loadMedia(req);
-    } catch (e) {
-      console.warn("Error cast to chromecast:", e);
-    }
-  };
+  const bridgeRef = useRef<RemoteBridge | null>(null);
+  const actionTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!activeSessionId) return;
+    try {
+      localStorage.setItem('youapp_remote_last_pin', activeSessionId);
+    } catch {
+      // ignore
+    }
 
-    localStorage.setItem('youapp_remote_last_pin', activeSessionId);
     const bridge = new RemoteBridge(activeSessionId, 'remote');
     bridge.notifyConnected();
-    setIsConnected(true);
     bridgeRef.current = bridge;
 
     bridge.onAction((action, payload) => {
       if (action === 'SYNC_STATE' && payload?.channel) {
         setSyncedChannel(payload.channel);
         if (payload.activeIndex !== undefined) setChannelIdx(payload.activeIndex);
-        if (payload.moodId) setSelectedMood(payload.moodId);
-        if (payload.totalChannels) setTotalChannelsCount(payload.totalChannels);
-        if (payload.isQuadOpen !== undefined) setIsQuadActive(payload.isQuadOpen);
+        if (payload.isQuadOpen !== undefined) setIsQuadActive(Boolean(payload.isQuadOpen));
       }
     });
 
@@ -178,950 +109,915 @@ export default function MobileRemote() {
     };
   }, [activeSessionId]);
 
-  const handlePinSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (pinInput.trim().length >= 4) {
-      const pin = pinInput.trim();
-      localStorage.setItem('youapp_remote_last_pin', pin);
-      setActiveSessionId(pin);
-      setShowPinChange(false);
-    }
+  const flashAction = (label: string) => {
+    setLastAction(label);
+    if (actionTimerRef.current) window.clearTimeout(actionTimerRef.current);
+    actionTimerRef.current = window.setTimeout(() => setLastAction('Listo'), 1500);
   };
 
-
   const sendAction = async (action: string, payload: any = {}) => {
-    if (navigator.vibrate) {
-      try { navigator.vibrate(40); } catch {}
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try {
+        navigator.vibrate(25);
+      } catch {
+        // ignore
+      }
     }
 
-    const actionLabels: Record<string, string> = {
-      'TOGGLE_QUAD': '4 EN 1',
-      'NEXT_CHANNEL': 'CH +',
-      'PREV_CHANNEL': 'CH -',
-      'TOGGLE_MUTE': 'MUTE',
-      'TOGGLE_ZEN': 'ZEN',
-      'TOGGLE_SEARCH': 'BUSCADOR',
-      'TOGGLE_AMBIENT': 'AMBIENTE'
+    const labels: Record<string, string> = {
+      TOGGLE_PLAY: isPlaying ? 'Pausa' : 'Play',
+      NEXT_CHANNEL: 'Siguiente',
+      PREV_CHANNEL: 'Anterior',
+      SEEK_BACK: '-10 s',
+      SEEK_FORWARD: '+10 s',
+      VOLUME_UP: 'Vol +',
+      VOLUME_DOWN: 'Vol -',
+      TOGGLE_MUTE: isMuted ? 'Sonido' : 'Silencio',
+      TOGGLE_QUAD: 'YOU4',
+      TOGGLE_ZEN: 'Modo Cine',
+      TOGGLE_SLEEP: 'Reposo',
+      SEARCH_QUERY: 'Buscando…',
+      SEND_EMOJI: payload?.emoji || 'Reacción',
+      SEND_CHAT: 'Enviado'
     };
+    flashAction(labels[action] || action);
 
-    setLastAction(actionLabels[action] || action);
-    setTimeout(() => setLastAction('Listo'), 1500);
-
-    // 1. Enviar la orden a la TV YouApp (vía WebRTC / Supabase)
     if (bridgeRef.current) {
-      console.log('[Remote] Sending action to TV:', action, payload);
       bridgeRef.current.sendAction(action, payload);
     }
 
-    // 2. Actualizar estado local del control y enviar a Chromecast si está conectado
-    const totalCount = channels.length > 0 ? channels.length : totalChannelsCount;
-    if (action === 'NEXT_CHANNEL') {
-      const nextIdx = (channelIdx + 1) % totalCount;
-      setChannelIdx(nextIdx);
-      if (channels[nextIdx]) {
-        setSyncedChannel(channels[nextIdx]);
-        streamChannelToChromecast(channels[nextIdx]);
-      }
+    const total = Math.max(1, channels.length);
+    if (action === 'TOGGLE_PLAY') {
+      setIsPlaying((p) => !p);
+    } else if (action === 'NEXT_CHANNEL') {
+      const next = (channelIdx + 1) % total;
+      setChannelIdx(next);
+      if (channels[next]) setSyncedChannel(channels[next]);
     } else if (action === 'PREV_CHANNEL') {
-      const prevIdx = (channelIdx - 1 + totalCount) % totalCount;
-      setChannelIdx(prevIdx);
-      if (channels[prevIdx]) {
-        setSyncedChannel(channels[prevIdx]);
-        streamChannelToChromecast(channels[prevIdx]);
-      }
+      const prev = (channelIdx - 1 + total) % total;
+      setChannelIdx(prev);
+      if (channels[prev]) setSyncedChannel(channels[prev]);
     } else if (action === 'SET_CHANNEL_INDEX') {
-      const idx = payload?.index || 0;
+      const idx = Math.max(0, Math.min(total - 1, Number(payload?.index || 0)));
       setChannelIdx(idx);
-      if (channels[idx]) {
-        setSyncedChannel(channels[idx]);
-        streamChannelToChromecast(channels[idx]);
-      }
-    } else if (action === 'TOGGLE_QUAD') {
-      setIsQuadActive(prev => !prev);
+      if (channels[idx]) setSyncedChannel(channels[idx]);
     } else if (action === 'TOGGLE_MUTE') {
-      setIsCastMuted(prev => {
-        const next = !prev;
-        try {
-          const castSession = window.cast?.framework?.CastContext?.getInstance()?.getCurrentSession();
-          if (castSession) castSession.setMute(next);
-        } catch {}
-        return next;
-      });
+      setIsMuted((m) => !m);
+    } else if (action === 'TOGGLE_QUAD') {
+      setIsQuadActive((q) => !q);
+    } else if (action === 'TOGGLE_ZEN') {
+      setIsZenActive((z) => !z);
     } else if (action === 'SEARCH_QUERY' && payload?.query) {
       try {
-        const results = await fetchTopViewedVideosByMood(payload.query);
-        if (results && results.length > 0) {
-          setChannels(results);
-          setTotalChannelsCount(results.length);
+        const res = await fetchTopViewedVideosByMood(payload.query);
+        if (Array.isArray(res) && res.length > 0) {
+          setChannels(res);
           setChannelIdx(0);
-          setSyncedChannel(results[0]);
-          streamChannelToChromecast(results[0]);
+          setSyncedChannel(res[0]);
         }
-      } catch {}
+      } catch {
+        // ignore
+      }
     }
   };
 
+  const handleCommitPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleaned = pinDraft.replace(/\D/g, '').slice(0, 6);
+    if (cleaned.length >= 4) {
+      setActiveSessionId(cleaned);
+      setEditingPin(false);
+      flashAction(`PIN #${cleaned}`);
+    }
+  };
 
-  // Pantalla de Ingreso de PIN
-  if (!activeSessionId) {
-    return (
-      <div className="mobile-remote-viewport pin-login-screen">
-        <header className="remote-header">
-          <div className="brand">
-            <button className="remote-back-btn" onClick={() => navigate('/live')} title="Volver a la App">
-              <ChevronLeft size={22} />
+  const handleCopyRemoteLink = async () => {
+    const url = `${window.location.origin}/remote/${encodeURIComponent(activeSessionId)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedLink(true);
+      flashAction('Enlace copiado');
+      window.setTimeout(() => setCopiedLink(false), 2200);
+    } catch {
+      flashAction(url);
+    }
+  };
+
+  return (
+    <div className="yr-page">
+      <div className="yr-bg" aria-hidden="true" />
+
+      <div className="yr-device-shell">
+        {/* CABECERA MINIMALISTA */}
+        <header className="yr-header">
+          <button
+            type="button"
+            className="yr-icon-btn"
+            onClick={() => navigate('/mitv')}
+            title="Volver a MiTV"
+            aria-label="Volver"
+          >
+            <ChevronLeft size={19} />
+          </button>
+
+          <div className="yr-brand">
+            <Tv size={15} color="#64d2ff" />
+            <span>YOU REMOTE</span>
+          </div>
+
+          <div className="yr-head-right">
+            <button
+              type="button"
+              className="yr-pin-pill"
+              onClick={() => {
+                setPinDraft(activeSessionId);
+                setEditingPin((v) => !v);
+              }}
+              title="Cambiar PIN de vinculación TV"
+            >
+              <span className="yr-live-dot" />
+              PIN #{activeSessionId}
             </button>
-            <Tv size={20} className="text-accent" />
-            <span className="brand-name">YOUAPP REMOTE</span>
+            <button
+              type="button"
+              className="yr-icon-btn"
+              onClick={() => void handleCopyRemoteLink()}
+              title="Copiar enlace para abrir el control en tu celular"
+              aria-label="Copiar enlace"
+            >
+              {copiedLink ? <Check size={15} color="#34d399" /> : <Copy size={15} />}
+            </button>
+            <button
+              type="button"
+              className="yr-icon-btn"
+              onClick={() => setShowCastModal(true)}
+              title="Transmitir a Chromecast / Smart TV"
+              aria-label="Cast"
+            >
+              <Cast size={15} />
+            </button>
           </div>
         </header>
 
-        <div className="pin-card glass-panel">
-          <h2>Conectar con tu Televisor</h2>
-          <p>Ingresa el código PIN de 4 dígitos que aparece en tu pantalla de TV:</p>
-
-          <form onSubmit={handlePinSubmit} className="pin-form">
+        {/* EDITOR RÁPIDO DE PIN */}
+        {editingPin && (
+          <form className="yr-pin-editor" onSubmit={handleCommitPin}>
             <input
               type="tel"
-              maxLength={4}
-              placeholder="0000"
-              value={pinInput}
-              onChange={(e) => setPinInput(e.target.value.replace(/\D/g, ''))}
-              className="pin-input"
+              maxLength={6}
+              value={pinDraft}
+              onChange={(e) => setPinDraft(e.target.value.replace(/\D/g, ''))}
+              placeholder="PIN de 4 dígitos"
               autoFocus
             />
-
-            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1rem', marginTop: '12px' }}>
-              Vincular Control Remoto
+            <button type="submit" className="yr-btn-primary">
+              Vincular
             </button>
           </form>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  const handleSendChat = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatMessage.trim()) return;
-    sendAction('SEND_CHAT', { text: chatMessage.trim() });
-    setChatMessage('');
-  };
-
-
-  return (
-    <div className="mobile-remote-viewport">
-      {/* Encabezado del Control con Flecha de Volver */}
-      <header className="remote-header">
-        <div className="brand">
-          <button 
-            className="remote-back-btn" 
-            onClick={() => setActiveSessionId(null)} 
-            title="Cambiar de TV / Desconectar"
-          >
-            <ChevronLeft size={22} />
-          </button>
-          <Tv size={18} className="text-accent" />
-          <span className="brand-name">YOUAPP REMOTE</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button 
-            className="cast-header-btn" 
-            onClick={() => setShowCastModal(true)} 
-            title="Transmitir pantalla a la TV"
-          >
-            <Cast size={16} />
-            <span>Cast</span>
-          </button>
-          <div className={`connection-status ${isConnected ? 'online' : 'offline'}`}>
-            <span className="dot">●</span>
-            <span>{isConnected ? 'TV CONECTADA' : 'CONECTANDO...'}</span>
+        {/* VISOR "AHORA EN TU TV" */}
+        <section className="yr-display">
+          <div className="yr-display-top">
+            <span className="yr-display-kicker">EN TU TELEVISOR</span>
+            <span className="yr-action-pill">{lastAction}</span>
           </div>
-        </div>
-      </header>
+          <h2 className="yr-display-title">
+            {syncedChannel?.currentVideoTitle || syncedChannel?.name || `Sesión #${activeSessionId}`}
+          </h2>
+          <p className="yr-display-sub">
+            CH {String(channelIdx + 1).padStart(2, '0')} · {syncedChannel?.name || 'YOUAPP TV'}
+            {isQuadActive ? ' · YOU4 activo' : ''}
+          </p>
+        </section>
 
-
-      {/* Pantalla OSD / Monitor de la TV en el Control */}
-      <div className="remote-screen-display glass-panel">
-        <div className="screen-top">
-          <span className="tv-label">SINTONIZANDO EN TELEVISIÓN</span>
-          <span className="action-pill">{lastAction}</span>
-        </div>
-        <div className="screen-info">
-          {syncedChannel ? (
-            <>
-              <h3>CH {String(channelIdx + 1).padStart(2, '0')} • {syncedChannel.name}</h3>
-              <p>{syncedChannel.currentVideoTitle || syncedChannel.category || 'Transmisión en Vivo'}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '0.7rem', color: '#a5b4fc' }}>
-                <span>Canal {channelIdx + 1} de {totalChannelsCount || channels.length}</span>
-                {isQuadActive && <span style={{ color: '#ec4899', fontWeight: 800, background: 'rgba(236,72,153,0.2)', padding: '2px 6px', border: '1px solid #ec4899', borderRadius: '4px' }}>● 4 EN 1 ACTIVO</span>}
-              </div>
-            </>
-          ) : (
-            <>
-              <h3>Sesión TV: #{activeSessionId?.slice(-4).toUpperCase()}</h3>
-              <p>Toca cualquier botón para controlar la TV en vivo</p>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Buscador de Canales / En Vivo Directo desde el Celular */}
-      <form 
-        className="remote-tv-search-bar glass-panel" 
-        onSubmit={(e) => {
-          e.preventDefault();
-          const q = (e.currentTarget.elements.namedItem('tvQuery') as HTMLInputElement)?.value;
-          if (q && q.trim()) {
-            sendAction('SEARCH_QUERY', { query: q.trim() });
-          }
-        }}
-      >
-        <Search size={18} className="text-accent" />
-        <input 
-          type="text" 
-          name="tvQuery" 
-          placeholder="Escribir canal para la tele (ej: Noticias, Lofi, Cosmos)..." 
-        />
-        <button type="submit" className="btn btn-primary btn-sm">
-          Sintonizar
-        </button>
-      </form>
-
-
-      {/* Controles Principales de Navegación y Volumen */}
-      <div className="main-controls-cluster">
-        {/* Columna Canal (CH) */}
-        <div className="rocker-col">
-          <span className="col-label">CANAL</span>
-          <div className="rocker-btn-group">
-            <button className="rocker-btn" onClick={() => sendAction('NEXT_CHANNEL')} title="Canal Siguiente">
-              <ChevronUp size={28} />
+        {/* RUEDA TÁCTIL ESTILO APPLE TV SIRI REMOTE */}
+        <section className="yr-wheel-wrap" aria-label="Control direccional y reproducción">
+          <div className="yr-wheel">
+            <button
+              type="button"
+              className="yr-dir yr-dir-up"
+              onClick={() => void sendAction('NEXT_CHANNEL')}
+              title="Canal siguiente"
+              aria-label="Canal siguiente"
+            >
+              <ChevronUp size={24} />
               <span>CH +</span>
             </button>
-            <button className="rocker-btn" onClick={() => sendAction('PREV_CHANNEL')} title="Canal Anterior">
-              <ChevronDown size={28} />
-              <span>CH -</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Botón Central de Encendido, Buscar y Mudo */}
-        <div className="center-actions">
-          <button className="power-btn" onClick={() => sendAction('TOGGLE_SLEEP')} title="Apagar / Encender TV">
-            <Power size={22} />
-          </button>
-          <button className="search-remote-btn" onClick={() => sendAction('TOGGLE_SEARCH')} title="Buscar Canales en la TV">
-            <Search size={18} />
-            <span>BUSCAR</span>
-          </button>
-          <button className="mute-btn" onClick={() => sendAction('TOGGLE_MUTE')} title="Silenciar / Activar Sonido">
-            <Volume2 size={18} />
-            <span>MUTE</span>
-          </button>
-        </div>
-
-
-        {/* Columna Funciones Especiales */}
-        <div className="rocker-col">
-          <span className="col-label">MODOS</span>
-          <div className="rocker-btn-group">
-            <button 
-              className={`mode-quad-btn ${isQuadActive ? 'active' : ''}`} 
-              onClick={() => sendAction('TOGGLE_QUAD')}
-              title="Modo 4 Pantallas Simultáneas en TV"
-              style={{
-                background: isQuadActive ? 'rgba(236, 72, 153, 0.3)' : undefined,
-                borderColor: isQuadActive ? '#ec4899' : undefined
-              }}
-            >
-              <Grid size={22} color={isQuadActive ? '#ec4899' : 'white'} />
-              <span style={{ color: isQuadActive ? '#ec4899' : 'white', fontWeight: 800 }}>4 EN 1</span>
-            </button>
-            <button className="mode-zen-btn" onClick={() => sendAction('TOGGLE_ZEN')} title="Modo Zen / Cine">
-              <EyeOff size={20} />
-              <span>ZEN</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Teclado Numérico Directo */}
-      <div className="keypad-section glass-panel">
-        <div className="keypad-grid">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-            <button key={num} className="num-key" onClick={() => sendAction('SET_CHANNEL_INDEX', { index: num - 1 })}>
-              {num}
-            </button>
-          ))}
-          <button className="num-key special" onClick={() => setShowChannelListModal(true)} title="Ver todos los 60+ canales">
-            GUÍA (60+)
-          </button>
-          <button className="num-key" onClick={() => sendAction('SET_CHANNEL_INDEX', { index: 9 })}>
-            0
-          </button>
-          <button className="num-key special" onClick={() => sendAction('TOGGLE_INFO')}>
-            INFO
-          </button>
-        </div>
-      </div>
-
-      {/* Selector de Mood TV */}
-      <div className="mood-section">
-        <span className="section-title">CATEGORÍAS DE TV (30 MÁS VISTOS)</span>
-        <div className="mood-buttons-grid">
-          {MOODS.map((m) => (
             <button
-              key={m.id}
-              className={`mood-btn ${selectedMood === m.id ? 'active' : ''}`}
-              onClick={() => {
-                setSelectedMood(m.id);
-                sendAction('SET_MOOD', { moodId: m.id });
+              type="button"
+              className="yr-dir yr-dir-down"
+              onClick={() => void sendAction('PREV_CHANNEL')}
+              title="Canal anterior"
+              aria-label="Canal anterior"
+            >
+              <span>CH -</span>
+              <ChevronDown size={24} />
+            </button>
+
+            <button
+              type="button"
+              className="yr-dir yr-dir-left"
+              onClick={() => void sendAction('SEEK_BACK', { seconds: 10 })}
+              title="Retroceder 10 segundos"
+              aria-label="Retroceder 10 segundos"
+            >
+              <RotateCcw size={18} />
+              <span>10s</span>
+            </button>
+
+            <button
+              type="button"
+              className="yr-dir yr-dir-right"
+              onClick={() => void sendAction('SEEK_FORWARD', { seconds: 10 })}
+              title="Adelantar 10 segundos"
+              aria-label="Adelantar 10 segundos"
+            >
+              <RotateCw size={18} />
+              <span>10s</span>
+            </button>
+
+            <button
+              type="button"
+              className="yr-center-play"
+              onClick={() => void sendAction('TOGGLE_PLAY')}
+              title={isPlaying ? 'Pausar' : 'Reproducir'}
+              aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+            >
+              {isPlaying ? (
+                <Pause size={28} fill="#ffffff" color="#ffffff" />
+              ) : (
+                <Play size={28} fill="#ffffff" color="#ffffff" style={{ marginLeft: 3 }} />
+              )}
+            </button>
+          </div>
+        </section>
+
+        {/* FILA DE VOLUMEN + MODOS */}
+        <section className="yr-controls-row">
+          <div className="yr-vol-group" role="group" aria-label="Volumen">
+            <button
+              type="button"
+              className="yr-ctrl-pill"
+              onClick={() => void sendAction('VOLUME_DOWN')}
+              title="Bajar volumen"
+              aria-label="Bajar volumen"
+            >
+              <Volume1 size={17} />
+            </button>
+            <button
+              type="button"
+              className={`yr-ctrl-pill ${isMuted ? 'active' : ''}`}
+              onClick={() => void sendAction('TOGGLE_MUTE')}
+              title={isMuted ? 'Activar sonido' : 'Silenciar'}
+              aria-label="Silenciar"
+            >
+              {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+            </button>
+            <button
+              type="button"
+              className="yr-ctrl-pill"
+              onClick={() => void sendAction('VOLUME_UP')}
+              title="Subir volumen"
+              aria-label="Subir volumen"
+            >
+              <Volume2 size={18} />
+              <span className="yr-plus">+</span>
+            </button>
+          </div>
+
+          <div className="yr-mode-group">
+            <button
+              type="button"
+              className={`yr-mode-btn ${isQuadActive ? 'active' : ''}`}
+              onClick={() => void sendAction('TOGGLE_QUAD')}
+              title="YOU4: 4 pantallas simultáneas"
+            >
+              <Grid size={15} />
+              <span>YOU4</span>
+            </button>
+            <button
+              type="button"
+              className={`yr-mode-btn ${isZenActive ? 'active' : ''}`}
+              onClick={() => void sendAction('TOGGLE_ZEN')}
+              title="Modo Cine / Zen"
+            >
+              <EyeOff size={15} />
+              <span>Cine</span>
+            </button>
+            <button
+              type="button"
+              className="yr-mode-btn"
+              onClick={() => setShowGuide(true)}
+              title="Guía de canales"
+            >
+              <List size={15} />
+              <span>Guía</span>
+            </button>
+            <button
+              type="button"
+              className="yr-mode-btn danger"
+              onClick={() => void sendAction('TOGGLE_SLEEP')}
+              title="Reposo TV"
+              aria-label="Reposo TV"
+            >
+              <Power size={15} />
+            </button>
+          </div>
+        </section>
+
+        {/* BUSCADOR DIRECTO A LA TELE */}
+        <form
+          className="yr-search-bar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!tvQuery.trim()) return;
+            void sendAction('SEARCH_QUERY', { query: tvQuery.trim() });
+            setTvQuery('');
+          }}
+        >
+          <Search size={16} color="rgba(245,245,247,0.65)" />
+          <input
+            type="text"
+            value={tvQuery}
+            onChange={(e) => setTvQuery(e.target.value)}
+            placeholder="Sintonizar tema o canal en la TV…"
+          />
+          <button type="submit" className="yr-btn-primary">
+            Enviar
+          </button>
+        </form>
+
+        {/* EXTRAS OPCIONALES (REACCIONES Y MENSAJE A PANTALLA) */}
+        <button
+          type="button"
+          className="yr-extras-toggle"
+          onClick={() => setShowExtras((v) => !v)}
+        >
+          <Sparkles size={13} />
+          <span>{showExtras ? 'Ocultar reacciones y chat' : 'Reacciones y mensaje en pantalla'}</span>
+          <ChevronRight
+            size={14}
+            style={{
+              transform: showExtras ? 'rotate(90deg)' : 'none',
+              transition: 'transform 0.16s ease'
+            }}
+          />
+        </button>
+
+        {showExtras && (
+          <div className="yr-extras-box">
+            <div className="yr-emojis">
+              {QUICK_EMOJIS.map((em) => (
+                <button
+                  key={em}
+                  type="button"
+                  className="yr-emoji-btn"
+                  onClick={() => void sendAction('SEND_EMOJI', { emoji: em })}
+                >
+                  {em}
+                </button>
+              ))}
+            </div>
+            <form
+              className="yr-chat-bar"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!chatMessage.trim()) return;
+                void sendAction('SEND_CHAT', { text: chatMessage.trim() });
+                setChatMessage('');
               }}
             >
-              {m.label}
-            </button>
-          ))}
-        </div>
+              <input
+                type="text"
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                placeholder="Mostrar mensaje en la tele…"
+              />
+              <button type="submit" className="yr-icon-btn" aria-label="Enviar mensaje">
+                <Send size={15} />
+              </button>
+            </form>
+          </div>
+        )}
       </div>
 
-      {/* Lanzador de Emojis a la Pantalla de la TV */}
-      <div className="emoji-blaster-section glass-panel">
-        <span className="section-title">🔥 DISPARAR EMOJIS A LA TELEVISIÓN</span>
-        <div className="emojis-row">
-          {EMOJIS.map((emoji) => (
-            <button key={emoji} className="emoji-blast-btn" onClick={() => sendAction('SEND_EMOJI', { emoji })}>
-              {emoji}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Modo Ambiente 4K */}
-      <div className="ambient-section">
-        <span className="section-title">🖼️ CUADROS VIVOS 4K</span>
-        <div className="ambient-grid">
-          <button className="amb-btn" onClick={() => sendAction('TOGGLE_AMBIENT')}>
-            🔥 Chimenea / Acuario 4K
-          </button>
-        </div>
-      </div>
-
-      {/* Teclado de Chat para la TV */}
-      <form className="remote-chat-form glass-panel" onSubmit={handleSendChat}>
-        <input
-          type="text"
-          placeholder="Escribir mensaje en la tele..."
-          value={chatMessage}
-          onChange={(e) => setChatMessage(e.target.value)}
-        />
-        <button type="submit" className="send-chat-btn">
-          <Send size={16} />
-        </button>
-      </form>
-
-      {/* Modal Guía de Canales (Todos los 60+ Canales) */}
-      {showChannelListModal && (
-        <div className="channel-guide-modal-overlay" onClick={() => setShowChannelListModal(false)}>
-          <div className="channel-guide-sheet glass-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-top-bar">
-              <div>
-                <h3>📺 Guía de Canales ({channels.length} Disponibles)</h3>
-                <p>Toca cualquier canal para sintonizarlo en tu televisor</p>
-              </div>
-              <button className="close-guide-btn" onClick={() => setShowChannelListModal(false)}>
-                ✕
+      {/* MODAL GUÍA DE CANALES */}
+      {showGuide && (
+        <div className="yr-modal-backdrop" onClick={() => setShowGuide(false)}>
+          <div className="yr-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="yr-modal-head">
+              <h3>Guía de canales ({channels.length})</h3>
+              <button type="button" className="yr-icon-btn" onClick={() => setShowGuide(false)}>
+                <X size={16} />
               </button>
             </div>
-
-            <div className="guide-channels-list">
+            <div className="yr-guide-list">
               {channels.map((ch, idx) => (
-                <div 
-                  key={ch.id || idx} 
-                  className={`guide-channel-row ${channelIdx === idx ? 'active' : ''}`}
+                <button
+                  key={`${ch.id || idx}-${idx}`}
+                  type="button"
+                  className={`yr-guide-item ${idx === channelIdx ? 'active' : ''}`}
                   onClick={() => {
-                    sendAction('SET_CHANNEL_INDEX', { index: idx });
-                    setShowChannelListModal(false);
+                    void sendAction('SET_CHANNEL_INDEX', { index: idx });
+                    setShowGuide(false);
                   }}
                 >
-                  <span className="ch-num-badge">CH {String(idx + 1).padStart(2, '0')}</span>
-                  <div className="ch-row-info">
-                    <h4>{ch.name}</h4>
-                    <p>{ch.currentVideoTitle || ch.category || 'Transmisión 24/7'}</p>
+                  <span className="yr-guide-num">{String(idx + 1).padStart(2, '0')}</span>
+                  <div className="yr-guide-info">
+                    <strong>{ch.currentVideoTitle || ch.name}</strong>
+                    <span>{ch.name}</span>
                   </div>
-                  <span className="ch-zap-tag">{channelIdx === idx ? '● AL AIRE' : 'Sintonizar'}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Transmisión a la TV (Google Cast / Smart TV) */}
-      <CastModal
-        isOpen={showCastModal}
-        onClose={() => setShowCastModal(false)}
-        currentChannel={syncedChannel}
-        pin={activeSessionId || ''}
-      />
-
+      {showCastModal && (
+        <CastModal
+          isOpen={showCastModal}
+          onClose={() => setShowCastModal(false)}
+          currentChannel={syncedChannel}
+          pin={activeSessionId}
+        />
+      )}
 
       <style>{`
-        .cast-header-btn {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          background: rgba(99, 102, 241, 0.2);
-          border: 1px solid rgba(99, 102, 241, 0.4);
-          color: #a5b4fc;
-          padding: 4px 10px;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 700;
-          cursor: pointer;
-        }
-
-        .cast-header-btn:active {
-          background: #6366f1;
-          color: white;
-        }
-
-        .mobile-remote-viewport {
-          min-height: 100vh;
-          max-width: 440px;
-          margin: 0 auto;
-          background: #05070c;
-          color: white;
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          user-select: none;
-          -webkit-user-select: none;
-          touch-action: manipulation;
-        }
-
-        .remote-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .remote-back-btn {
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: white;
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
+        .yr-page {
+          position: relative;
+          min-height: 100dvh;
+          background: #0b0e16;
+          color: #f5f5f7;
+          font-family: var(--you-font-sans, 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif);
           display: flex;
           align-items: center;
           justify-content: center;
-          cursor: pointer;
-          transition: background 0.2s, transform 0.1s;
+          padding: 18px 14px 32px;
+          overflow-x: clip;
+          isolation: isolate;
         }
-
-        .remote-back-btn:active {
-          transform: scale(0.9);
-          background: rgba(99, 102, 241, 0.4);
-        }
-
-        .brand {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-
-        .brand-name {
-          font-weight: 900;
-          font-size: 0.9rem;
-          letter-spacing: 1px;
-          color: #a5b4fc;
-        }
-
-        /* PIN Login Screen */
-        .pin-login-screen {
-          justify-content: center;
-          align-items: center;
-        }
-
-        .pin-card {
-          width: 100%;
-          padding: 24px;
-          border-radius: 20px;
-          text-align: center;
-          background: rgba(15, 17, 26, 0.95);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          box-shadow: 0 15px 40px rgba(0,0,0,0.7);
-        }
-
-        .pin-card h2 {
-          font-size: 1.25rem;
-          margin-bottom: 6px;
-        }
-
-        .pin-card p {
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.6);
-          margin-bottom: 20px;
-        }
-
-        .pin-input {
-          width: 100%;
-          padding: 16px;
-          border-radius: 14px;
-          background: rgba(0, 0, 0, 0.6);
-          border: 2px solid #6366f1;
-          color: white;
-          font-family: monospace;
-          font-size: 2.4rem;
-          font-weight: 900;
-          text-align: center;
-          letter-spacing: 12px;
-          outline: none;
-        }
-
-        .connection-status {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 0.7rem;
-          font-weight: 800;
-          padding: 4px 10px;
-          border-radius: 20px;
-        }
-
-        .connection-status.online {
-          background: rgba(34, 197, 94, 0.15);
-          color: #4ade80;
-          border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .connection-status.offline {
-          background: rgba(239, 68, 68, 0.15);
-          color: #f87171;
-          border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .remote-screen-display {
-          background: rgba(15, 17, 26, 0.9);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 14px;
-          padding: 12px 16px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .screen-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 6px;
-        }
-
-        .tv-label {
-          font-size: 0.65rem;
-          font-weight: 800;
-          color: rgba(255, 255, 255, 0.5);
-          letter-spacing: 1px;
-        }
-
-        .action-pill {
-          font-size: 0.65rem;
-          font-weight: 800;
-          color: #a5b4fc;
-          background: rgba(99, 102, 241, 0.2);
-          padding: 2px 8px;
-          border-radius: 4px;
-        }
-
-        .screen-info h3 {
-          margin: 0;
-          font-size: 1.1rem;
-          color: white;
-        }
-
-        .screen-info p {
-          margin: 2px 0 0 0;
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.6);
-        }
-
-        /* Cluster Principal */
-        .main-controls-cluster {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 12px;
-          align-items: center;
-        }
-
-        .rocker-col {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .col-label {
-          font-size: 0.65rem;
-          font-weight: 800;
-          color: rgba(255, 255, 255, 0.5);
-          letter-spacing: 1px;
-        }
-
-        .rocker-btn-group {
-          width: 100%;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 18px;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .rocker-btn, .mode-quad-btn, .mode-zen-btn {
-          width: 100%;
-          padding: 16px 8px;
-          background: none;
-          border: none;
-          color: white;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          font-size: 0.75rem;
-          font-weight: 800;
-          cursor: pointer;
-          transition: background 0.15s, transform 0.1s;
-        }
-
-        .rocker-btn:first-child, .mode-quad-btn {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .rocker-btn:active, .mode-quad-btn:active, .mode-zen-btn:active {
-          background: rgba(99, 102, 241, 0.4);
-          transform: scale(0.95);
-        }
-
-        .center-actions {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .power-btn {
-          width: 58px;
-          height: 58px;
-          border-radius: 50%;
-          background: rgba(239, 68, 68, 0.2);
-          border: 2px solid #ef4444;
-          color: #ef4444;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
-          transition: transform 0.15s;
-        }
-
-        .power-btn:active {
-          transform: scale(0.9);
-          background: #ef4444;
-          color: white;
-        }
-
-        .search-remote-btn {
-          width: 100%;
-          padding: 8px 4px;
-          border-radius: 12px;
-          background: rgba(99, 102, 241, 0.2);
-          border: 1px solid rgba(99, 102, 241, 0.4);
-          color: #a5b4fc;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 3px;
-          font-size: 0.65rem;
-          font-weight: 800;
-          cursor: pointer;
-        }
-
-        .search-remote-btn:active {
-          background: #6366f1;
-          color: white;
-          transform: scale(0.95);
-        }
-
-        .mute-btn {
-          width: 100%;
-          padding: 8px 4px;
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.8);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 3px;
-          font-size: 0.65rem;
-          font-weight: 800;
-          cursor: pointer;
-        }
-
-        .mute-btn:active {
-          background: #6366f1;
-        }
-
-        /* Teclado Numérico */
-        .keypad-section {
-          background: rgba(15, 17, 26, 0.7);
-          border-radius: 16px;
-          padding: 12px;
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .keypad-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
-        }
-
-        .num-key {
-          padding: 12px;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          color: white;
-          font-size: 1.1rem;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-
-        .num-key.special {
-          font-size: 0.75rem;
-          color: #a5b4fc;
-        }
-
-        .num-key:active {
-          background: #6366f1;
-          transform: scale(0.92);
-        }
-
-        /* Secciones */
-        .section-title {
-          display: block;
-          font-size: 0.65rem;
-          font-weight: 800;
-          color: rgba(255, 255, 255, 0.5);
-          letter-spacing: 0.5px;
-          margin-bottom: 8px;
-        }
-
-        .mood-buttons-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 6px;
-        }
-
-        .mood-btn {
-          padding: 10px 6px;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.85);
-          font-size: 0.75rem;
-          font-weight: 700;
-          cursor: pointer;
-        }
-
-        .mood-btn.active {
-          background: #6366f1;
-          color: white;
-          border-color: #6366f1;
-        }
-
-        .mood-btn:active {
-          transform: scale(0.95);
-        }
-
-        /* Emojis */
-        .emojis-row {
-          display: flex;
-          justify-content: space-between;
-          gap: 6px;
-        }
-
-        .emoji-blast-btn {
-          flex: 1;
-          padding: 8px 4px;
-          font-size: 1.4rem;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-          cursor: pointer;
-          transition: transform 0.1s;
-        }
-
-        .emoji-blast-btn:active {
-          transform: scale(1.3);
-          background: rgba(99, 102, 241, 0.3);
-        }
-
-        .ambient-grid .amb-btn {
-          width: 100%;
-          padding: 12px;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: white;
-          font-size: 0.85rem;
-          font-weight: 700;
-          cursor: pointer;
-        }
-
-        .ambient-grid .amb-btn:active {
-          background: #6366f1;
-        }
-
-        .remote-chat-form {
-          display: flex;
-          gap: 8px;
-          padding: 8px 12px;
-          border-radius: 14px;
-          background: rgba(15, 17, 26, 0.9);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-
-        .remote-chat-form input {
-          flex: 1;
-          background: transparent;
-          border: none;
-          color: white;
-          font-size: 0.85rem;
-          outline: none;
-        }
-
-        .channel-guide-modal-overlay {
+        .yr-bg {
           position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.8);
-          backdrop-filter: blur(8px);
-          z-index: 9999;
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-          animation: fadeIn 0.2s ease-out;
+          inset: -20px;
+          z-index: 0;
+          background:
+            radial-gradient(520px circle at 20% 15%, rgba(56, 189, 248, 0.2), transparent 58%),
+            radial-gradient(520px circle at 85% 80%, rgba(99, 102, 241, 0.18), transparent 58%),
+            linear-gradient(160deg, #0b0e16 0%, #141926 55%, #0c1018 100%);
+          pointer-events: none;
         }
-
-        .channel-guide-sheet {
+        .yr-device-shell {
+          position: relative;
+          z-index: 1;
           width: 100%;
-          max-width: 440px;
-          background: #0d101a;
-          border-radius: 20px 20px 0 0;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          padding: 16px;
-          max-height: 80vh;
+          max-width: 410px;
+          border-radius: 34px;
+          padding: 18px 18px 20px;
+          background: rgba(255, 255, 255, 0.065);
+          backdrop-filter: blur(26px) saturate(160%);
+          -webkit-backdrop-filter: blur(26px) saturate(160%);
+          box-shadow: 0 28px 64px rgba(0, 0, 0, 0.55);
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          animation: slideUp 0.25s ease-out;
+          gap: 15px;
         }
-
-        .sheet-top-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          padding-bottom: 10px;
+        .yr-device-shell::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          padding: 1.8px;
+          background:
+            radial-gradient(200px circle at 0% 0%, rgba(255,255,255,0.85), transparent 56%),
+            radial-gradient(180px circle at 100% 0%, rgba(125,211,252,0.65), transparent 56%),
+            radial-gradient(200px circle at 100% 100%, rgba(255,255,255,0.55), transparent 56%),
+            linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+          pointer-events: none;
         }
+        .yr-device-shell > * { position: relative; z-index: 1; }
 
-        .sheet-top-bar h3 {
-          font-size: 1rem;
-          margin: 0;
-          color: white;
-        }
-
-        .sheet-top-bar p {
-          font-size: 0.75rem;
-          color: #94a3b8;
-          margin: 2px 0 0 0;
-        }
-
-        .close-guide-btn {
-          background: rgba(255, 255, 255, 0.1);
-          border: none;
-          color: white;
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          cursor: pointer;
-        }
-
-        .guide-channels-list {
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          padding-right: 4px;
-        }
-
-        .guide-channel-row {
+        .yr-header {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 10px 12px;
-          border-radius: 12px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          cursor: pointer;
-          transition: background 0.15s, border-color 0.15s;
+          justify-content: space-between;
+          gap: 8px;
         }
-
-        .guide-channel-row:hover, .guide-channel-row.active {
-          background: rgba(99, 102, 241, 0.2);
-          border-color: #6366f1;
-        }
-
-        .ch-num-badge {
-          background: rgba(99, 102, 241, 0.3);
-          color: #a5b4fc;
+        .yr-brand {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11.5px;
           font-weight: 800;
-          font-size: 0.75rem;
-          padding: 4px 8px;
-          border-radius: 6px;
-          font-family: monospace;
+          letter-spacing: 0.12em;
+          color: #ffffff;
         }
+        .yr-head-right {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .yr-icon-btn {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f5f7;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+        .yr-icon-btn:hover { background: rgba(255, 255, 255, 0.18); }
 
-        .ch-row-info {
+        .yr-pin-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 210, 255, 0.4);
+          background: rgba(100, 210, 255, 0.14);
+          color: #d9f3ff;
+          font-size: 11px;
+          font-weight: 750;
+          cursor: pointer;
+        }
+        .yr-live-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #34d399;
+          box-shadow: 0 0 8px #34d399;
+        }
+        .yr-pin-editor {
+          display: flex;
+          gap: 8px;
+          padding: 8px;
+          border-radius: 14px;
+          background: rgba(0, 0, 0, 0.28);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+        .yr-pin-editor input {
           flex: 1;
+          min-width: 0;
+          border: none;
+          background: transparent;
+          color: #ffffff;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          padding: 4px 8px;
+          outline: none;
         }
 
-        .ch-row-info h4 {
-          font-size: 0.8rem;
+        .yr-display {
+          padding: 13px 15px;
+          border-radius: 18px;
+          background: rgba(8, 12, 20, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .yr-display-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .yr-display-kicker {
+          font-size: 9.5px;
+          font-weight: 750;
+          letter-spacing: 0.12em;
+          color: #7dd3fc;
+        }
+        .yr-action-pill {
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.12);
+          color: #e5f3ff;
+        }
+        .yr-display-title {
           margin: 0;
-          color: white;
-        }
-
-        .ch-row-info p {
-          font-size: 0.65rem;
-          color: #94a3b8;
-          margin: 2px 0 0 0;
+          font-size: 14.5px;
+          font-weight: 750;
+          color: #ffffff;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          max-width: 220px;
+        }
+        .yr-display-sub {
+          margin: 0;
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.68);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
-        .ch-zap-tag {
-          font-size: 0.7rem;
+        /* RUEDA TÁCTIL APPLE TV */
+        .yr-wheel-wrap {
+          display: flex;
+          justify-content: center;
+          padding: 4px 0;
+        }
+        .yr-wheel {
+          position: relative;
+          width: 224px;
+          height: 224px;
+          border-radius: 50%;
+          background: radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.14), rgba(14, 18, 28, 0.72));
+          border: 1.5px solid rgba(255, 255, 255, 0.22);
+          box-shadow: inset 0 2px 18px rgba(255, 255, 255, 0.08), 0 18px 36px rgba(0, 0, 0, 0.45);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .yr-dir {
+          position: absolute;
+          border: none;
+          background: transparent;
+          color: rgba(245, 245, 247, 0.85);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1px;
+          font-size: 10px;
+          font-weight: 750;
+          letter-spacing: 0.04em;
+          cursor: pointer;
+          padding: 8px 12px;
+          border-radius: 16px;
+          transition: color 0.14s ease, background 0.14s ease, transform 0.12s ease;
+        }
+        .yr-dir:hover {
+          color: #ffffff;
+          background: rgba(255, 255, 255, 0.1);
+        }
+        .yr-dir:active { transform: scale(0.93); }
+        .yr-dir-up { top: 8px; left: 50%; transform: translateX(-50%); }
+        .yr-dir-down { bottom: 8px; left: 50%; transform: translateX(-50%); }
+        .yr-dir-left { left: 8px; top: 50%; transform: translateY(-50%); }
+        .yr-dir-right { right: 8px; top: 50%; transform: translateY(-50%); }
+        .yr-dir-up:active { transform: translateX(-50%) scale(0.93); }
+        .yr-dir-down:active { transform: translateX(-50%) scale(0.93); }
+        .yr-dir-left:active { transform: translateY(-50%) scale(0.93); }
+        .yr-dir-right:active { transform: translateY(-50%) scale(0.93); }
+
+        .yr-center-play {
+          width: 82px;
+          height: 82px;
+          border-radius: 50%;
+          border: 1.5px solid rgba(125, 211, 252, 0.65);
+          background: linear-gradient(145deg, #0a84ff, #005bb5);
+          box-shadow: 0 10px 26px rgba(0, 113, 227, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.12s ease, box-shadow 0.15s ease;
+        }
+        .yr-center-play:active {
+          transform: scale(0.94);
+        }
+
+        .yr-controls-row {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .yr-vol-group {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 8px;
+        }
+        .yr-ctrl-pill {
+          height: 42px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.08);
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          cursor: pointer;
           font-weight: 700;
-          color: #a5b4fc;
+          transition: background 0.14s ease, border-color 0.14s ease;
+        }
+        .yr-ctrl-pill:hover { background: rgba(255, 255, 255, 0.16); }
+        .yr-ctrl-pill.active {
+          background: rgba(255, 69, 58, 0.22);
+          border-color: rgba(255, 69, 58, 0.55);
+          color: #ff9a94;
+        }
+        .yr-plus { font-size: 13px; font-weight: 800; }
+
+        .yr-mode-group {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr auto;
+          gap: 8px;
+        }
+        .yr-mode-btn {
+          height: 40px;
+          padding: 0 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.07);
+          color: rgba(245, 245, 247, 0.9);
+          font-size: 12px;
+          font-weight: 700;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          cursor: pointer;
+          transition: background 0.14s ease, border-color 0.14s ease;
+        }
+        .yr-mode-btn:hover { background: rgba(255, 255, 255, 0.15); }
+        .yr-mode-btn.active {
+          background: rgba(0, 113, 227, 0.28);
+          border-color: rgba(100, 210, 255, 0.65);
+          color: #ffffff;
+        }
+        .yr-mode-btn.danger:hover {
+          background: rgba(255, 69, 58, 0.22);
+          border-color: rgba(255, 69, 58, 0.5);
+          color: #ff9a94;
         }
 
-        .guide-channel-row.active .ch-zap-tag {
-          color: #4ade80;
+        .yr-search-bar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 6px 6px 13px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .yr-search-bar input {
+          flex: 1;
+          min-width: 0;
+          border: none;
+          background: transparent;
+          color: #ffffff;
+          font-size: 13px;
+          outline: none;
+        }
+        .yr-search-bar input::placeholder { color: rgba(245, 245, 247, 0.5); }
+        .yr-btn-primary {
+          padding: 7px 14px;
+          border-radius: 999px;
+          border: none;
+          background: #0071e3;
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .yr-extras-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(245, 245, 247, 0.72);
+          font-size: 11.5px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .yr-extras-box {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 12px;
+          border-radius: 16px;
+          background: rgba(0, 0, 0, 0.24);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .yr-emojis {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          gap: 6px;
+        }
+        .yr-emoji-btn {
+          height: 38px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.07);
+          font-size: 18px;
+          cursor: pointer;
+        }
+        .yr-chat-bar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .yr-chat-bar input {
+          flex: 1;
+          min-width: 0;
+          padding: 9px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.08);
+          color: #ffffff;
+          font-size: 12.5px;
+          outline: none;
+        }
+
+        .yr-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 120;
+          background: rgba(0, 0, 0, 0.65);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+        }
+        .yr-modal {
+          width: 100%;
+          max-width: 400px;
+          max-height: 76dvh;
+          border-radius: 24px;
+          padding: 16px;
+          background: rgba(18, 22, 32, 0.96);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .yr-modal-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .yr-modal-head h3 {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 750;
+          color: #ffffff;
+        }
+        .yr-guide-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          overflow-y: auto;
+        }
+        .yr-guide-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 11px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(255, 255, 255, 0.05);
+          color: #ffffff;
+          text-align: left;
+          cursor: pointer;
+        }
+        .yr-guide-item.active {
+          background: rgba(0, 113, 227, 0.24);
+          border-color: rgba(100, 210, 255, 0.6);
+        }
+        .yr-guide-num {
+          font-size: 11px;
+          font-weight: 800;
+          color: #64d2ff;
+          font-variant-numeric: tabular-nums;
+        }
+        .yr-guide-info {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .yr-guide-info strong {
+          font-size: 12.5px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .yr-guide-info span {
+          font-size: 11px;
+          color: rgba(245, 245, 247, 0.65);
         }
       `}</style>
     </div>

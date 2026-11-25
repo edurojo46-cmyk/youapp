@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createClient } from '@supabase/supabase-js';
+import { createGuardedTestClient as createClient } from '../lib/testDbGuard';
 import * as dotenv from 'dotenv';
 import { AtlasReasoningQueryFabric } from '../lib/atlasQueryFabric/AtlasReasoningQueryFabric';
 import { PARTIAL_BENCHMARK_CASES } from '../../scripts/run_partial_benchmark';

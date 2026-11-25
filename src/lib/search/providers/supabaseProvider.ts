@@ -3,6 +3,7 @@ import type { ContentItem, SearchQuery } from '../types';
 import { supabase } from '../../supabase';
 import { lookupCanonicalWork } from '../canonicalWorksCatalog';
 import { exactWorkSearchGate } from '../exactWorkSearchGate';
+import { normalizeSemanticId } from '../semanticUtils';
 
 
 export class SupabaseProvider implements SearchProvider {
@@ -43,10 +44,10 @@ export class SupabaseProvider implements SearchProvider {
       // --- LANE B: SEMANTIC_REPAIR ---
       // Real Database Query fetching the semantic data + joined video asset!
       if (entityName) {
-        const eLower = entityName.toLowerCase().replace(/[áéíóú]/g, '_'); 
-        let eId = eLower;
-        if (eLower.includes('fito')) eId = 'fito_paez';
-        if (eLower.includes('beatles')) eId = 'the_beatles';
+        let eId = normalizeSemanticId(entityName, 'entity');
+        // Legacy overrides
+        if (entityName.toLowerCase().includes('fito')) eId = 'entity_fito_paez';
+        if (entityName.toLowerCase().includes('beatles')) eId = 'entity_the_beatles';
 
         let sReq = supabase.from('asset_semantic_annotations')
           .select('*, youapp_index!inner(*)')
@@ -55,12 +56,25 @@ export class SupabaseProvider implements SearchProvider {
           .eq('semantic_entity_id', eId);
 
         let expectsFilter = false;
-        if (workTitle) expectsFilter = true;
-        else if (detection.venue) {
-           sReq = sReq.eq('semantic_venue_id', detection.venue);
-           expectsFilter = true;
-        } else if (topic || q.toLowerCase().includes('making of') || q.toLowerCase().includes('documental')) {
-           expectsFilter = true;
+        let orConditions: string[] = [];
+        let wId: string | null = null;
+        
+        if (workTitle) {
+            wId = normalizeSemanticId(workTitle, 'work');
+            orConditions.push(`semantic_work_id.eq.${wId}`);
+        }
+        if (detection.venue) {
+           let vId = normalizeSemanticId(detection.venue, 'venue');
+           if (vId.includes('velez') || vId.includes('vélez')) vId = 'venue_estadio_velez_sarsfield';
+           orConditions.push(`semantic_venue_id.eq.${vId}`);
+        }
+        if (topic) orConditions.push(`content_type.eq.${topic}`);
+        if (q.toLowerCase().includes('making of')) orConditions.push(`content_type.eq.MAKING_OF`);
+        if (q.toLowerCase().includes('documental')) orConditions.push(`content_type.eq.DOCUMENTARY`);
+        
+        if (orConditions.length > 0) {
+            sReq = sReq.or(orConditions.join(','));
+            expectsFilter = true;
         }
 
         if (expectsFilter) {
@@ -74,10 +88,14 @@ export class SupabaseProvider implements SearchProvider {
               
               let isMatch = false;
               if (workTitle && ann.semantic_work_id) {
-                const wLower = workTitle.toLowerCase().replace(/[,;:.()\-]/g, ' ').replace(/\s+/g, '_');
-                if (wLower.includes(ann.semantic_work_id)) isMatch = true;
+                const wId = normalizeSemanticId(workTitle, 'work');
+                if (ann.semantic_work_id === wId) isMatch = true;
               }
-              if (detection.venue && ann.semantic_venue_id === detection.venue) isMatch = true;
+              if (detection.venue) {
+                let checkVId = normalizeSemanticId(detection.venue, 'venue');
+                if (checkVId.includes('velez') || checkVId.includes('vélez')) checkVId = 'venue_estadio_velez_sarsfield';
+                if (ann.semantic_venue_id === checkVId) isMatch = true;
+              }
               
               const isMakingOf = q.toLowerCase().includes('making of');
               const isDoc = q.toLowerCase().includes('documental');
@@ -98,6 +116,7 @@ export class SupabaseProvider implements SearchProvider {
                      constraintFidelity: ann.content_type_confidence ? ann.content_type_confidence * 100 : (ann.content_type ? 100 : 0),
                      artistFidelity: ann.entity_confidence ? ann.entity_confidence * 100 : 100,
                      entityIdentityMatch: true,
+                     explicitEntityTitleMatch: true,
                      semanticConfidence: ann.overall_confidence
                   }
                 });
@@ -167,6 +186,15 @@ export class SupabaseProvider implements SearchProvider {
             if (!seen.has(r.id)) {
               seen.add(r.id);
               combined.push({ ...r, retrievalLane: laneName });
+            } else if (laneName === 'SEMANTIC_REPAIR') {
+              // Promote properties if Lane B also found it, so Semantic Repair gets credit
+              const existing = combined.find(c => c.id === r.id);
+              if (existing) {
+                existing.retrievalLane = 'SEMANTIC_REPAIR';
+                if (r.isExactEntityWork) existing.isExactEntityWork = true;
+                if (r.isConstraintMatch) existing.isConstraintMatch = true;
+                if (r._semanticMatch) existing._semanticMatch = r._semanticMatch;
+              }
             }
           }
         }

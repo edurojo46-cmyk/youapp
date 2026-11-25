@@ -10,13 +10,46 @@ interface MosaicPlayerGridProps {
   currentBlock: ScheduleBlock;
   onSelect: (moment: VideoMoment, index: number) => void;
   thumbnailFallbackUrl?: string;
+  isPlaying?: boolean;
 }
 
-export function MosaicPlayerGrid({ moments, currentBlock, onSelect, thumbnailFallbackUrl }: MosaicPlayerGridProps) {
+export function MosaicPlayerGrid({
+  moments,
+  currentBlock,
+  onSelect,
+  isPlaying = true
+}: MosaicPlayerGridProps) {
   const [activeAudioIdx, setActiveAudioIdx] = useState<number>(0);
   const [loadedCount, setLoadedCount] = useState<number>(1);
   const [elapsed, setElapsed] = useState<number>(0);
-  const playerRefs = useRef<(YouAppPlayerHandle | null)[]>([]);
+  const iframeRefs = useRef<(HTMLIFrameElement | null)[]>([]);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+  // Sincroniza Play / Pausa desde la botonera externa sobre los 4 cuadros del mosaico
+  useEffect(() => {
+    for (let i = 0; i < 4; i++) {
+      const iframe = iframeRefs.current[i];
+      if (iframe?.contentWindow) {
+        try {
+          iframe.contentWindow.postMessage(
+            JSON.stringify({
+              event: 'command',
+              func: isPlaying ? 'playVideo' : 'pauseVideo',
+              args: []
+            }),
+            '*'
+          );
+        } catch {
+          // ignore
+        }
+      }
+      const vid = videoRefs.current[i];
+      if (vid) {
+        if (isPlaying) void vid.play().catch(() => {});
+        else vid.pause();
+      }
+    }
+  }, [isPlaying]);
 
   useEffect(() => {
     logAudienceEvent({ type: 'you4_mosaic_opened' as any, blockId: currentBlock.id });
@@ -43,9 +76,32 @@ export function MosaicPlayerGrid({ moments, currentBlock, onSelect, thumbnailFal
     };
   }, [currentBlock.id]);
 
-  const handleTileClick = (moment: VideoMoment, index: number, e?: React.MouseEvent) => {
+  const handleTileClick = (_moment: VideoMoment, index: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setActiveAudioIdx(index);
+    for (let i = 0; i < 4; i++) {
+      const iframe = iframeRefs.current[i];
+      if (iframe?.contentWindow) {
+        try {
+          iframe.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: i === index ? 'unMute' : 'mute', args: [] }),
+            '*'
+          );
+          if (i === index) {
+            iframe.contentWindow.postMessage(
+              JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }),
+              '*'
+            );
+            iframe.contentWindow.postMessage(
+              JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+              '*'
+            );
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
   };
 
   const handleMaximize = (moment: VideoMoment, index: number, e: React.MouseEvent) => {
@@ -70,9 +126,11 @@ export function MosaicPlayerGrid({ moments, currentBlock, onSelect, thumbnailFal
   const rawId = currentBlock.contentItem.providerId || currentBlock.contentItem.id || '';
   const isDirect = isDirectVideo(videoUrl) || currentBlock.contentItem.provider === 'local';
   
-  // Build foolproof YouTube embed URL
-  const buildYouTubeSrc = (videoId: string, start: number, isMuted: boolean) => {
-    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${isMuted ? 1 : 0}&start=${start}&controls=0&rel=0&modestbranding=1&playsinline=1&enablejsapi=0`;
+  // Build foolproof YouTube embed URL (static mute so switching audio never restarts from startSec)
+  const buildYouTubeSrc = (videoId: string, start: number, slotIndex: number) => {
+    const ytOrigin =
+      typeof window !== 'undefined' ? `&origin=${encodeURIComponent(window.location.origin)}` : '';
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=${slotIndex === 0 ? 0 : 1}&start=${start}&controls=0&iv_load_policy=3&rel=0&modestbranding=1&playsinline=1&enablejsapi=1${ytOrigin}`;
   };
 
   return (
@@ -92,6 +150,9 @@ export function MosaicPlayerGrid({ moments, currentBlock, onSelect, thumbnailFal
               {canLoad && (
                 isDirect ? (
                   <video
+                    ref={(el) => {
+                      videoRefs.current[idx] = el;
+                    }}
                     src={`${videoUrl}#t=${startSec}`}
                     autoPlay
                     loop
@@ -100,7 +161,10 @@ export function MosaicPlayerGrid({ moments, currentBlock, onSelect, thumbnailFal
                   />
                 ) : (
                   <iframe
-                    src={buildYouTubeSrc(rawId, startSec, !isAudioActive)}
+                    ref={(el) => {
+                      iframeRefs.current[idx] = el;
+                    }}
+                    src={buildYouTubeSrc(rawId, startSec, idx)}
                     title={m.title}
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -283,11 +347,37 @@ export function MosaicPlayerGrid({ moments, currentBlock, onSelect, thumbnailFal
         }
         @media (max-width: 768px) {
           .mosaic-grid {
-            grid-template-columns: 1fr;
-            grid-template-rows: auto;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 5px;
+            padding: 5px;
           }
-          .mosaic-tile {
-            aspect-ratio: 16/9;
+          .mosaic-click-catcher {
+            padding: 5px 6px;
+          }
+          .mosaic-badge-pill {
+            font-size: 9.5px;
+            padding: 2px 6px;
+          }
+          .mosaic-icon-btn {
+            padding: 3px 5px;
+            font-size: 9.5px;
+          }
+          .audio-label {
+            display: none;
+          }
+          .mosaic-overlay-info h4 {
+            font-size: 10.5px;
+            margin: 0 0 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .mosaic-overlay-info span {
+            font-size: 9.5px;
+          }
+          .active-audio-badge {
+            display: none;
           }
         }
       `}</style>

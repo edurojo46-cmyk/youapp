@@ -8,43 +8,50 @@ export interface SmartBarCapabilities {
   share: boolean;
   followCreator: boolean;
   addToSignal: boolean;
+  /**
+   * True únicamente cuando YOUAPP controla legítimamente el reproductor (ej. MP4 / HLS propio).
+   * Para YouTube, Vimeo u otros proveedores embebidos es false: respetamos sus controles nativos
+   * y nuestra Barra Viva debajo actúa como capa independiente de descubrimiento y navegación.
+   */
+  ownsPlayerControls: boolean;
 }
 
 export function getSmartBarCapabilities(content?: ContentItem | null): SmartBarCapabilities {
-  // Base capabilities that apply to almost everything inside YouApp
-  const base = {
+  const provider = String(content?.provider || '').toLowerCase();
+  const ownsPlayerControls = provider === 'direct' || provider === 'hls' || provider === 'native';
+
+  const base: SmartBarCapabilities = {
     summary: true,
     you4: true,
     ask: true,
     save: true,
     share: true,
     followCreator: true,
-    addToSignal: true
+    addToSignal: true,
+    ownsPlayerControls
   };
 
   if (!content) return base;
 
-  // Logic per provider
-  if (content.provider === 'youtube' || content.provider === 'vimeo') {
-    return base; 
+  if (provider === 'youtube' || provider === 'vimeo') {
+    return base;
   }
 
-  // Example: Future Netflix/Prime support
-  if (content.provider === 'netflix' as any) {
+  if (provider === 'netflix') {
     return {
       ...base,
-      you4: false, // Netflix might not have moments available
-      ask: false, // Maybe we don't have subtitles for ask
-      followCreator: false // No creators in Netflix, just shows
+      you4: false,
+      ask: false,
+      followCreator: false,
+      ownsPlayerControls: false
     };
   }
 
-  // Example: Live streams
   if (content.isLive) {
     return {
       ...base,
-      summary: false, // Can't summarize an ongoing stream yet
-      you4: false // Moments are not available live usually
+      summary: false,
+      you4: false
     };
   }
 

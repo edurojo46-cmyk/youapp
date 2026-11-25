@@ -59,7 +59,7 @@ export function YouRing({
           <div className="you-ring-btn">
             {isMosaic ? <Pause size={16} color="white" /> : <Mic size={16} color="white" />}
           </div>
-          <span className="you-ring-text">{isMosaic ? "Salir YOU4" : "Director"}</span>
+          <span className="you-ring-text">{isMosaic ? "Salir Mosaico" : "Director"}</span>
         </div>
         <div className="you-ring-btn-group right" onClick={onNext}>
           <div className="you-ring-btn">
@@ -198,6 +198,20 @@ export function YouRing({
         .you-ring-btn-group.bottom:hover { transform: translateX(-50%) scale(1.1); }
         .you-ring-btn-group.left:hover { transform: translateY(-50%) scale(1.1); }
         .you-ring-btn-group.right:hover { transform: translateY(-50%) scale(1.1); }
+
+        @media (max-width: 768px) {
+          .you-ring-label {
+            font-size: 9px;
+            margin-bottom: 6px;
+          }
+          .you-ring-container {
+            transform: scale(0.64);
+            transform-origin: center center;
+          }
+          .you-ring-wrapper {
+            justify-content: center;
+          }
+        }
       `}</style>
     </div>
   );

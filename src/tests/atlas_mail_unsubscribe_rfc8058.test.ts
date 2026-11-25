@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import * as crypto from 'crypto';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { createGuardedTestClient as createClient } from '../lib/testDbGuard';
 import * as dotenv from 'dotenv';
 
 dotenv.config();

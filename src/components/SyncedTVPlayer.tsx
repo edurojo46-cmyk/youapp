@@ -1,6 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { VolumeX, Volume2, Radio, Play } from 'lucide-react';
 import Hls from 'hls.js';
+import {
+  DailymotionOfficialPlayer,
+  extractDailymotionVideoId
+} from './player/DailymotionOfficialPlayer';
 
 interface SyncedTVPlayerProps {
   url: string;
@@ -40,12 +44,44 @@ const extractYouTubeId = (url: string): string => {
   return clean.length === 11 ? clean : '';
 };
 
-// Construye la URL oficial y válida para iframes de YouTube
-const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds = 0, channelName = 'YouApp TV'): string => {
+// Construye la URL oficial y válida para iframes (Dailymotion, Vimeo, PeerTube, Archive y YouTube)
+const buildYouTubeEmbedSrc = (inputUrl: string, isMuted: boolean, offsetSeconds = 0, _channelName = 'YouApp TV'): string => {
   const fallbackVideoId = 'jfKfPfyJRdk'; // Lofi Girl 24/7 stream
 
   if (!inputUrl) {
     return `https://www.youtube.com/embed/${fallbackVideoId}?autoplay=1&mute=${isMuted ? 1 : 0}&controls=1&rel=0&playsinline=1&enablejsapi=1`;
+  }
+
+  // 0a. Dailymotion (formato oEmbed oficial exacto de Dailymotion)
+  const dmGeoMatch = inputUrl.match(/geo\.dailymotion\.com\/player\.html\?[^#]*video=([a-zA-Z0-9]+)/i);
+  const dmMatch =
+    dmGeoMatch ||
+    inputUrl.match(/(?:dailymotion\.com\/(?:embed\/)?video\/|dai\.ly\/)([a-zA-Z0-9]+)/i);
+  if (dmMatch && dmMatch[1]) {
+    return `https://geo.dailymotion.com/player.html?video=${dmMatch[1]}&`;
+  }
+
+  // 0b. Vimeo
+  const vimeoMatch = inputUrl.match(/(?:player\.)?vimeo\.com\/(?:video\/)?(\d+)/i);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1&muted=${isMuted ? 1 : 0}`;
+  }
+
+  // 0c. PeerTube (/videos/embed/, /videos/watch/, /w/)
+  const peerEmbedMatch = inputUrl.match(/^(https?:\/\/[^/]+)\/videos\/embed\/([^?#]+)/i);
+  if (peerEmbedMatch) {
+    const sep = inputUrl.includes('?') ? '&' : '?';
+    return `${inputUrl}${sep}autoplay=1&muted=${isMuted ? 1 : 0}`;
+  }
+  const peerWatchMatch = inputUrl.match(/^(https?:\/\/[^/]+)\/(?:videos\/watch|w)\/([^/?#]+)/i);
+  if (peerWatchMatch && !/youtube\.com|youtu\.be/i.test(peerWatchMatch[1])) {
+    return `${peerWatchMatch[1]}/videos/embed/${peerWatchMatch[2]}?autoplay=1&muted=${isMuted ? 1 : 0}`;
+  }
+
+  // 0d. Internet Archive
+  const archMatch = inputUrl.match(/archive\.org\/(?:details|embed)\/([^/?#]+)/i);
+  if (archMatch && archMatch[1]) {
+    return `https://archive.org/embed/${encodeURIComponent(archMatch[1])}?autoplay=1`;
   }
 
   // 1. Si es búsqueda nativa de YouTube embebida (ya no soportado por YT)
@@ -264,15 +300,11 @@ export const SyncedTVPlayer: React.FC<SyncedTVPlayerProps> = ({
           allow="autoplay; fullscreen; picture-in-picture"
           className="synced-tv-iframe"
         />
-      ) : url.includes('dailymotion.com/embed') ? (
-        /* 3. Reproductor Oficial de DailyMotion */
-        <iframe
-          id={containerId}
+      ) : Boolean(extractDailymotionVideoId(url)) ? (
+        /* 3. Reproductor Oficial de DailyMotion (Player Script verificado con tu Player ID) */
+        <DailymotionOfficialPlayer
           key={url}
-          src={url.includes('mute=') ? url : `${url}&mute=${isMuted ? 1 : 0}`}
-          title={channelName}
-          frameBorder="0"
-          allow="autoplay; fullscreen; picture-in-picture"
+          videoIdOrUrl={url}
           className="synced-tv-iframe"
         />
       ) : url.includes('player.vimeo.com') ? (

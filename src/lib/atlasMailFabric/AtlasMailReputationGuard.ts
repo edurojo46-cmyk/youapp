@@ -21,7 +21,7 @@
  */
 
 import { SupabaseClient } from '@supabase/supabase-js';
-import {
+import type {
   ReputationStatus,
   ReputationGuardState,
   NormalizedReputationSignal,

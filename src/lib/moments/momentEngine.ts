@@ -3,7 +3,11 @@ import type { PlaybackItem } from '../player/playerTypes';
 import type { VideoMoment } from './momentTypes';
 
 export async function getMomentsForVideo(item: PlaybackItem): Promise<{ moments: VideoMoment[]; summary?: string; isFallback: boolean }> {
-  const contentKey = `${item.provider}:${item.providerContentId}`;
+  const cleanId = String(item?.providerContentId || '').trim();
+  if (!cleanId || cleanId === 'undefined' || cleanId === 'null') {
+    return { moments: [], summary: '', isFallback: true };
+  }
+  const contentKey = `${item.provider}:${cleanId}`;
   try {
     // 1. Try to fetch analyzed moments from Supabase
     // Only fetch those that are analyzed with the current version

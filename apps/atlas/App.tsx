@@ -1,3 +1,5 @@
+import YouAppPublisherPage from '../youapp/pages/YouAppPublisherPage.tsx';
+import YouAppSocialPresence from '../youapp/pages/YouAppSocialPresence.tsx';
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastHost } from '../../src/components/ui/ToastHost.tsx';
@@ -48,6 +50,13 @@ import EmotiveReviewLab from '../../src/pages/EmotiveReviewLab.tsx';
 import AtlasImageDiscoveryPage from '../../src/pages/tools/AtlasImageDiscoveryPage.tsx';
 import AtlasCtaLinkPage from '../../src/pages/tools/AtlasCtaLinkPage.tsx';
 import MercadoLibreCreatorHub from '../../src/pages/MercadoLibreCreatorHub.tsx';
+import AtlasStoryBankPage from './pages/AtlasStoryBankPage.tsx';
+import AtlasVideoReferencesPage from '../../src/pages/tools/AtlasVideoReferencesPage.tsx';
+import AtlasTimelinePilotPage from '../../src/pages/tools/AtlasTimelinePilotPage.tsx';
+import AtlasMotionVoiceStudio from '../../src/pages/tools/AtlasMotionVoiceStudio.tsx';
+import AtlasImageBenchmarkStudio from '../../src/pages/tools/AtlasImageBenchmarkStudio.tsx';
+import AtlasNotFoundPage from './pages/AtlasNotFoundPage.tsx';
+import AtlasVideoFactoryPage from './pages/AtlasVideoFactoryPage.tsx';
 
 export function AtlasApp() {
   const { initAuth } = useAtlasAuthStore();
@@ -59,6 +68,9 @@ export function AtlasApp() {
   return (
     <div className="atlas-standalone-root">
       <Routes>
+        <Route path="/redes" element={<YouAppSocialPresence />} />
+    <Route path="/publicador" element={<YouAppPublisherPage />} />
+    <Route path="/redes/acceso" element={<Login social />} />
         <Route element={<AtlasLayout />}>
           {/* Central SSO Auth Gateway */}
           <Route path="/sso/authorize" element={<AtlasSSOGateway />} />
@@ -126,11 +138,24 @@ export function AtlasApp() {
           <Route path="/settings" element={<AtlasSettingsPage />} />
           <Route path="/configuracion" element={<AtlasSettingsPage />} />
 
-          {/* HERRAMIENTAS SECUNDARIAS / IMAGE DISCOVERY & CTA LINK */}
+          {/* HERRAMIENTAS SECUNDARIAS / IMAGE DISCOVERY & CTA LINK & STORY BANK */}
           <Route path="/tools/image-discovery" element={<AtlasImageDiscoveryPage />} />
           <Route path="/buscar-imagenes" element={<AtlasImageDiscoveryPage />} />
           <Route path="/tools/cta-link" element={<AtlasCtaLinkPage />} />
           <Route path="/links-publicacion" element={<AtlasCtaLinkPage />} />
+          <Route path="/tools/story-bank" element={<AtlasStoryBankPage />} />
+          <Route path="/banco-cuentos" element={<AtlasStoryBankPage />} />
+          <Route path="/atlas/fabrica-videos" element={<AtlasVideoFactoryPage />} />
+          <Route path="/fabrica-videos" element={<AtlasVideoFactoryPage />} />
+          <Route path="/tools/video-references" element={<AtlasVideoReferencesPage />} />
+          <Route path="/video-references" element={<AtlasVideoReferencesPage />} />
+          <Route path="/tools/timeline-pilot" element={<AtlasTimelinePilotPage />} />
+          <Route path="/timeline-pilot" element={<AtlasTimelinePilotPage />} />
+          <Route path="/tools/motion-voice" element={<AtlasMotionVoiceStudio />} />
+          <Route path="/motion-voice" element={<AtlasMotionVoiceStudio />} />
+          <Route path="/tools/voice-library" element={<AtlasMotionVoiceStudio />} />
+          <Route path="/tools/image-benchmark" element={<AtlasImageBenchmarkStudio />} />
+          <Route path="/image-benchmark" element={<AtlasImageBenchmarkStudio />} />
 
           {/* MERCADO LIBRE CREATOR LINK HUB / CANONICAL YOUTUBE PROFILE URL */}
           <Route path="/recomendados" element={<MercadoLibreCreatorHub />} />
@@ -181,8 +206,8 @@ export function AtlasApp() {
           <Route path="/admin/atlas/system" element={<ProtectedRoute><AdminLayout><AdminSystem /></AdminLayout></ProtectedRoute>} />
           <Route path="/admin/atlas/factory" element={<ProtectedRoute><AdminLayout><AdminSearchFactory /></AdminLayout></ProtectedRoute>} />
 
-          {/* Fallback to Hub / Control Center */}
-          <Route path="*" element={<Navigate to="/broadcast/control-center" replace />} />
+          {/* Fallback: Only genuine unknown routes show 404 NOT_FOUND */}
+          <Route path="*" element={<AtlasNotFoundPage />} />
         </Route>
       </Routes>
 

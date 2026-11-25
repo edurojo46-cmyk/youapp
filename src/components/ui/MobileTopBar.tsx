@@ -1,0 +1,314 @@
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Bookmark,
+  BookOpen,
+  Compass,
+  Film,
+  Home,
+  Menu,
+  Music2,
+  Radio,
+  Search,
+  Share2,
+  Smartphone,
+  Sparkles,
+  Tv,
+  User,
+  X
+} from 'lucide-react';
+import { YouAppOfficialLogo } from './YouAppOfficialLogo';
+import { TvUserSessionMenu } from '../tv/TvUserSessionMenu';
+
+const HIDDEN_PREFIXES = [
+  '/login',
+  '/embed/',
+  '/antena/',
+  '/remote',
+  '/tools/',
+  '/timeline-pilot',
+  '/motion-voice'
+];
+
+const DRAWER_LINKS = [
+  { label: 'Inicio', path: '/', icon: Home },
+  { label: 'Mi Señal', path: '/misenal1', icon: Radio },
+  { label: 'MiTV', path: '/mitv', icon: Tv },
+  { label: 'Buscar', path: '/search', icon: Search },
+  { label: 'YOU MUSIC', path: '/youmusic', icon: Music2 },
+  { label: 'Reels', path: '/reels', icon: Film },
+  { label: 'Lecturas', path: '/lecturas', icon: BookOpen },
+  { label: 'YOU Dial', path: '/dial', icon: Compass },
+  { label: 'Mis Listas', path: '/my-lists', icon: Bookmark },
+  { label: 'Mi Algoritmo', path: '/my-algorithm', icon: Sparkles },
+  { label: 'Repetidoras', path: '/repetidoras', icon: Share2 },
+  { label: 'YOU Remote', path: '/remote', icon: Smartphone },
+  { label: 'Mi Perfil', path: '/perfil', icon: User }
+];
+
+export function MobileTopBar() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return null;
+  }
+
+  return (
+    <>
+      <header className="ymtb-bar" aria-label="Barra superior móvil">
+        <div className="ymtb-left">
+          <button
+            type="button"
+            className="ymtb-hamburger"
+            onClick={() => setMenuOpen((prev) => !prev)}
+            aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={menuOpen}
+          >
+            {menuOpen ? <X size={21} strokeWidth={2.2} /> : <Menu size={22} strokeWidth={2.2} />}
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className="ymtb-logo-btn"
+          onClick={() => navigate('/')}
+          aria-label="Ir al inicio de YOUAPP"
+        >
+          <YouAppOfficialLogo size="sm" variant="white" />
+        </button>
+
+        <div className="ymtb-right">
+          <TvUserSessionMenu compact variant="glass" />
+        </div>
+      </header>
+
+      {menuOpen && (
+        <div
+          className="ymtb-drawer-backdrop"
+          onClick={() => setMenuOpen(false)}
+          role="presentation"
+        >
+          <aside
+            className="ymtb-drawer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Menú principal"
+          >
+            <div className="ymtb-drawer-head">
+              <YouAppOfficialLogo size="sm" variant="white" />
+              <button
+                type="button"
+                className="ymtb-drawer-close"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Cerrar menú"
+              >
+                <X size={19} />
+              </button>
+            </div>
+
+            <nav className="ymtb-drawer-nav">
+              {DRAWER_LINKS.map((item) => {
+                const Icon = item.icon;
+                const active =
+                  item.path === '/'
+                    ? pathname === '/'
+                    : pathname === item.path || pathname.startsWith(`${item.path}/`);
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    className={`ymtb-drawer-item ${active ? 'active' : ''}`}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      navigate(item.path);
+                    }}
+                  >
+                    <Icon size={18} strokeWidth={active ? 2.3 : 1.9} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
+      )}
+
+      <style>{`
+        .ymtb-bar,
+        .ymtb-drawer-backdrop {
+          display: none;
+        }
+
+        @media (max-width: 768px) {
+          /* Reemplaza las barras de escritorio en móvil para evitar doble header y cortes */
+          nav.home-navbar,
+          header.mitv-header,
+          nav.ms-topnav,
+          header.ys-topbar,
+          header.ml-topbar,
+          header.ma-topbar,
+          header.ymv1-header,
+          header.yr-header,
+          header.yl-header,
+          header.yd-topnav,
+          header.mp-topbar,
+          header.rep-topnav {
+            display: none !important;
+          }
+
+          .app-layout {
+            padding-top: calc(56px + env(safe-area-inset-top));
+            padding-bottom: 84px;
+            box-sizing: border-box;
+          }
+
+          .ymtb-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 98;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            height: calc(56px + env(safe-area-inset-top));
+            padding: env(safe-area-inset-top) 12px 0 12px;
+            box-sizing: border-box;
+            background: rgba(14, 16, 22, 0.84);
+            backdrop-filter: saturate(180%) blur(24px);
+            -webkit-backdrop-filter: saturate(180%) blur(24px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.36);
+          }
+
+          .ymtb-left {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+          }
+
+          .ymtb-hamburger {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.12s ease;
+          }
+
+          .ymtb-hamburger:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.16);
+          }
+
+          .ymtb-logo-btn {
+            background: transparent;
+            border: none;
+            padding: 4px 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+          }
+
+          .ymtb-right {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 6px;
+          }
+
+          .ymtb-drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 120;
+            display: flex;
+            background: rgba(0, 0, 0, 0.62);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+          }
+
+          .ymtb-drawer {
+            width: min(290px, 82vw);
+            height: 100%;
+            background: rgba(15, 18, 26, 0.96);
+            backdrop-filter: saturate(180%) blur(28px);
+            -webkit-backdrop-filter: saturate(180%) blur(28px);
+            border-right: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 16px 0 48px rgba(0, 0, 0, 0.65);
+            display: flex;
+            flex-direction: column;
+            padding: calc(14px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)) 14px;
+            box-sizing: border-box;
+            overflow-y: auto;
+          }
+
+          .ymtb-drawer-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 6px 14px 6px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+          }
+
+          .ymtb-drawer-close {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.08);
+            color: #f8fafc;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+          }
+
+          .ymtb-drawer-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .ymtb-drawer-item {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 14px;
+            border: 1px solid transparent;
+            border-radius: 14px;
+            background: transparent;
+            color: rgba(245, 247, 250, 0.86);
+            font-size: 0.92rem;
+            font-weight: 600;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+          }
+
+          .ymtb-drawer-item:active {
+            background: rgba(255, 255, 255, 0.1);
+          }
+
+          .ymtb-drawer-item.active {
+            background: rgba(100, 210, 255, 0.16);
+            border-color: rgba(100, 210, 255, 0.34);
+            color: #64d2ff;
+          }
+        }
+      `}</style>
+    </>
+  );
+}

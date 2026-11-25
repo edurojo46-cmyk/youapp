@@ -50,6 +50,7 @@ import AtlasMotionVoiceStudio from './pages/tools/AtlasMotionVoiceStudio';
 import { useStore } from './store/useStore';
 import DesktopLayout from './components/DesktopLayout';
 import { MobileBottomBar } from './components/ui/MobileBottomBar';
+import { MobileTopBar } from './components/ui/MobileTopBar';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -237,6 +238,7 @@ function App() {
         }
       `}</style>
       
+      <MobileTopBar />
       <MobileBottomBar />
       <ToastHost />
       <ModalHost />

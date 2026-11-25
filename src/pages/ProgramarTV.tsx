@@ -10,6 +10,7 @@ import {
   Circle,
   ExternalLink,
   Film,
+  Heart,
   Maximize2,
   Minimize2,
   Pencil,
@@ -23,6 +24,8 @@ import {
   Sparkles,
   Trash2,
   Tv,
+  UserCheck,
+  UserPlus,
   Volume2,
   VolumeX,
   X
@@ -2141,6 +2144,13 @@ export default function ProgramarTV() {
                 <div className="mitv-now-top-meta">
                   <span className="mitv-live-pill">EN PANTALLA</span>
                   {(() => {
+                    const likeKey = `${currentItem.provider}:${currentItem.providerId}`;
+                    const followKey =
+                      currentItem.provider === 'youtube_live'
+                        ? `ch:${currentItem.providerId}`
+                        : `mitv:${displayedChannel?.id || 'default'}`;
+                    const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
+                    const isFollowed = socialGraph.followedSignalIds.includes(followKey);
                     const ytSubUrl =
                       currentItem.provider === 'youtube' || currentItem.provider === 'youtube_live'
                         ? buildYouTubeSubscribeUrl({
@@ -2151,17 +2161,72 @@ export default function ProgramarTV() {
                             sourceUrl: currentItem.sourceUrl
                           })
                         : null;
-                    return ytSubUrl ? (
-                      <a
-                        href={ytSubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mitv-yt-sub-link"
-                        title="Abrir canal oficial en YouTube para suscribirte"
-                      >
-                        Suscribirse en YouTube ↗
-                      </a>
-                    ) : null;
+                    return (
+                      <div className="mitv-top-social-icons">
+                        <button
+                          type="button"
+                          className={`mitv-top-icon-btn ${isLiked ? 'is-liked' : ''}`}
+                          onClick={() => {
+                            setSocialGraph((prev) => {
+                              const { next, active } = toggleInList(prev.likedVideoKeys, likeKey);
+                              setToast(
+                                active
+                                  ? 'Me gusta guardado en YOUAPP.'
+                                  : 'Me gusta quitado de YOUAPP.'
+                              );
+                              return saveSocialGraph({ ...prev, likedVideoKeys: next });
+                            });
+                          }}
+                          title={isLiked ? 'Quitar Me gusta' : 'Me gusta en YOUAPP'}
+                          aria-label="Me gusta"
+                          aria-pressed={isLiked}
+                        >
+                          <Heart size={15} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`mitv-top-icon-btn ${isFollowed ? 'is-subbed' : ''}`}
+                          onClick={() => {
+                            const willSubscribe = !isFollowed;
+                            setSocialGraph((prev) => {
+                              const { next } = toggleInList(prev.followedSignalIds, followKey);
+                              return saveSocialGraph({ ...prev, followedSignalIds: next });
+                            });
+                            if (willSubscribe && ytSubUrl) {
+                              window.open(
+                                ytSubUrl,
+                                'youapp_yt_sub',
+                                'width=540,height=660,noopener,noreferrer'
+                              );
+                              setToast(
+                                `Suscripto a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
+                              );
+                            } else {
+                              setToast(
+                                willSubscribe
+                                  ? `Suscripto a «${currentItem.author}» en YOUAPP.`
+                                  : `Dejaste de seguir a «${currentItem.author}» en YOUAPP.`
+                              );
+                            }
+                          }}
+                          title={
+                            ytSubUrl
+                              ? 'Suscribirse en YOUAPP y YouTube'
+                              : isFollowed
+                                ? 'Suscripto'
+                                : 'Suscribirse'
+                          }
+                          aria-label={isFollowed ? 'Suscripto' : 'Suscribirse'}
+                          aria-pressed={isFollowed}
+                        >
+                          {isFollowed ? (
+                            <UserCheck size={15} strokeWidth={2.2} />
+                          ) : (
+                            <UserPlus size={15} strokeWidth={2.1} />
+                          )}
+                        </button>
+                      </div>
+                    );
                   })()}
                 </div>
                 <strong>{currentItem.title}</strong>
@@ -2275,124 +2340,61 @@ export default function ProgramarTV() {
                 </div>
               )}
 
-              {(() => {
-                const likeKey = `${currentItem.provider}:${currentItem.providerId}`;
-                const followKey =
-                  currentItem.provider === 'youtube_live'
-                    ? `ch:${currentItem.providerId}`
-                    : `mitv:${displayedChannel?.id || 'default'}`;
-                const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
-                const isFollowed = socialGraph.followedSignalIds.includes(followKey);
-                const ytUniversalSubUrl =
-                  currentItem.provider === 'youtube' || currentItem.provider === 'youtube_live'
-                    ? buildYouTubeSubscribeUrl({
-                        channelId:
-                          currentItem.provider === 'youtube_live'
-                            ? currentItem.providerId
-                            : undefined,
-                        sourceUrl: currentItem.sourceUrl
-                      })
-                    : null;
-
-                return (
-                  <SmartBar
-                    unifiedAppleMode
-                    isPlaying={isPlaying}
-                    onPlayPause={handleSmartPlayPause}
-                    onSeek={handleSmartSeek}
-                    isMosaic={isMomentsMosaic}
-                    onToggleMosaic={() => {
-                      setIsYou4Mode(false);
-                      setIsMomentsMosaic((v) => !v);
-                    }}
-                    isYou4={isYou4Mode}
-                    onToggleYou4={() => {
-                      setIsMomentsMosaic(false);
-                      setIsYou4Mode((prev) => {
-                        const next = !prev;
-                        if (next) {
-                          setYou4AudioSlot(0);
-                          setYou4Offset(0);
+              <SmartBar
+                unifiedAppleMode
+                isPlaying={isPlaying}
+                onPlayPause={handleSmartPlayPause}
+                onSeek={handleSmartSeek}
+                isMosaic={isMomentsMosaic}
+                onToggleMosaic={() => {
+                  setIsYou4Mode(false);
+                  setIsMomentsMosaic((v) => !v);
+                }}
+                isYou4={isYou4Mode}
+                onToggleYou4={() => {
+                  setIsMomentsMosaic(false);
+                  setIsYou4Mode((prev) => {
+                    const next = !prev;
+                    if (next) {
+                      setYou4AudioSlot(0);
+                      setYou4Offset(0);
+                    }
+                    return next;
+                  });
+                }}
+                isCasting={Boolean(isCastOpen || connectedCastCode || isReceivingCast)}
+                onToggleCast={() => void handleCastClick()}
+                isMutedExternal={isMuted || playerVolume === 0}
+                onToggleMuteExternal={handleToggleMute}
+                isFullscreen={isFullscreen}
+                onToggleFullscreen={() => void handleToggleFullscreen()}
+                onNextBlock={
+                  items.length > 1
+                    ? () => {
+                        if (isYou4Mode) {
+                          setYou4Offset((prev) => (prev + 4) % Math.max(1, items.length));
+                        } else {
+                          setCurrentIndex((prev) => (prev + 1) % items.length);
                         }
-                        return next;
-                      });
-                    }}
-                    isCasting={Boolean(isCastOpen || connectedCastCode || isReceivingCast)}
-                    onToggleCast={() => void handleCastClick()}
-                    isMutedExternal={isMuted || playerVolume === 0}
-                    onToggleMuteExternal={handleToggleMute}
-                    isFullscreen={isFullscreen}
-                    onToggleFullscreen={() => void handleToggleFullscreen()}
-                    isLikedExternal={isLiked}
-                    onToggleLikeExternal={() => {
-                      setSocialGraph((prev) => {
-                        const { next, active } = toggleInList(prev.likedVideoKeys, likeKey);
-                        setToast(
-                          active
-                            ? 'Me gusta guardado en YOUAPP.'
-                            : 'Me gusta quitado de YOUAPP.'
-                        );
-                        return saveSocialGraph({ ...prev, likedVideoKeys: next });
-                      });
-                    }}
-                    isSubscribedExternal={isFollowed}
-                    subscribeTitle={
-                      ytUniversalSubUrl
-                        ? 'Suscripción universal: te suscribe en YOUAPP y abre YouTube'
-                        : 'Suscribirse en YOUAPP'
-                    }
-                    onToggleSubscribeExternal={() => {
-                      const willSubscribe = !isFollowed;
-                      setSocialGraph((prev) => {
-                        const { next } = toggleInList(prev.followedSignalIds, followKey);
-                        return saveSocialGraph({ ...prev, followedSignalIds: next });
-                      });
-                      if (willSubscribe && ytUniversalSubUrl) {
-                        window.open(
-                          ytUniversalSubUrl,
-                          'youapp_yt_sub',
-                          'width=540,height=660,noopener,noreferrer'
-                        );
-                        setToast(
-                          `Suscripto a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
-                        );
-                      } else {
-                        setToast(
-                          willSubscribe
-                            ? `Suscripto a «${currentItem.author}» en YOUAPP.`
-                            : `Dejaste de seguir a «${currentItem.author}» en YOUAPP.`
-                        );
                       }
-                    }}
-                    onNextBlock={
-                      items.length > 1
-                        ? () => {
-                            if (isYou4Mode) {
-                              setYou4Offset((prev) => (prev + 4) % Math.max(1, items.length));
-                            } else {
-                              setCurrentIndex((prev) => (prev + 1) % items.length);
-                            }
-                          }
-                        : undefined
-                    }
-                    onPreviousBlock={
-                      items.length > 1
-                        ? () => {
-                            if (isYou4Mode) {
-                              setYou4Offset(
-                                (prev) =>
-                                  (prev - 4 + Math.max(4, items.length)) %
-                                  Math.max(1, items.length)
-                              );
-                            } else {
-                              setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-                            }
-                          }
-                        : undefined
-                    }
-                  />
-                );
-              })()}
+                    : undefined
+                }
+                onPreviousBlock={
+                  items.length > 1
+                    ? () => {
+                        if (isYou4Mode) {
+                          setYou4Offset(
+                            (prev) =>
+                              (prev - 4 + Math.max(4, items.length)) %
+                              Math.max(1, items.length)
+                          );
+                        } else {
+                          setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+                        }
+                      }
+                    : undefined
+                }
+              />
             </div>
           </section>
         )}
@@ -3241,6 +3243,40 @@ export default function ProgramarTV() {
           background: rgba(255, 59, 48, 0.26);
           border-color: rgba(255, 105, 97, 0.6);
           color: #ffffff;
+        }
+        .mitv-top-social-icons {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .mitv-top-icon-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.88);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+        }
+        .mitv-top-icon-btn:hover {
+          background: rgba(255, 255, 255, 0.2);
+        }
+        .mitv-top-icon-btn:active {
+          transform: scale(0.92);
+        }
+        .mitv-top-icon-btn.is-liked {
+          color: #ff375f;
+          background: rgba(255, 55, 95, 0.2);
+          border-color: rgba(255, 55, 95, 0.48);
+        }
+        .mitv-top-icon-btn.is-subbed {
+          color: #64d2ff;
+          background: rgba(10, 132, 255, 0.24);
+          border-color: rgba(100, 210, 255, 0.5);
         }
         .mitv-player-card {
           overflow: visible;

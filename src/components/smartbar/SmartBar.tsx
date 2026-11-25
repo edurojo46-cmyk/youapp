@@ -445,7 +445,7 @@ export const SmartBar: React.FC<SmartBarProps> = ({
 
         return (
           <div className="bv-scrub-wrap" aria-label="Barra de progreso táctil del video">
-            {(capabilities.ownsPlayerControls || Boolean(onPlayPauseProp)) && (
+            {!unifiedAppleMode && (capabilities.ownsPlayerControls || Boolean(onPlayPauseProp)) && (
               <>
                 <button
                   type="button"
@@ -638,39 +638,43 @@ export const SmartBar: React.FC<SmartBarProps> = ({
             )}
           </div>
 
-          {/* Derecha: solo ícono de Corazón + ícono de Suscripción + menú discreto ⋯ */}
+          {/* Derecha: íconos opcionales + menú discreto ⋯ */}
           <div className="bv-apple-right">
-            <button
-              type="button"
-              className={`bv-apple-ext-icon ${(isLikedExternal ?? saved) ? 'is-liked' : ''}`}
-              onClick={() => (onToggleLikeExternal ? onToggleLikeExternal() : handleSave())}
-              title={(isLikedExternal ?? saved) ? 'Quitar Me gusta' : 'Me gusta'}
-              aria-label="Me gusta"
-              aria-pressed={Boolean(isLikedExternal ?? saved)}
-            >
-              <Heart
-                size={16}
-                fill={(isLikedExternal ?? saved) ? '#ff375f' : 'none'}
-                strokeWidth={2.1}
-              />
-            </button>
-            <button
-              type="button"
-              className={`bv-apple-ext-icon ${(isSubscribedExternal ?? following) ? 'is-subbed' : ''}`}
-              onClick={() => (onToggleSubscribeExternal ? onToggleSubscribeExternal() : handleFollow())}
-              title={
-                subscribeTitle ||
-                ((isSubscribedExternal ?? following) ? 'Suscripto' : 'Suscribirse')
-              }
-              aria-label={(isSubscribedExternal ?? following) ? 'Suscripto' : 'Suscribirse'}
-              aria-pressed={Boolean(isSubscribedExternal ?? following)}
-            >
-              {(isSubscribedExternal ?? following) ? (
-                <UserCheck size={16} strokeWidth={2.2} />
-              ) : (
-                <UserPlus size={16} strokeWidth={2.1} />
-              )}
-            </button>
+            {onToggleLikeExternal && (
+              <button
+                type="button"
+                className={`bv-apple-ext-icon ${(isLikedExternal ?? saved) ? 'is-liked' : ''}`}
+                onClick={onToggleLikeExternal}
+                title={(isLikedExternal ?? saved) ? 'Quitar Me gusta' : 'Me gusta'}
+                aria-label="Me gusta"
+                aria-pressed={Boolean(isLikedExternal ?? saved)}
+              >
+                <Heart
+                  size={16}
+                  fill={(isLikedExternal ?? saved) ? '#ff375f' : 'none'}
+                  strokeWidth={2.1}
+                />
+              </button>
+            )}
+            {onToggleSubscribeExternal && (
+              <button
+                type="button"
+                className={`bv-apple-ext-icon ${(isSubscribedExternal ?? following) ? 'is-subbed' : ''}`}
+                onClick={onToggleSubscribeExternal}
+                title={
+                  subscribeTitle ||
+                  ((isSubscribedExternal ?? following) ? 'Suscripto' : 'Suscribirse')
+                }
+                aria-label={(isSubscribedExternal ?? following) ? 'Suscripto' : 'Suscribirse'}
+                aria-pressed={Boolean(isSubscribedExternal ?? following)}
+              >
+                {(isSubscribedExternal ?? following) ? (
+                  <UserCheck size={16} strokeWidth={2.2} />
+                ) : (
+                  <UserPlus size={16} strokeWidth={2.1} />
+                )}
+              </button>
+            )}
             <button
               type="button"
               className={`bv-apple-ext-icon bv-apple-more ${showMoreMenu ? 'active' : ''}`}

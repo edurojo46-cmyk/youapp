@@ -366,7 +366,11 @@ export default function ProgramarTV() {
         }
       } else if (action === 'TOGGLE_QUAD') {
         setIsMomentsMosaic(false);
-        setIsYou4Mode((v) => !v);
+        setIsYou4Mode((v) => {
+          const next = !v;
+          setIsFullscreen(next);
+          return next;
+        });
       } else if (action === 'TOGGLE_ZEN') {
         handleToggleFullscreen();
       } else if (action === 'SEND_CHAT' && payload?.text) {
@@ -2348,7 +2352,11 @@ export default function ProgramarTV() {
                 isMosaic={isMomentsMosaic}
                 onToggleMosaic={() => {
                   setIsYou4Mode(false);
-                  setIsMomentsMosaic((v) => !v);
+                  setIsMomentsMosaic((prev) => {
+                    const next = !prev;
+                    setIsFullscreen(next);
+                    return next;
+                  });
                 }}
                 isYou4={isYou4Mode}
                 onToggleYou4={() => {
@@ -2359,6 +2367,7 @@ export default function ProgramarTV() {
                       setYou4AudioSlot(0);
                       setYou4Offset(0);
                     }
+                    setIsFullscreen(next);
                     return next;
                   });
                 }}

@@ -74,14 +74,9 @@ export function MobileTopBar() {
           </button>
         </div>
 
-        <button
-          type="button"
-          className="ymtb-logo-btn"
-          onClick={() => navigate('/')}
-          aria-label="Ir al inicio de YOUAPP"
-        >
-          <YouAppOfficialLogo size="sm" variant="white" />
-        </button>
+        <div className="ymtb-logo-btn">
+          <YouAppOfficialLogo size="sm" theme="dark" to="/" />
+        </div>
 
         <div className="ymtb-right">
           <TvUserSessionMenu compact variant="glass" />
@@ -100,7 +95,7 @@ export function MobileTopBar() {
             aria-label="Menú principal"
           >
             <div className="ymtb-drawer-head">
-              <YouAppOfficialLogo size="sm" variant="white" />
+              <YouAppOfficialLogo size="sm" theme="dark" to="/" onClick={() => { setMenuOpen(false); navigate('/'); }} />
               <button
                 type="button"
                 className="ymtb-drawer-close"

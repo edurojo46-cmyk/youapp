@@ -4183,84 +4183,118 @@ export default function ProgramarTV() {
         }
         @media (max-width: 768px) {
           .mitv-page {
-            padding-bottom: 108px;
+            padding-bottom: 92px;
           }
-          .mitv-mobile-remote {
-            position: fixed;
-            left: 12px;
-            right: 12px;
-            bottom: max(12px, env(safe-area-inset-bottom));
-            z-index: 90;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+          .mitv-main {
+            padding: 6px 8px 20px;
             gap: 8px;
-            padding: 7px 8px;
-            border-radius: 999px;
-            background: rgba(18, 20, 26, 0.88);
-            backdrop-filter: blur(26px) saturate(185%);
-            -webkit-backdrop-filter: blur(26px) saturate(185%);
-            border: 1px solid rgba(255, 255, 255, 0.24);
-            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
           }
-          .mitv-remote-btn {
-            width: 44px;
-            height: 44px;
-            border-radius: 999px;
-            border: 1px solid rgba(255, 255, 255, 0.26);
-            background: rgba(255, 255, 255, 0.14);
-            color: #ffffff;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            cursor: pointer;
+          .mitv-card {
+            border-radius: 14px;
           }
-          .mitv-remote-btn:active:not(:disabled) {
-            background: #0071e3;
+          .mitv-video-wrap {
+            border-radius: 14px 14px 0 0;
           }
-          .mitv-remote-btn:disabled {
-            opacity: 0.35;
-          }
-          .mitv-remote-center {
-            flex: 1;
-            min-width: 0;
-            border: none;
-            background: transparent;
-            color: #ffffff;
-            display: flex;
+          .mitv-player-bar {
+            padding: 8px 10px;
+            gap: 8px;
             flex-direction: column;
-            align-items: center;
-            gap: 1px;
-            padding: 2px 6px;
-            cursor: pointer;
+            align-items: stretch;
           }
-          .mitv-remote-center strong {
-            max-width: 100%;
-            font-size: 13px;
-            font-weight: 650;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+          .mitv-now-title {
+            font-size: 13.5px;
+            line-height: 1.28;
           }
-          .mitv-remote-center span {
-            max-width: 100%;
+          .mitv-now-sub {
             font-size: 11px;
-            color: #64d2ff;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            gap: 5px;
+          }
+          .mitv-controls {
+            width: 100%;
+            justify-content: space-between;
+            gap: 5px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+            padding-bottom: 1px;
+          }
+          .mitv-controls::-webkit-scrollbar {
+            display: none;
+          }
+          .mitv-ctrl-btn {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+          }
+          .mitv-ctrl-btn.primary {
+            width: 34px;
+            height: 34px;
+          }
+          .mitv-ctrl-pill-you4 {
+            height: 28px;
+            padding: 0 8px;
+            font-size: 10.5px;
+            flex-shrink: 0;
+          }
+          .mitv-smartbar-slot {
+            padding: 0 8px 8px;
+          }
+          .mitv-add-card {
+            padding: 6px 8px;
+            border-radius: 12px;
+          }
+          .mitv-add-form {
+            flex-wrap: nowrap;
+            gap: 6px;
+          }
+          .mitv-add-form input {
+            padding: 7px 10px;
+            font-size: 12px;
+            min-width: 0;
+          }
+          .mitv-add-submit {
+            padding: 7px 11px;
+            font-size: 11.5px;
+          }
+          .mitv-grid-card {
+            padding: 10px;
+            gap: 8px;
+          }
+          .mitv-grid-head h2 {
+            font-size: 14px;
+          }
+          .mitv-row {
+            padding: 6px 7px;
+            gap: 8px;
+            border-radius: 12px;
+          }
+          .mitv-row-thumb {
+            width: 84px;
+            height: 48px;
+            border-radius: 8px;
+          }
+          .mitv-row-meta strong {
+            font-size: 12.5px;
+          }
+          .mitv-row-meta > span {
+            font-size: 10.5px;
+          }
+          .mitv-icon-btn {
+            width: 26px;
+            height: 26px;
+          }
+          .mitv-pill-btn {
+            padding: 5px 9px;
+            font-size: 11px;
+          }
+          /* Ocultamos el control flotante duplicado para que no choque con MobileBottomBar */
+          .mitv-mobile-remote {
+            display: none !important;
           }
         }
         @media (max-width: 680px) {
           .mitv-nav {
             display: none;
-          }
-          .mitv-add-card {
-            border-radius: 16px;
-          }
-          .mitv-add-form {
-            flex-wrap: wrap;
           }
         }
 

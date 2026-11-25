@@ -99,6 +99,7 @@ export default function ProgramarTV() {
   const [currentVideoMeta, setCurrentVideoMeta] = useState<VideoPublicMeta | null>(null);
   const [isCreatingChannel, setIsCreatingChannel] = useState(false);
   const [isChannelMenuOpen, setIsChannelMenuOpen] = useState(false);
+  const [isChannelsPanelOpen, setIsChannelsPanelOpen] = useState(false);
   const channelMenuRef = useRef<HTMLDivElement | null>(null);
   const [newChannelName, setNewChannelName] = useState('');
   const [isRenamingChannel, setIsRenamingChannel] = useState(false);
@@ -1566,161 +1567,197 @@ export default function ProgramarTV() {
           </div>
         )}
 
-        {/* 1. MIS CANALES DE MiTV (SELECTOR SUPERIOR) */}
-        <section className="mitv-card mitv-channels-card" aria-label="Mis canales de MiTV">
-          <div className="mitv-ch-top">
-            <div className="mitv-ch-title">
-              <span className="mitv-badge">
-                <Tv size={12} /> MI TELEVISOR PERSONAL
-              </span>
-              <h1>Programá lo que querés ver hoy</h1>
-            </div>
+        {/* 1. MIS CANALES DE MiTV (BARRA FINA, DISIMULADA Y DESPLEGABLE) */}
+        <section
+          className={`mitv-card mitv-channels-card ${isChannelsPanelOpen ? 'is-open' : 'is-collapsed'}`}
+          aria-label="Mis canales de MiTV"
+        >
+          <button
+            type="button"
+            className="mitv-channels-toggle"
+            onClick={() => setIsChannelsPanelOpen((v) => !v)}
+            aria-expanded={isChannelsPanelOpen}
+          >
+            <span className="mitv-channels-toggle-left">
+              {isViewingOfficialLive && !sharedChannel ? (
+                <span className="mitv-live-dot" />
+              ) : (
+                <Tv size={13} style={{ opacity: 0.75, flexShrink: 0 }} />
+              )}
+              <strong className="mitv-channels-toggle-name">
+                {displayedChannel?.name || 'MiTV'}
+              </strong>
+              <span className="mitv-channels-toggle-count">{items.length}</span>
+              <span className="mitv-channels-toggle-hint">· Programá lo que querés ver hoy</span>
+            </span>
+            <span className="mitv-channels-toggle-right">
+              <span>{isChannelsPanelOpen ? 'Ocultar' : 'Canales'}</span>
+              <ChevronDown
+                size={14}
+                style={{
+                  transform: isChannelsPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.18s ease'
+                }}
+              />
+            </span>
+          </button>
 
-            <div className="mitv-ch-actions">
-              {!sharedChannel && items.length > 0 && (
+          {isChannelsPanelOpen && (
+            <div className="mitv-channels-collapsible">
+              <div className="mitv-ch-top">
+                <div className="mitv-ch-title">
+                  <span className="mitv-badge">
+                    <Tv size={11} /> MI TELEVISOR PERSONAL
+                  </span>
+                </div>
+
+                <div className="mitv-ch-actions">
+                  {!sharedChannel && items.length > 0 && (
+                    <button
+                      type="button"
+                      className="mitv-btn-primary"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={handlePublishToMySignal}
+                      title="Llevar esta grilla al aire en Mi Señal"
+                    >
+                      <Radio size={13} />
+                      <span>Enviar a Mi Señal</span>
+                    </button>
+                  )}
+                  {items.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        className="mitv-pill-btn"
+                        style={{ borderColor: 'rgba(37, 211, 102, 0.45)', color: '#9bf5bd' }}
+                        onClick={() => {
+                          if (!displayedChannel) return;
+                          openWhatsAppMiTvShare({
+                            channelName: displayedChannel.name,
+                            shareUrl: buildMiTvShareUrl(displayedChannel),
+                            itemCount: displayedChannel.items.length
+                          });
+                          setToast(`Abriendo WhatsApp para compartir «${displayedChannel.name}»…`);
+                        }}
+                        title="Compartir este canal directamente por WhatsApp (se abre sin registro)"
+                      >
+                        <Share2 size={13} color="#25D366" /> WhatsApp
+                      </button>
+                      <button
+                        type="button"
+                        className="mitv-pill-btn"
+                        onClick={() => void handleShareChannel()}
+                      >
+                        <Share2 size={13} /> Compartir
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="mitv-tabs" role="tablist" aria-label="Canales de MiTV">
                 <button
                   type="button"
-                  className="mitv-btn-primary"
-                  style={{ padding: '7px 14px', fontSize: '12.5px' }}
-                  onClick={handlePublishToMySignal}
-                  title="Llevar esta grilla al aire en Mi Señal"
-                >
-                  <Radio size={13} />
-                  <span>Enviar a Mi Señal</span>
-                </button>
-              )}
-              {items.length > 0 && (
-                <>
-                  <button
-                    type="button"
-                    className="mitv-pill-btn"
-                    style={{ borderColor: 'rgba(37, 211, 102, 0.45)', color: '#9bf5bd' }}
-                    onClick={() => {
-                      if (!displayedChannel) return;
-                      openWhatsAppMiTvShare({
-                        channelName: displayedChannel.name,
-                        shareUrl: buildMiTvShareUrl(displayedChannel),
-                        itemCount: displayedChannel.items.length
-                      });
-                      setToast(`Abriendo WhatsApp para compartir «${displayedChannel.name}»…`);
-                    }}
-                    title="Compartir este canal directamente por WhatsApp (se abre sin registro)"
-                  >
-                    <Share2 size={13} color="#25D366" /> WhatsApp
-                  </button>
-                  <button
-                    type="button"
-                    className="mitv-pill-btn"
-                    onClick={() => void handleShareChannel()}
-                  >
-                    <Share2 size={13} /> Compartir
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="mitv-tabs" role="tablist" aria-label="Canales de MiTV">
-            <button
-              type="button"
-              className={`mitv-tab mitv-tab-live ${!sharedChannel && isViewingOfficialLive ? 'active' : ''}`}
-              onClick={() => {
-                setSharedChannel(null);
-                setSearchParams({}, { replace: true });
-                setIsViewingOfficialLive(true);
-                setIsChannelMenuOpen(false);
-                setCurrentIndex(0);
-              }}
-            >
-              <span className="mitv-live-dot" />
-              <span>TV en Vivo</span>
-              <em>{OFFICIAL_LIVE_TV_CHANNEL.items.length}</em>
-            </button>
-
-            <div className="mitv-ch-dropdown" ref={channelMenuRef}>
-              <button
-                type="button"
-                className={`mitv-tab mitv-ch-trigger ${!sharedChannel && !isViewingOfficialLive ? 'active' : ''}`}
-                onClick={() => setIsChannelMenuOpen((v) => !v)}
-                aria-expanded={isChannelMenuOpen}
-                aria-haspopup="listbox"
-              >
-                <Tv size={13} />
-                <span>{activeOwnChannel?.name || 'Mis canales'}</span>
-                <em>{activeOwnChannel?.items.length ?? 0}</em>
-                <ChevronDown
-                  size={14}
-                  style={{
-                    transform: isChannelMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.16s ease'
+                  className={`mitv-tab mitv-tab-live ${!sharedChannel && isViewingOfficialLive ? 'active' : ''}`}
+                  onClick={() => {
+                    setSharedChannel(null);
+                    setSearchParams({}, { replace: true });
+                    setIsViewingOfficialLive(true);
+                    setIsChannelMenuOpen(false);
+                    setCurrentIndex(0);
                   }}
-                />
-              </button>
+                >
+                  <span className="mitv-live-dot" />
+                  <span>TV en Vivo</span>
+                  <em>{OFFICIAL_LIVE_TV_CHANNEL.items.length}</em>
+                </button>
 
-              {isChannelMenuOpen && (
-                <div className="mitv-ch-menu" role="listbox" aria-label="Mis canales de MiTV">
-                  <div className="mitv-ch-menu-head">
-                    Mis canales ({workspace.channels.length})
-                  </div>
-                  {workspace.channels.map((ch) => {
-                    const isSelected =
-                      !sharedChannel && !isViewingOfficialLive && ch.id === activeOwnChannel?.id;
-                    return (
-                      <button
-                        key={ch.id}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        className={`mitv-ch-option ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          setSharedChannel(null);
-                          setIsViewingOfficialLive(false);
-                          setSearchParams({}, { replace: true });
-                          updateWorkspace((prev) => ({ ...prev, activeChannelId: ch.id }));
-                          setCurrentIndex(0);
-                          setIsChannelMenuOpen(false);
-                        }}
-                      >
-                        <span className="mitv-ch-option-name">
-                          <Tv size={13} />
-                          <span>{ch.name}</span>
-                        </span>
-                        <span className="mitv-ch-option-right">
-                          <em>{ch.items.length}</em>
-                          {isSelected && <Check size={13} color="#64d2ff" />}
-                        </span>
-                      </button>
-                    );
-                  })}
+                <div className="mitv-ch-dropdown" ref={channelMenuRef}>
+                  <button
+                    type="button"
+                    className={`mitv-tab mitv-ch-trigger ${!sharedChannel && !isViewingOfficialLive ? 'active' : ''}`}
+                    onClick={() => setIsChannelMenuOpen((v) => !v)}
+                    aria-expanded={isChannelMenuOpen}
+                    aria-haspopup="listbox"
+                  >
+                    <Tv size={13} />
+                    <span>{activeOwnChannel?.name || 'Mis canales'}</span>
+                    <em>{activeOwnChannel?.items.length ?? 0}</em>
+                    <ChevronDown
+                      size={14}
+                      style={{
+                        transform: isChannelMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.16s ease'
+                      }}
+                    />
+                  </button>
+
+                  {isChannelMenuOpen && (
+                    <div className="mitv-ch-menu" role="listbox" aria-label="Mis canales de MiTV">
+                      <div className="mitv-ch-menu-head">
+                        Mis canales ({workspace.channels.length})
+                      </div>
+                      {workspace.channels.map((ch) => {
+                        const isSelected =
+                          !sharedChannel && !isViewingOfficialLive && ch.id === activeOwnChannel?.id;
+                        return (
+                          <button
+                            key={ch.id}
+                            type="button"
+                            role="option"
+                            aria-selected={isSelected}
+                            className={`mitv-ch-option ${isSelected ? 'selected' : ''}`}
+                            onClick={() => {
+                              setSharedChannel(null);
+                              setIsViewingOfficialLive(false);
+                              setSearchParams({}, { replace: true });
+                              updateWorkspace((prev) => ({ ...prev, activeChannelId: ch.id }));
+                              setCurrentIndex(0);
+                              setIsChannelMenuOpen(false);
+                            }}
+                          >
+                            <span className="mitv-ch-option-name">
+                              <Tv size={13} />
+                              <span>{ch.name}</span>
+                            </span>
+                            <span className="mitv-ch-option-right">
+                              <em>{ch.items.length}</em>
+                              {isSelected && <Check size={13} color="#64d2ff" />}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+
+                <button
+                  type="button"
+                  className="mitv-tab-new"
+                  onClick={() => {
+                    setIsChannelMenuOpen(false);
+                    setIsCreatingChannel((v) => !v);
+                  }}
+                >
+                  <Plus size={13} /> Nuevo canal
+                </button>
+              </div>
+
+              {isCreatingChannel && (
+                <form className="mitv-new-form" onSubmit={handleCreateChannel}>
+                  <input
+                    type="text"
+                    value={newChannelName}
+                    onChange={(e) => setNewChannelName(e.target.value)}
+                    placeholder="Nombre del canal (ej. Noticias Mañana, Documentales, Cine…)"
+                    autoFocus
+                  />
+                  <button type="submit" className="mitv-btn-primary">
+                    Crear
+                  </button>
+                </form>
               )}
             </div>
-
-            <button
-              type="button"
-              className="mitv-tab-new"
-              onClick={() => {
-                setIsChannelMenuOpen(false);
-                setIsCreatingChannel((v) => !v);
-              }}
-            >
-              <Plus size={13} /> Nuevo canal
-            </button>
-          </div>
-
-          {isCreatingChannel && (
-            <form className="mitv-new-form" onSubmit={handleCreateChannel}>
-              <input
-                type="text"
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                placeholder="Nombre del canal (ej. Noticias Mañana, Documentales, Cine…)"
-                autoFocus
-              />
-              <button type="submit" className="mitv-btn-primary">
-                Crear
-              </button>
-            </form>
           )}
         </section>
 
@@ -3021,12 +3058,86 @@ export default function ProgramarTV() {
             0 12px 32px rgba(0, 0, 0, 0.22);
         }
         .mitv-channels-card {
-          padding: 18px 20px;
+          padding: 0;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 0;
           z-index: 30;
           overflow: visible;
+          background: rgba(255, 255, 255, 0.045);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 14px;
+        }
+        .mitv-channels-toggle {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 8px 14px;
+          background: transparent;
+          border: none;
+          color: rgba(245, 245, 247, 0.88);
+          cursor: pointer;
+          text-align: left;
+          font-family: inherit;
+          border-radius: 14px;
+        }
+        .mitv-channels-toggle:hover {
+          background: rgba(255, 255, 255, 0.04);
+        }
+        .mitv-channels-toggle-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        .mitv-channels-toggle-name {
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          white-space: nowrap;
+        }
+        .mitv-channels-toggle-count {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 1px 6px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.82);
+        }
+        .mitv-channels-toggle-hint {
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.52);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .mitv-channels-toggle-right {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11.5px;
+          font-weight: 600;
+          color: rgba(100, 210, 255, 0.9);
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .mitv-channels-collapsible {
+          padding: 10px 14px 14px 14px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        @media (max-width: 640px) {
+          .mitv-channels-toggle-hint {
+            display: none;
+          }
+          .mitv-channels-toggle {
+            padding: 7px 12px;
+          }
         }
         .mitv-ch-dropdown {
           position: relative;

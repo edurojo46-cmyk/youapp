@@ -70,7 +70,7 @@ export function MobileTopBar() {
             aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={menuOpen}
           >
-            {menuOpen ? <X size={21} strokeWidth={2.2} /> : <Menu size={22} strokeWidth={2.2} />}
+            {menuOpen ? <X size={19} strokeWidth={2.2} /> : <Menu size={20} strokeWidth={2.2} />}
           </button>
         </div>
 
@@ -135,6 +135,7 @@ export function MobileTopBar() {
 
       <style>{`
         .ymtb-bar,
+        .ymtb-mitv-pullwrap,
         .ymtb-drawer-backdrop {
           display: none;
         }
@@ -157,9 +158,50 @@ export function MobileTopBar() {
           }
 
           .app-layout {
-            padding-top: calc(56px + env(safe-area-inset-top));
+            padding-top: calc(48px + env(safe-area-inset-top));
             padding-bottom: 84px;
             box-sizing: border-box;
+          }
+
+          .ymtb-mitv-pullwrap {
+            position: fixed;
+            top: env(safe-area-inset-top);
+            left: 0;
+            right: 0;
+            z-index: 98;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+          }
+
+          .ymtb-mitv-pulltab {
+            pointer-events: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 20px;
+            padding: 0 12px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            background: rgba(14, 16, 22, 0.56);
+            backdrop-filter: saturate(160%) blur(14px);
+            -webkit-backdrop-filter: saturate(160%) blur(14px);
+            color: rgba(255, 255, 255, 0.72);
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+          }
+
+          .ymtb-mitv-pulltab:active {
+            background: rgba(14, 16, 22, 0.85);
+            color: #ffffff;
+          }
+
+          .ymtb-pull-pill {
+            width: 24px;
+            height: 3px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.45);
           }
 
           .ymtb-bar {
@@ -171,34 +213,53 @@ export function MobileTopBar() {
             display: grid;
             grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            height: calc(56px + env(safe-area-inset-top));
-            padding: env(safe-area-inset-top) 12px 0 12px;
+            height: calc(48px + env(safe-area-inset-top));
+            padding: env(safe-area-inset-top) 10px 0 10px;
             box-sizing: border-box;
-            background: rgba(14, 16, 22, 0.84);
-            backdrop-filter: saturate(180%) blur(24px);
-            -webkit-backdrop-filter: saturate(180%) blur(24px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.14);
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.36);
+            background: rgba(14, 16, 22, 0.76);
+            backdrop-filter: saturate(180%) blur(22px);
+            -webkit-backdrop-filter: saturate(180%) blur(22px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
+          }
+
+          .ymtb-bar--mitv {
+            height: calc(42px + env(safe-area-inset-top));
+            background: rgba(14, 16, 22, 0.72);
           }
 
           .ymtb-left {
             display: flex;
             align-items: center;
             justify-content: flex-start;
+            gap: 6px;
           }
 
           .ymtb-hamburger {
-            width: 38px;
-            height: 38px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            background: rgba(255, 255, 255, 0.08);
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.07);
             color: #ffffff;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: background 0.15s ease, transform 0.12s ease;
+          }
+
+          .ymtb-collapse-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.8);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
           }
 
           .ymtb-hamburger:active {

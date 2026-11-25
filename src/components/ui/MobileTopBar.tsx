@@ -159,7 +159,7 @@ export function MobileTopBar() {
 
           .app-layout {
             padding-top: calc(48px + env(safe-area-inset-top));
-            padding-bottom: 84px;
+            padding-bottom: env(safe-area-inset-bottom);
             box-sizing: border-box;
           }
 

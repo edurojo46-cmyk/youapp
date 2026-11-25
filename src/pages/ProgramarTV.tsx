@@ -4068,7 +4068,7 @@ export default function ProgramarTV() {
         }
         @media (max-width: 768px) {
           .mitv-page {
-            padding-bottom: 92px;
+            padding-bottom: 24px;
           }
           .mitv-main {
             padding: 6px 8px 20px;

@@ -31,7 +31,11 @@ import {
   Trash2,
   Share2,
   Forward,
-  MoreHorizontal
+  MoreHorizontal,
+  Maximize2,
+  Minimize2,
+  UserPlus,
+  UserCheck
 } from 'lucide-react';
 
 export type ShareTarget =
@@ -52,6 +56,21 @@ export interface SmartBarProps {
   onPreviousBlock?: () => void;
   currentIndex?: number;
   totalItems?: number;
+  // Modo Barra Inteligente Unificada estilo Apple (3 puntos de color + ❤️ + Suscripción)
+  unifiedAppleMode?: boolean;
+  isYou4?: boolean;
+  onToggleYou4?: () => void;
+  isCasting?: boolean;
+  onToggleCast?: () => void;
+  isLikedExternal?: boolean;
+  onToggleLikeExternal?: () => void;
+  isSubscribedExternal?: boolean;
+  onToggleSubscribeExternal?: () => void;
+  subscribeTitle?: string;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  isMutedExternal?: boolean;
+  onToggleMuteExternal?: () => void;
 }
 
 const SAVED_MOMENTS_KEY = 'youapp_saved_moments_v1';
@@ -99,7 +118,21 @@ export const SmartBar: React.FC<SmartBarProps> = ({
   onNextBlock,
   onPreviousBlock,
   currentIndex: currentIndexProp,
-  totalItems: totalItemsProp
+  totalItems: totalItemsProp,
+  unifiedAppleMode = false,
+  isYou4 = false,
+  onToggleYou4,
+  isCasting = false,
+  onToggleCast,
+  isLikedExternal,
+  onToggleLikeExternal,
+  isSubscribedExternal,
+  onToggleSubscribeExternal,
+  subscribeTitle,
+  isFullscreen = false,
+  onToggleFullscreen,
+  isMutedExternal,
+  onToggleMuteExternal
 }) => {
   const navigate = useNavigate();
   const playbackState = usePlayerStore((s) => s.playbackState);
@@ -514,7 +547,145 @@ export const SmartBar: React.FC<SmartBarProps> = ({
         );
       })()}
 
-      {/* 2. FILA COMPACTA ÚNICA: CONTROLES ESENCIALES (Sin apilar en celular) */}
+      {/* 2. FILA COMPACTA ÚNICA: MODO APPLE UNIFICADO (3 PUNTOS + ❤️ + SUSCRIPCIÓN) O ESTÁNDAR */}
+      {unifiedAppleMode ? (
+        <div className="bv-apple-row" role="toolbar" aria-label="Barra Inteligente YOUAPP">
+          {/* Izquierda: 3 puntos estilo Apple (Naranja=Momentos · Azul=YOU4 · Verde=Transmitir) */}
+          <div className="bv-apple-dots" aria-label="Funciones rápidas">
+            <button
+              type="button"
+              className={`bv-dot bv-dot--moments ${isMosaic || showMomentsRow ? 'active' : ''}`}
+              onClick={() => {
+                if (onToggleMosaic) {
+                  setShowMomentsRow(false);
+                  handleMosaicClick();
+                } else {
+                  setShowMomentsRow((v) => !v);
+                }
+              }}
+              title={isMosaic ? 'Momentos activo (tocar para volver a 1 pantalla)' : 'Momentos'}
+              aria-label="Momentos"
+              aria-pressed={isMosaic || showMomentsRow}
+            />
+            <button
+              type="button"
+              className={`bv-dot bv-dot--you4 ${isYou4 ? 'active' : ''}`}
+              onClick={() => onToggleYou4?.()}
+              title={isYou4 ? 'YOU4 activo (volver a 1 pantalla)' : 'YOU4 (4 pantallas)'}
+              aria-label="YOU4"
+              aria-pressed={isYou4}
+            />
+            <button
+              type="button"
+              className={`bv-dot bv-dot--cast ${isCasting ? 'active' : ''}`}
+              onClick={() => onToggleCast?.()}
+              title={isCasting ? 'Transmitiendo (tocar para opciones)' : 'Transmitir a TV / Chromecast'}
+              aria-label="Transmitir"
+              aria-pressed={isCasting}
+            />
+          </div>
+
+          {/* Centro: controles esenciales finos */}
+          <div className="bv-apple-center">
+            <button
+              type="button"
+              className="bv-apple-ctrl"
+              title="Anterior"
+              aria-label="Anterior"
+              onClick={() => (onPreviousBlock ? onPreviousBlock() : previous())}
+            >
+              <SkipBack size={14} />
+            </button>
+            <button
+              type="button"
+              className="bv-apple-ctrl bv-apple-ctrl--play"
+              title={isPlaying ? 'Pausar' : 'Reproducir'}
+              aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+              onClick={handlePlayPause}
+            >
+              {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+            <button
+              type="button"
+              className="bv-apple-ctrl"
+              title="Siguiente"
+              aria-label="Siguiente"
+              onClick={() => (onNextBlock ? onNextBlock() : next())}
+            >
+              <SkipForward size={14} />
+            </button>
+            {onToggleMuteExternal && (
+              <button
+                type="button"
+                className="bv-apple-ctrl"
+                title={isMutedExternal ? 'Activar sonido' : 'Silenciar'}
+                aria-label={isMutedExternal ? 'Activar sonido' : 'Silenciar'}
+                onClick={onToggleMuteExternal}
+              >
+                {isMutedExternal ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              </button>
+            )}
+            {onToggleFullscreen && (
+              <button
+                type="button"
+                className="bv-apple-ctrl"
+                title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                onClick={onToggleFullscreen}
+              >
+                {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              </button>
+            )}
+          </div>
+
+          {/* Derecha: solo ícono de Corazón + ícono de Suscripción + menú discreto ⋯ */}
+          <div className="bv-apple-right">
+            <button
+              type="button"
+              className={`bv-apple-ext-icon ${(isLikedExternal ?? saved) ? 'is-liked' : ''}`}
+              onClick={() => (onToggleLikeExternal ? onToggleLikeExternal() : handleSave())}
+              title={(isLikedExternal ?? saved) ? 'Quitar Me gusta' : 'Me gusta'}
+              aria-label="Me gusta"
+              aria-pressed={Boolean(isLikedExternal ?? saved)}
+            >
+              <Heart
+                size={16}
+                fill={(isLikedExternal ?? saved) ? '#ff375f' : 'none'}
+                strokeWidth={2.1}
+              />
+            </button>
+            <button
+              type="button"
+              className={`bv-apple-ext-icon ${(isSubscribedExternal ?? following) ? 'is-subbed' : ''}`}
+              onClick={() => (onToggleSubscribeExternal ? onToggleSubscribeExternal() : handleFollow())}
+              title={
+                subscribeTitle ||
+                ((isSubscribedExternal ?? following) ? 'Suscripto' : 'Suscribirse')
+              }
+              aria-label={(isSubscribedExternal ?? following) ? 'Suscripto' : 'Suscribirse'}
+              aria-pressed={Boolean(isSubscribedExternal ?? following)}
+            >
+              {(isSubscribedExternal ?? following) ? (
+                <UserCheck size={16} strokeWidth={2.2} />
+              ) : (
+                <UserPlus size={16} strokeWidth={2.1} />
+              )}
+            </button>
+            <button
+              type="button"
+              className={`bv-apple-ext-icon bv-apple-more ${showMoreMenu ? 'active' : ''}`}
+              onClick={() => {
+                setShowShareMenu(false);
+                setShowMoreMenu((v) => !v);
+              }}
+              title="Más opciones (Compartir, Resumen IA, Momentos)"
+              aria-label="Más opciones"
+            >
+              <MoreHorizontal size={15} />
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className="bv-compact-row" role="toolbar" aria-label="Acciones rápidas de Barra Viva">
         <div className="bv-compact-scroll">
           {(() => {
@@ -622,6 +793,7 @@ export const SmartBar: React.FC<SmartBarProps> = ({
           <MoreHorizontal size={16} />
         </button>
       </div>
+      )}
 
       {/* 3. PANEL DESPLEGABLE DE CAPÍTULOS Y MOMENTOS (Cerrado por defecto) */}
       {showMomentsRow && (

@@ -10,11 +10,8 @@ import {
   Circle,
   ExternalLink,
   Film,
-  Heart,
-  LayoutGrid,
   Maximize2,
   Minimize2,
-  Pause,
   Pencil,
   Play,
   Plus,
@@ -26,8 +23,6 @@ import {
   Sparkles,
   Trash2,
   Tv,
-  UserCheck,
-  UserPlus,
   Volume2,
   VolumeX,
   X
@@ -126,7 +121,7 @@ export default function ProgramarTV() {
       return '4829';
     }
   });
-  const [isReceivingCast, setIsReceivingCast] = useState(false);
+  const [isReceivingCast] = useState(false);
   const [isRemoteQrOpen, setIsRemoteQrOpen] = useState(false);
   const [isRemotePhoneConnected, setIsRemotePhoneConnected] = useState(false);
   const [castTargetCodeInput, setCastTargetCodeInput] = useState('');
@@ -2190,369 +2185,214 @@ export default function ProgramarTV() {
                 </span>
               </div>
 
-              <div className="mitv-now-controls">
-                <button
-                  type="button"
-                  className="mitv-ctrl-btn"
-                  disabled={items.length <= 1}
-                  onClick={() => {
-                    if (isYou4Mode) {
-                      setYou4Offset((prev) => (prev - 4 + Math.max(4, items.length)) % Math.max(1, items.length));
-                    } else {
-                      setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
-                    }
-                  }}
-                  title={isYou4Mode ? '4 canales anteriores' : 'Video anterior'}
+              {(currentItem.provider === 'youtube_live' ||
+                currentItem.provider === 'tiktok' ||
+                currentItem.provider === 'instagram' ||
+                currentItem.provider === 'facebook' ||
+                currentItem.provider === 'twitch' ||
+                currentItem.provider === 'x') && (
+                <a
+                  href={currentItem.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mitv-pill-btn"
+                  style={{ flexShrink: 0 }}
+                  title="Abrir publicación o transmisión original"
                 >
-                  <SkipBack size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="mitv-ctrl-btn"
-                  onClick={handleSmartPlayPause}
-                  title={isPlaying ? 'Pausar' : 'Reproducir'}
-                  aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
-                >
-                  {isPlaying ? <Pause size={15} /> : <Play size={15} />}
-                </button>
-                <button
-                  type="button"
-                  className="mitv-ctrl-btn"
-                  disabled={items.length <= 1}
-                  onClick={() => {
-                    if (isYou4Mode) {
-                      setYou4Offset((prev) => (prev + 4) % Math.max(1, items.length));
-                    } else {
-                      setCurrentIndex((prev) => (prev + 1) % items.length);
-                    }
-                  }}
-                  title={isYou4Mode ? 'Siguientes 4 canales' : 'Siguiente video'}
-                >
-                  <SkipForward size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={`mitv-ctrl-pill-you4 ${isYou4Mode ? 'active' : ''}`}
-                  onClick={() => {
-                    setIsYou4Mode((prev) => {
-                      const next = !prev;
-                      if (next) {
-                        setYou4AudioSlot(0);
-                        setYou4Offset(0);
-                      }
-                      return next;
-                    });
-                  }}
-                  title={isYou4Mode ? 'Volver a 1 pantalla' : 'YOU4: ver 4 canales a la vez en esta pantalla'}
-                  aria-pressed={isYou4Mode}
-                >
-                  <LayoutGrid size={13} />
-                  <span>YOU4</span>
-                </button>
+                  <ExternalLink size={12} />{' '}
+                  {currentItem.provider === 'youtube_live' ? 'Vivo' : 'Original'}
+                </a>
+              )}
+            </div>
 
-                {(currentItem.provider === 'youtube' ||
-                  currentItem.provider === 'youtube_live' ||
-                  currentItem.provider === 'direct') && (
-                  <div className="mitv-popover-anchor" ref={volumeBoxRef}>
-                    <button
-                      type="button"
-                      className={`mitv-ctrl-btn ${isVolumeOpen ? 'active' : ''}`}
-                      onClick={() => {
-                        setIsCastOpen(false);
-                        setIsVolumeOpen((v) => !v);
-                      }}
-                      title="Volumen"
-                      aria-label="Abrir control de volumen"
-                      aria-expanded={isVolumeOpen}
-                    >
-                      {isMuted || playerVolume === 0 ? (
-                        <VolumeX size={15} />
-                      ) : (
-                        <Volume2 size={15} />
-                      )}
-                    </button>
+            {/* BARRA INTELIGENTE UNIFICADA ESTILO APPLE (3 puntos: 🟠 Momentos · 🔵 YOU4 · 🟢 Transmitir + ❤️ + Suscripción) */}
+            <div className="mitv-smartbar-slot" style={{ position: 'relative' }} ref={castBoxRef}>
+              {isCastOpen && (
+                <div className="mitv-cast-popover" role="dialog" aria-label="Transmitir YOUAPP">
+                  <div className="mitv-cast-head">Transmitir / Control Remoto</div>
 
-                    {isVolumeOpen && (
-                      <div className="mitv-vol-popover" aria-label="Control de volumen">
-                        <button
-                          type="button"
-                          className="mitv-vol-btn"
-                          onClick={handleToggleMute}
-                          title={isMuted || playerVolume === 0 ? 'Activar sonido' : 'Silenciar'}
-                        >
-                          {isMuted || playerVolume === 0 ? (
-                            <VolumeX size={14} />
-                          ) : (
-                            <Volume2 size={14} />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          className="mitv-vol-btn"
-                          onClick={() => handleVolumeChange((isMuted ? 0 : playerVolume) - 10)}
-                          title="Bajar volumen"
-                          aria-label="Bajar volumen"
-                        >
-                          −
-                        </button>
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={isMuted ? 0 : playerVolume}
-                          onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                          aria-label="Volumen"
-                          className="mitv-vol-slider"
-                        />
-                        <button
-                          type="button"
-                          className="mitv-vol-btn"
-                          onClick={() => handleVolumeChange((isMuted ? 0 : playerVolume) + 10)}
-                          title="Subir volumen"
-                          aria-label="Subir volumen"
-                        >
-                          +
-                        </button>
-                        <span className="mitv-vol-pct">{isMuted ? 0 : playerVolume}%</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="mitv-popover-anchor" ref={castBoxRef}>
                   <button
                     type="button"
-                    className={`mitv-ctrl-btn ${isCastOpen || connectedCastCode || isReceivingCast ? 'active' : ''}`}
-                    onClick={() => void handleCastClick()}
-                    title={
-                      connectedCastCode
-                        ? `Transmitiendo a TV ${connectedCastCode}`
-                        : isReceivingCast
-                          ? `Recibiendo en esta pantalla · Código ${myTvCode}`
-                          : 'Transmitir a otra pantalla YOUAPP'
-                    }
-                    aria-label="Transmitir a otra pantalla"
-                    aria-expanded={isCastOpen}
+                    className="mitv-ch-option"
+                    onClick={() => {
+                      setIsCastOpen(false);
+                      setIsRemoteQrOpen(true);
+                    }}
                   >
-                    <Cast size={15} />
+                    <span className="mitv-ch-option-name">
+                      <Tv size={14} color="#30d158" />
+                      <span>Mostrar QR / PIN #{myTvCode} (Celular)</span>
+                    </span>
                   </button>
 
-                  {isCastOpen && (
-                    <div className="mitv-cast-popover" role="dialog" aria-label="Transmitir YOUAPP">
-                      <div className="mitv-cast-head">Transmitir a dispositivo</div>
-
-                      {isChromePresentationSupported && (
-                        <>
-                          <button
-                            type="button"
-                            className="mitv-ch-option"
-                            onClick={() => void handleChromeNativeCast()}
-                          >
-                            <span className="mitv-ch-option-name">
-                              <Cast size={14} color="#64d2ff" />
-                              <span>Buscar TV / Chromecast (Chrome)</span>
-                            </span>
-                          </button>
-                          <div className="mitv-cast-divider" />
-                        </>
-                      )}
-
-                      {connectedCastCode ? (
-                        <div className="mitv-cast-connected">
-                          <span>
-                            Transmitiendo a <strong>TV {connectedCastCode}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            className="mitv-cast-stop-btn"
-                            onClick={handleDisconnectCast}
-                          >
-                            Desconectar
-                          </button>
-                        </div>
-                      ) : (
-                        <form className="mitv-cast-code-form" onSubmit={handleConnectCastCode}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            value={castTargetCodeInput}
-                            onChange={(e) => setCastTargetCodeInput(e.target.value)}
-                            placeholder="Código de TV (ej. 4829)"
-                            aria-label="Código de TV"
-                          />
-                          <button type="submit" className="mitv-cast-connect-btn">
-                            Conectar
-                          </button>
-                        </form>
-                      )}
-
+                  {isChromePresentationSupported && (
+                    <>
                       <div className="mitv-cast-divider" />
-
                       <button
                         type="button"
                         className="mitv-ch-option"
-                        onClick={() => {
-                          setIsReceivingCast((v) => !v);
-                          if (isReceivingCast) setCastIncomingItem(null);
-                        }}
+                        onClick={() => void handleChromeNativeCast()}
                       >
                         <span className="mitv-ch-option-name">
-                          <Tv size={14} color="#64d2ff" />
-                          <span>
-                            {isReceivingCast
-                              ? `Esta pantalla · Código ${myTvCode}`
-                              : 'Recibir en esta pantalla (Modo TV)'}
-                          </span>
-                        </span>
-                      </button>
-
-                      {isReceivingCast && (
-                        <div className="mitv-cast-mycode">
-                          <span>Código de esta TV</span>
-                          <strong>{myTvCode}</strong>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  className="mitv-ctrl-btn"
-                  onClick={() => void handleToggleFullscreen()}
-                  title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                  aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                >
-                  {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                </button>
-
-                {(() => {
-                  const likeKey = `${currentItem.provider}:${currentItem.providerId}`;
-                  const followKey =
-                    currentItem.provider === 'youtube_live'
-                      ? `ch:${currentItem.providerId}`
-                      : `mitv:${displayedChannel?.id || 'default'}`;
-                  const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
-                  const isFollowed = socialGraph.followedSignalIds.includes(followKey);
-                  const ytUniversalSubUrl =
-                    currentItem.provider === 'youtube' || currentItem.provider === 'youtube_live'
-                      ? buildYouTubeSubscribeUrl({
-                          channelId:
-                            currentItem.provider === 'youtube_live'
-                              ? currentItem.providerId
-                              : undefined,
-                          sourceUrl: currentItem.sourceUrl
-                        })
-                      : null;
-                  return (
-                    <>
-                      <button
-                        type="button"
-                        className={`mitv-pill-btn ${isLiked ? 'active-like' : ''}`}
-                        onClick={() => {
-                          setSocialGraph((prev) => {
-                            const { next, active } = toggleInList(prev.likedVideoKeys, likeKey);
-                            setToast(
-                              active
-                                ? 'Me gusta guardado en YOUAPP.'
-                                : 'Me gusta quitado de YOUAPP.'
-                            );
-                            return saveSocialGraph({ ...prev, likedVideoKeys: next });
-                          });
-                        }}
-                        title="Me gusta en YOUAPP"
-                      >
-                        <Heart size={13} fill={isLiked ? '#ff375f' : 'none'} />
-                        <span>{isLiked ? 'Te gusta' : 'Me gusta'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`mitv-pill-btn ${isFollowed ? 'active-follow' : ''}`}
-                        onClick={() => {
-                          const willSubscribe = !isFollowed;
-                          setSocialGraph((prev) => {
-                            const { next } = toggleInList(prev.followedSignalIds, followKey);
-                            return saveSocialGraph({ ...prev, followedSignalIds: next });
-                          });
-                          if (willSubscribe && ytUniversalSubUrl) {
-                            window.open(
-                              ytUniversalSubUrl,
-                              'youapp_yt_sub',
-                              'width=540,height=660,noopener,noreferrer'
-                            );
-                            setToast(
-                              `Suscripto a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
-                            );
-                          } else {
-                            setToast(
-                              willSubscribe
-                                ? `Suscripto a «${currentItem.author}» en YOUAPP.`
-                                : `Dejaste de seguir a «${currentItem.author}» en YOUAPP.`
-                            );
-                          }
-                        }}
-                        title={
-                          ytUniversalSubUrl
-                            ? 'Suscripción universal: te suscribe en YOUAPP y abre la confirmación oficial en YouTube'
-                            : 'Suscribirse en YOUAPP'
-                        }
-                      >
-                        {isFollowed ? <UserCheck size={13} /> : <UserPlus size={13} />}
-                        <span>
-                          {isFollowed
-                            ? 'Suscripto'
-                            : ytUniversalSubUrl
-                              ? 'Suscribirse'
-                              : 'Seguir'}
+                          <Cast size={14} color="#64d2ff" />
+                          <span>Buscar TV / Chromecast (Chrome)</span>
                         </span>
                       </button>
                     </>
-                  );
-                })()}
+                  )}
 
-                {(currentItem.provider === 'youtube_live' ||
-                  currentItem.provider === 'tiktok' ||
-                  currentItem.provider === 'instagram' ||
-                  currentItem.provider === 'facebook' ||
-                  currentItem.provider === 'twitch' ||
-                  currentItem.provider === 'x') && (
-                  <a
-                    href={currentItem.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mitv-pill-btn"
-                    title="Abrir publicación o transmisión original"
-                  >
-                    <ExternalLink size={13} />{' '}
-                    {currentItem.provider === 'youtube_live' ? 'Abrir vivo' : 'Abrir original'}
-                  </a>
-                )}
-              </div>
-            </div>
-            {/* BARRA INTELIGENTE DE MI SEÑAL (SmartBar) */}
-            <div className="mitv-smartbar-slot">
-              <SmartBar
-                isPlaying={isPlaying}
-                onPlayPause={handleSmartPlayPause}
-                onSeek={handleSmartSeek}
-                isMosaic={isMomentsMosaic}
-                onToggleMosaic={() => {
-                  setIsYou4Mode(false);
-                  setIsMomentsMosaic((v) => !v);
-                }}
-                onNextBlock={
-                  items.length > 1
-                    ? () => setCurrentIndex((prev) => (prev + 1) % items.length)
-                    : undefined
-                }
-                onPreviousBlock={
-                  items.length > 1
-                    ? () => setCurrentIndex((prev) => (prev - 1 + items.length) % items.length)
-                    : undefined
-                }
-              />
+                  <div className="mitv-cast-divider" />
+
+                  {connectedCastCode ? (
+                    <div className="mitv-cast-connected">
+                      <span>
+                        Transmitiendo a <strong>TV {connectedCastCode}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        className="mitv-cast-stop-btn"
+                        onClick={handleDisconnectCast}
+                      >
+                        Desconectar
+                      </button>
+                    </div>
+                  ) : (
+                    <form className="mitv-cast-code-form" onSubmit={handleConnectCastCode}>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={castTargetCodeInput}
+                        onChange={(e) => setCastTargetCodeInput(e.target.value)}
+                        placeholder="Código de TV (ej. 4829)"
+                        aria-label="Código de TV"
+                      />
+                      <button type="submit" className="mitv-cast-connect-btn">
+                        Conectar
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              {(() => {
+                const likeKey = `${currentItem.provider}:${currentItem.providerId}`;
+                const followKey =
+                  currentItem.provider === 'youtube_live'
+                    ? `ch:${currentItem.providerId}`
+                    : `mitv:${displayedChannel?.id || 'default'}`;
+                const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
+                const isFollowed = socialGraph.followedSignalIds.includes(followKey);
+                const ytUniversalSubUrl =
+                  currentItem.provider === 'youtube' || currentItem.provider === 'youtube_live'
+                    ? buildYouTubeSubscribeUrl({
+                        channelId:
+                          currentItem.provider === 'youtube_live'
+                            ? currentItem.providerId
+                            : undefined,
+                        sourceUrl: currentItem.sourceUrl
+                      })
+                    : null;
+
+                return (
+                  <SmartBar
+                    unifiedAppleMode
+                    isPlaying={isPlaying}
+                    onPlayPause={handleSmartPlayPause}
+                    onSeek={handleSmartSeek}
+                    isMosaic={isMomentsMosaic}
+                    onToggleMosaic={() => {
+                      setIsYou4Mode(false);
+                      setIsMomentsMosaic((v) => !v);
+                    }}
+                    isYou4={isYou4Mode}
+                    onToggleYou4={() => {
+                      setIsMomentsMosaic(false);
+                      setIsYou4Mode((prev) => {
+                        const next = !prev;
+                        if (next) {
+                          setYou4AudioSlot(0);
+                          setYou4Offset(0);
+                        }
+                        return next;
+                      });
+                    }}
+                    isCasting={Boolean(isCastOpen || connectedCastCode || isReceivingCast)}
+                    onToggleCast={() => void handleCastClick()}
+                    isMutedExternal={isMuted || playerVolume === 0}
+                    onToggleMuteExternal={handleToggleMute}
+                    isFullscreen={isFullscreen}
+                    onToggleFullscreen={() => void handleToggleFullscreen()}
+                    isLikedExternal={isLiked}
+                    onToggleLikeExternal={() => {
+                      setSocialGraph((prev) => {
+                        const { next, active } = toggleInList(prev.likedVideoKeys, likeKey);
+                        setToast(
+                          active
+                            ? 'Me gusta guardado en YOUAPP.'
+                            : 'Me gusta quitado de YOUAPP.'
+                        );
+                        return saveSocialGraph({ ...prev, likedVideoKeys: next });
+                      });
+                    }}
+                    isSubscribedExternal={isFollowed}
+                    subscribeTitle={
+                      ytUniversalSubUrl
+                        ? 'Suscripción universal: te suscribe en YOUAPP y abre YouTube'
+                        : 'Suscribirse en YOUAPP'
+                    }
+                    onToggleSubscribeExternal={() => {
+                      const willSubscribe = !isFollowed;
+                      setSocialGraph((prev) => {
+                        const { next } = toggleInList(prev.followedSignalIds, followKey);
+                        return saveSocialGraph({ ...prev, followedSignalIds: next });
+                      });
+                      if (willSubscribe && ytUniversalSubUrl) {
+                        window.open(
+                          ytUniversalSubUrl,
+                          'youapp_yt_sub',
+                          'width=540,height=660,noopener,noreferrer'
+                        );
+                        setToast(
+                          `Suscripto a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
+                        );
+                      } else {
+                        setToast(
+                          willSubscribe
+                            ? `Suscripto a «${currentItem.author}» en YOUAPP.`
+                            : `Dejaste de seguir a «${currentItem.author}» en YOUAPP.`
+                        );
+                      }
+                    }}
+                    onNextBlock={
+                      items.length > 1
+                        ? () => {
+                            if (isYou4Mode) {
+                              setYou4Offset((prev) => (prev + 4) % Math.max(1, items.length));
+                            } else {
+                              setCurrentIndex((prev) => (prev + 1) % items.length);
+                            }
+                          }
+                        : undefined
+                    }
+                    onPreviousBlock={
+                      items.length > 1
+                        ? () => {
+                            if (isYou4Mode) {
+                              setYou4Offset(
+                                (prev) =>
+                                  (prev - 4 + Math.max(4, items.length)) %
+                                  Math.max(1, items.length)
+                              );
+                            } else {
+                              setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
+                            }
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })()}
             </div>
           </section>
         )}

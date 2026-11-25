@@ -43,6 +43,7 @@ jobs:
           ATLAS_PUBLIC_URL: https://youapptv.com
         run: |
           npm run build
+          echo "{\"version\":\"${GITHUB_SHA}\",\"builtAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > dist/version.json
           cp dist/index.html dist/404.html
           mkdir -p dist/recomendados
           cp dist/index.html dist/recomendados/index.html

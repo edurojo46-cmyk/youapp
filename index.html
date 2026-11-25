@@ -11,16 +11,55 @@
 
     <script>
       (function() {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(regs) {
-            for (var r of regs) { r.unregister(); }
-          });
+        var VERSION_KEY = 'youapp_live_version_v1';
+        var RELOAD_GUARD_KEY = 'youapp_auto_reload_ts';
+        function purgeCaches() {
+          try {
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                for (var r of regs) { r.unregister(); }
+              }).catch(function() {});
+            }
+            if ('caches' in window) {
+              caches.keys().then(function(names) {
+                for (var n of names) { caches.delete(n); }
+              }).catch(function() {});
+            }
+          } catch (e) {}
         }
-        if ('caches' in window) {
-          caches.keys().then(function(names) {
-            for (var n of names) { caches.delete(n); }
-          });
+        purgeCaches();
+
+        function checkLiveVersion() {
+          if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
+          fetch('/version.json?t=' + Date.now(), { cache: 'no-store' })
+            .then(function(res) { return res.ok ? res.json() : null; })
+            .then(function(data) {
+              if (!data || !data.version) return;
+              var prev = null;
+              try { prev = localStorage.getItem(VERSION_KEY); } catch (e) {}
+              if (!prev) {
+                try { localStorage.setItem(VERSION_KEY, data.version); } catch (e) {}
+                return;
+              }
+              if (prev !== data.version) {
+                var lastReload = 0;
+                try { lastReload = Number(sessionStorage.getItem(RELOAD_GUARD_KEY) || '0'); } catch (e) {}
+                try { localStorage.setItem(VERSION_KEY, data.version); } catch (e) {}
+                if (Date.now() - lastReload > 15000) {
+                  try { sessionStorage.setItem(RELOAD_GUARD_KEY, String(Date.now())); } catch (e) {}
+                  purgeCaches();
+                  window.location.reload();
+                }
+              }
+            })
+            .catch(function() {});
         }
+
+        checkLiveVersion();
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') checkLiveVersion();
+        });
+        window.setInterval(checkLiveVersion, 180000);
       })();
     </script>
     <script>

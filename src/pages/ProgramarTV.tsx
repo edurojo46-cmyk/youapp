@@ -2360,7 +2360,7 @@ export default function ProgramarTV() {
                     return (
                       <>
                         {viewsLabel ? ` · ${viewsLabel}` : ''}
-                        {dateLabel ? ` · Publicado el ${dateLabel}` : ''}
+                        {dateLabel ? ` · ${dateLabel}` : ''}
                       </>
                     );
                   })()}

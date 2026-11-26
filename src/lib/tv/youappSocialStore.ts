@@ -239,12 +239,36 @@ export interface VideoPublicMeta {
 
 const clientMetaCache = new Map<string, VideoPublicMeta>();
 
-/** Obtiene vistas reales y fecha de publicación de un video de YouTube (0 cuota API) */
+/** Obtiene vistas reales y fecha de publicación de un video de YouTube (0 cuota API · Supabase + fallback local) */
 export async function fetchYouTubeVideoMeta(videoId: string): Promise<VideoPublicMeta | null> {
   const clean = (videoId || '').trim();
   if (!/^[A-Za-z0-9_-]{11}$/.test(clean)) return null;
   const cached = clientMetaCache.get(clean);
   if (cached) return cached;
+
+  // 1. Consulta directa a Supabase `youapp_index` (funciona en youapptv.com y en local · 0 cuota)
+  try {
+    const { data: row } = await supabase
+      .from('youapp_index')
+      .select('view_count, published_at, is_live')
+      .or(`video_id.eq.${clean},provider_content_id.eq.${clean}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (row && (typeof row.view_count === 'number' || typeof row.published_at === 'string')) {
+      const meta: VideoPublicMeta = {
+        viewCount: typeof row.view_count === 'number' ? row.view_count : null,
+        publishedAt: typeof row.published_at === 'string' ? row.published_at : null,
+        isLive: Boolean(row.is_live)
+      };
+      clientMetaCache.set(clean, meta);
+      return meta;
+    }
+  } catch {
+    // continúa al fallback local
+  }
+
+  // 2. Fallback local (Vite dev middleware en localhost / LAN)
   try {
     const res = await fetch(`/api/mitv/video-meta?v=${encodeURIComponent(clean)}`);
     if (!res.ok) return null;
@@ -262,26 +286,25 @@ export async function fetchYouTubeVideoMeta(videoId: string): Promise<VideoPubli
   }
 }
 
-export function formatCompactViews(views: number | null | undefined, isLive = false): string | null {
+/** Solo número de vistas compacto (ej: "12,4 mil", "1,2 M", "845") */
+export function formatCompactViews(views: number | null | undefined, _isLive = false): string | null {
   if (typeof views !== 'number' || !Number.isFinite(views) || views <= 0) return null;
-  let formatted: string;
   if (views >= 1_000_000) {
-    formatted = `${(views / 1_000_000).toFixed(views >= 10_000_000 ? 0 : 1).replace('.', ',')} M`;
-  } else if (views >= 1_000) {
-    formatted = `${(views / 1_000).toFixed(views >= 100_000 ? 0 : 1).replace('.', ',')} mil`;
-  } else {
-    formatted = views.toLocaleString('es-AR');
+    return `${(views / 1_000_000).toFixed(views >= 10_000_000 ? 0 : 1).replace('.', ',')} M`;
   }
-  return isLive ? `${formatted} mirando` : `${formatted} vistas`;
+  if (views >= 1_000) {
+    return `${(views / 1_000).toFixed(views >= 100_000 ? 0 : 1).replace('.', ',')} mil`;
+  }
+  return views.toLocaleString('es-AR');
 }
 
+/** Solo fecha corta d/m/aa (ej: "1/7/23") */
 export function formatPublishedDateEs(rawDate: string | null | undefined): string | null {
   if (!rawDate) return null;
   const parsed = new Date(rawDate);
   if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleDateString('es-AR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  });
+  const d = parsed.getDate();
+  const m = parsed.getMonth() + 1;
+  const yy = String(parsed.getFullYear()).slice(-2);
+  return `${d}/${m}/${yy}`;
 }

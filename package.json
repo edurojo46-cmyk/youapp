@@ -12,6 +12,7 @@
   "dependencies": {
     "@google/genai": "^2.31.0",
     "@orama/orama": "^3.1.18",
+    "@peertube/embed-api": "^0.2.0",
     "@supabase/supabase-js": "^2.112.3",
     "@types/cheerio": "^0.22.35",
     "@types/cors": "^2.8.19",

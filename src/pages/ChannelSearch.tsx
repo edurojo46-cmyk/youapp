@@ -69,6 +69,7 @@ import {
 import { passesCategoryGate } from '../lib/search/categoryGate';
 import { SmartBar } from '../components/smartbar/SmartBar';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
+import { PeerTubePlayer } from '@peertube/embed-api';
 import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
 import { setGlobalMiniVideo } from '../components/player/GlobalMiniPlayer';
 import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
@@ -1626,6 +1627,7 @@ export default function ChannelSearch() {
   const previewRef = useRef<HTMLElement>(null);
   const previewSentinelRef = useRef<HTMLDivElement>(null);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
+  const peertubePlayerRef = useRef<PeerTubePlayer | null>(null);
   const searchRaceRef = useRef(0);
 
   const [previewIsPlaying, setPreviewIsPlaying] = useState(true);
@@ -1714,13 +1716,14 @@ export default function ChannelSearch() {
           return;
         }
         if (prov === 'peertube') {
-          const id = Date.now() % 1000000;
-          if (func === 'playVideo') win.postMessage(JSON.stringify({ method: 'peertube::play', id }), '*');
-          else if (func === 'pauseVideo') win.postMessage(JSON.stringify({ method: 'peertube::pause', id }), '*');
-          else if (func === 'mute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 0, id }), '*');
-          else if (func === 'unMute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 1, id }), '*');
+          const pt = peertubePlayerRef.current;
+          if (!pt) return;
+          if (func === 'playVideo') void pt.play().catch(() => {});
+          else if (func === 'pauseVideo') void pt.pause().catch(() => {});
+          else if (func === 'mute') void pt.setVolume(0).catch(() => {});
+          else if (func === 'unMute') void pt.setVolume(1).catch(() => {});
           else if (func === 'seekTo' && typeof args[0] === 'number') {
-            win.postMessage(JSON.stringify({ method: 'peertube::seek', params: args[0], id }), '*');
+            void pt.seek(args[0]).catch(() => {});
           }
           return;
         }
@@ -2369,6 +2372,7 @@ export default function ChannelSearch() {
   // Sincroniza el video activo con el Mini-reproductor Global para que te acompañe al ir a /lecturas u otras secciones
   useEffect(() => {
     setIsPreviewFrameReady(false);
+    peertubePlayerRef.current = null;
     if (!previewVideo) return;
     setGlobalMiniVideo({
       videoId: previewVideo.videoId,
@@ -3392,7 +3396,18 @@ export default function ChannelSearch() {
                     key={previewVideo.videoId}
                     src={previewVideo.embedUrl}
                     title={previewVideo.title}
-                    onLoad={() => setIsPreviewFrameReady(true)}
+                    onLoad={() => {
+                      setIsPreviewFrameReady(true);
+                      if (previewIframeRef.current) {
+                        try {
+                          const pt = new PeerTubePlayer(previewIframeRef.current);
+                          peertubePlayerRef.current = pt;
+                          void pt.ready.catch(() => {});
+                        } catch {
+                          // ignore
+                        }
+                      }
+                    }}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />

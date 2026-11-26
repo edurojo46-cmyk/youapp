@@ -1332,41 +1332,42 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
     }
   })();
 
-  // 2. Vimeo + Dailymotion desde nuestra propia base Supabase `youapp_index` (0 cuota)
-  const vimeoIndexPromise = (async () => {
+  // 2. Vimeo API oficial vía Supabase Edge Function `vimeo-provider` (0 cuota YouTube, ingestión automática)
+  const vimeoLivePromise = (async () => {
     try {
-      const safeTok = clean.replace(/[,%()]/g, '').slice(0, 60);
-      if (safeTok.length < 2) return [];
-      const { data } = await supabase
-        .from('youapp_index')
-        .select('video_id,provider_content_id,provider,title,creator_id,creator_name,url,thumbnail_url,thumbnail,duration_text,duration_seconds,views,published_at,tags')
-        .in('provider', ['vimeo', 'dailymotion'])
-        .or(`title.ilike.%${safeTok}%,creator_name.ilike.%${safeTok}%`)
-        .limit(8);
-      if (!Array.isArray(data)) return [];
+      const vQuery = trendingMode ? 'short film documentary cinema' : clean;
+      if (vQuery.length < 2) return [];
+      const { data, error } = await (supabase.functions as any).invoke('vimeo-provider', {
+        body: {
+          query: vQuery,
+          limit: 8,
+          sort: 'relevant',
+          ingest: true
+        }
+      });
+      if (error || !Array.isArray(data?.items)) return [];
       const mapped: SearchVideoItem[] = [];
-      for (const r of data) {
-        const prov = r?.provider === 'vimeo' ? 'vimeo' : 'dailymotion';
-        const rawId = String(r?.provider_content_id || r?.video_id || '').trim();
+      for (const r of data.items) {
+        const rawId = String(r?.providerContentId || r?.id || '').replace(/^vimeo_/, '').trim();
         if (!rawId) continue;
-        const dur = parseDurationToSeconds(r?.duration_text, r?.duration_seconds);
+        const dur = Number(r?.durationSeconds || 0);
         if (dur > 0 && dur <= 62) continue;
+        const thumb = String(r?.thumbnailUrl || r?.thumbnail || '');
+        if (!thumb) continue;
         mapped.push({
-          videoId: prov === 'vimeo' ? `vm_${rawId}` : `dm_${rawId}`,
-          title: String(r?.title || (prov === 'vimeo' ? 'Video en Vimeo' : 'Video en Dailymotion')),
-          channelName: String(r?.creator_name || (prov === 'vimeo' ? 'Vimeo' : 'Dailymotion')),
-          channelId: r?.creator_id ? String(r.creator_id) : undefined,
-          thumbnail: String(r?.thumbnail_url || r?.thumbnail || ''),
-          watchUrl:
-            String(r?.url || '') ||
-            (prov === 'vimeo' ? `https://vimeo.com/${rawId}` : `https://www.dailymotion.com/video/${rawId}`),
-          duration: formatDurationLabel(r?.duration_text, r?.duration_seconds),
+          videoId: `vm_${rawId}`,
+          title: String(r?.title || 'Video en Vimeo'),
+          channelName: String(r?.creatorName || r?.channelTitle || 'Vimeo'),
+          channelId: r?.creatorId ? String(r.creatorId) : undefined,
+          thumbnail: thumb,
+          watchUrl: String(r?.canonicalUrl || `https://vimeo.com/${rawId}`),
+          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
           durationSeconds: dur > 0 ? dur : undefined,
-          views: typeof r?.views === 'number' && r.views > 0 ? r.views : undefined,
-          publishedAt: r?.published_at ? String(r.published_at) : undefined,
-          provider: prov,
-          sourceLabel: prov === 'vimeo' ? 'Vimeo' : 'Dailymotion',
-          tags: Array.isArray(r?.tags) ? r.tags.map(String) : [prov]
+          views: typeof r?.viewCount === 'number' && r.viewCount > 0 ? r.viewCount : undefined,
+          publishedAt: r?.publishedAt ? String(r.publishedAt) : undefined,
+          provider: 'vimeo',
+          sourceLabel: 'Vimeo',
+          tags: ['vimeo']
         });
       }
       return mapped;
@@ -1375,30 +1376,51 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
     }
   })();
 
-  const [dmHits, vmHits] = await Promise.all([dmPromise, vimeoIndexPromise]);
+  const [dmHits, vmHits] = await Promise.all([dmPromise, vimeoLivePromise]);
   const seen = new Set<string>();
-  for (const it of [...vmHits, ...dmHits]) {
-    if (!seen.has(it.videoId) && it.thumbnail) {
-      seen.add(it.videoId);
-      out.push(it);
+  // Intercalar 1 Vimeo + 1 Dailymotion para que ambas plataformas aparezcan arriba
+  const maxLen = Math.max(vmHits.length, dmHits.length);
+  for (let i = 0; i < maxLen; i += 1) {
+    const pair = [vmHits[i], dmHits[i]];
+    for (const it of pair) {
+      if (it && !seen.has(it.videoId) && it.thumbnail) {
+        seen.add(it.videoId);
+        out.push(it);
+      }
     }
   }
-  return out.slice(0, 8);
+  return out.slice(0, 10);
 }
 
-function interleaveMultiProvider(primary: SearchVideoItem[], extra: SearchVideoItem[]): SearchVideoItem[] {
+function interleaveMultiProvider(
+  primary: SearchVideoItem[],
+  extra: SearchVideoItem[],
+  queryNorm = ''
+): SearchVideoItem[] {
   if (extra.length === 0) return primary;
   if (primary.length === 0) return extra;
-  const out: SearchVideoItem[] = [];
+  // Si un resultado de Vimeo o Dailymotion coincide exactamente con lo buscado (ej. "jazz infernal"), ponerlo primero
+  const exactExtra: SearchVideoItem[] = [];
+  const restExtra: SearchVideoItem[] = [];
+  if (queryNorm.length >= 4) {
+    for (const it of extra) {
+      if (normText(it.title).includes(queryNorm)) exactExtra.push(it);
+      else restExtra.push(it);
+    }
+  } else {
+    restExtra.push(...extra);
+  }
+
+  const out: SearchVideoItem[] = [...exactExtra];
   let eIdx = 0;
   for (let i = 0; i < primary.length; i += 1) {
     out.push(primary[i]);
     // Primer resultado Dailymotion/Vimeo en el 3er lugar (visible sin hacer scroll) y luego cada 4 videos
-    if ((i === 1 || (i > 1 && (i - 1) % 4 === 0)) && eIdx < extra.length) {
-      out.push(extra[eIdx++]);
+    if ((i === 1 || (i > 1 && (i - 1) % 4 === 0)) && eIdx < restExtra.length) {
+      out.push(restExtra[eIdx++]);
     }
   }
-  while (eIdx < extra.length) out.push(extra[eIdx++]);
+  while (eIdx < restExtra.length) out.push(restExtra[eIdx++]);
   return out;
 }
 
@@ -1739,7 +1761,8 @@ export default function ChannelSearch() {
         // Mostrar resultados instantáneos de la base ATLAS intercalados con Dailymotion / Vimeo (hasta 50)
         let mergedList = interleaveMultiProvider(
           Array.from(mergedMap.values()),
-          multiProvHits
+          multiProvHits,
+          queryNorm
         ).slice(0, 50);
         if (mergedList.length > 0) {
           setResults(mergedList);

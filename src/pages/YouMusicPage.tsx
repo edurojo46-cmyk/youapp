@@ -4,12 +4,17 @@ import {
   ArrowDown,
   ArrowUp,
   BookmarkCheck,
+  Cast,
   Check,
   ExternalLink,
+  Heart,
   ListMusic,
+  Maximize2,
+  Minimize2,
   Music,
   Pause,
   Pencil,
+  PictureInPicture2,
   Play,
   Plus,
   Radio,
@@ -21,6 +26,8 @@ import {
   Sparkles,
   Trash2,
   Tv,
+  UserCheck,
+  UserPlus,
   Volume2,
   VolumeX,
   X
@@ -28,6 +35,22 @@ import {
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
+import { SmartBar } from '../components/smartbar/SmartBar';
+import { MosaicPlayerGrid } from '../components/mosaic/MosaicPlayerGrid';
+import { usePlayerStore } from '../store/usePlayerStore';
+import {
+  SOCIAL_GRAPH_CHANGED_EVENT,
+  buildYouTubeSubscribeUrl,
+  fetchYouTubeVideoMeta,
+  formatCompactViews,
+  formatPublishedDateEs,
+  loadSocialGraph,
+  toggleFollowCreatorWithMeta,
+  toggleLikeVideoWithMeta,
+  type VideoPublicMeta,
+  type YouAppSocialGraph
+} from '../lib/tv/youappSocialStore';
+import type { VideoMoment } from '../lib/moments/momentsTypes';
 import { useSignalStore } from '../lib/tv/signalStore';
 import { persistSignal } from '../lib/tv/signalPersistence';
 import { supabase } from '../lib/supabase';
@@ -853,18 +876,243 @@ export default function YouMusicPage() {
   }, [currentItem, items, safeIndex]);
 
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMomentsMosaic, setIsMomentsMosaic] = useState(false);
+  const [isYou4Mode, setIsYou4Mode] = useState(false);
+  const [you4AudioSlot, setYou4AudioSlot] = useState(0);
+  const [isCastOpen, setIsCastOpen] = useState(false);
+  const [castCodeInput, setCastCodeInput] = useState('');
+  const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
+  const [currentVideoMeta, setCurrentVideoMeta] = useState<VideoPublicMeta | null>(null);
+  const playerCardRef = useRef<HTMLElement | null>(null);
+  const you4IframesRef = useRef<(HTMLIFrameElement | null)[]>([]);
+
+  useEffect(() => {
+    const syncGraph = () => setSocialGraph(loadSocialGraph());
+    window.addEventListener(SOCIAL_GRAPH_CHANGED_EVENT, syncGraph);
+    return () => window.removeEventListener(SOCIAL_GRAPH_CHANGED_EVENT, syncGraph);
+  }, []);
 
   useEffect(() => {
     setIsPlaying(true);
+    const vid = currentItem?.videoId;
+    if (!vid || !/^[A-Za-z0-9_-]{11}$/.test(vid)) {
+      setCurrentVideoMeta(null);
+      return;
+    }
+    let cancelled = false;
+    setCurrentVideoMeta(null);
+    fetchYouTubeVideoMeta(vid)
+      .then((m) => {
+        if (!cancelled) setCurrentVideoMeta(m);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [currentItem?.videoId, safeIndex]);
 
-  const handleTogglePlay = () => {
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    document.body.classList.toggle('mitv-is-fullscreen', isFullscreen);
+    return () => {
+      document.body.classList.remove('mitv-is-fullscreen');
+    };
+  }, [isFullscreen]);
+
+  const handleToggleFullscreen = useCallback(() => {
+    const el = playerCardRef.current as any;
+    const doc = document as any;
+    const nextFs = !isFullscreen;
+    setIsFullscreen(nextFs);
+    if (nextFs) {
+      if (el?.requestFullscreen) {
+        void Promise.resolve(el.requestFullscreen()).catch(() => {});
+      } else if (el?.webkitRequestFullscreen) {
+        try {
+          el.webkitRequestFullscreen();
+        } catch {
+          // ignore
+        }
+      }
+    } else if (doc.fullscreenElement && doc.exitFullscreen) {
+      void Promise.resolve(doc.exitFullscreen()).catch(() => {});
+    } else if (doc.webkitFullscreenElement && doc.webkitExitFullscreen) {
+      try {
+        doc.webkitExitFullscreen();
+      } catch {
+        // ignore
+      }
+    }
+  }, [isFullscreen]);
+
+  const handleTogglePlay = useCallback(() => {
     setIsPlaying((prev) => {
       const next = !prev;
       postYouTubeCommand(next ? 'playVideo' : 'pauseVideo');
+      usePlayerStore.getState().setIsPlaying(next);
       return next;
     });
-  };
+  }, [postYouTubeCommand]);
+
+  const handleSeekMusic = useCallback(
+    (sec: number) => {
+      const targetSec = Math.max(0, sec);
+      postYouTubeCommand('seekTo', [targetSec, true]);
+      const st = usePlayerStore.getState();
+      const dur = st.duration > 0 ? st.duration : 240;
+      st.setProgress(Math.min(dur, targetSec), dur);
+    },
+    [postYouTubeCommand]
+  );
+
+  const handleSelectYou4Audio = useCallback((slotIdx: number) => {
+    setYou4AudioSlot(slotIdx);
+    you4IframesRef.current.forEach((ifr, idx) => {
+      try {
+        ifr?.contentWindow?.postMessage(
+          JSON.stringify({ event: 'command', func: idx === slotIdx ? 'unMute' : 'mute', args: [] }),
+          '*'
+        );
+      } catch {
+        // ignore
+      }
+    });
+  }, []);
+
+  const you4Items = useMemo(() => {
+    if (items.length === 0) return [];
+    const rotated = [...items.slice(safeIndex), ...items.slice(0, safeIndex)];
+    return rotated.slice(0, 4);
+  }, [items, safeIndex]);
+
+  // Sincronizar YOU MUSIC con usePlayerStore + escucha real de progreso YouTube para la SmartBar
+  useEffect(() => {
+    if (!currentItem) return;
+    const initialDur = 240;
+    usePlayerStore.getState().setPlaybackContext({
+      currentBlock: {
+        blockId: `ym-${currentItem.videoId}`,
+        id: currentItem.videoId,
+        provider: 'youtube',
+        providerContentId: currentItem.videoId,
+        providerId: currentItem.videoId,
+        title: currentItem.title,
+        channelTitle: currentItem.author,
+        thumbnailUrl: currentItem.thumbnailUrl,
+        durationSec: initialDur,
+        url: currentItem.sourceUrl
+      } as any,
+      creator: currentItem.author,
+      signalName: 'YOU MUSIC',
+      isLive: false,
+      isPlaying: true,
+      isMuted,
+      playbackState: 'playing',
+      currentTime: 0,
+      duration: initialDur,
+      playerApi: {
+        play: async () => {
+          postYouTubeCommand('playVideo');
+          setIsPlaying(true);
+          usePlayerStore.getState().setIsPlaying(true);
+        },
+        pause: async () => {
+          postYouTubeCommand('pauseVideo');
+          setIsPlaying(false);
+          usePlayerStore.getState().setIsPlaying(false);
+        },
+        seek: async (sec: number) => handleSeekMusic(sec),
+        mute: async () => {
+          postYouTubeCommand('mute');
+          setIsMuted(true);
+          usePlayerStore.getState().setIsMuted(true, true);
+        },
+        unmute: async () => {
+          postYouTubeCommand('unMute');
+          setIsMuted(false);
+          usePlayerStore.getState().setIsMuted(false, true);
+        },
+        getDuration: () => usePlayerStore.getState().duration || initialDur
+      }
+    });
+
+    let lastRealTickAt = 0;
+    const onYtMsg = (ev: MessageEvent) => {
+      if (!playerIframeRef.current || ev.source !== playerIframeRef.current.contentWindow) return;
+      try {
+        const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
+        if (payload?.event === 'infoDelivery' && payload?.info) {
+          const ct = typeof payload.info.currentTime === 'number' ? payload.info.currentTime : null;
+          const dur = typeof payload.info.duration === 'number' && payload.info.duration > 0 ? payload.info.duration : null;
+          if (ct !== null || dur !== null) {
+            lastRealTickAt = Date.now();
+            const st = usePlayerStore.getState();
+            st.setProgress(ct ?? st.currentTime, dur ?? st.duration);
+          }
+          if (typeof payload.info.playerState === 'number') {
+            const playingNow = payload.info.playerState === 1;
+            setIsPlaying(playingNow);
+            usePlayerStore.getState().setIsPlaying(playingNow);
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('message', onYtMsg);
+    const ping = window.setInterval(() => {
+      try {
+        playerIframeRef.current?.contentWindow?.postMessage(
+          JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
+          '*'
+        );
+        const st = usePlayerStore.getState();
+        if (st.isPlaying && Date.now() - lastRealTickAt > 2000) {
+          const dur = st.duration > 0 ? st.duration : initialDur;
+          if (dur > 0) st.setProgress(Math.min(dur, st.currentTime + 1), dur);
+        }
+      } catch {
+        // ignore
+      }
+    }, 1000);
+    return () => {
+      window.removeEventListener('message', onYtMsg);
+      window.clearInterval(ping);
+    };
+  }, [currentItem, isMuted, postYouTubeCommand, handleSeekMusic]);
+
+  const handleToggleMusicPiP = useCallback(async () => {
+    if (!currentItem) return;
+    const androidBridge = (window as any).YouAppAndroidPiP;
+    if (androidBridge && typeof androidBridge.enterPiP === 'function') {
+      androidBridge.enterPiP();
+      return;
+    }
+    const docPiP = (window as any).documentPictureInPicture;
+    if (docPiP && typeof docPiP.requestWindow === 'function') {
+      try {
+        if (docPiP.window && !docPiP.window.closed) {
+          docPiP.window.close();
+          return;
+        }
+        const pipParams = new URLSearchParams({ provider: 'youtube', id: currentItem.videoId });
+        const pipWin: Window = await docPiP.requestWindow({ width: 420, height: 245 });
+        pipWin.document.title = `${currentItem.title} · YOU MUSIC`;
+        pipWin.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden;width:100vw;height:100vh;';
+        const ifr = pipWin.document.createElement('iframe');
+        ifr.src = `${window.location.origin}/pip-frame?${pipParams.toString()}`;
+        ifr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+        ifr.allowFullscreen = true;
+        ifr.style.cssText = 'border:0;width:100%;height:100%;display:block;';
+        pipWin.document.body.appendChild(ifr);
+        return;
+      } catch {
+        // ignore
+      }
+    }
+    setToast('En el APK Android o en PC (Chrome/Edge) activa la ventana flotante del sistema.');
+  }, [currentItem]);
 
   const updateWorkspace = (updater: (prev: YouMusicWorkspace) => YouMusicWorkspace) => {
     setWorkspace((prev) => saveYouMusicWorkspace(updater(prev)));
@@ -1171,121 +1419,313 @@ export default function YouMusicPage() {
           </div>
         )}
 
-        {/* 1. ARRIBA DE TODO: REPRODUCTOR OFICIAL VISIBLE DE YOUTUBE (SIEMPRE LISTO CON PLAY/PAUSA) */}
+        {/* 1. ARRIBA DE TODO: REPRODUCTOR IDÉNTICO A MITV (1 PANTALLA / MOMENTOS 4x / YOU4 + BARRA APPLE 3 PUNTOS) */}
         {currentItem && (
-          <section className="ymv1-player-card">
-            <div className="ymv1-video-wrap">
-              <iframe
-                ref={playerIframeRef}
-                key={`${displayedPlaylist?.id || 'pl'}-${currentItem.videoId}-${safeIndex}`}
-                title={`YouTube · ${currentItem.title}`}
-                src={youtubeEmbedSrc}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                onLoad={() => {
-                  window.setTimeout(() => {
-                    if (isMuted || playerVolume === 0) {
-                      postYouTubeCommand('mute');
-                    } else {
-                      postYouTubeCommand('unMute');
-                      postYouTubeCommand('setVolume', [playerVolume]);
-                    }
-                  }, 450);
-                }}
-              />
+          <section
+            ref={playerCardRef}
+            className={`ymv1-player-card ${isFullscreen ? 'is-expanded' : ''}`}
+          >
+            {isMomentsMosaic ? (
+              (() => {
+                const dur = Math.max(60, usePlayerStore.getState().duration || 240);
+                const labels = ['Inicio clave', 'Desarrollo', 'Punto central', 'Cierre'];
+                const ratios = [0.1, 0.35, 0.62, 0.85];
+                const quadMoments: VideoMoment[] = ratios.map((ratio, idx) => ({
+                  id: `ym-m-${idx}-${currentItem.videoId}`,
+                  contentKey: currentItem.videoId,
+                  startSec: Math.floor(dur * ratio),
+                  title: labels[idx],
+                  summary: labels[idx],
+                  type: 'key_point',
+                  confidence: 0.85,
+                  source: 'fallback'
+                }));
+                const mosaicBlock: ScheduleBlock = {
+                  id: currentItem.videoId,
+                  position: 0,
+                  startOffsetSec: 0,
+                  durationSec: dur,
+                  topic: currentItem.title,
+                  role: 'explainer',
+                  contentItem: {
+                    id: currentItem.videoId,
+                    providerId: currentItem.videoId,
+                    type: 'video',
+                    provider: 'youtube',
+                    title: currentItem.title,
+                    videoUrl: currentItem.sourceUrl,
+                    thumbnailUrl: currentItem.thumbnailUrl,
+                    channelName: currentItem.author,
+                    channelTitle: currentItem.author
+                  } as any
+                };
+                return (
+                  <div className="ymv1-video-wrap">
+                    <MosaicPlayerGrid
+                      moments={quadMoments}
+                      currentBlock={mosaicBlock}
+                      thumbnailFallbackUrl={currentItem.thumbnailUrl}
+                      isPlaying={isPlaying}
+                      onSelect={(m) => {
+                        setIsMomentsMosaic(false);
+                        window.setTimeout(() => handleSeekMusic(m.startSec), 450);
+                      }}
+                    />
+                  </div>
+                );
+              })()
+            ) : isYou4Mode && you4Items.length > 1 ? (
+              <div className="ymv1-you4-grid">
+                {you4Items.map((vid, idx) => (
+                  <div
+                    key={vid.videoId}
+                    className={`ymv1-you4-cell ${you4AudioSlot === idx ? 'active-audio' : ''}`}
+                  >
+                    <iframe
+                      ref={(el) => {
+                        you4IframesRef.current[idx] = el;
+                      }}
+                      src={`https://www.youtube.com/embed/${vid.videoId}?autoplay=1&mute=${idx === you4AudioSlot ? 0 : 1}&rel=0&modestbranding=1&enablejsapi=1`}
+                      title={vid.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                    <button
+                      type="button"
+                      className="ymv1-you4-audio-pill"
+                      onClick={() => handleSelectYou4Audio(idx)}
+                      title={you4AudioSlot === idx ? 'Audio activo' : 'Activar audio aquí'}
+                    >
+                      {you4AudioSlot === idx ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                      <span>{vid.title.slice(0, 18)}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="ymv1-video-wrap">
+                <iframe
+                  ref={playerIframeRef}
+                  key={`${displayedPlaylist?.id || 'pl'}-${currentItem.videoId}-${safeIndex}`}
+                  title={`YouTube · ${currentItem.title}`}
+                  src={youtubeEmbedSrc}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  onLoad={() => {
+                    playerIframeRef.current?.contentWindow?.postMessage(
+                      JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
+                      '*'
+                    );
+                    window.setTimeout(() => {
+                      if (isMuted || playerVolume === 0) {
+                        postYouTubeCommand('mute');
+                      } else {
+                        postYouTubeCommand('unMute');
+                        postYouTubeCommand('setVolume', [playerVolume]);
+                      }
+                    }, 450);
+                  }}
+                />
+              </div>
+            )}
+
+            {isFullscreen && (
+              <button
+                type="button"
+                className="ymv1-fs-exit-btn"
+                onClick={handleToggleFullscreen}
+                title="Salir de pantalla completa"
+                aria-label="Salir de pantalla completa"
+              >
+                <Minimize2 size={15} />
+                <span>Salir</span>
+              </button>
+            )}
+
+            {/* ENCABEZADO IDÉNTICO A MITV: EN PANTALLA · ❤️ · 👤+ · Compartir · PiP · ⛶ */}
+            <div className="ymv1-now-bar ymv1-now-bar--mitv">
+              {(() => {
+                const likeKey = `youtube:${currentItem.videoId}`;
+                const followKey = `ch:${currentItem.author}`;
+                const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
+                const likeCount = Number(socialGraph.likeCounts?.[likeKey] ?? (isLiked ? 1 : 0));
+                const isFollowed = socialGraph.followedSignalIds.includes(followKey);
+                const ytSubUrl = buildYouTubeSubscribeUrl({ sourceUrl: currentItem.sourceUrl });
+                const vLabel = formatCompactViews(currentVideoMeta?.viewCount ?? null, currentVideoMeta?.isLive);
+                const dLabel = formatPublishedDateEs(currentVideoMeta?.publishedAt || undefined);
+                return (
+                  <>
+                    <div className="ymv1-top-meta-row">
+                      <span className="ymv1-live-pill">EN PANTALLA</span>
+                      <div className="ymv1-top-left-icons">
+                        <button
+                          type="button"
+                          className={`ymv1-top-icon-btn ${likeCount > 0 ? 'has-count' : ''} ${isLiked ? 'is-liked' : ''}`}
+                          onClick={() => {
+                            setSocialGraph((prev) => {
+                              const res = toggleLikeVideoWithMeta(prev, {
+                                key: likeKey,
+                                title: currentItem.title,
+                                author: currentItem.author,
+                                thumbnailUrl: currentItem.thumbnailUrl,
+                                sourceUrl: currentItem.sourceUrl
+                              });
+                              setToast(
+                                res.active
+                                  ? `❤️ Me gusta (${res.count}) guardado en Mis Listas.`
+                                  : 'Me gusta quitado.'
+                              );
+                              return res.graph;
+                            });
+                          }}
+                          title={isLiked ? `Te gusta (${likeCount})` : 'Me gusta en YOUAPP'}
+                          aria-label="Me gusta"
+                        >
+                          <Heart size={14} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
+                          {likeCount > 0 && <span className="ymv1-like-count">{likeCount}</span>}
+                        </button>
+                        <button
+                          type="button"
+                          className={`ymv1-top-icon-btn ${isFollowed ? 'is-subbed' : ''}`}
+                          onClick={() => {
+                            const willSub = !isFollowed;
+                            setSocialGraph((prev) =>
+                              toggleFollowCreatorWithMeta(prev, {
+                                key: followKey,
+                                name: currentItem.author,
+                                provider: 'youtube',
+                                sourceUrl: currentItem.sourceUrl
+                              }).graph
+                            );
+                            if (willSub && ytSubUrl) {
+                              window.open(ytSubUrl, 'youapp_yt_sub', 'width=540,height=660,noopener,noreferrer');
+                              setToast(`Siguiendo a «${currentItem.author}» en YOUAPP.`);
+                            } else {
+                              setToast(willSub ? `Siguiendo a «${currentItem.author}».` : `Dejaste de seguir a «${currentItem.author}».`);
+                            }
+                          }}
+                          title={isFollowed ? 'Siguiendo' : 'Suscribirse'}
+                          aria-label={isFollowed ? 'Siguiendo' : 'Suscribirse'}
+                        >
+                          {isFollowed ? <UserCheck size={15} strokeWidth={2.2} /> : <UserPlus size={15} strokeWidth={2.1} />}
+                        </button>
+                      </div>
+
+                      <div className="ymv1-top-right-icons">
+                        <button
+                          type="button"
+                          className="ymv1-top-icon-btn"
+                          onClick={() => void handleShare('song')}
+                          title="Compartir esta canción"
+                          aria-label="Compartir esta canción"
+                        >
+                          <Share2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-top-icon-btn"
+                          onClick={() => void handleToggleMusicPiP()}
+                          title="Ventana flotante (Picture-in-Picture)"
+                          aria-label="Ventana flotante (Picture-in-Picture)"
+                        >
+                          <PictureInPicture2 size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="ymv1-top-icon-btn"
+                          onClick={handleToggleFullscreen}
+                          title={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
+                          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
+                        >
+                          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="ymv1-now-meta">
+                      <strong>{currentItem.title}</strong>
+                      <span>
+                        {currentItem.author}
+                        {vLabel ? ` · ${vLabel}` : ''}
+                        {dLabel ? ` · ${dLabel}` : ''}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
-            <div className="ymv1-now-bar">
-              <div className="ymv1-now-meta">
-                <strong>{currentItem.title}</strong>
-                <span>
-                  {currentItem.author} · Pista {safeIndex + 1} de {items.length}
-                </span>
-              </div>
-
-              <div className="ymv1-now-controls">
-                <button
-                  type="button"
-                  className="ymv1-ctrl-btn"
-                  disabled={items.length <= 1}
-                  onClick={() =>
-                    setCurrentIndex((prev) => (prev - 1 + items.length) % items.length)
-                  }
-                  title="Canción anterior"
-                >
-                  <SkipBack size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="ymv1-ctrl-btn"
-                  style={{
-                    background: '#ffffff',
-                    color: '#05070c',
-                    borderColor: '#ffffff'
-                  }}
-                  onClick={handleTogglePlay}
-                  title={isPlaying ? 'Pausar' : 'Reproducir'}
-                  aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
-                >
-                  {isPlaying ? <Pause size={16} fill="#05070c" /> : <Play size={16} fill="#05070c" style={{ marginLeft: 1 }} />}
-                </button>
-                <button
-                  type="button"
-                  className="ymv1-ctrl-btn"
-                  disabled={items.length <= 1}
-                  onClick={() => setCurrentIndex((prev) => (prev + 1) % items.length)}
-                  title="Siguiente canción"
-                >
-                  <SkipForward size={16} />
-                </button>
-                <div className="ymv1-vol-control" aria-label="Control de volumen">
+            {/* BARRA INTELIGENTE UNIFICADA IDÉNTICA A MITV (Bocina en timeline + 3 puntos Apple + ⏮ ▶ ⏭ + ⋯) */}
+            <div className="ymv1-smartbar-slot" style={{ position: 'relative' }}>
+              {isCastOpen && (
+                <div className="ymv1-cast-popover" role="dialog" aria-label="Transmitir YOU MUSIC">
+                  <div className="ymv1-cast-head">Transmitir a dispositivo</div>
                   <button
                     type="button"
-                    className="ymv1-vol-icon-btn"
-                    onClick={handleToggleMute}
-                    title={isMuted || playerVolume === 0 ? 'Activar sonido' : 'Silenciar'}
+                    className="ymv1-cast-opt"
+                    onClick={() => {
+                      setIsCastOpen(false);
+                      void handleShare('song');
+                    }}
                   >
-                    {isMuted || playerVolume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                    <Cast size={14} color="#64d2ff" />
+                    <span>Enviar / Compartir a TV o dispositivo</span>
                   </button>
-                  <button
-                    type="button"
-                    className="ymv1-vol-step-btn"
-                    onClick={() => handleVolumeChange((isMuted ? 0 : playerVolume) - 10)}
-                    title="Bajar volumen"
-                    aria-label="Bajar volumen"
+                  <form
+                    className="ymv1-cast-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!castCodeInput.trim()) return;
+                      setIsCastOpen(false);
+                      setToast(`Conectando con TV código ${castCodeInput.trim()}…`);
+                    }}
                   >
-                    −
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={isMuted ? 0 : playerVolume}
-                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                    aria-label="Volumen del reproductor"
-                    className="ymv1-vol-slider"
-                  />
-                  <button
-                    type="button"
-                    className="ymv1-vol-step-btn"
-                    onClick={() => handleVolumeChange((isMuted ? 0 : playerVolume) + 10)}
-                    title="Subir volumen"
-                    aria-label="Subir volumen"
-                  >
-                    +
-                  </button>
-                  <span className="ymv1-vol-pct">{isMuted ? 0 : playerVolume}%</span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={castCodeInput}
+                      onChange={(e) => setCastCodeInput(e.target.value)}
+                      placeholder="Código de TV (ej. 4829)"
+                    />
+                    <button type="submit">Conectar</button>
+                  </form>
                 </div>
-                <button
-                  type="button"
-                  className="ymv1-pill-btn"
-                  onClick={() => void handleShare('song')}
-                  title="Compartir esta canción"
-                >
-                  <Share2 size={13} /> Compartir
-                </button>
-              </div>
+              )}
+
+              <SmartBar
+                unifiedAppleMode
+                isPlaying={isPlaying}
+                onPlayPause={handleTogglePlay}
+                onSeek={handleSeekMusic}
+                isMosaic={isMomentsMosaic}
+                onToggleMosaic={() => {
+                  setIsYou4Mode(false);
+                  setIsMomentsMosaic((prev) => {
+                    const next = !prev;
+                    if (next && !isFullscreen) handleToggleFullscreen();
+                    return next;
+                  });
+                }}
+                isYou4={isYou4Mode}
+                onToggleYou4={() => {
+                  setIsMomentsMosaic(false);
+                  setIsYou4Mode((prev) => {
+                    const next = !prev;
+                    setYou4AudioSlot(0);
+                    if (next && !isFullscreen) handleToggleFullscreen();
+                    return next;
+                  });
+                }}
+                isCasting={isCastOpen}
+                onToggleCast={() => setIsCastOpen((v) => !v)}
+                isMutedExternal={isMuted || playerVolume === 0}
+                onToggleMuteExternal={handleToggleMute}
+                onNextBlock={items.length > 1 ? () => setCurrentIndex((prev) => (prev + 1) % items.length) : undefined}
+                onPreviousBlock={items.length > 1 ? () => setCurrentIndex((prev) => (prev - 1 + items.length) % items.length) : undefined}
+                currentIndex={safeIndex}
+                totalItems={items.length}
+              />
             </div>
           </section>
         )}
@@ -2435,13 +2875,224 @@ export default function YouMusicPage() {
           font-weight: 600;
         }
         .ymv1-player-card {
-          overflow: hidden;
+          overflow: visible;
+          position: relative;
+        }
+        .ymv1-player-card.is-expanded {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+          border: none !important;
+          z-index: 99999 !important;
+          background: #000000 !important;
+          display: flex;
+          flex-direction: column;
+        }
+        .ymv1-player-card.is-expanded .ymv1-video-wrap,
+        .ymv1-player-card.is-expanded .ymv1-you4-grid {
+          flex: 1;
+          width: 100%;
+          height: 100%;
+          aspect-ratio: auto !important;
+          border-radius: 0 !important;
+        }
+        .ymv1-player-card.is-expanded .ymv1-now-bar,
+        .ymv1-player-card.is-expanded .ymv1-smartbar-slot {
+          display: none !important;
+        }
+        .ymv1-fs-exit-btn {
+          position: fixed;
+          top: max(12px, env(safe-area-inset-top));
+          right: 12px;
+          z-index: 100000;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          background: rgba(14, 16, 22, 0.78);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
         }
         .ymv1-video-wrap {
           position: relative;
           width: 100%;
           aspect-ratio: 16 / 9;
           background: #000000;
+          border-radius: 18px 18px 0 0;
+          overflow: hidden;
+        }
+        .ymv1-you4-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          grid-template-rows: repeat(2, 1fr);
+          gap: 2px;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          background: #000000;
+          border-radius: 18px 18px 0 0;
+          overflow: hidden;
+        }
+        .ymv1-you4-cell {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          background: #05070c;
+          overflow: hidden;
+        }
+        .ymv1-you4-cell iframe {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          border: 0;
+        }
+        .ymv1-you4-cell.active-audio {
+          outline: 2px solid #0a84ff;
+          outline-offset: -2px;
+        }
+        .ymv1-you4-audio-pill {
+          position: absolute;
+          left: 8px;
+          bottom: 8px;
+          z-index: 4;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 9px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          background: rgba(10, 14, 22, 0.82);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .ymv1-now-bar--mitv {
+          flex-direction: column;
+          align-items: stretch !important;
+          gap: 8px !important;
+          padding: 12px 14px 8px !important;
+        }
+        .ymv1-top-meta-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+        }
+        .ymv1-live-pill {
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: rgba(10, 132, 255, 0.22);
+          border: 1px solid rgba(100, 210, 255, 0.45);
+          color: #93d5ff;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.05em;
+          white-space: nowrap;
+        }
+        .ymv1-top-left-icons,
+        .ymv1-top-right-icons {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .ymv1-top-right-icons {
+          margin-left: auto;
+        }
+        .ymv1-top-icon-btn {
+          min-width: 28px;
+          height: 28px;
+          padding: 0 7px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1);
+          color: #f5f5f7;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          cursor: pointer;
+          font-size: 11.5px;
+          font-weight: 700;
+        }
+        .ymv1-top-icon-btn.is-liked {
+          background: rgba(255, 55, 95, 0.22);
+          border-color: rgba(255, 100, 130, 0.6);
+          color: #ff6b8b;
+        }
+        .ymv1-top-icon-btn.is-subbed {
+          background: rgba(10, 132, 255, 0.28);
+          border-color: rgba(100, 210, 255, 0.62);
+          color: #93d5ff;
+        }
+        .ymv1-smartbar-slot {
+          padding: 0 10px 10px;
+        }
+        .ymv1-cast-popover {
+          position: absolute;
+          left: 12px;
+          bottom: calc(100% + 8px);
+          z-index: 90;
+          width: 260px;
+          padding: 12px;
+          border-radius: 16px;
+          background: rgba(16, 20, 30, 0.97);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .ymv1-cast-head {
+          font-size: 12px;
+          font-weight: 700;
+          color: rgba(245, 245, 247, 0.78);
+        }
+        .ymv1-cast-opt {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 10px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.08);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .ymv1-cast-form {
+          display: flex;
+          gap: 6px;
+        }
+        .ymv1-cast-form input {
+          flex: 1;
+          min-width: 0;
+          padding: 6px 8px;
+          border-radius: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.08);
+          color: #ffffff;
+          font-size: 12px;
+        }
+        .ymv1-cast-form button {
+          padding: 6px 10px;
+          border-radius: 8px;
+          border: 0;
+          background: #0071e3;
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
         }
         .ymv1-video-wrap iframe {
           position: absolute;

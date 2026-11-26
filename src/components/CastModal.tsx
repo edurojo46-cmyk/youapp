@@ -30,6 +30,7 @@ export default function CastModal({
 }: CastModalProps) {
   const [castAvailable, setCastAvailable] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [castNotice, setCastNotice] = useState<string | null>(null);
 
   const rawVideoId = (() => {
     const rawUrl = String(currentChannel?.videoUrl || '');
@@ -50,6 +51,9 @@ export default function CastModal({
     const videoUrl = String(currentChannel.videoUrl);
     if (!isDirectStream) {
       // CC1AD845 (Default Media Receiver) NO reproduce enlaces de YouTube y dejaría pantalla negra.
+      setCastNotice(
+        'Chromecast directo solo reproduce streams MP4/HLS. Para videos de YouTube usá la Opción 2 (abrir YOUAPP en el navegador de tu TV con el PIN/QR) o «Transmitir pestaña» en Chrome.'
+      );
       try {
         castSession.endSession(true);
       } catch {
@@ -57,6 +61,7 @@ export default function CastModal({
       }
       return;
     }
+    setCastNotice(null);
 
     try {
       let contentType = 'video/mp4';
@@ -203,6 +208,22 @@ export default function CastModal({
         </div>
 
         {/* Canales / Opciones de Transmisión */}
+        {castNotice && (
+          <div
+            style={{
+              marginBottom: '12px',
+              padding: '10px 14px',
+              borderRadius: '12px',
+              background: 'rgba(245, 158, 11, 0.16)',
+              border: '1px solid rgba(245, 158, 11, 0.45)',
+              color: '#fde68a',
+              fontSize: '12.5px',
+              lineHeight: 1.45
+            }}
+          >
+            {castNotice}
+          </div>
+        )}
         <div className="cast-options-grid">
 
           {/* Opción 1: Google Cast / Chromecast Oficial */}

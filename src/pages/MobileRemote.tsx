@@ -121,7 +121,15 @@ export default function MobileRemote() {
       }
     });
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        bridge.notifyConnected();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
       bridge.destroy();
     };
   }, [activeSessionId]);
@@ -164,20 +172,53 @@ export default function MobileRemote() {
     }
 
     const total = Math.max(1, channels.length);
+    const loadDirectIntoChromecast = (ch: any) => {
+      const url = String(ch?.videoUrl || '');
+      if (!/\.(mp4|m3u8|webm)(\?|$)/i.test(url)) return;
+      try {
+        const castSession = (window as any).cast?.framework?.CastContext?.getInstance?.()?.getCurrentSession?.();
+        const chromeCast = (window as any).chrome?.cast;
+        if (!castSession || !chromeCast) return;
+        const ct = url.includes('.m3u8')
+          ? 'application/x-mpegurl'
+          : url.includes('.webm')
+            ? 'video/webm'
+            : 'video/mp4';
+        const info = new chromeCast.media.MediaInfo(url, ct);
+        info.metadata = new chromeCast.media.GenericMediaMetadata();
+        info.metadata.title = ch.name || 'YOUAPP TV';
+        info.metadata.subtitle = ch.currentVideoTitle || 'En vivo';
+        const req = new chromeCast.media.LoadRequest(info);
+        req.autoplay = true;
+        castSession.loadMedia(req);
+      } catch {
+        // ignore
+      }
+    };
+
     if (action === 'TOGGLE_PLAY') {
       setIsPlaying((p) => !p);
     } else if (action === 'NEXT_CHANNEL') {
       const next = (channelIdx + 1) % total;
       setChannelIdx(next);
-      if (channels[next]) setSyncedChannel(channels[next]);
+      if (channels[next]) {
+        setSyncedChannel(channels[next]);
+        loadDirectIntoChromecast(channels[next]);
+      }
     } else if (action === 'PREV_CHANNEL') {
       const prev = (channelIdx - 1 + total) % total;
       setChannelIdx(prev);
-      if (channels[prev]) setSyncedChannel(channels[prev]);
+      if (channels[prev]) {
+        setSyncedChannel(channels[prev]);
+        loadDirectIntoChromecast(channels[prev]);
+      }
     } else if (action === 'SET_CHANNEL_INDEX') {
       const idx = Math.max(0, Math.min(total - 1, Number(payload?.index || 0)));
       setChannelIdx(idx);
-      if (channels[idx]) setSyncedChannel(channels[idx]);
+      if (channels[idx]) {
+        setSyncedChannel(channels[idx]);
+        loadDirectIntoChromecast(channels[idx]);
+      }
     } else if (action === 'TOGGLE_MUTE') {
       setIsMuted((m) => !m);
     } else if (action === 'TOGGLE_QUAD') {

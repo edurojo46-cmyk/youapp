@@ -117,8 +117,13 @@ export default function ProgramarTV() {
   // YOUAPP Cast propio (igual al sistema de código de TV de YouTube, 100% dentro de YOUAPP)
   const [myTvCode] = useState<string>(() => {
     try {
+      const roomParam = new URLSearchParams(window.location.search).get('room')?.replace(/\D/g, '').slice(0, 6);
+      if (roomParam && roomParam.length >= 4) {
+        sessionStorage.setItem('youapp_mitv_code_v1', roomParam);
+        return roomParam;
+      }
       const existing = sessionStorage.getItem('youapp_mitv_code_v1');
-      if (existing && /^\d{4}$/.test(existing)) return existing;
+      if (existing && /^\d{4,6}$/.test(existing)) return existing;
       const generated = String(Math.floor(1000 + Math.random() * 9000));
       sessionStorage.setItem('youapp_mitv_code_v1', generated);
       return generated;

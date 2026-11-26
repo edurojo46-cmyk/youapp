@@ -15,7 +15,31 @@ if (!fs.existsSync(manifestPath)) {
 
 let manifest = fs.readFileSync(manifestPath, 'utf8');
 
-// 1. Habilitar supportsPictureInPicture y resizeableActivity en MainActivity
+// 1. Soporte universal Android TV / Google TV / Fire TV (Leanback + sin requerir pantalla táctil)
+if (!manifest.includes('android.software.leanback')) {
+  manifest = manifest.replace(
+    '<application',
+    `<uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <application`
+  );
+}
+if (!manifest.includes('android:banner=')) {
+  manifest = manifest.replace(
+    '<application',
+    '<application\n        android:banner="@mipmap/ic_launcher"'
+  );
+}
+if (!manifest.includes('android.intent.category.LEANBACK_LAUNCHER')) {
+  manifest = manifest.replace(
+    '<category android:name="android.intent.category.LAUNCHER" />',
+    `<category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />`
+  );
+}
+
+// 2. Habilitar supportsPictureInPicture y resizeableActivity en MainActivity
 if (!manifest.includes('android:supportsPictureInPicture')) {
   manifest = manifest.replace(
     /<activity([^>]*android:name="\.MainActivity"[^>]*)>/,
@@ -62,6 +86,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Rational;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
@@ -104,6 +129,22 @@ public class MainActivity extends BridgeActivity {
                 // No achicar la app a PiP al abrir la hoja nativa de Compartir
                 suppressNextPiP = true;
                 startActivity(chooser);
+            });
+        }
+
+        @JavascriptInterface
+        public void openCastSettings() {
+            runOnUiThread(() -> {
+                suppressNextPiP = true;
+                try {
+                    startActivity(new Intent(Settings.ACTION_CAST_SETTINGS));
+                } catch (Exception e) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_WIRELESS_SETTINGS));
+                    } catch (Exception ignored) {
+                        // Dispositivo sin pantalla directa de Cast
+                    }
+                }
             });
         }
     }

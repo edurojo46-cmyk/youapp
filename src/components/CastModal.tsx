@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { Cast, Tv, Smartphone, QrCode, ExternalLink, X, Check, Wifi, Sparkles, Share2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Cast, Tv, ExternalLink, X, Wifi, Download } from 'lucide-react';
 
 declare global {
   interface Window {
     chrome?: any;
     cast?: any;
     __onGCastApiAvailable?: (isAvailable: boolean) => void;
+    YouAppAndroidPiP?: {
+      isSupported?: () => boolean;
+      enterPiP?: () => void;
+      share?: (title: string, text: string, url: string) => void;
+      openCastSettings?: () => void;
+    };
   }
   namespace JSX {
     interface IntrinsicElements {
@@ -14,6 +20,8 @@ declare global {
   }
 }
 
+const ANDROID_TV_APK_URL =
+  'https://github.com/edurojo46-cmyk/youapp/releases/download/android-pip-latest/YOUAPP-TV-Android-PiP.apk';
 
 interface CastModalProps {
   isOpen: boolean;
@@ -22,15 +30,11 @@ interface CastModalProps {
   pin: string;
 }
 
-export default function CastModal({
-  isOpen,
-  onClose,
-  currentChannel,
-  pin
-}: CastModalProps) {
-  const [castAvailable, setCastAvailable] = useState(false);
-  const [copied, setCopied] = useState(false);
+export default function CastModal({ isOpen, onClose, currentChannel }: CastModalProps) {
   const [castNotice, setCastNotice] = useState<string | null>(null);
+
+  const hasAndroidNativeCast =
+    typeof window !== 'undefined' && typeof window.YouAppAndroidPiP?.openCastSettings === 'function';
 
   const rawVideoId = (() => {
     const rawUrl = String(currentChannel?.videoUrl || '');
@@ -44,69 +48,54 @@ export default function CastModal({
     currentChannel?.videoUrl && /\.(mp4|m3u8|webm)(\?|$)/i.test(String(currentChannel.videoUrl))
   );
 
-  // Enviar video al Chromecast según el tipo de medio (HLS/MP4 directo vs YouTube)
-  const sendMediaToCast = (castSession: any) => {
-    if (!castSession || !window.chrome?.cast || !currentChannel?.videoUrl) return;
-
-    const videoUrl = String(currentChannel.videoUrl);
-    if (!isDirectStream) {
-      // CC1AD845 (Default Media Receiver) NO reproduce enlaces de YouTube y dejaría pantalla negra.
-      setCastNotice(
-        'Chromecast directo solo reproduce streams MP4/HLS. Para videos de YouTube usá la Opción 2 (abrir YOUAPP en el navegador de tu TV con el PIN/QR) o «Transmitir pestaña» en Chrome.'
-      );
+  const sendMediaToCast = useCallback(
+    (castSession: any) => {
+      if (!castSession || !window.chrome?.cast || !currentChannel?.videoUrl) return;
+      const videoUrl = String(currentChannel.videoUrl);
+      if (!isDirectStream) {
+        setCastNotice(
+          'Chromecast genérico solo reproduce streams MP4/HLS. Para videos de YouTube, usá «Transmitir pantalla a tu TV» arriba o «Abrir en YouTube» abajo.'
+        );
+        try {
+          castSession.endSession(true);
+        } catch {
+          // ignore
+        }
+        return;
+      }
+      setCastNotice(null);
       try {
-        castSession.endSession(true);
+        const contentType = videoUrl.includes('.m3u8')
+          ? 'application/x-mpegurl'
+          : videoUrl.includes('.webm')
+            ? 'video/webm'
+            : 'video/mp4';
+        const mediaInfo = new window.chrome.cast.media.MediaInfo(videoUrl, contentType);
+        mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
+        mediaInfo.metadata.title = currentChannel.name || 'YouApp TV';
+        mediaInfo.metadata.subtitle = currentChannel.currentVideoTitle || 'Transmisión en Vivo';
+        if (currentChannel.thumbnail) {
+          mediaInfo.metadata.images = [{ url: currentChannel.thumbnail }];
+        }
+        const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
+        request.autoplay = true;
+        castSession.loadMedia(request).catch(() => {});
       } catch {
         // ignore
       }
-      return;
-    }
-    setCastNotice(null);
+    },
+    [currentChannel, isDirectStream]
+  );
 
-    try {
-      let contentType = 'video/mp4';
-      if (videoUrl.includes('.m3u8')) {
-        contentType = 'application/x-mpegurl';
-      } else if (videoUrl.includes('.webm')) {
-        contentType = 'video/webm';
-      }
-
-      const mediaInfo = new window.chrome.cast.media.MediaInfo(videoUrl, contentType);
-      mediaInfo.metadata = new window.chrome.cast.media.GenericMediaMetadata();
-      mediaInfo.metadata.title = currentChannel.name || 'YouApp TV';
-      mediaInfo.metadata.subtitle = currentChannel.currentVideoTitle || 'Transmisión 24/7 en Vivo';
-      if (currentChannel.thumbnail) {
-        mediaInfo.metadata.images = [{ url: currentChannel.thumbnail }];
-      }
-
-      const request = new window.chrome.cast.media.LoadRequest(mediaInfo);
-      request.autoplay = true;
-
-      castSession.loadMedia(request).then(
-        () => {
-          console.log("¡Transmisión HLS/MP4 enviada a Chromecast con éxito!");
-        },
-        (err: any) => {
-          console.error("Error al cargar stream en Chromecast:", err);
-        }
-      );
-    } catch (e) {
-      console.error("Error en sendMediaToCast:", e);
-    }
-  };
-
-
-  // Inicializar Google Cast SDK
   useEffect(() => {
     window.__onGCastApiAvailable = (isAvailable: boolean) => {
       if (isAvailable && window.cast && window.cast.framework) {
         try {
           const context = window.cast.framework.CastContext.getInstance();
           context.setOptions({
-            receiverApplicationId: 'CC1AD845', // Default Media Receiver
-            autoJoinPolicy: (window.chrome?.cast?.AutoJoinPolicy?.ORIGIN_SCOPED) || 'origin_scoped'
+            receiverApplicationId: 'CC1AD845',
+            autoJoinPolicy: window.chrome?.cast?.AutoJoinPolicy?.ORIGIN_SCOPED || 'origin_scoped'
           });
-
           context.addEventListener(
             window.cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
             (event: any) => {
@@ -119,10 +108,8 @@ export default function CastModal({
               }
             }
           );
-
-          setCastAvailable(true);
-        } catch (e) {
-          console.error("Error initializing Google Cast:", e);
+        } catch {
+          // ignore
         }
       }
     };
@@ -133,53 +120,38 @@ export default function CastModal({
       script.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
       document.body.appendChild(script);
     }
-  }, [currentChannel]);
+  }, [sendMediaToCast]);
 
   if (!isOpen) return null;
 
-  const tvUrl = `${window.location.origin}/tv?room=${encodeURIComponent(pin || '1234')}`;
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(tvUrl)}&color=6366f1&bgcolor=0f111a`;
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(tvUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  const handleNativeCast = () => {
-    if (!isDirectStream) {
-      alert(
-        'Este canal usa video de YouTube.\n\nGoogle Chromecast (receptor genérico) no puede recibir URLs de YouTube directo y muestra pantalla negra.\n\n✅ Cómo verlo en tu Chromecast en 2 segundos:\nEn Chrome tocá el menú ⋮ (arriba a la derecha) → Guardar y compartir → Transmitir… → elegí tu Chromecast.\n\nAsí transmitís toda la pantalla de YOUAPP (MiTV, Mi Señal y YOU4) con audio y video en HD.'
-      );
+  const handleDirectTvCast = () => {
+    // 1. En la APK Android: abre el selector nativo de Emitir / Smart View / Chromecast del celular en 1 toque
+    if (hasAndroidNativeCast) {
+      window.YouAppAndroidPiP?.openCastSettings?.();
       return;
     }
 
-    if (window.cast && window.cast.framework) {
+    // 2. Si es un stream directo MP4/HLS en Chrome: usa Google Cast SDK directo
+    if (isDirectStream && window.cast && window.cast.framework) {
       try {
         const context = window.cast.framework.CastContext.getInstance();
-        context.requestSession().then(
-          () => {
+        context
+          .requestSession()
+          .then(() => {
             const session = context.getCurrentSession();
             if (session) sendMediaToCast(session);
-          },
-          (err: any) => {
-            console.log("Cast cancelado o no disponible:", err);
-          }
-        );
+          })
+          .catch(() => {});
         return;
-      } catch (e) {}
+      } catch {
+        // fallback below
+      }
     }
 
-    if ('presentation' in navigator && (navigator as any).presentation?.defaultRequest) {
-      try {
-        (navigator as any).presentation.defaultRequest.start();
-        return;
-      } catch (e) {}
-    }
-
-    alert("Para transmitir con Chromecast / Google Home:\n1. Abre YouApp en Google Chrome en tu celular o PC.\n2. Pulsa el botón Transmitir en el menú de Chrome o usa el botón de Google Cast que aparece abajo.");
+    setCastNotice(
+      'En Chrome tocá el menú ⋮ (arriba a la derecha) → Guardar y compartir → Transmitir… y elegí tu Chromecast o Smart TV. En la APK Android de YOUAPP este botón abre el selector de TV directo en 1 toque.'
+    );
   };
-
 
   const openOnYouTubeTV = () => {
     if (rawVideoId) {
@@ -190,113 +162,97 @@ export default function CastModal({
   return (
     <div className="cast-modal-overlay" onClick={onClose}>
       <div className="cast-modal-container glass-panel" onClick={(e) => e.stopPropagation()}>
-        
-        {/* Cabecera */}
         <div className="cast-modal-header">
           <div className="cast-title-group">
             <div className="cast-icon-badge">
               <Cast size={22} className="text-accent" />
             </div>
             <div>
-              <h3>Transmitir a la TV (Google Cast / Smart TV)</h3>
-              <p>Envía la señal en vivo a tu Smart TV, Chromecast o Google Nest</p>
+              <h3>Transmitir directo a tu TV</h3>
+              <p>Sin abrir navegador en la tele ni usar el teclado del control remoto</p>
             </div>
           </div>
-          <button className="close-cast-btn" onClick={onClose}>
+          <button type="button" className="close-cast-btn" onClick={onClose} aria-label="Cerrar">
             <X size={20} />
           </button>
         </div>
 
-        {/* Canales / Opciones de Transmisión */}
-        {castNotice && (
-          <div
-            style={{
-              marginBottom: '12px',
-              padding: '10px 14px',
-              borderRadius: '12px',
-              background: 'rgba(245, 158, 11, 0.16)',
-              border: '1px solid rgba(245, 158, 11, 0.45)',
-              color: '#fde68a',
-              fontSize: '12.5px',
-              lineHeight: 1.45
-            }}
-          >
-            {castNotice}
-          </div>
-        )}
-        <div className="cast-options-grid">
+        {castNotice && <div className="cast-notice-box">{castNotice}</div>}
 
-          {/* Opción 1: Google Cast / Chromecast Oficial */}
-          <div className="cast-card glass-card" onClick={handleNativeCast}>
+        <div className="cast-options-grid">
+          {/* Opción 1: Transmitir directo a Chromecast / Smart TV */}
+          <div className="cast-card glass-card" onClick={handleDirectTvCast}>
             <div className="cast-card-icon chromecast-icon">
-              <Cast size={28} />
+              <Cast size={26} />
             </div>
             <div className="cast-card-content">
-              <h4>1. Google Cast / Chromecast</h4>
-              <p>Transmite directamente a tu Chromecast, Android TV o Google Home en tu red Wi-Fi.</p>
-              
+              <h4>1. Transmitir a Chromecast / Smart TV</h4>
+              <p>
+                {hasAndroidNativeCast
+                  ? 'Abre el selector nativo de tu Android (Chromecast, Smart View, Screen Share) en 1 toque para enviar todo YOUAPP en HD.'
+                  : 'Envía tu señal directo a Chromecast, Samsung Smart View, LG o Android TV en tu Wi-Fi.'}
+              </p>
               <div className="google-cast-launcher-row" onClick={(e) => e.stopPropagation()}>
-                {/* Botón Nativo oficial de Google Cast */}
-                {React.createElement('google-cast-launcher', { className: 'custom-cast-launcher' })}
-                <button className="btn btn-primary btn-sm" onClick={handleNativeCast}>
-                  <Wifi size={16} style={{ marginRight: '6px' }} /> Conectar Dispositivo Wi-Fi
+                {!hasAndroidNativeCast &&
+                  isDirectStream &&
+                  React.createElement('google-cast-launcher', { className: 'custom-cast-launcher' })}
+                <button type="button" className="btn btn-primary btn-sm" onClick={handleDirectTvCast}>
+                  <Wifi size={15} style={{ marginRight: '6px' }} />
+                  {hasAndroidNativeCast ? 'Elegir mi TV ahora' : 'Transmitir a mi TV'}
                 </button>
               </div>
-
             </div>
           </div>
 
-          {/* Opción 2: Modo Smart TV YouApp (PIN / QR) */}
-          <div className="cast-card glass-card">
-            <div className="cast-card-icon smarttv-icon">
-              <Tv size={28} />
-            </div>
-            <div className="cast-card-content">
-              <h4>2. Abrir en el Navegador de tu Smart TV</h4>
-              <p>Abre YouApp en tu televisor y sincroniza instantáneamente con este PIN:</p>
-              
-              <div className="tv-pin-display">
-                <span className="pin-label">PIN DE SALA:</span>
-                <span className="pin-digits">{pin || '5821'}</span>
-              </div>
-
-              <div className="cast-qr-box">
-                <img src={qrImageUrl} alt="QR para Smart TV" className="qr-img" />
-                <div className="qr-instructions">
-                  <span>Escanea con la cámara de otro celular o televisor para entrar a la misma sala sincronizada.</span>
-                  <button className="btn btn-glass btn-sm" onClick={handleCopy} style={{ marginTop: '8px' }}>
-                    {copied ? <Check size={14} /> : <Share2 size={14} />} {copied ? 'Enlace Copiado' : 'Copiar Enlace TV'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Opción 3: Abrir en la App de YouTube de la Smart TV */}
+          {/* Opción 2: Abrir en la app de YouTube para Chromecast nativo */}
           {rawVideoId && (
             <div className="cast-card glass-card" onClick={openOnYouTubeTV}>
               <div className="cast-card-icon yt-app-icon">
-                <ExternalLink size={28} />
+                <ExternalLink size={24} />
               </div>
               <div className="cast-card-content">
-                <h4>3. Abrir en la App de YouTube de tu TV</h4>
-                <p>Si tu TV tiene la app de YouTube oficial instalada, puedes abrir el video directamente.</p>
-                <button className="btn btn-glass btn-sm" onClick={openOnYouTubeTV} style={{ marginTop: '8px' }}>
+                <h4>2. Enviar por App de YouTube (Chromecast nativo)</h4>
+                <p>Abre este video en YouTube para tocar su botón Cast oficial y apagar la pantalla del celular.</p>
+                <button
+                  type="button"
+                  className="btn btn-glass btn-sm"
+                  onClick={openOnYouTubeTV}
+                  style={{ marginTop: '8px' }}
+                >
                   <ExternalLink size={14} style={{ marginRight: '6px' }} /> Abrir en YouTube
                 </button>
               </div>
             </div>
           )}
 
+          {/* Opción 3: App nativa YOUAPP para Android TV / Google TV / Fire TV */}
+          <div className="cast-card glass-card">
+            <div className="cast-card-icon smarttv-icon">
+              <Tv size={26} />
+            </div>
+            <div className="cast-card-content">
+              <h4>{rawVideoId ? '3.' : '2.'} App YOUAPP para Android TV / Google TV</h4>
+              <p>
+                Instalala una vez en tu Google TV, Android TV o Fire TV (sin navegador). Se vincula sola con tu celular por tu cuenta.
+              </p>
+              <a
+                href={ANDROID_TV_APK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-glass btn-sm"
+                style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+              >
+                <Download size={14} style={{ marginRight: '6px' }} /> Descargar App Android / Android TV
+              </a>
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
         <div className="cast-modal-footer">
-          <button className="btn btn-glass" onClick={onClose} style={{ width: '100%' }}>
+          <button type="button" className="btn btn-glass" onClick={onClose} style={{ width: '100%' }}>
             Cerrar
           </button>
         </div>
-
       </div>
 
       <style>{`
@@ -311,201 +267,136 @@ export default function CastModal({
           backdrop-filter: blur(12px);
           padding: 16px;
         }
-
         .cast-modal-container {
           width: 100%;
-          max-width: 580px;
+          max-width: 540px;
           max-height: 90vh;
           overflow-y: auto;
           background: #0f111a;
-          border: 1px solid rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.16);
           border-radius: 20px;
-          padding: 24px;
+          padding: 20px;
           color: white;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
         }
-
         .cast-modal-header {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 20px;
-          padding-bottom: 16px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          gap: 12px;
+          margin-bottom: 14px;
         }
-
         .cast-title-group {
           display: flex;
           align-items: center;
-          gap: 14px;
+          gap: 12px;
         }
-
+        .cast-title-group h3 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 750;
+        }
+        .cast-title-group p {
+          margin: 2px 0 0;
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.68);
+        }
         .cast-icon-badge {
-          width: 44px;
-          height: 44px;
+          width: 42px;
+          height: 42px;
           border-radius: 12px;
-          background: rgba(99, 102, 241, 0.2);
-          border: 1px solid rgba(99, 102, 241, 0.4);
+          background: rgba(0, 113, 227, 0.24);
+          border: 1px solid rgba(100, 210, 255, 0.45);
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
+          color: #64d2ff;
         }
-
-        .cast-title-group h3 {
-          font-size: 1.1rem;
-          font-weight: 700;
-          margin: 0;
-        }
-
-        .cast-title-group p {
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.6);
-          margin: 2px 0 0 0;
-        }
-
         .close-cast-btn {
-          background: transparent;
-          border: 0;
-          color: rgba(255, 255, 255, 0.6);
-          cursor: pointer;
-          padding: 6px;
-          border-radius: 8px;
-        }
-
-        .close-cast-btn:hover {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.08);
           color: white;
-          background: rgba(255, 255, 255, 0.1);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
         }
-
+        .cast-notice-box {
+          margin-bottom: 12px;
+          padding: 10px 14px;
+          border-radius: 12px;
+          background: rgba(245, 158, 11, 0.16);
+          border: 1px solid rgba(245, 158, 11, 0.45);
+          color: #fde68a;
+          font-size: 12.5px;
+          line-height: 1.45;
+        }
         .cast-options-grid {
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          margin-bottom: 20px;
+          gap: 12px;
         }
-
         .cast-card {
           display: flex;
-          gap: 16px;
-          padding: 18px;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.04);
-          border: 1px solid rgba(255, 255, 255, 0.08);
+          align-items: flex-start;
+          gap: 14px;
+          padding: 14px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.14);
           cursor: pointer;
-          transition: all 0.2s ease;
         }
-
         .cast-card:hover {
-          background: rgba(255, 255, 255, 0.08);
-          border-color: rgba(99, 102, 241, 0.4);
-          transform: translateY(-2px);
+          background: rgba(255, 255, 255, 0.1);
+          border-color: rgba(100, 210, 255, 0.45);
         }
-
         .cast-card-icon {
-          width: 52px;
-          height: 52px;
-          border-radius: 14px;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
-
-        .chromecast-icon {
-          background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(99, 102, 241, 0.3));
-          color: #60a5fa;
-          border: 1px solid rgba(59, 130, 246, 0.3);
-        }
-
-        .smarttv-icon {
-          background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(236, 72, 153, 0.3));
-          color: #c084fc;
-          border: 1px solid rgba(168, 85, 247, 0.3);
-        }
-
-        .yt-app-icon {
-          background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(249, 115, 22, 0.3));
-          color: #f87171;
-          border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
+        .chromecast-icon { background: rgba(0, 113, 227, 0.25); color: #64d2ff; }
+        .yt-app-icon { background: rgba(239, 68, 68, 0.24); color: #fca5a5; }
+        .smarttv-icon { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; }
         .cast-card-content {
           flex: 1;
+          min-width: 0;
         }
-
         .cast-card-content h4 {
-          font-size: 0.95rem;
+          margin: 0 0 4px;
+          font-size: 14px;
           font-weight: 700;
-          margin: 0 0 4px 0;
+          color: #ffffff;
         }
-
         .cast-card-content p {
-          font-size: 0.8rem;
-          color: rgba(255, 255, 255, 0.65);
-          margin: 0 0 10px 0;
-          line-height: 1.35;
+          margin: 0;
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.72);
+          line-height: 1.4;
         }
-
         .google-cast-launcher-row {
           display: flex;
           align-items: center;
-          gap: 12px;
-        }
-
-        .custom-cast-launcher {
-          width: 38px;
-          height: 38px;
-          --disconnected-color: white;
-          --connected-color: #60a5fa;
-          cursor: pointer;
-        }
-
-        .tv-pin-display {
-          display: flex;
-          align-items: center;
           gap: 10px;
-          background: rgba(0, 0, 0, 0.5);
-          padding: 8px 14px;
-          border-radius: 10px;
-          margin-bottom: 12px;
-          width: fit-content;
+          margin-top: 10px;
+          flex-wrap: wrap;
         }
-
-        .pin-label {
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.6);
-          font-weight: 600;
+        .custom-cast-launcher {
+          width: 30px;
+          height: 30px;
+          display: inline-block;
         }
-
-        .pin-digits {
-          font-family: monospace;
-          font-size: 1.3rem;
-          font-weight: 800;
-          color: #a5b4fc;
-          letter-spacing: 3px;
-        }
-
-        .cast-qr-box {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          background: rgba(0, 0, 0, 0.4);
-          padding: 12px;
-          border-radius: 12px;
-        }
-
-        .qr-img {
-          width: 80px;
-          height: 80px;
-          border-radius: 8px;
-          border: 1px solid rgba(99, 102, 241, 0.3);
-        }
-
-        .qr-instructions {
-          font-size: 0.75rem;
-          color: rgba(255, 255, 255, 0.7);
-          display: flex;
-          flex-direction: column;
+        .cast-modal-footer {
+          margin-top: 14px;
         }
       `}</style>
     </div>

@@ -7182,14 +7182,10 @@ export default function MiSenal1() {
             display: flex !important;
             flex-wrap: nowrap !important;
             align-items: center;
+            justify-content: flex-end !important;
             gap: 6px !important;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
+            overflow: visible !important;
             padding-bottom: 2px;
-          }
-          .ms-hero-actions::-webkit-scrollbar {
-            display: none;
           }
           .ms-hero-actions > * {
             flex-shrink: 0;

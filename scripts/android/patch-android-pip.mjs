@@ -70,6 +70,41 @@ import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     private String pendingShareUrl = null;
+    private boolean jsBridgeRegistered = false;
+
+    public class YouAppNativeBridge {
+        @JavascriptInterface
+        public boolean isSupported() {
+            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
+        }
+
+        @JavascriptInterface
+        public void enterPiP() {
+            runOnUiThread(() -> triggerNativePiP());
+        }
+
+        @JavascriptInterface
+        public void share(String title, String text, String url) {
+            runOnUiThread(() -> {
+                StringBuilder body = new StringBuilder();
+                if (text != null && !text.trim().isEmpty()) body.append(text.trim());
+                if (url != null && !url.trim().isEmpty()) {
+                    if (body.length() > 0) body.append(" ");
+                    body.append(url.trim());
+                }
+                Intent sendIntent = new Intent(Intent.ACTION_SEND);
+                sendIntent.setType("text/plain");
+                if (title != null && !title.trim().isEmpty()) {
+                    sendIntent.putExtra(Intent.EXTRA_SUBJECT, title.trim());
+                }
+                sendIntent.putExtra(Intent.EXTRA_TEXT, body.toString());
+                Intent chooser = Intent.createChooser(sendIntent, title != null && !title.trim().isEmpty() ? title : "Compartir");
+                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(chooser);
+            });
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +116,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onStart() {
         super.onStart();
+        setupWebViewBridge();
         flushPendingShare();
     }
 
@@ -93,42 +129,12 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void setupWebViewBridge() {
-        if (this.bridge == null || this.bridge.getWebView() == null) return;
+        if (jsBridgeRegistered || this.bridge == null || this.bridge.getWebView() == null) return;
         WebView webView = this.bridge.getWebView();
         WebSettings settings = webView.getSettings();
         settings.setMediaPlaybackRequiresUserGesture(false);
-
-        webView.addJavascriptInterface(new Object() {
-            @JavascriptInterface
-            public boolean isSupported() {
-                return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                    && getPackageManager().hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE);
-            }
-
-            @JavascriptInterface
-            public void enterPiP() {
-                runOnUiThread(() -> triggerNativePiP());
-            }
-
-            @JavascriptInterface
-            public void share(String title, String text, String url) {
-                runOnUiThread(() -> {
-                    StringBuilder body = new StringBuilder();
-                    if (text != null && !text.trim().isEmpty()) body.append(text.trim());
-                    if (url != null && !url.trim().isEmpty()) {
-                        if (body.length() > 0) body.append(" ");
-                        body.append(url.trim());
-                    }
-                    Intent sendIntent = new Intent(Intent.ACTION_SEND);
-                    sendIntent.setType("text/plain");
-                    if (title != null && !title.trim().isEmpty()) {
-                        sendIntent.putExtra(Intent.EXTRA_SUBJECT, title.trim());
-                    }
-                    sendIntent.putExtra(Intent.EXTRA_TEXT, body.toString());
-                    startActivity(Intent.createChooser(sendIntent, title != null ? title : "Compartir desde YOUAPP"));
-                });
-            }
-        }, "YouAppAndroidPiP");
+        webView.addJavascriptInterface(new YouAppNativeBridge(), "YouAppAndroidPiP");
+        jsBridgeRegistered = true;
     }
 
     private void triggerNativePiP() {

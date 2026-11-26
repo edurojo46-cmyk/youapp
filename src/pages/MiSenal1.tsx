@@ -3020,203 +3020,105 @@ export default function MiSenal1() {
             )}
           </div>
 
-          {/* Barra de control rápido estilo MiTV (Anterior / Play-Pausa / Siguiente / Sonido / Transmitir / Agrandar pantalla) */}
-          {currentBlock && (
-            <div className="ms-player-controls-bar" aria-label="Controles de emisión">
-              <div className="ms-pc-meta">
-                <span className="ms-pc-live-pill">EN PANTALLA</span>
-                <span className="ms-pc-pos">
-                  Programa {Math.max(1, currentBlockIndex + 1)} de {Math.max(1, effectiveSchedule.length)}
-                  {effectiveSchedule.length > 1 && effectiveSchedule[(currentBlockIndex + 1) % effectiveSchedule.length]
-                    ? ` · Sigue: ${effectiveSchedule[(currentBlockIndex + 1) % effectiveSchedule.length].contentItem.title}`
-                    : ''}
-                </span>
+          {/* BARRA INTELIGENTE UNIFICADA ESTILO MITV (3 puntos: 🟠 Momentos · 🔵 YOU4 · 🟢 Transmitir + Controles) */}
+          <div className="ms-smartbar-slot" style={{ position: 'relative' }} ref={castBoxRef}>
+            {isCastOpen && (
+              <div className="ms-cast-popover" role="dialog" aria-label="Transmitir YOUAPP">
+                <div className="ms-cast-head">Transmitir a tu TV</div>
+
+                {typeof (window as any).YouAppAndroidPiP?.openCastSettings === 'function' && (
+                  <>
+                    <button
+                      type="button"
+                      className="ms-hero-switcher-item"
+                      onClick={() => {
+                        setIsCastOpen(false);
+                        (window as any).YouAppAndroidPiP.openCastSettings();
+                      }}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                        <Cast size={14} color="#30d158" />
+                        <span>Elegir mi TV / Chromecast ahora</span>
+                      </span>
+                    </button>
+                    <div className="ms-cast-divider" />
+                  </>
+                )}
+
+                {isChromePresentationSupported && (
+                  <>
+                    <button
+                      type="button"
+                      className="ms-hero-switcher-item"
+                      onClick={() => void handleChromeNativeCast()}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                        <Cast size={14} color="#64d2ff" />
+                        <span>Buscar TV / Chromecast (Chrome)</span>
+                      </span>
+                    </button>
+                    <div className="ms-cast-divider" />
+                  </>
+                )}
+
+                {connectedCastCode ? (
+                  <div className="ms-cast-connected">
+                    <span>
+                      Transmitiendo a <strong>TV {connectedCastCode}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      className="ms-cast-stop-btn"
+                      onClick={handleDisconnectCast}
+                    >
+                      Desconectar
+                    </button>
+                  </div>
+                ) : (
+                  <form className="ms-cast-code-form" onSubmit={handleConnectCastCode}>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={castTargetCodeInput}
+                      onChange={(e) => setCastTargetCodeInput(e.target.value)}
+                      placeholder="Código de TV (ej. 4829)"
+                      aria-label="Código de TV"
+                    />
+                    <button type="submit" className="ms-cast-connect-btn">
+                      Conectar
+                    </button>
+                  </form>
+                )}
+
+                <div className="ms-cast-divider" />
+
+                <button
+                  type="button"
+                  className="ms-hero-switcher-item"
+                  onClick={() => setIsReceivingCast((v) => !v)}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                    <Tv size={14} color="#64d2ff" />
+                    <span>
+                      {isReceivingCast
+                        ? `Esta pantalla · Código ${myTvCode}`
+                        : 'Recibir en esta pantalla (Modo TV)'}
+                    </span>
+                  </span>
+                </button>
+
+                {isReceivingCast && (
+                  <div className="ms-cast-mycode">
+                    <span>Código de esta TV</span>
+                    <strong>{myTvCode}</strong>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div className="ms-pc-controls">
-                <button
-                  type="button"
-                  className="ms-ctrl-btn"
-                  disabled={effectiveSchedule.length <= 1}
-                  onClick={() => {
-                    if (viewMode === 'you4') {
-                      setYou4Offset((prev) => (prev - 4 + Math.max(4, effectiveSchedule.length)) % Math.max(1, effectiveSchedule.length));
-                    } else {
-                      handlePrevious();
-                    }
-                  }}
-                  title={viewMode === 'you4' ? '4 señales anteriores' : 'Video anterior'}
-                  aria-label={viewMode === 'you4' ? '4 señales anteriores' : 'Video anterior'}
-                >
-                  <SkipBack size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="ms-ctrl-btn"
-                  onClick={handlePlayPause}
-                  title={isPlaying ? 'Pausar' : 'Reproducir'}
-                  aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
-                >
-                  {isPlaying ? <Pause size={15} /> : <Play size={15} />}
-                </button>
-                <button
-                  type="button"
-                  className="ms-ctrl-btn"
-                  disabled={effectiveSchedule.length <= 1}
-                  onClick={() => {
-                    if (viewMode === 'you4') {
-                      setYou4Offset((prev) => (prev + 4) % Math.max(1, effectiveSchedule.length));
-                    } else {
-                      handleNext();
-                    }
-                  }}
-                  title={viewMode === 'you4' ? 'Siguientes 4 señales' : 'Siguiente video'}
-                  aria-label={viewMode === 'you4' ? 'Siguientes 4 señales' : 'Siguiente video'}
-                >
-                  <SkipForward size={16} />
-                </button>
-                <button
-                  type="button"
-                  className={`ms-ctrl-pill-you4 ${viewMode === 'you4' ? 'active' : ''}`}
-                  onClick={() => {
-                    setViewMode((prev) => {
-                      const nextMode = prev === 'you4' ? 'single' : 'you4';
-                      if (nextMode === 'you4') {
-                        setYou4AudioSlot(0);
-                        setYou4Offset(0);
-                      }
-                      return nextMode;
-                    });
-                  }}
-                  title={viewMode === 'you4' ? 'Volver a 1 pantalla' : 'YOU4: ver 4 señales a la vez en esta pantalla'}
-                  aria-pressed={viewMode === 'you4'}
-                >
-                  <LayoutGrid size={13} />
-                  <span>YOU4</span>
-                </button>
-                <button
-                  type="button"
-                  className={`ms-ctrl-btn ${!isMuted ? 'active' : ''}`}
-                  onClick={() => {
-                    if (isMuted) void playerRef.current?.unmute();
-                    else void playerRef.current?.mute();
-                  }}
-                  title={isMuted ? 'Activar sonido' : 'Silenciar'}
-                  aria-label={isMuted ? 'Activar sonido' : 'Silenciar'}
-                >
-                  {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
-                </button>
-
-                <div className="ms-popover-anchor" ref={castBoxRef}>
-                  <button
-                    type="button"
-                    className={`ms-ctrl-btn ${isCastOpen || connectedCastCode || isReceivingCast ? 'active' : ''}`}
-                    onClick={() => setIsCastOpen((v) => !v)}
-                    title={
-                      connectedCastCode
-                        ? `Transmitiendo a TV ${connectedCastCode}`
-                        : isReceivingCast
-                          ? `Recibiendo en esta pantalla · Código ${myTvCode}`
-                          : 'Transmitir a TV / Chromecast'
-                    }
-                    aria-label="Transmitir a otra pantalla"
-                    aria-expanded={isCastOpen}
-                  >
-                    <Cast size={15} />
-                  </button>
-
-                  {isCastOpen && (
-                    <div className="ms-cast-popover" role="dialog" aria-label="Transmitir YOUAPP">
-                      <div className="ms-cast-head">Transmitir a dispositivo</div>
-
-                      {isChromePresentationSupported && (
-                        <>
-                          <button
-                            type="button"
-                            className="ms-hero-switcher-item"
-                            onClick={() => void handleChromeNativeCast()}
-                          >
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
-                              <Cast size={14} color="#64d2ff" />
-                              <span>Buscar TV / Chromecast (Chrome)</span>
-                            </span>
-                          </button>
-                          <div className="ms-cast-divider" />
-                        </>
-                      )}
-
-                      {connectedCastCode ? (
-                        <div className="ms-cast-connected">
-                          <span>
-                            Transmitiendo a <strong>TV {connectedCastCode}</strong>
-                          </span>
-                          <button
-                            type="button"
-                            className="ms-cast-stop-btn"
-                            onClick={handleDisconnectCast}
-                          >
-                            Desconectar
-                          </button>
-                        </div>
-                      ) : (
-                        <form className="ms-cast-code-form" onSubmit={handleConnectCastCode}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={6}
-                            value={castTargetCodeInput}
-                            onChange={(e) => setCastTargetCodeInput(e.target.value)}
-                            placeholder="Código de TV (ej. 4829)"
-                            aria-label="Código de TV"
-                          />
-                          <button type="submit" className="ms-cast-connect-btn">
-                            Conectar
-                          </button>
-                        </form>
-                      )}
-
-                      <div className="ms-cast-divider" />
-
-                      <button
-                        type="button"
-                        className="ms-hero-switcher-item"
-                        onClick={() => setIsReceivingCast((v) => !v)}
-                      >
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
-                          <Tv size={14} color="#64d2ff" />
-                          <span>
-                            {isReceivingCast
-                              ? `Esta pantalla · Código ${myTvCode}`
-                              : 'Recibir en esta pantalla (Modo TV)'}
-                          </span>
-                        </span>
-                      </button>
-
-                      {isReceivingCast && (
-                        <div className="ms-cast-mycode">
-                          <span>Código de esta TV</span>
-                          <strong>{myTvCode}</strong>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  className={`ms-ctrl-btn ${isStageExpanded ? 'active' : ''}`}
-                  onClick={() => setIsStageExpanded((v) => !v)}
-                  title={isStageExpanded ? 'Salir de pantalla ampliada' : 'Agrandar pantalla'}
-                  aria-label={isStageExpanded ? 'Salir de pantalla ampliada' : 'Agrandar pantalla'}
-                >
-                  {isStageExpanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="ms-smartbar-slot">
             <SmartBar
+              unifiedAppleMode
               isPlaying={isPlaying}
               onPlayPause={handlePlayPause}
               onSeek={(t) => {
@@ -3228,10 +3130,54 @@ export default function MiSenal1() {
               }}
               isMosaic={viewMode === 'mosaic'}
               onToggleMosaic={handleDirector}
+              isYou4={viewMode === 'you4'}
+              onToggleYou4={() => {
+                setViewMode((prev) => {
+                  const nextMode = prev === 'you4' ? 'single' : 'you4';
+                  if (nextMode === 'you4') {
+                    setYou4AudioSlot(0);
+                    setYou4Offset(0);
+                  }
+                  return nextMode;
+                });
+              }}
+              isCasting={Boolean(isCastOpen || connectedCastCode || isReceivingCast)}
+              onToggleCast={() => setIsCastOpen((v) => !v)}
+              isMutedExternal={isMuted}
+              onToggleMuteExternal={() => {
+                if (isMuted) void playerRef.current?.unmute();
+                else void playerRef.current?.mute();
+              }}
+              isFullscreen={isStageExpanded}
+              onToggleFullscreen={() => setIsStageExpanded((v) => !v)}
               moments={moments}
               onSelectMoment={(m, i) => handleMomentClick(m, i)}
-              onNextBlock={handleNext}
-              onPreviousBlock={handlePrevious}
+              onNextBlock={
+                effectiveSchedule.length > 1
+                  ? () => {
+                      if (viewMode === 'you4') {
+                        setYou4Offset((prev) => (prev + 4) % Math.max(1, effectiveSchedule.length));
+                      } else {
+                        handleNext();
+                      }
+                    }
+                  : undefined
+              }
+              onPreviousBlock={
+                effectiveSchedule.length > 1
+                  ? () => {
+                      if (viewMode === 'you4') {
+                        setYou4Offset(
+                          (prev) =>
+                            (prev - 4 + Math.max(4, effectiveSchedule.length)) %
+                            Math.max(1, effectiveSchedule.length)
+                        );
+                      } else {
+                        handlePrevious();
+                      }
+                    }
+                  : undefined
+              }
             />
           </div>
           </section>

@@ -13,8 +13,6 @@ import {
 import type { VideoMoment } from '../../lib/moments/momentTypes';
 import './SmartBar.css';
 import {
-  Sparkles,
-  LayoutGrid,
   Heart,
   Radio,
   Plus,
@@ -143,7 +141,7 @@ export const SmartBar: React.FC<SmartBarProps> = ({
 
   const { saveContent, unsaveContent, isSaved, followCreator, unfollowCreator, isFollowing } = useStore();
   const { activeSignal, insert, currentBlockIndex, next, previous } = useSignalStore();
-  const { showToast, openModal } = useUIStore();
+  const { showToast } = useUIStore();
 
   const [showMomentsRow, setShowMomentsRow] = useState(false);
   const [showSavedDrawer, setShowSavedDrawer] = useState(false);
@@ -776,7 +774,7 @@ export const SmartBar: React.FC<SmartBarProps> = ({
             setShowShareMenu(false);
             setShowMoreMenu((v) => !v);
           }}
-          title="Más opciones (Mosaico, Resumen, Repetidoras, Seguir)"
+          title="Más opciones"
           aria-label="Más opciones"
         >
           <MoreHorizontal size={16} />
@@ -827,34 +825,6 @@ export const SmartBar: React.FC<SmartBarProps> = ({
       {showMoreMenu && (
         <div className="bv-share-menu bv-more-menu" role="menu" aria-label="Más herramientas">
           <div className="bv-share-head">Más herramientas</div>
-
-          {onToggleMosaic && (
-            <button
-              type="button"
-              className="bv-more-item"
-              onClick={() => {
-                setShowMoreMenu(false);
-                handleMosaicClick();
-              }}
-            >
-              {isAnalyzingYOU4 ? <Sparkles size={14} className="pulse-anim" /> : <LayoutGrid size={14} />}
-              <span>{isAnalyzingYOU4 ? 'Analizando momentos…' : isMosaic ? 'Volver a 1 Video' : 'Mosaico (4 momentos)'}</span>
-            </button>
-          )}
-
-          {capabilities.summary && (
-            <button
-              type="button"
-              className="bv-more-item"
-              onClick={() => {
-                setShowMoreMenu(false);
-                openModal('summary', currentBlock);
-              }}
-            >
-              <Sparkles size={14} />
-              <span>Resumen editorial IA</span>
-            </button>
-          )}
 
           <button
             type="button"

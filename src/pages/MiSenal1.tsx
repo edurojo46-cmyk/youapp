@@ -2872,7 +2872,48 @@ export default function MiSenal1() {
               <div className="ms-mitv-info-bar">
                 <div className="ms-mitv-top-row">
                   <div className="ms-mitv-social-left">
-                    <span className="ms-en-pantalla-pill">EN PANTALLA</span>
+                    <button
+                      type="button"
+                      className="ms-channel-profile-pill"
+                      onClick={() =>
+                        navigate(`/canal/${slugifyChannelName(authorName)}`, {
+                          state: {
+                            channelName: authorName,
+                            originUrl: ci?.originUrl || sourceUrl,
+                            avatarUrl: channelAvatar
+                          }
+                        })
+                      }
+                      title={`Ver perfil del canal ${authorName}`}
+                    >
+                      {channelAvatar ? (
+                        <img
+                          src={channelAvatar}
+                          alt=""
+                          style={{ width: 20, height: 20, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      ) : (
+                        <span
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: 'rgba(10, 132, 255, 0.35)',
+                            color: '#ffffff',
+                            fontSize: 10,
+                            fontWeight: 800,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          {(authorName.trim()[0] || 'C').toUpperCase()}
+                        </span>
+                      )}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{authorName}</span>
+                    </button>
+
                     <button
                       type="button"
                       className={`ms-top-icon-btn ${likeCount > 0 ? 'has-count' : ''} ${isLiked ? 'is-liked' : ''}`}
@@ -2927,30 +2968,6 @@ export default function MiSenal1() {
                       aria-pressed={isFollowed}
                     >
                       {isFollowed ? <UserCheck size={15} strokeWidth={2.2} /> : <UserPlus size={15} strokeWidth={2.1} />}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="ms-channel-profile-pill"
-                      onClick={() =>
-                        navigate(`/canal/${slugifyChannelName(authorName)}`, {
-                          state: {
-                            channelName: authorName,
-                            originUrl: ci?.originUrl || sourceUrl,
-                            avatarUrl: channelAvatar
-                          }
-                        })
-                      }
-                      title={`Ver perfil del canal ${authorName}`}
-                    >
-                      {channelAvatar && (
-                        <img
-                          src={channelAvatar}
-                          alt=""
-                          style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-                        />
-                      )}
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{authorName}</span>
                     </button>
                   </div>
 

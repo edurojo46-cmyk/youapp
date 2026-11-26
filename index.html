@@ -64,6 +64,15 @@
     </script>
     <script>
       window.process = window.process || { env: { NODE_ENV: 'development' } };
+      if (typeof navigator !== 'undefined' && !navigator.share) {
+        navigator.share = function(data) {
+          if (window.YouAppAndroidPiP && typeof window.YouAppAndroidPiP.share === 'function') {
+            window.YouAppAndroidPiP.share((data && data.title) || '', (data && data.text) || '', (data && data.url) || '');
+            return Promise.resolve();
+          }
+          return Promise.reject(new Error('Share API unavailable'));
+        };
+      }
     </script>
 
     <!-- PWA & Fullscreen sin barra de URL en móvil -->

@@ -44,7 +44,7 @@ if (!manifest.includes('android.intent.action.SEND')) {
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
+                <data android:mimeType="text/*" />
             </intent-filter>
         </activity>`;
   manifest = manifest.replace('</activity>', shareFilter);
@@ -53,7 +53,7 @@ if (!manifest.includes('android.intent.action.SEND')) {
 fs.writeFileSync(manifestPath, manifest, 'utf8');
 console.log('[patch-android-pip] AndroidManifest.xml actualizado con PiP nativo + Share Target.');
 
-// 3. Escribir MainActivity.java con PiP automático (16:9), puente JS y recepción de enlaces compartidos
+// 3. Escribir MainActivity.java con PiP automático (16:9), puente JS (PiP + Share OUT) y recepción robusta de Share IN
 const mainActivityJava = `package com.youapptv.app;
 
 import android.app.PictureInPictureParams;
@@ -69,19 +69,27 @@ import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private String pendingShareUrl = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setupWebViewBridge();
-        handleShareIntent(getIntent());
+        captureShareIntent(getIntent());
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        flushPendingShare();
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        handleShareIntent(intent);
+        captureShareIntent(intent);
+        flushPendingShare();
     }
 
     private void setupWebViewBridge() {
@@ -89,6 +97,7 @@ public class MainActivity extends BridgeActivity {
         WebView webView = this.bridge.getWebView();
         WebSettings settings = webView.getSettings();
         settings.setMediaPlaybackRequiresUserGesture(false);
+
         webView.addJavascriptInterface(new Object() {
             @JavascriptInterface
             public boolean isSupported() {
@@ -99,6 +108,25 @@ public class MainActivity extends BridgeActivity {
             @JavascriptInterface
             public void enterPiP() {
                 runOnUiThread(() -> triggerNativePiP());
+            }
+
+            @JavascriptInterface
+            public void share(String title, String text, String url) {
+                runOnUiThread(() -> {
+                    StringBuilder body = new StringBuilder();
+                    if (text != null && !text.trim().isEmpty()) body.append(text.trim());
+                    if (url != null && !url.trim().isEmpty()) {
+                        if (body.length() > 0) body.append(" ");
+                        body.append(url.trim());
+                    }
+                    Intent sendIntent = new Intent(Intent.ACTION_SEND);
+                    sendIntent.setType("text/plain");
+                    if (title != null && !title.trim().isEmpty()) {
+                        sendIntent.putExtra(Intent.EXTRA_SUBJECT, title.trim());
+                    }
+                    sendIntent.putExtra(Intent.EXTRA_TEXT, body.toString());
+                    startActivity(Intent.createChooser(sendIntent, title != null ? title : "Compartir desde YOUAPP"));
+                });
             }
         }, "YouAppAndroidPiP");
     }
@@ -122,15 +150,28 @@ public class MainActivity extends BridgeActivity {
         triggerNativePiP();
     }
 
-    private void handleShareIntent(Intent intent) {
+    private void captureShareIntent(Intent intent) {
         if (intent == null) return;
-        if (Intent.ACTION_SEND.equals(intent.getAction()) && "text/plain".equals(intent.getType())) {
+        if (Intent.ACTION_SEND.equals(intent.getAction())) {
             String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
-            if (sharedText != null && !sharedText.trim().isEmpty() && this.bridge != null && this.bridge.getWebView() != null) {
-                String targetUrl = "https://youapptv.com/share?text=" + Uri.encode(sharedText.trim());
-                this.bridge.getWebView().post(() -> this.bridge.getWebView().loadUrl(targetUrl));
+            String sharedTitle = intent.getStringExtra(Intent.EXTRA_SUBJECT);
+            if (sharedText != null && !sharedText.trim().isEmpty()) {
+                String url = "https://youapptv.com/share?text=" + Uri.encode(sharedText.trim());
+                if (sharedTitle != null && !sharedTitle.trim().isEmpty()) {
+                    url += "&title=" + Uri.encode(sharedTitle.trim());
+                }
+                pendingShareUrl = url;
             }
         }
+    }
+
+    private void flushPendingShare() {
+        if (pendingShareUrl == null || this.bridge == null || this.bridge.getWebView() == null) return;
+        final String targetUrl = pendingShareUrl;
+        pendingShareUrl = null;
+        WebView webView = this.bridge.getWebView();
+        // Espera breve para que Capacitor termine su carga inicial antes de navegar a /share
+        webView.postDelayed(() -> webView.loadUrl(targetUrl), 700);
     }
 }
 `;

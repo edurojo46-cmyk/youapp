@@ -2657,11 +2657,12 @@ export default function ChannelSearch() {
       .catch(() => {});
 
     // Escuchar progreso real (currentTime / duration) de YouTube y Vimeo
+    let lastRealTickAt = 0;
     const onYtMsg = (ev: MessageEvent) => {
       if (!previewIframeRef.current || ev.source !== previewIframeRef.current.contentWindow) return;
       try {
         const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
-        // Vimeo Player API events (playProgress / timeupdate / play / pause / ready)
+        // Vimeo Player API events (playProgress / timeupdate / getCurrentTime / getDuration / play / pause / ready)
         if (previewVideo.provider === 'vimeo') {
           if (payload?.event === 'ready') {
             const w = previewIframeRef.current?.contentWindow;
@@ -2669,6 +2670,7 @@ export default function ChannelSearch() {
             w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), '*');
             w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'play' }), '*');
             w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'pause' }), '*');
+            w?.postMessage(JSON.stringify({ method: 'getDuration' }), '*');
           } else if (
             (payload?.event === 'playProgress' || payload?.event === 'timeupdate') &&
             payload?.data
@@ -2676,9 +2678,17 @@ export default function ChannelSearch() {
             const sec = typeof payload.data.seconds === 'number' ? payload.data.seconds : null;
             const dur = typeof payload.data.duration === 'number' && payload.data.duration > 0 ? payload.data.duration : null;
             if (sec !== null || dur !== null) {
+              lastRealTickAt = Date.now();
               const st = usePlayerStore.getState();
               st.setProgress(sec ?? st.currentTime, dur ?? st.duration);
             }
+          } else if (payload?.method === 'getCurrentTime' && typeof payload?.value === 'number') {
+            lastRealTickAt = Date.now();
+            const st = usePlayerStore.getState();
+            st.setProgress(payload.value, st.duration || initialDur);
+          } else if (payload?.method === 'getDuration' && typeof payload?.value === 'number' && payload.value > 0) {
+            const st = usePlayerStore.getState();
+            st.setProgress(st.currentTime, payload.value);
           } else if (payload?.event === 'play') {
             setPreviewIsPlaying(true);
             usePlayerStore.getState().setIsPlaying(true);
@@ -2692,6 +2702,7 @@ export default function ChannelSearch() {
           const ct = typeof payload.info.currentTime === 'number' ? payload.info.currentTime : null;
           const dur = typeof payload.info.duration === 'number' && payload.info.duration > 0 ? payload.info.duration : null;
           if (ct !== null || dur !== null) {
+            lastRealTickAt = Date.now();
             const st = usePlayerStore.getState();
             st.setProgress(ct ?? st.currentTime, dur ?? st.duration);
           }
@@ -2725,17 +2736,26 @@ export default function ChannelSearch() {
     const pingTimer = window.setInterval(() => {
       try {
         const w = previewIframeRef.current?.contentWindow;
-        if (!w) return;
-        if (previewVideo.provider === 'vimeo') {
-          w.postMessage(JSON.stringify({ method: 'addEventListener', value: 'playProgress' }), '*');
-          w.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), '*');
-        } else if (!previewVideo.provider || previewVideo.provider === 'youtube') {
-          w.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+        if (w) {
+          if (previewVideo.provider === 'vimeo') {
+            w.postMessage(JSON.stringify({ method: 'getCurrentTime' }), '*');
+            w.postMessage(JSON.stringify({ method: 'getDuration' }), '*');
+          } else if (!previewVideo.provider || previewVideo.provider === 'youtube') {
+            w.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+          }
+        }
+        // Reloj suave de respaldo (1s): si el iframe aún no emitió tick real, avanza la barra al reproducir
+        const st = usePlayerStore.getState();
+        if (st.isPlaying && Date.now() - lastRealTickAt > 1800) {
+          const dur = st.duration > 0 ? st.duration : initialDur;
+          if (dur > 0) {
+            st.setProgress(Math.min(dur, st.currentTime + 1), dur);
+          }
         }
       } catch {
         // ignore
       }
-    }, 1500);
+    }, 1000);
 
     return () => {
       active = false;

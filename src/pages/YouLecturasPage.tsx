@@ -4,6 +4,7 @@ import {
   BookOpen,
   Check,
   CheckCircle2,
+  ChevronDown,
   Circle,
   ExternalLink,
   Heart,
@@ -14,11 +15,14 @@ import {
   Share2,
   Sparkles,
   Trash2,
+  Volume2,
+  VolumeX,
   X
 } from 'lucide-react';
 import type { AtlasCompareResult, ComparedOutletItem } from '../lib/tv/atlasComparaEngine';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
+import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { useSignalStore } from '../lib/tv/signalStore';
 import { addSignalNewsSource } from '../lib/tv/signalMediaSourcesStore';
 import {
@@ -76,6 +80,11 @@ export default function YouLecturasPage() {
   const [readerContent, setReaderContent] = useState<ReaderArticleContent | null>(null);
   const [readerLoading, setReaderLoading] = useState(false);
   const [forceReaderMode, setForceReaderMode] = useState(false);
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [readerTheme, setReaderTheme] = useState<'paper' | 'sepia' | 'night'>('paper');
+  const [readerFontSize, setReaderFontSize] = useState<number>(17);
+  const [readerProgress, setReaderProgress] = useState<number>(0);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareError, setCompareError] = useState<string | null>(null);
@@ -84,6 +93,11 @@ export default function YouLecturasPage() {
   const [compareTopicInput, setCompareTopicInput] = useState('');
 
   useEffect(() => {
+    setReaderProgress(0);
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
     if (!activeReaderItem) {
       setReaderContent(null);
       setReaderLoading(false);
@@ -103,8 +117,42 @@ export default function YouLecturasPage() {
       });
     return () => {
       cancelled = true;
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, [activeReaderItem, forceReaderMode]);
+
+  const handleToggleSpeakArticle = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setToast('Tu navegador no admite lectura en voz alta.');
+      return;
+    }
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    const parts: string[] = [];
+    if (readerContent?.title || activeReaderItem?.title) {
+      parts.push(readerContent?.title || activeReaderItem?.title || '');
+    }
+    if (readerContent?.paragraphs?.length) {
+      parts.push(...readerContent.paragraphs.slice(0, 40));
+    } else if (activeReaderItem?.description) {
+      parts.push(activeReaderItem.description);
+    }
+    const text = parts.join('. ').trim();
+    if (!text) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'es-AR';
+    utter.rate = 1.02;
+    utter.onend = () => setIsSpeaking(false);
+    utter.onerror = () => setIsSpeaking(false);
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utter);
+  };
 
   useEffect(() => {
     if (!activeReaderItem && !compareOpen) return;
@@ -380,20 +428,11 @@ export default function YouLecturasPage() {
   };
 
   const handleShareItem = async (item: LecturaItem) => {
-    try {
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-        await navigator.share({
-          title: item.title,
-          text: `${item.title} (${item.sourceName}) · Guardado en YOUAPP Mis Lecturas`,
-          url: item.url
-        });
-        return;
-      }
-    } catch {
-      // fallback
-    }
-    await navigator.clipboard?.writeText(item.url).catch(() => {});
-    setToast('Enlace original copiado al portapapeles.');
+    await shareContentUniversal({
+      title: item.title,
+      text: `${item.title} (${item.sourceName}) · YOUAPP Lecturas`,
+      url: item.url
+    });
   };
 
   const filteredItems = useMemo(() => {
@@ -473,84 +512,135 @@ export default function YouLecturasPage() {
           </div>
         )}
 
-        {/* 1. CABECERA + BARRA DE PUNTEROS WEB (ATLAS WEB POINTER V1) */}
-        <section className="yl-card yl-hero-card">
-          <div className="yl-hero-top">
-            <div>
-              <span className="yl-eyebrow">
-                <BookOpen size={12} /> ATLAS WEB POINTER · SOLO PUNTEROS
+        {/* 1. BARRA SUTIL DESPLEGABLE ARRIBA (Mis Lecturas · Guardar URL · ATLAS Compara · Buscar) */}
+        <section className={`yl-tools-collapsible ${isToolsOpen ? 'is-open' : ''}`} aria-label="Herramientas de Lecturas">
+          <button
+            type="button"
+            className="yl-tools-toggle"
+            onClick={() => setIsToolsOpen((v) => !v)}
+            aria-expanded={isToolsOpen}
+          >
+            <span className="yl-tools-toggle-left">
+              <BookOpen size={13} color="#64d2ff" />
+              <strong>Mis Lecturas</strong>
+              <span className="yl-tools-toggle-sub">
+                · {workspace.items.length} guardadas · Pegar URL · ATLAS Compara
               </span>
-              <h1>Mis Lecturas</h1>
-              <p>
-                Reuní diarios, artículos, investigaciones y blogs por tema sin copiar archivos. Siempre abre en la fuente original.
-              </p>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="yl-compara-hero-btn"
-                onClick={() => {
-                  setCompareOpen(true);
-                  setCompareError(null);
-                }}
-                title="ATLAS COMPARA: comparar cómo informan 10 medios distintos sobre el mismo acontecimiento"
-              >
-                <Scale size={14} />
-                <span>ATLAS COMPARA</span>
-              </button>
-              <div className="yl-stats-pill">
-                <strong>{workspace.items.length}</strong> guardados · <strong>{unreadCount}</strong> pendientes
+            </span>
+            <ChevronDown
+              size={15}
+              style={{
+                transition: 'transform 0.18s ease',
+                transform: isToolsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                opacity: 0.78
+              }}
+            />
+          </button>
+
+          {isToolsOpen && (
+            <div className="yl-tools-panel">
+              <div className="yl-tools-top-actions">
+                <button
+                  type="button"
+                  className="yl-compara-hero-btn"
+                  onClick={() => {
+                    setCompareOpen(true);
+                    setCompareError(null);
+                  }}
+                  title="ATLAS COMPARA: comparar cómo informan 10 medios distintos sobre el mismo acontecimiento"
+                >
+                  <Scale size={14} />
+                  <span>ATLAS COMPARA</span>
+                </button>
+                <div className="yl-stats-pill">
+                  <strong>{workspace.items.length}</strong> guardados · <strong>{unreadCount}</strong> pendientes
+                </div>
+              </div>
+
+              <form className="yl-add-form" onSubmit={handleAddUrl}>
+                <input
+                  type="text"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder="+ Pegá el enlace de cualquier artículo, diario, blog o investigación…"
+                  aria-label="Pegar enlace del artículo"
+                />
+                <select
+                  value={selectedTopic === 'Todas' ? saveTopic : selectedTopic}
+                  onChange={(e) => {
+                    setSaveTopic(e.target.value);
+                    if (selectedTopic !== 'Todas') setSelectedTopic(e.target.value);
+                  }}
+                  aria-label="Tema del artículo"
+                  className="yl-topic-select"
+                >
+                  {workspace.topics.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+                <button type="submit" className="yl-btn-primary" disabled={isAdding || !urlInput.trim()}>
+                  <Plus size={14} />
+                  <span>{isAdding ? 'Leyendo…' : 'Guardar'}</span>
+                </button>
+                <a
+                  ref={bookmarkletRef}
+                  href="#lecturas-bookmarklet"
+                  className="yl-bookmarklet"
+                  draggable
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setToast(
+                      'Arrastrá «+ Lecturas» a tu barra de marcadores. Después, en cualquier diario o artículo, hacé clic ahí para guardarlo en 1 clic.'
+                    );
+                  }}
+                  title="Arrastrá a tu barra de marcadores para guardar cualquier página web en 1 clic"
+                >
+                  <Plus size={12} /> Lecturas
+                </a>
+              </form>
+              {errorMsg && <div className="yl-error">{errorMsg}</div>}
+
+              <div className="yl-subfilters">
+                <div className="yl-status-pills">
+                  {(
+                    [
+                      ['all', 'Todas'],
+                      ['unread', 'Pendientes'],
+                      ['read', 'Leídas'],
+                      ['favorites', 'Favoritas']
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`yl-status-btn ${statusFilter === key ? 'active' : ''}`}
+                      onClick={() => setStatusFilter(key)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="yl-search-wrap">
+                  <Search size={13} color="rgba(245,245,247,0.58)" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Filtrar por título o medio…"
+                    aria-label="Buscar en Mis Lecturas"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
+        </section>
 
-          <form className="yl-add-form" onSubmit={handleAddUrl}>
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="+ Pegá el enlace de cualquier artículo, diario, blog o investigación…"
-              aria-label="Pegar enlace del artículo"
-            />
-            <select
-              value={selectedTopic === 'Todas' ? saveTopic : selectedTopic}
-              onChange={(e) => {
-                setSaveTopic(e.target.value);
-                if (selectedTopic !== 'Todas') setSelectedTopic(e.target.value);
-              }}
-              aria-label="Tema del artículo"
-              className="yl-topic-select"
-            >
-              {workspace.topics.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <button type="submit" className="yl-btn-primary" disabled={isAdding || !urlInput.trim()}>
-              <Plus size={14} />
-              <span>{isAdding ? 'Leyendo…' : 'Guardar'}</span>
-            </button>
-            <a
-              ref={bookmarkletRef}
-              href="#lecturas-bookmarklet"
-              className="yl-bookmarklet"
-              draggable
-              onClick={(e) => {
-                e.preventDefault();
-                setToast(
-                  'Arrastrá «+ Lecturas» a tu barra de marcadores. Después, en cualquier diario o artículo, hacé clic ahí para guardarlo en 1 clic.'
-                );
-              }}
-              title="Arrastrá a tu barra de marcadores para guardar cualquier página web en 1 clic"
-            >
-              <Plus size={12} /> Lecturas
-            </a>
-          </form>
-
-          {/* Accesos rápidos a portales de noticias (abren directo en Modo Lectura con video flotante encima) */}
+        {/* 2. CARRUSELES HORIZONTALES DE 1 FILA (Portales en vivo + Temas) */}
+        <section className="yl-carousels-stack">
           <div className="yl-quick-portals" aria-label="Portales de noticias rápidos">
-            <span className="yl-quick-portals-label">Portales rápidos:</span>
             {QUICK_NEWS_PORTALS.map((portal) => (
               <button
                 key={portal.domain}
@@ -576,11 +666,7 @@ export default function YouLecturasPage() {
               </button>
             ))}
           </div>
-          {errorMsg && <div className="yl-error">{errorMsg}</div>}
-        </section>
 
-        {/* 2. FILTROS POR TEMA + ESTADO + BÚSQUEDA */}
-        <section className="yl-filters-bar">
           <div className="yl-topics-row" role="tablist" aria-label="Temas de lectura">
             <button
               type="button"
@@ -636,42 +722,9 @@ export default function YouLecturasPage() {
                 className="yl-topic-chip add"
                 onClick={() => setIsCreatingTopic(true)}
               >
-                <Plus size={12} /> Nuevo tema
+                <Plus size={12} /> Tema
               </button>
             )}
-          </div>
-
-          <div className="yl-subfilters">
-            <div className="yl-status-pills">
-              {(
-                [
-                  ['all', 'Todas'],
-                  ['unread', 'Pendientes'],
-                  ['read', 'Leídas'],
-                  ['favorites', 'Favoritas']
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={`yl-status-btn ${statusFilter === key ? 'active' : ''}`}
-                  onClick={() => setStatusFilter(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="yl-search-wrap">
-              <Search size={13} color="rgba(245,245,247,0.58)" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filtrar por título o medio…"
-                aria-label="Buscar en Mis Lecturas"
-              />
-            </div>
           </div>
         </section>
 
@@ -876,45 +929,113 @@ export default function YouLecturasPage() {
                 />
               </div>
             ) : (
-              <div className="yl-reader-sheet">
-                {activeReaderItem.thumbnailUrl && (
-                  <div className="yl-reader-hero-img">
-                    <img src={activeReaderItem.thumbnailUrl} alt={activeReaderItem.title} referrerPolicy="no-referrer" />
-                  </div>
-                )}
-                <h2>{readerContent?.title || activeReaderItem.title}</h2>
-                {activeReaderItem.description && (
-                  <p className="yl-reader-excerpt">{activeReaderItem.description}</p>
-                )}
-
-                {readerLoading ? (
-                  <div className="yl-reader-loading">
-                    Cargando modo lectura de <strong>{activeReaderItem.sourceName}</strong>…
-                  </div>
-                ) : readerContent && readerContent.paragraphs.length > 0 ? (
-                  <div className="yl-reader-article-body">
-                    {readerContent.paragraphs.map((p, idx) => (
-                      <p key={`p-${idx}`}>{p}</p>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div className="yl-reader-policy-note">
-                  <span>
-                    Fuente original: <strong>{activeReaderItem.sourceName}</strong>.
-                  </span>
-                  <a
-                    href={activeReaderItem.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="yl-btn-primary"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <span>Ver nota en {activeReaderItem.sourceName}</span>
-                    <ExternalLink size={14} />
-                  </a>
+              <>
+                <div className="yl-reader-progress-track" aria-hidden="true">
+                  <div className="yl-reader-progress-fill" style={{ width: `${readerProgress}%` }} />
                 </div>
-              </div>
+                <div className="yl-reader-controls-bar">
+                  <div className="yl-reader-ctrl-group">
+                    <button
+                      type="button"
+                      className="yl-reader-ctrl-btn"
+                      onClick={() => setReaderFontSize((s) => Math.max(14, s - 1))}
+                      title="Achicar letra"
+                    >
+                      A−
+                    </button>
+                    <button
+                      type="button"
+                      className="yl-reader-ctrl-btn"
+                      onClick={() => setReaderFontSize((s) => Math.min(23, s + 1))}
+                      title="Agrandar letra"
+                    >
+                      A+
+                    </button>
+                  </div>
+
+                  <div className="yl-reader-ctrl-group">
+                    <button
+                      type="button"
+                      className={`yl-reader-ctrl-btn ${readerTheme === 'paper' ? 'active' : ''}`}
+                      onClick={() => setReaderTheme('paper')}
+                    >
+                      ☀️ Papel
+                    </button>
+                    <button
+                      type="button"
+                      className={`yl-reader-ctrl-btn ${readerTheme === 'sepia' ? 'active' : ''}`}
+                      onClick={() => setReaderTheme('sepia')}
+                    >
+                      Sepia
+                    </button>
+                    <button
+                      type="button"
+                      className={`yl-reader-ctrl-btn ${readerTheme === 'night' ? 'active' : ''}`}
+                      onClick={() => setReaderTheme('night')}
+                    >
+                      🌙 Noche
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`yl-reader-ctrl-btn yl-reader-speak-btn ${isSpeaking ? 'active' : ''}`}
+                    onClick={handleToggleSpeakArticle}
+                    title={isSpeaking ? 'Detener lectura en voz alta' : 'Escuchar nota en voz alta'}
+                  >
+                    {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                    <span>{isSpeaking ? 'Detener' : 'Escuchar'}</span>
+                  </button>
+                </div>
+
+                <div
+                  className={`yl-reader-sheet yl-theme-${readerTheme}`}
+                  style={{ ['--yl-reader-fs' as any]: `${readerFontSize}px` }}
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    const max = el.scrollHeight - el.clientHeight;
+                    setReaderProgress(max > 0 ? Math.min(100, Math.round((el.scrollTop / max) * 100)) : 0);
+                  }}
+                >
+                  {activeReaderItem.thumbnailUrl && (
+                    <div className="yl-reader-hero-img">
+                      <img src={activeReaderItem.thumbnailUrl} alt={activeReaderItem.title} referrerPolicy="no-referrer" />
+                    </div>
+                  )}
+                  <h2>{readerContent?.title || activeReaderItem.title}</h2>
+                  {activeReaderItem.description && (
+                    <p className="yl-reader-excerpt">{activeReaderItem.description}</p>
+                  )}
+
+                  {readerLoading ? (
+                    <div className="yl-reader-loading">
+                      Cargando modo lectura de <strong>{activeReaderItem.sourceName}</strong>…
+                    </div>
+                  ) : readerContent && readerContent.paragraphs.length > 0 ? (
+                    <div className="yl-reader-article-body">
+                      {readerContent.paragraphs.map((p, idx) => (
+                        <p key={`p-${idx}`}>{p}</p>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="yl-reader-policy-note">
+                    <span>
+                      Fuente original: <strong>{activeReaderItem.sourceName}</strong>.
+                    </span>
+                    <a
+                      href={activeReaderItem.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="yl-btn-primary"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <span>Ver nota en {activeReaderItem.sourceName}</span>
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -2118,6 +2239,188 @@ export default function YouLecturasPage() {
           background: rgba(10, 132, 255, 0.3);
           border-color: rgba(100, 210, 255, 0.7);
           color: #ffffff;
+        }
+        /* --- REDISEÑO APPLE NEWS + POCKET PARA LECTURAS MÓVIL --- */
+        .yl-tools-collapsible {
+          border-radius: 14px;
+          background: rgba(16, 20, 30, 0.72);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          overflow: hidden;
+        }
+        .yl-tools-toggle {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 9px 14px;
+          background: transparent;
+          border: 0;
+          color: rgba(245, 245, 247, 0.92);
+          font-size: 12.5px;
+          cursor: pointer;
+        }
+        .yl-tools-toggle:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .yl-tools-toggle-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 0;
+        }
+        .yl-tools-toggle-sub {
+          font-size: 11.5px;
+          color: rgba(235, 240, 255, 0.56);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .yl-tools-panel {
+          padding: 10px 12px 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .yl-tools-top-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .yl-carousels-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .yl-quick-portals,
+        .yl-topics-row {
+          display: flex;
+          flex-wrap: nowrap !important;
+          align-items: center;
+          gap: 7px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+          margin-top: 0 !important;
+          padding: 2px 0;
+        }
+        .yl-quick-portals::-webkit-scrollbar,
+        .yl-topics-row::-webkit-scrollbar {
+          display: none;
+        }
+        .yl-portal-chip,
+        .yl-topic-chip {
+          flex-shrink: 0;
+          white-space: nowrap;
+        }
+        .yl-reader-progress-track {
+          width: 100%;
+          height: 3px;
+          background: rgba(255, 255, 255, 0.1);
+          flex-shrink: 0;
+        }
+        .yl-reader-progress-fill {
+          height: 100%;
+          background: #0a84ff;
+          transition: width 0.12s linear;
+        }
+        .yl-reader-controls-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+          padding: 8px 14px;
+          background: rgba(16, 20, 30, 0.94);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+          flex-shrink: 0;
+        }
+        .yl-reader-ctrl-group {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .yl-reader-ctrl-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f5f7;
+          font-size: 11.5px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .yl-reader-ctrl-btn.active {
+          background: #0071e3;
+          border-color: #64d2ff;
+          color: #ffffff;
+        }
+        .yl-reader-speak-btn.active {
+          background: rgba(255, 55, 95, 0.25);
+          border-color: rgba(255, 100, 130, 0.6);
+          color: #ffd0da;
+        }
+        .yl-reader-sheet .yl-reader-article-body p {
+          font-size: var(--yl-reader-fs, 17px) !important;
+        }
+        .yl-reader-sheet.yl-theme-sepia {
+          background: #f8f1e3 !important;
+          color: #2b2116 !important;
+        }
+        .yl-reader-sheet.yl-theme-sepia h2,
+        .yl-reader-sheet.yl-theme-sepia .yl-reader-article-body p {
+          color: #2b2116 !important;
+        }
+        .yl-reader-sheet.yl-theme-night {
+          background: #111318 !important;
+          color: #e6e8ee !important;
+        }
+        .yl-reader-sheet.yl-theme-night h2,
+        .yl-reader-sheet.yl-theme-night .yl-reader-article-body p {
+          color: #e6e8ee !important;
+        }
+        .yl-reader-sheet.yl-theme-night .yl-reader-excerpt {
+          color: rgba(230, 232, 238, 0.72) !important;
+        }
+        @media (max-width: 640px) {
+          .yl-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          /* Tarjetas 2+ en formato revista móvil compacto: texto izquierda + foto cuadrada derecha */
+          .yl-grid .yl-item-card:not(:first-child) {
+            flex-direction: row-reverse !important;
+            align-items: center;
+            padding: 10px !important;
+            gap: 10px;
+          }
+          .yl-grid .yl-item-card:not(:first-child) .yl-thumb-btn {
+            width: 86px !important;
+            height: 86px !important;
+            aspect-ratio: 1 / 1 !important;
+            border-radius: 12px !important;
+            flex-shrink: 0;
+          }
+          .yl-grid .yl-item-card:not(:first-child) .yl-item-body {
+            padding: 0 !important;
+            min-width: 0;
+          }
+          .yl-grid .yl-item-card:not(:first-child) .yl-item-desc {
+            display: none !important;
+          }
+          .yl-grid .yl-item-card:not(:first-child) .yl-item-title {
+            font-size: 13.5px !important;
+            -webkit-line-clamp: 2 !important;
+          }
         }
       `}</style>
     </div>

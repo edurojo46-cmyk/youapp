@@ -6721,13 +6721,13 @@ export default function MiSenal1() {
           padding: 0 14px 14px;
         }
         .ms-player-card .ms-smartbar-slot .bv-root {
-          background: rgba(255, 255, 255, 0.10) !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-          border: 1px solid rgba(255, 255, 255, 0.20) !important;
+          background: rgba(16, 18, 24, 0.92) !important;
+          backdrop-filter: blur(18px) saturate(160%) !important;
+          -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+          border: 1px solid rgba(255, 255, 255, 0.2) !important;
           box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.22),
-            0 8px 24px rgba(0, 0, 0, 0.18) !important;
+            inset 0 1px 0 rgba(255, 255, 255, 0.16),
+            0 8px 24px rgba(0, 0, 0, 0.32) !important;
         }
         .ms-fs-exit-btn {
           position: absolute;
@@ -6830,24 +6830,38 @@ export default function MiSenal1() {
         .ms-mitv-info-bar {
           display: flex;
           flex-direction: column;
-          gap: 6px;
-          padding: 10px 12px 8px;
-          background: rgba(16, 18, 24, 0.72);
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          gap: 5px;
+          padding: 9px 12px 7px;
+          background: rgba(16, 18, 24, 0.88);
+          border-top: 1px solid rgba(255, 255, 255, 0.12);
         }
         .ms-mitv-top-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
-          flex-wrap: wrap;
+          gap: 6px;
+          flex-wrap: nowrap;
         }
-        .ms-mitv-social-left,
+        .ms-mitv-social-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          min-width: 0;
+          flex: 1;
+        }
         .ms-mitv-actions-right {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          min-width: 0;
+          gap: 5px;
+          flex-shrink: 0;
+        }
+        @media (max-width: 640px) {
+          .ms-en-pantalla-pill {
+            display: none;
+          }
+          .ms-channel-profile-pill {
+            max-width: 115px;
+          }
         }
         .ms-top-icon-btn {
           height: 30px;

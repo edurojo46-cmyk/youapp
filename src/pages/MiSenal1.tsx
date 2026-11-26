@@ -399,6 +399,32 @@ export default function MiSenal1() {
   const isSharedSignalView = searchParams.get('sharedSignal') === '1';
   const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
   const [playingVideoMeta, setPlayingVideoMeta] = useState<VideoPublicMeta | null>(null);
+
+  useEffect(() => {
+    loadSocialGraphFromCloud()
+      .then((merged) => {
+        if (merged) setSocialGraph(merged);
+      })
+      .catch(() => {});
+  }, []);
+
+  const {
+    activeSignal,
+    currentBlockIndex,
+    persistStatus,
+    setSignal,
+    mergeCloudSignals,
+    renameSignal,
+    getSavedSignal,
+    moveChannelGroup,
+    removeChannelGroup,
+    next,
+    previous,
+    insert,
+    remove,
+    jumpTo
+  } = useSignalStore();
+
   const [collabConfig, setCollabConfig] = useState<SignalCollabConfig>(() =>
     loadSignalCollabConfig(activeSignal?.id || '')
   );
@@ -551,31 +577,6 @@ export default function MiSenal1() {
     setCollabConfig(nextCfg);
     setCuratedToast('Aporte rechazado.');
   };
-
-  useEffect(() => {
-    loadSocialGraphFromCloud()
-      .then((merged) => {
-        if (merged) setSocialGraph(merged);
-      })
-      .catch(() => {});
-  }, []);
-
-  const {
-    activeSignal,
-    currentBlockIndex,
-    persistStatus,
-    setSignal,
-    mergeCloudSignals,
-    renameSignal,
-    getSavedSignal,
-    moveChannelGroup,
-    removeChannelGroup,
-    next,
-    previous,
-    insert,
-    remove,
-    jumpTo
-  } = useSignalStore();
 
   const playbackState = usePlayerStore((state) => state.playbackState);
   const isPlaying = playbackState === 'playing';

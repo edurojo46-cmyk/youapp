@@ -1294,9 +1294,18 @@ function saveVerticalCache() {
   }
 }
 
+const MULTI_PROV_CACHE = new Map<string, { items: SearchVideoItem[]; expires: number }>();
+const MULTI_PROV_TTL_MS = 5 * 60 * 1000;
+
 async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false): Promise<SearchVideoItem[]> {
   const clean = rawQuery.trim();
   if (!trendingMode && (!clean || normText(clean) === 'todos')) return [];
+
+  const cacheKey = trendingMode ? '__trending__' : normText(clean);
+  const cached = MULTI_PROV_CACHE.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    return cached.items;
+  }
 
   // 1. Vimeo (Supabase Edge Function `vimeo-provider`, 100% embebible HD, 0 cuota YouTube)
   const vimeoPromise = (async (): Promise<SearchVideoItem[]> => {
@@ -1310,7 +1319,7 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
         ((import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY as string) ||
         'sb_publishable_IWSDC0aWUR8cvOPrwYSaqg_JU8aASm8';
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 7000);
+      const timer = window.setTimeout(() => controller.abort(), 3200);
       const res = await fetch(`${sbUrl}/functions/v1/vimeo-provider`, {
         method: 'POST',
         headers: {
@@ -1366,7 +1375,7 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
       const ptQuery = trendingMode ? 'documentary cinema music science' : clean;
       if (ptQuery.length < 2) return [];
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 5500);
+      const timer = window.setTimeout(() => controller.abort(), 2400);
       const ptUrl = `https://sepiasearch.org/api/v1/search/videos?search=${encodeURIComponent(ptQuery)}&count=6&nsfw=false&sort=${trendingMode ? '-views' : '-match'}`;
       const res = await fetch(ptUrl, { signal: controller.signal });
       window.clearTimeout(timer);
@@ -1420,7 +1429,7 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
         : `mediatype:(movies) AND (${safeTerm})`;
       if (!trendingMode && safeTerm.length < 2) return [];
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 5500);
+      const timer = window.setTimeout(() => controller.abort(), 2400);
       const arUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(qExpr)}&fl[]=identifier,title,creator,downloads,publicdate&sort[]=downloads+desc&rows=6&output=json`;
       const res = await fetch(arUrl, { signal: controller.signal });
       window.clearTimeout(timer);
@@ -1473,7 +1482,11 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
       }
     }
   }
-  return out.slice(0, 12);
+  const finalOut = out.slice(0, 12);
+  if (finalOut.length > 0) {
+    MULTI_PROV_CACHE.set(cacheKey, { items: finalOut, expires: Date.now() + MULTI_PROV_TTL_MS });
+  }
+  return finalOut;
 }
 
 function interleaveMultiProvider(
@@ -1721,14 +1734,20 @@ export default function ChannelSearch() {
       setCommitted(`Mi Algoritmo · ${targetAlgo?.name || 'Personalizado'}`);
       setStatus('loading');
       try {
-        const [items, dmTrending] = await Promise.all([
-          fetchMyAlgorithmFeed(targetAlgo, userRegion, getHist(), likedVideoIds),
-          searchDailymotionAndVimeo('', true).catch(() => [])
-        ]);
+        // Dispara Vimeo/PeerTube/Archive en segundo plano SIN bloquear el primer pintado (~200 ms)
+        const multiTrendingPromise = searchDailymotionAndVimeo('', true).catch(() => []);
+        const items = await fetchMyAlgorithmFeed(targetAlgo, userRegion, getHist(), likedVideoIds);
         if (searchRaceRef.current !== raceId) return;
-        setResults(interleaveMultiProvider(items, dmTrending).slice(0, 56));
+        setResults(items.slice(0, 56));
         setHasMore(true);
         setPageOffset(50);
+        setStatus('done');
+
+        // Hidratación progresiva en segundo plano (sin demorar la pantalla)
+        void multiTrendingPromise.then((extra) => {
+          if (searchRaceRef.current !== raceId || extra.length === 0) return;
+          setResults((prev) => interleaveMultiProvider(prev, extra).slice(0, 56));
+        });
       } finally {
         if (searchRaceRef.current === raceId) setStatus('done');
       }
@@ -1805,11 +1824,33 @@ export default function ChannelSearch() {
           .slice(0, 20)
           .map((x) => x.it);
 
-        // 1. Búsqueda instantánea semántica 0-cuota en base nube `youapp_index` + catálogo local + Dailymotion/Vimeo
-        const [indexHits, localMusicHits, multiProvHits] = await Promise.all([
+        // 1. Búsqueda instantánea semántica 0-cuota en base nube `youapp_index` + catálogo local
+        //    Vimeo/PeerTube/Archive corren en paralelo SIN bloquear el primer pintado (< 200 ms)
+        let resolvedMultiProv: SearchVideoItem[] = [];
+        const multiProvPromise = searchDailymotionAndVimeo(normalizedQ)
+          .then((extra) => {
+            resolvedMultiProv = extra;
+            if (searchRaceRef.current === raceId && extra.length > 0) {
+              setResults((prev) => {
+                const next = interleaveMultiProvider(prev, extra, queryNorm).slice(0, 56);
+                if (next.length > 0) {
+                  SEARCH_RAM_CACHE.set(cacheKey, {
+                    items: next,
+                    hasMore: next.length >= 16,
+                    expires: Date.now() + SEARCH_CACHE_TTL_MS
+                  });
+                }
+                return next;
+              });
+              setStatus('done');
+            }
+            return extra;
+          })
+          .catch(() => [] as SearchVideoItem[]);
+
+        const [indexHits, localMusicHits] = await Promise.all([
           searchYouAppIndexDirect(normalizedQ, categoryTag, 0, userRegion).catch(() => []),
-          Promise.resolve(searchLocalAtlasMusic(normalizedQ, categoryTag)),
-          searchDailymotionAndVimeo(normalizedQ).catch(() => [])
+          Promise.resolve(searchLocalAtlasMusic(normalizedQ, categoryTag))
         ]);
 
         if (searchRaceRef.current !== raceId) return;
@@ -1842,10 +1883,10 @@ export default function ChannelSearch() {
           if (!mergedMap.has(item.videoId)) mergedMap.set(item.videoId, item);
         }
 
-        // Mostrar resultados instantáneos de la base ATLAS intercalados con Dailymotion / Vimeo (hasta 50)
+        // Mostrar resultados instantáneos de la base ATLAS (~150-250 ms) + multi-plataforma si ya llegó
         let mergedList = interleaveMultiProvider(
           Array.from(mergedMap.values()),
-          multiProvHits,
+          resolvedMultiProv,
           queryNorm
         ).slice(0, 50);
         if (mergedList.length > 0) {
@@ -1955,7 +1996,7 @@ export default function ChannelSearch() {
           const addedPrimary = mapYtBatch(ytPrimary);
           mergedList = interleaveMultiProvider(
             Array.from(mergedMap.values()),
-            multiProvHits,
+            resolvedMultiProv,
             queryNorm
           ).slice(0, 50);
           if (mergedList.length > 0) {
@@ -1974,7 +2015,7 @@ export default function ChannelSearch() {
           if (addedAlts.length > 0) {
             mergedList = interleaveMultiProvider(
               Array.from(mergedMap.values()),
-              multiProvHits,
+              resolvedMultiProv,
               queryNorm
             ).slice(0, 50);
             void absorbYouTubePointersToAtlas(addedAlts, categoryTag);
@@ -1982,6 +2023,14 @@ export default function ChannelSearch() {
         }
 
         if (searchRaceRef.current !== raceId) return;
+        // Si ATLAS + YouTube no devolvieron nada (ej. búsqueda exclusiva de Vimeo/PeerTube/Archive), esperar su promesa
+        if (mergedList.length === 0) {
+          const waitedExtra = await multiProvPromise;
+          if (searchRaceRef.current !== raceId) return;
+          if (waitedExtra.length > 0) {
+            mergedList = interleaveMultiProvider([], waitedExtra, queryNorm).slice(0, 50);
+          }
+        }
         const canLoadMore = mergedList.length >= 16;
         setResults(mergedList);
         setHasMore(canLoadMore);

@@ -1714,12 +1714,13 @@ export default function ChannelSearch() {
           return;
         }
         if (prov === 'peertube') {
-          if (func === 'playVideo') win.postMessage({ type: 'api', action: 'play' }, '*');
-          else if (func === 'pauseVideo') win.postMessage({ type: 'api', action: 'pause' }, '*');
-          else if (func === 'mute') win.postMessage({ type: 'api', action: 'setVolume', value: 0 }, '*');
-          else if (func === 'unMute') win.postMessage({ type: 'api', action: 'setVolume', value: 1 }, '*');
+          const id = Date.now() % 1000000;
+          if (func === 'playVideo') win.postMessage(JSON.stringify({ method: 'peertube::play', id }), '*');
+          else if (func === 'pauseVideo') win.postMessage(JSON.stringify({ method: 'peertube::pause', id }), '*');
+          else if (func === 'mute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 0, id }), '*');
+          else if (func === 'unMute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 1, id }), '*');
           else if (func === 'seekTo' && typeof args[0] === 'number') {
-            win.postMessage({ type: 'api', action: 'seek', value: args[0] }, '*');
+            win.postMessage(JSON.stringify({ method: 'peertube::seek', params: args[0], id }), '*');
           }
           return;
         }

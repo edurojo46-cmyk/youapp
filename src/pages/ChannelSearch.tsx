@@ -1629,6 +1629,7 @@ export default function ChannelSearch() {
   const searchRaceRef = useRef(0);
 
   const [previewIsPlaying, setPreviewIsPlaying] = useState(true);
+  const [previewStartSec, setPreviewStartSec] = useState(0);
   const [isPreviewFrameReady, setIsPreviewFrameReady] = useState(false);
   const [isMiniPlayerManual, setIsMiniPlayerManual] = useState(false);
   const [isScrolledPastPlayer, setIsScrolledPastPlayer] = useState(false);
@@ -2370,6 +2371,7 @@ export default function ChannelSearch() {
   // Sincroniza el video activo con el Mini-reproductor Global para que te acompañe al ir a /lecturas u otras secciones
   useEffect(() => {
     setIsPreviewFrameReady(false);
+    setPreviewStartSec(0);
     if (!previewVideo) return;
     setGlobalMiniVideo({
       videoId: previewVideo.videoId,
@@ -3374,26 +3376,33 @@ export default function ChannelSearch() {
                 const isNonYoutube = Boolean(previewVideo.provider && previewVideo.provider !== 'youtube');
                 if (isNonYoutube) {
                   const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+                  const jumpToMoment = (sec: number) => {
+                    setPreviewStartSec(sec);
+                    setIsMomentsMosaic(false);
+                    const st = usePlayerStore.getState();
+                    st.setProgress(sec, st.duration || dur);
+                  };
                   return (
                     <div className="ys-you4-grid">
                       {quadMoments.map((m) => {
-                        const vimeoMomentSrc =
+                        const momentIframeSrc =
                           previewVideo.provider === 'vimeo'
                             ? `https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&muted=1&dnt=1#t=${m.startSec}s`
-                            : null;
+                            : previewVideo.provider === 'peertube' && previewVideo.embedUrl
+                              ? `${previewVideo.embedUrl}&muted=1&start=${m.startSec}`
+                              : previewVideo.provider === 'archive'
+                                ? `${previewVideo.embedUrl || `https://archive.org/embed/${encodeURIComponent(previewVideo.videoId.replace(/^ar_/, ''))}?autoplay=1`}&start=${m.startSec}`
+                                : null;
                         return (
                           <div
                             key={m.id}
                             className="ys-you4-cell"
                             style={{ cursor: 'pointer' }}
-                            onClick={() => {
-                              setIsMomentsMosaic(false);
-                              window.setTimeout(() => handlePreviewSeek(m.startSec), 350);
-                            }}
+                            onClick={() => jumpToMoment(m.startSec)}
                           >
-                            {vimeoMomentSrc ? (
+                            {momentIframeSrc ? (
                               <iframe
-                                src={vimeoMomentSrc}
+                                src={momentIframeSrc}
                                 title={m.title}
                                 allow="autoplay; fullscreen; picture-in-picture"
                                 style={{ pointerEvents: 'none' }}
@@ -3410,8 +3419,7 @@ export default function ChannelSearch() {
                               className="ys-you4-audio-pill"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setIsMomentsMosaic(false);
-                                window.setTimeout(() => handlePreviewSeek(m.startSec), 350);
+                                jumpToMoment(m.startSec);
                               }}
                             >
                               <span>{m.title} · {fmtSec(m.startSec)}</span>
@@ -3499,8 +3507,8 @@ export default function ChannelSearch() {
                 ) : previewVideo.provider === 'vimeo' ? (
                   <iframe
                     ref={previewIframeRef}
-                    key={previewVideo.videoId}
-                    src={`https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1&api=1`}
+                    key={`${previewVideo.videoId}-${previewStartSec}`}
+                    src={`https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1&api=1${previewStartSec > 0 ? `#t=${previewStartSec}s` : ''}`}
                     title={previewVideo.title}
                     onLoad={() => {
                       setIsPreviewFrameReady(true);
@@ -3515,8 +3523,8 @@ export default function ChannelSearch() {
                 ) : previewVideo.provider === 'peertube' && previewVideo.embedUrl ? (
                   <iframe
                     ref={previewIframeRef}
-                    key={previewVideo.videoId}
-                    src={previewVideo.embedUrl}
+                    key={`${previewVideo.videoId}-${previewStartSec}`}
+                    src={`${previewVideo.embedUrl}${previewStartSec > 0 ? `&start=${previewStartSec}` : ''}`}
                     title={previewVideo.title}
                     onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"
@@ -3525,11 +3533,11 @@ export default function ChannelSearch() {
                 ) : previewVideo.provider === 'archive' ? (
                   <iframe
                     ref={previewIframeRef}
-                    key={previewVideo.videoId}
-                    src={
+                    key={`${previewVideo.videoId}-${previewStartSec}`}
+                    src={`${
                       previewVideo.embedUrl ||
                       `https://archive.org/embed/${encodeURIComponent(previewVideo.videoId.replace(/^ar_/, ''))}?autoplay=1`
-                    }
+                    }${previewStartSec > 0 ? `&start=${previewStartSec}` : ''}`}
                     title={previewVideo.title}
                     frameBorder="0"
                     referrerPolicy="no-referrer"
@@ -3541,8 +3549,8 @@ export default function ChannelSearch() {
                 ) : (previewVideo.provider === 'odysee' || previewVideo.provider === 'twitch') && previewVideo.embedUrl ? (
                   <iframe
                     ref={previewIframeRef}
-                    key={previewVideo.videoId}
-                    src={previewVideo.embedUrl}
+                    key={`${previewVideo.videoId}-${previewStartSec}`}
+                    src={`${previewVideo.embedUrl}${previewStartSec > 0 && previewVideo.provider === 'odysee' ? `?t=${previewStartSec}` : ''}`}
                     title={previewVideo.title}
                     onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"

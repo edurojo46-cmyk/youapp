@@ -32,8 +32,6 @@ import {
   Share2,
   Forward,
   MoreHorizontal,
-  Maximize2,
-  Minimize2,
   UserPlus,
   UserCheck
 } from 'lucide-react';
@@ -129,8 +127,6 @@ export const SmartBar: React.FC<SmartBarProps> = ({
   isSubscribedExternal,
   onToggleSubscribeExternal,
   subscribeTitle,
-  isFullscreen = false,
-  onToggleFullscreen,
   isMutedExternal,
   onToggleMuteExternal
 }) => {
@@ -445,6 +441,17 @@ export const SmartBar: React.FC<SmartBarProps> = ({
 
         return (
           <div className="bv-scrub-wrap" aria-label="Barra de progreso táctil del video">
+            {unifiedAppleMode && onToggleMuteExternal && (
+              <button
+                type="button"
+                className="bv-apple-ctrl bv-scrub-mute-btn"
+                onClick={onToggleMuteExternal}
+                title={isMutedExternal ? 'Activar sonido' : 'Silenciar'}
+                aria-label={isMutedExternal ? 'Activar sonido' : 'Silenciar'}
+              >
+                {isMutedExternal ? <VolumeX size={13} /> : <Volume2 size={13} />}
+              </button>
+            )}
             {!unifiedAppleMode && (capabilities.ownsPlayerControls || Boolean(onPlayPauseProp)) && (
               <>
                 <button
@@ -585,7 +592,7 @@ export const SmartBar: React.FC<SmartBarProps> = ({
             />
           </div>
 
-          {/* Centro: controles esenciales finos */}
+          {/* Centro: solo Anterior · Play/Pausa · Siguiente */}
           <div className="bv-apple-center">
             <button
               type="button"
@@ -614,28 +621,6 @@ export const SmartBar: React.FC<SmartBarProps> = ({
             >
               <SkipForward size={14} />
             </button>
-            {onToggleMuteExternal && (
-              <button
-                type="button"
-                className="bv-apple-ctrl"
-                title={isMutedExternal ? 'Activar sonido' : 'Silenciar'}
-                aria-label={isMutedExternal ? 'Activar sonido' : 'Silenciar'}
-                onClick={onToggleMuteExternal}
-              >
-                {isMutedExternal ? <VolumeX size={14} /> : <Volume2 size={14} />}
-              </button>
-            )}
-            {onToggleFullscreen && (
-              <button
-                type="button"
-                className="bv-apple-ctrl"
-                title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                onClick={onToggleFullscreen}
-              >
-                {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-              </button>
-            )}
           </div>
 
           {/* Derecha: íconos opcionales + menú discreto ⋯ */}

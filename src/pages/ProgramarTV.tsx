@@ -2166,68 +2166,80 @@ export default function ProgramarTV() {
                           })
                         : null;
                     return (
-                      <div className="mitv-top-social-icons">
-                        <button
-                          type="button"
-                          className={`mitv-top-icon-btn ${isLiked ? 'is-liked' : ''}`}
-                          onClick={() => {
-                            setSocialGraph((prev) => {
-                              const { next, active } = toggleInList(prev.likedVideoKeys, likeKey);
-                              setToast(
-                                active
-                                  ? 'Me gusta guardado en YOUAPP.'
-                                  : 'Me gusta quitado de YOUAPP.'
-                              );
-                              return saveSocialGraph({ ...prev, likedVideoKeys: next });
-                            });
-                          }}
-                          title={isLiked ? 'Quitar Me gusta' : 'Me gusta en YOUAPP'}
-                          aria-label="Me gusta"
-                          aria-pressed={isLiked}
-                        >
-                          <Heart size={15} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
-                        </button>
-                        <button
-                          type="button"
-                          className={`mitv-top-icon-btn ${isFollowed ? 'is-subbed' : ''}`}
-                          onClick={() => {
-                            const willSubscribe = !isFollowed;
-                            setSocialGraph((prev) => {
-                              const { next } = toggleInList(prev.followedSignalIds, followKey);
-                              return saveSocialGraph({ ...prev, followedSignalIds: next });
-                            });
-                            if (willSubscribe && ytSubUrl) {
-                              window.open(
-                                ytSubUrl,
-                                'youapp_yt_sub',
-                                'width=540,height=660,noopener,noreferrer'
-                              );
-                              setToast(
-                                `Suscripto a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
-                              );
-                            } else {
-                              setToast(
-                                willSubscribe
-                                  ? `Suscripto a «${currentItem.author}» en YOUAPP.`
-                                  : `Dejaste de seguir a «${currentItem.author}» en YOUAPP.`
-                              );
+                      <div className="mitv-top-social-row">
+                        <div className="mitv-top-social-icons">
+                          <button
+                            type="button"
+                            className={`mitv-top-icon-btn ${isLiked ? 'is-liked' : ''}`}
+                            onClick={() => {
+                              setSocialGraph((prev) => {
+                                const { next, active } = toggleInList(prev.likedVideoKeys, likeKey);
+                                setToast(
+                                  active
+                                    ? 'Me gusta guardado en YOUAPP.'
+                                    : 'Me gusta quitado de YOUAPP.'
+                                );
+                                return saveSocialGraph({ ...prev, likedVideoKeys: next });
+                              });
+                            }}
+                            title={isLiked ? 'Quitar Me gusta' : 'Me gusta en YOUAPP'}
+                            aria-label="Me gusta"
+                            aria-pressed={isLiked}
+                          >
+                            <Heart size={15} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
+                          </button>
+                          <button
+                            type="button"
+                            className={`mitv-top-icon-btn ${isFollowed ? 'is-subbed' : ''}`}
+                            onClick={() => {
+                              const willSubscribe = !isFollowed;
+                              setSocialGraph((prev) => {
+                                const { next } = toggleInList(prev.followedSignalIds, followKey);
+                                return saveSocialGraph({ ...prev, followedSignalIds: next });
+                              });
+                              if (willSubscribe && ytSubUrl) {
+                                window.open(
+                                  ytSubUrl,
+                                  'youapp_yt_sub',
+                                  'width=540,height=660,noopener,noreferrer'
+                                );
+                                setToast(
+                                  `Suscripto a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
+                                );
+                              } else {
+                                setToast(
+                                  willSubscribe
+                                    ? `Suscripto a «${currentItem.author}» en YOUAPP.`
+                                    : `Dejaste de seguir a «${currentItem.author}» en YOUAPP.`
+                                );
+                              }
+                            }}
+                            title={
+                              ytSubUrl
+                                ? 'Suscribirse en YOUAPP y YouTube'
+                                : isFollowed
+                                  ? 'Suscripto'
+                                  : 'Suscribirse'
                             }
-                          }}
-                          title={
-                            ytSubUrl
-                              ? 'Suscribirse en YOUAPP y YouTube'
-                              : isFollowed
-                                ? 'Suscripto'
-                                : 'Suscribirse'
-                          }
-                          aria-label={isFollowed ? 'Suscripto' : 'Suscribirse'}
-                          aria-pressed={isFollowed}
+                            aria-label={isFollowed ? 'Suscripto' : 'Suscribirse'}
+                            aria-pressed={isFollowed}
+                          >
+                            {isFollowed ? (
+                              <UserCheck size={15} strokeWidth={2.2} />
+                            ) : (
+                              <UserPlus size={15} strokeWidth={2.1} />
+                            )}
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="mitv-top-icon-btn mitv-top-fs-btn"
+                          onClick={() => void handleToggleFullscreen()}
+                          title={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
+                          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
                         >
-                          {isFollowed ? (
-                            <UserCheck size={15} strokeWidth={2.2} />
-                          ) : (
-                            <UserPlus size={15} strokeWidth={2.1} />
-                          )}
+                          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                         </button>
                       </div>
                     );
@@ -3253,10 +3265,21 @@ export default function ProgramarTV() {
           border-color: rgba(255, 105, 97, 0.6);
           color: #ffffff;
         }
+        .mitv-top-social-row {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          min-width: 0;
+        }
         .mitv-top-social-icons {
           display: inline-flex;
           align-items: center;
           gap: 6px;
+        }
+        .mitv-top-fs-btn {
+          margin-left: auto;
         }
         .mitv-top-icon-btn {
           width: 28px;

@@ -2656,11 +2656,38 @@ export default function ChannelSearch() {
       })
       .catch(() => {});
 
-    // Escuchar progreso real (currentTime / duration) del iframe YouTube
+    // Escuchar progreso real (currentTime / duration) de YouTube y Vimeo
     const onYtMsg = (ev: MessageEvent) => {
       if (!previewIframeRef.current || ev.source !== previewIframeRef.current.contentWindow) return;
       try {
         const payload = typeof ev.data === 'string' ? JSON.parse(ev.data) : ev.data;
+        // Vimeo Player API events (playProgress / timeupdate / play / pause / ready)
+        if (previewVideo.provider === 'vimeo') {
+          if (payload?.event === 'ready') {
+            const w = previewIframeRef.current?.contentWindow;
+            w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'playProgress' }), '*');
+            w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), '*');
+            w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'play' }), '*');
+            w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'pause' }), '*');
+          } else if (
+            (payload?.event === 'playProgress' || payload?.event === 'timeupdate') &&
+            payload?.data
+          ) {
+            const sec = typeof payload.data.seconds === 'number' ? payload.data.seconds : null;
+            const dur = typeof payload.data.duration === 'number' && payload.data.duration > 0 ? payload.data.duration : null;
+            if (sec !== null || dur !== null) {
+              const st = usePlayerStore.getState();
+              st.setProgress(sec ?? st.currentTime, dur ?? st.duration);
+            }
+          } else if (payload?.event === 'play') {
+            setPreviewIsPlaying(true);
+            usePlayerStore.getState().setIsPlaying(true);
+          } else if (payload?.event === 'pause') {
+            setPreviewIsPlaying(false);
+            usePlayerStore.getState().setIsPlaying(false);
+          }
+          return;
+        }
         if (payload?.event === 'infoDelivery' && payload?.info) {
           const ct = typeof payload.info.currentTime === 'number' ? payload.info.currentTime : null;
           const dur = typeof payload.info.duration === 'number' && payload.info.duration > 0 ? payload.info.duration : null;
@@ -2697,10 +2724,14 @@ export default function ChannelSearch() {
 
     const pingTimer = window.setInterval(() => {
       try {
-        previewIframeRef.current?.contentWindow?.postMessage(
-          JSON.stringify({ event: 'listening', id: 1 }),
-          '*'
-        );
+        const w = previewIframeRef.current?.contentWindow;
+        if (!w) return;
+        if (previewVideo.provider === 'vimeo') {
+          w.postMessage(JSON.stringify({ method: 'addEventListener', value: 'playProgress' }), '*');
+          w.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), '*');
+        } else if (!previewVideo.provider || previewVideo.provider === 'youtube') {
+          w.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+        }
       } catch {
         // ignore
       }

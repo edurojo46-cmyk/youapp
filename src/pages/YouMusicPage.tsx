@@ -6,13 +6,13 @@ import {
   BookmarkCheck,
   Cast,
   Check,
+  ChevronDown,
   ExternalLink,
   Heart,
   ListMusic,
   Maximize2,
   Minimize2,
   Music,
-  Pause,
   Pencil,
   PictureInPicture2,
   Play,
@@ -20,8 +20,6 @@ import {
   Radio,
   Search,
   Share2,
-  SkipBack,
-  SkipForward,
   Smartphone,
   Sparkles,
   Trash2,
@@ -876,6 +874,7 @@ export default function YouMusicPage() {
   }, [currentItem, items, safeIndex]);
 
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isMusicalSignalOpen, setIsMusicalSignalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMomentsMosaic, setIsMomentsMosaic] = useState(false);
   const [isYou4Mode, setIsYou4Mode] = useState(false);
@@ -1419,6 +1418,114 @@ export default function YouMusicPage() {
           </div>
         )}
 
+        {/* 0. BARRA SUTIL DESPLEGABLE ARRIBA: MI SEÑAL MUSICAL (igual que MiTV) */}
+        <section
+          className={`ymv1-ms-collapsible ${isMusicalSignalOpen ? 'is-open' : ''}`}
+          aria-label="Mi Señal Musical"
+        >
+          <button
+            type="button"
+            className="ymv1-ms-toggle"
+            onClick={() => setIsMusicalSignalOpen((v) => !v)}
+            aria-expanded={isMusicalSignalOpen}
+          >
+            <span className="ymv1-ms-toggle-left">
+              <Radio size={13} color="#64d2ff" />
+              <strong>Mi Señal Musical</strong>
+              <span className="ymv1-ms-toggle-count">
+                {savedMusicalSignalPlaylists.length}{' '}
+                {savedMusicalSignalPlaylists.length === 1 ? 'guardada' : 'guardadas'}
+              </span>
+            </span>
+            <ChevronDown
+              size={15}
+              style={{
+                transition: 'transform 0.18s ease',
+                transform: isMusicalSignalOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                opacity: 0.75
+              }}
+            />
+          </button>
+
+          {isMusicalSignalOpen && (
+            <div className="ymv1-ms-panel">
+              {savedMusicalSignalPlaylists.length === 0 ? (
+                <div className="ymv1-empty" style={{ padding: '14px 12px' }}>
+                  <Radio size={20} color="#0071e3" />
+                  <strong>Todavía no guardaste ninguna señal musical.</strong>
+                  <span>
+                    Armá tu playlist abajo y tocá <strong>Guardar en Mi Señal Musical</strong>.
+                  </span>
+                </div>
+              ) : (
+                <div className="ymv1-ms-grid">
+                  {savedMusicalSignalPlaylists.map((pl) => {
+                    const coverThumb = pl.items[0]?.thumbnailUrl;
+                    const signalId = `signal-mi-senal-musical-${pl.id.replace(/^pl-/, '')}`;
+                    return (
+                      <div key={pl.id} className="ymv1-ms-item">
+                        <div
+                          className="ymv1-ms-cover"
+                          style={coverThumb ? { backgroundImage: `url(${coverThumb})` } : undefined}
+                          onClick={() => {
+                            setSharedPlaylist(null);
+                            setSearchParams({}, { replace: true });
+                            updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
+                            setCurrentIndex(0);
+                            setIsMusicalSignalOpen(false);
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setSharedPlaylist(null);
+                              updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
+                              setCurrentIndex(0);
+                              setIsMusicalSignalOpen(false);
+                            }
+                          }}
+                        >
+                          <span className="ymv1-ms-play-chip">
+                            <Play size={13} fill="#ffffff" color="#ffffff" /> Escuchar
+                          </span>
+                        </div>
+                        <div className="ymv1-ms-body">
+                          <strong>{pl.name}</strong>
+                          <span>
+                            {pl.items.length} {pl.items.length === 1 ? 'canción' : 'canciones'}
+                          </span>
+                          <div className="ymv1-ms-actions">
+                            <button
+                              type="button"
+                              className="ymv1-pill-btn"
+                              onClick={() => {
+                                syncPlaylistAsSignal(pl);
+                                navigate(`/misenal1?signal=${encodeURIComponent(signalId)}`);
+                              }}
+                              title="Abrir esta señal musical en Mi Señal"
+                            >
+                              <Tv size={12} /> Abrir en Mi Señal
+                            </button>
+                            <button
+                              type="button"
+                              className="ymv1-icon-btn"
+                              onClick={() => handleRemoveFromMiSenalMusical(pl.id)}
+                              title="Quitar de Mi Señal Musical"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
         {/* 1. ARRIBA DE TODO: REPRODUCTOR IDÉNTICO A MITV (1 PANTALLA / MOMENTOS 4x / YOU4 + BARRA APPLE 3 PUNTOS) */}
         {currentItem && (
           <section
@@ -1729,96 +1836,6 @@ export default function YouMusicPage() {
             </div>
           </section>
         )}
-
-        {/* 1B. MIS SEÑALES MUSICALES */}
-        <section className="ymv1-musical-signal-card" aria-label="Mi Señal Musical">
-          <div className="ymv1-ms-head">
-            <div className="ymv1-ms-title">
-              <span className="ymv1-ms-badge">
-                <Radio size={12} /> MI SEÑAL MUSICAL
-              </span>
-              <h2>Tus señales musicales guardadas</h2>
-            </div>
-            <span className="ymv1-ms-count">
-              {savedMusicalSignalPlaylists.length}{' '}
-              {savedMusicalSignalPlaylists.length === 1 ? 'señal musical' : 'señales musicales'}
-            </span>
-          </div>
-
-          {savedMusicalSignalPlaylists.length === 0 ? (
-            <div className="ymv1-empty">
-              <Radio size={26} color="#0071e3" />
-              <strong>Todavía no guardaste ninguna señal musical.</strong>
-              <span>
-                Armá tu playlist abajo y tocá <strong>Guardar en Mi Señal Musical</strong> para
-                tenerla siempre acá arriba y en tu selector de <strong>Mi Señal</strong>.
-              </span>
-            </div>
-          ) : (
-            <div className="ymv1-ms-grid">
-              {savedMusicalSignalPlaylists.map((pl) => {
-                const coverThumb = pl.items[0]?.thumbnailUrl;
-                const signalId = `signal-mi-senal-musical-${pl.id.replace(/^pl-/, '')}`;
-                return (
-                  <div key={pl.id} className="ymv1-ms-item">
-                    <div
-                      className="ymv1-ms-cover"
-                      style={coverThumb ? { backgroundImage: `url(${coverThumb})` } : undefined}
-                      onClick={() => {
-                        setSharedPlaylist(null);
-                        setSearchParams({}, { replace: true });
-                        updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
-                        setCurrentIndex(0);
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setSharedPlaylist(null);
-                          updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
-                          setCurrentIndex(0);
-                        }
-                      }}
-                    >
-                      <span className="ymv1-ms-play-chip">
-                        <Play size={13} fill="#ffffff" color="#ffffff" /> Escuchar
-                      </span>
-                    </div>
-                    <div className="ymv1-ms-body">
-                      <strong>{pl.name}</strong>
-                      <span>
-                        {pl.items.length} {pl.items.length === 1 ? 'canción' : 'canciones'} ·
-                        Punteros YouTube
-                      </span>
-                      <div className="ymv1-ms-actions">
-                        <button
-                          type="button"
-                          className="ymv1-pill-btn"
-                          onClick={() => {
-                            syncPlaylistAsSignal(pl);
-                            navigate(`/misenal1?signal=${encodeURIComponent(signalId)}`);
-                          }}
-                          title="Abrir esta señal musical en Mi Señal"
-                        >
-                          <Tv size={12} /> Abrir en Mi Señal
-                        </button>
-                        <button
-                          type="button"
-                          className="ymv1-icon-btn"
-                          onClick={() => handleRemoveFromMiSenalMusical(pl.id)}
-                          title="Quitar de Mi Señal Musical"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
 
         {/* 1B. MODO CORRER V1 — MANTENER PANTALLA ENCENDIDA (SCREEN WAKE LOCK) */}
         <section className="ymv1-run-card" aria-label="Modo Correr">
@@ -2873,6 +2890,44 @@ export default function YouMusicPage() {
           color: #ffd3d0;
           font-size: 12.5px;
           font-weight: 600;
+        }
+        .ymv1-ms-collapsible {
+          border-radius: 14px;
+          background: rgba(16, 20, 30, 0.72);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          overflow: hidden;
+        }
+        .ymv1-ms-toggle {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 9px 14px;
+          background: transparent;
+          border: 0;
+          color: rgba(245, 245, 247, 0.9);
+          font-size: 12.5px;
+          cursor: pointer;
+        }
+        .ymv1-ms-toggle:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .ymv1-ms-toggle-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+        }
+        .ymv1-ms-toggle-count {
+          font-size: 11.5px;
+          color: rgba(235, 240, 255, 0.58);
+          font-weight: 500;
+        }
+        .ymv1-ms-panel {
+          padding: 0 12px 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
         .ymv1-player-card {
           overflow: visible;

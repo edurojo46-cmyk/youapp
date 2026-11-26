@@ -37,7 +37,10 @@ import {
   Settings2,
   List,
   UserPlus,
-  UserCheck
+  UserCheck,
+  EyeOff,
+  PictureInPicture2,
+  RotateCcw
 } from 'lucide-react';
 import { fetchYouTubeAutocomplete } from '../lib/search/queryEngine';
 import { searchYouTubeVideos } from '../lib/youtubeChannelSearch';
@@ -49,10 +52,14 @@ import { getActiveCountryProfile } from '../lib/geo/userCountry';
 import {
   SOCIAL_GRAPH_CHANGED_EVENT,
   buildYouTubeSubscribeUrl,
+  clearHiddenChannelsInGraph,
   fetchYouTubeVideoMeta,
   formatCompactViews,
   formatPublishedDateEs,
+  hideChannelInGraph,
+  isChannelHiddenInGraph,
   loadSocialGraph,
+  unhideChannelInGraph,
   toggleFollowCreatorWithMeta,
   toggleLikeVideoWithMeta,
   type VideoPublicMeta,
@@ -1531,10 +1538,15 @@ export default function ChannelSearch() {
   const inputRef = useRef<HTMLInputElement>(null);
   const catScrollRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLElement>(null);
+  const previewSentinelRef = useRef<HTMLDivElement>(null);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
   const searchRaceRef = useRef(0);
 
   const [previewIsPlaying, setPreviewIsPlaying] = useState(true);
+  const [isMiniPlayerManual, setIsMiniPlayerManual] = useState(false);
+  const [isScrolledPastPlayer, setIsScrolledPastPlayer] = useState(false);
+  const [hiddenToast, setHiddenToast] = useState<{ key: string; name: string } | null>(null);
+  const hiddenToastTimerRef = useRef<number | null>(null);
   const [isYou4Mode, setIsYou4Mode] = useState(false);
   const [isMomentsMosaic, setIsMomentsMosaic] = useState(false);
   const [you4AudioSlot, setYou4AudioSlot] = useState(0);
@@ -2167,9 +2179,12 @@ export default function ChannelSearch() {
   }, [loadingMore, hasMore, activeCategory, activeChannelFilter, committed, pageOffset, userRegion]);
 
   const filteredResults = useMemo(() => {
-    // Excluir videos Shorts / verticales de Buscar (por tags, duración o geometría real oEmbed height > width)
+    // Excluir videos Shorts / verticales y canales ocultados por el usuario
     let list = results.filter(
-      (item) => !isShortOrVerticalVideo(item) && !detectedVerticalIds.has(item.videoId)
+      (item) =>
+        !isShortOrVerticalVideo(item) &&
+        !detectedVerticalIds.has(item.videoId) &&
+        !isChannelHiddenInGraph(socialGraph, item.channelName, item.channelId)
     );
     if (durationFilter !== 'all') {
       list = list.filter((item) => {
@@ -2192,7 +2207,59 @@ export default function ChannelSearch() {
       });
     }
     return list;
-  }, [results, durationFilter, sortMode, detectedVerticalIds]);
+  }, [results, durationFilter, sortMode, detectedVerticalIds, socialGraph]);
+
+  // Mini-reproductor flotante automático cuando hacés scroll y el reproductor sale de pantalla
+  useEffect(() => {
+    if (!previewVideo) {
+      setIsScrolledPastPlayer(false);
+      setIsMiniPlayerManual(false);
+      return;
+    }
+    const sentinel = previewSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        // Solo flota cuando el reproductor quedó ARRIBA fuera de pantalla (scroll hacia abajo)
+        setIsScrolledPastPlayer(!entry.isIntersecting && entry.boundingClientRect.bottom < 80);
+      },
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [previewVideo]);
+
+  const handleHideChannel = useCallback(
+    (item: SearchVideoItem) => {
+      const channelLabel = item.channelName || 'Este canal';
+      setSocialGraph((prev) => {
+        const { graph, key } = hideChannelInGraph(prev, item.channelName, item.channelId);
+        if (key) {
+          setHiddenToast({ key, name: channelLabel });
+          if (hiddenToastTimerRef.current) window.clearTimeout(hiddenToastTimerRef.current);
+          hiddenToastTimerRef.current = window.setTimeout(() => setHiddenToast(null), 5000);
+        }
+        return graph;
+      });
+      if (
+        previewVideo &&
+        ((item.channelId && previewVideo.channelId === item.channelId) ||
+          previewVideo.channelName.trim().toLowerCase() === item.channelName.trim().toLowerCase())
+      ) {
+        setPreviewVideo(null);
+      }
+    },
+    [previewVideo]
+  );
+
+  const isFloatingMini =
+    Boolean(previewVideo) &&
+    (isMiniPlayerManual || isScrolledPastPlayer) &&
+    !isFullscreen &&
+    !isYou4Mode &&
+    !isMomentsMosaic;
 
   const hiddenShortsCount = useMemo(
     () =>
@@ -2847,6 +2914,17 @@ export default function ChannelSearch() {
                       >
                         <List size={12} /> Cápsula
                       </button>
+                      {(socialGraph.hiddenChannelKeys?.length || 0) > 0 && (
+                        <button
+                          type="button"
+                          className="ys-filter-pill"
+                          onClick={() => setSocialGraph((prev) => clearHiddenChannelsInGraph(prev))}
+                          title="Volver a mostrar todos los canales que ocultaste"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#ff9f0a' }}
+                        >
+                          <RotateCcw size={11} /> Restaurar {socialGraph.hiddenChannelKeys?.length} ocultos
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2855,13 +2933,56 @@ export default function ChannelSearch() {
           </div>
         </section>
 
-        {/* REPRODUCTOR ARRIBA (IDÉNTICO A MITV: 1 PANTALLA / MOMENTOS 4x / YOU4 + BARRA APPLE 3 PUNTOS) */}
+        {/* REPRODUCTOR ARRIBA (IDÉNTICO A MITV: 1 PANTALLA / MOMENTOS 4x / YOU4 + MINI-REPRODUCTOR FLOTANTE) */}
         {previewVideo && (
-          <section
-            ref={previewRef}
-            className={`ys-preview-card ${isFullscreen ? 'is-expanded' : ''}`}
-            aria-label="Reproductor fijado arriba"
-          >
+          <>
+            <div
+              ref={previewSentinelRef}
+              className={`ys-preview-sentinel ${isFloatingMini ? 'is-placeholder' : ''}`}
+              aria-hidden="true"
+            />
+            <section
+              ref={previewRef}
+              className={`ys-preview-card ${isFullscreen ? 'is-expanded' : ''} ${isFloatingMini ? 'is-mini-floating' : ''}`}
+              aria-label="Reproductor fijado arriba"
+            >
+              {isFloatingMini && (
+                <div className="ys-mini-overlay-bar">
+                  <span className="ys-mini-title" title={previewVideo.title}>
+                    {previewVideo.title}
+                  </span>
+                  <div className="ys-mini-actions">
+                    <button
+                      type="button"
+                      className="ys-mini-btn"
+                      onClick={() => {
+                        setIsMiniPlayerManual(false);
+                        setIsScrolledPastPlayer(false);
+                        previewSentinelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      title="Expandir reproductor"
+                      aria-label="Expandir reproductor"
+                    >
+                      <Maximize2 size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      className="ys-mini-btn"
+                      onClick={() => {
+                        setIsMiniPlayerManual(false);
+                        setIsScrolledPastPlayer(false);
+                        setIsYou4Mode(false);
+                        setIsMomentsMosaic(false);
+                        setPreviewVideo(null);
+                      }}
+                      title="Cerrar mini-reproductor"
+                      aria-label="Cerrar mini-reproductor"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
             {isMomentsMosaic ? (
               (() => {
                 const dur = Math.max(
@@ -3110,6 +3231,19 @@ export default function ChannelSearch() {
                       <div className="ys-top-right-icons">
                         <button
                           type="button"
+                          className={`ys-top-icon-btn ${isMiniPlayerManual ? 'is-subbed' : ''}`}
+                          onClick={() => {
+                            setIsYou4Mode(false);
+                            setIsMomentsMosaic(false);
+                            setIsMiniPlayerManual((v) => !v);
+                          }}
+                          title="Mini-reproductor flotante"
+                          aria-label="Mini-reproductor flotante"
+                        >
+                          <PictureInPicture2 size={14} />
+                        </button>
+                        <button
+                          type="button"
                           className="ys-top-icon-btn"
                           onClick={() => void handleToggleFullscreen()}
                           title={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
@@ -3253,6 +3387,23 @@ export default function ChannelSearch() {
               />
             </div>
           </section>
+          </>
+        )}
+
+        {hiddenToast && (
+          <div className="ys-undo-toast" role="status">
+            <span>Canal «{hiddenToast.name}» ocultado de tu feed.</span>
+            <button
+              type="button"
+              className="ys-undo-toast-btn"
+              onClick={() => {
+                setSocialGraph((prev) => unhideChannelInGraph(prev, hiddenToast.key));
+                setHiddenToast(null);
+              }}
+            >
+              <RotateCcw size={12} /> Deshacer
+            </button>
+          </div>
         )}
 
         {/* ESTADO CARGANDO */}
@@ -3473,6 +3624,15 @@ export default function ChannelSearch() {
                                   aria-label="Me gusta"
                                 >
                                   <Heart size={13} fill={isLikedCard ? '#ff453a' : 'none'} color={isLikedCard ? '#ff453a' : 'currentColor'} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ys-dock-icon-btn"
+                                  onClick={() => handleHideChannel(item)}
+                                  title={`Ocultar canal «${item.channelName}» de mis resultados`}
+                                  aria-label={`Ocultar canal ${item.channelName}`}
+                                >
+                                  <EyeOff size={13} />
                                 </button>
                               </div>
                             </div>
@@ -3872,6 +4032,116 @@ export default function ChannelSearch() {
         .ys-preview-card.is-expanded .ys-preview-bar,
         .ys-preview-card.is-expanded .mitv-smartbar-slot {
           display: none !important;
+        }
+        .ys-preview-sentinel {
+          width: 100%;
+          height: 1px;
+          pointer-events: none;
+        }
+        .ys-preview-sentinel.is-placeholder {
+          height: 180px;
+        }
+        .ys-preview-card.is-mini-floating {
+          position: fixed !important;
+          right: 14px;
+          bottom: max(14px, env(safe-area-inset-bottom));
+          width: 310px;
+          max-width: calc(100vw - 24px);
+          z-index: 950;
+          border-radius: 14px !important;
+          overflow: hidden !important;
+          background: rgba(12, 15, 22, 0.96) !important;
+          border: 1.5px solid rgba(255, 255, 255, 0.28) !important;
+          box-shadow: 0 18px 46px rgba(0, 0, 0, 0.72) !important;
+        }
+        .ys-preview-card.is-mini-floating .ys-preview-video-wrap {
+          border-radius: 0 !important;
+          aspect-ratio: 16 / 9;
+        }
+        .ys-preview-card.is-mini-floating .ys-preview-bar,
+        .ys-preview-card.is-mini-floating .mitv-smartbar-slot {
+          display: none !important;
+        }
+        .ys-mini-overlay-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          padding: 5px 8px;
+          background: rgba(8, 10, 16, 0.92);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .ys-mini-title {
+          font-size: 11px;
+          font-weight: 600;
+          color: #f5f5f7;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          min-width: 0;
+          flex: 1;
+        }
+        .ys-mini-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          flex-shrink: 0;
+        }
+        .ys-mini-btn {
+          width: 24px;
+          height: 24px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          padding: 0;
+        }
+        .ys-mini-btn:hover {
+          background: rgba(255, 255, 255, 0.22);
+        }
+        .ys-undo-toast {
+          position: fixed;
+          left: 50%;
+          bottom: max(18px, env(safe-area-inset-bottom));
+          transform: translateX(-50%);
+          z-index: 980;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 9px 14px;
+          border-radius: 999px;
+          background: rgba(18, 22, 32, 0.96);
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6);
+          color: #f5f5f7;
+          font-size: 12.5px;
+          font-weight: 600;
+          max-width: calc(100vw - 24px);
+        }
+        .ys-undo-toast-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 210, 255, 0.5);
+          background: rgba(0, 113, 227, 0.28);
+          color: #93d5ff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        @media (max-width: 640px) {
+          .ys-preview-card.is-mini-floating {
+            width: 224px;
+            right: 10px;
+            bottom: max(10px, env(safe-area-inset-bottom));
+          }
         }
         .ys-fs-exit-btn {
           position: fixed;

@@ -34,6 +34,7 @@ export interface YouAppSocialGraph {
   followedCreatorsMeta?: FollowedCreatorMeta[];
   likedVideosMeta?: LikedVideoMeta[];
   likeCounts?: Record<string, number>;
+  hiddenChannelKeys?: string[];
   updatedAt: string;
 }
 
@@ -45,6 +46,7 @@ function defaultGraph(): YouAppSocialGraph {
     followedCreatorsMeta: [],
     likedVideosMeta: [],
     likeCounts: {},
+    hiddenChannelKeys: [],
     updatedAt: new Date().toISOString()
   };
 }
@@ -62,6 +64,7 @@ export function loadSocialGraph(): YouAppSocialGraph {
       followedCreatorsMeta: Array.isArray(parsed?.followedCreatorsMeta) ? parsed.followedCreatorsMeta : [],
       likedVideosMeta: Array.isArray(parsed?.likedVideosMeta) ? parsed.likedVideosMeta : [],
       likeCounts: parsed?.likeCounts && typeof parsed.likeCounts === 'object' ? parsed.likeCounts : {},
+      hiddenChannelKeys: Array.isArray(parsed?.hiddenChannelKeys) ? parsed.hiddenChannelKeys : [],
       updatedAt: typeof parsed?.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString()
     };
   } catch {
@@ -77,6 +80,7 @@ export function saveSocialGraph(graph: YouAppSocialGraph): YouAppSocialGraph {
     followedCreatorsMeta: (graph.followedCreatorsMeta || []).slice(0, 120),
     likedVideosMeta: (graph.likedVideosMeta || []).slice(0, 120),
     likeCounts: graph.likeCounts || {},
+    hiddenChannelKeys: Array.from(new Set(graph.hiddenChannelKeys || [])).slice(0, 200),
     updatedAt: new Date().toISOString()
   };
   if (typeof window !== 'undefined') {
@@ -114,6 +118,48 @@ export function toggleLikeVideoWithMeta(
     likeCounts: nextCounts
   });
   return { graph: saved, active: !exists, count: nextCount };
+}
+
+export function normalizeHiddenChannelKey(channelName?: string, channelId?: string): string {
+  const id = String(channelId || '').trim();
+  if (id) return `id:${id.toLowerCase()}`;
+  const name = String(channelName || '').trim().toLowerCase();
+  return name ? `name:${name}` : '';
+}
+
+export function isChannelHiddenInGraph(
+  graph: YouAppSocialGraph,
+  channelName?: string,
+  channelId?: string
+): boolean {
+  const list = graph.hiddenChannelKeys || [];
+  if (list.length === 0) return false;
+  const id = String(channelId || '').trim().toLowerCase();
+  const name = String(channelName || '').trim().toLowerCase();
+  return list.some(
+    (k) => (id && k === `id:${id}`) || (name && k === `name:${name}`)
+  );
+}
+
+export function hideChannelInGraph(
+  prev: YouAppSocialGraph,
+  channelName?: string,
+  channelId?: string
+): { graph: YouAppSocialGraph; key: string } {
+  const key = normalizeHiddenChannelKey(channelName, channelId);
+  if (!key) return { graph: prev, key: '' };
+  const nextKeys = [key, ...(prev.hiddenChannelKeys || []).filter((k) => k !== key)];
+  return { graph: saveSocialGraph({ ...prev, hiddenChannelKeys: nextKeys }), key };
+}
+
+export function unhideChannelInGraph(prev: YouAppSocialGraph, key: string): YouAppSocialGraph {
+  if (!key) return prev;
+  const nextKeys = (prev.hiddenChannelKeys || []).filter((k) => k !== key);
+  return saveSocialGraph({ ...prev, hiddenChannelKeys: nextKeys });
+}
+
+export function clearHiddenChannelsInGraph(prev: YouAppSocialGraph): YouAppSocialGraph {
+  return saveSocialGraph({ ...prev, hiddenChannelKeys: [] });
 }
 
 export function toggleFollowCreatorWithMeta(

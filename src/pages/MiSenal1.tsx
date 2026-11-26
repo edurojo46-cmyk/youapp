@@ -3037,10 +3037,10 @@ export default function MiSenal1() {
               (ytId ? `https://www.youtube.com/watch?v=${ytId}` : window.location.href);
             const authorName = ci?.channelTitle || ci?.author || activeSignal?.name || 'YOUAPP';
             const likeKey = ytId ? `yt:${ytId}` : `ms:${ci?.id || currentBlock.id}`;
-            const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
-            const likeCount = (socialGraph.videoLikeCounts?.[likeKey] ?? 0) + (isLiked ? 0 : 0);
+            const isLiked = Boolean(socialGraph?.likedVideoKeys?.includes(likeKey));
+            const likeCount = socialGraph?.videoLikeCounts?.[likeKey] ?? 0;
             const followKey = `creator:${authorName.toLowerCase()}`;
-            const isFollowed = socialGraph.followedCreatorKeys.includes(followKey);
+            const isFollowed = Boolean(socialGraph?.followedCreatorKeys?.includes(followKey));
             const ytSubUrl = buildYouTubeSubscribeUrl(sourceUrl, authorName);
             const viewsLabel = formatCompactViews(playingVideoMeta?.viewCount, Boolean(playingVideoMeta?.isLive));
             const dateLabel = formatPublishedDateEs(playingVideoMeta?.publishedAt || ci?.publishedAt);

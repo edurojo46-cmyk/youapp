@@ -8,6 +8,7 @@ import {
   ExternalLink,
   ListMusic,
   Music,
+  Pause,
   Pencil,
   Play,
   Plus,
@@ -792,11 +793,18 @@ export default function YouMusicPage() {
   // para que reproduzca exactamente la canción seleccionada y luego siga con el resto
   const youtubeEmbedSrc = useMemo(() => {
     if (!currentItem) return '';
+    const isYtId = (id: string) => /^[A-Za-z0-9_-]{11}$/.test(id);
+    if (currentItem.videoId.startsWith('vm_')) {
+      return `https://player.vimeo.com/video/${encodeURIComponent(currentItem.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1&api=1`;
+    }
+    if (currentItem.videoId.startsWith('ar_')) {
+      return `https://archive.org/embed/${encodeURIComponent(currentItem.videoId.replace(/^ar_/, ''))}?autoplay=1`;
+    }
     const remainingIds = [
       ...items.slice(safeIndex + 1).map((i) => i.videoId),
       ...items.slice(0, safeIndex).map((i) => i.videoId)
     ]
-      .filter((id) => id !== currentItem.videoId)
+      .filter((id) => id !== currentItem.videoId && isYtId(id))
       .slice(0, 24);
 
     const params = new URLSearchParams({
@@ -809,13 +817,27 @@ export default function YouMusicPage() {
     if (typeof window !== 'undefined' && window.location?.origin) {
       params.set('origin', window.location.origin);
     }
-    if (remainingIds.length > 0) {
+    if (remainingIds.length > 0 && isYtId(currentItem.videoId)) {
       params.set('playlist', [currentItem.videoId, ...remainingIds].join(','));
     }
     return `https://www.youtube.com/embed/${encodeURIComponent(
       currentItem.videoId
     )}?${params.toString().replace(/%2C/gi, ',')}`;
   }, [currentItem, items, safeIndex]);
+
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  useEffect(() => {
+    setIsPlaying(true);
+  }, [currentItem?.videoId, safeIndex]);
+
+  const handleTogglePlay = () => {
+    setIsPlaying((prev) => {
+      const next = !prev;
+      postYouTubeCommand(next ? 'playVideo' : 'pauseVideo');
+      return next;
+    });
+  };
 
   const updateWorkspace = (updater: (prev: YouMusicWorkspace) => YouMusicWorkspace) => {
     setWorkspace((prev) => saveYouMusicWorkspace(updater(prev)));
@@ -1255,6 +1277,20 @@ export default function YouMusicPage() {
                   title="Canción anterior"
                 >
                   <SkipBack size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="ymv1-ctrl-btn"
+                  style={{
+                    background: '#ffffff',
+                    color: '#05070c',
+                    borderColor: '#ffffff'
+                  }}
+                  onClick={handleTogglePlay}
+                  title={isPlaying ? 'Pausar' : 'Reproducir'}
+                  aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+                >
+                  {isPlaying ? <Pause size={16} fill="#05070c" /> : <Play size={16} fill="#05070c" style={{ marginLeft: 1 }} />}
                 </button>
                 <button
                   type="button"

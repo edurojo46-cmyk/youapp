@@ -175,15 +175,17 @@ export default function YouLecturasPage() {
           return;
         }
         const currentWs = loadLecturasWorkspace();
-        const exists = currentWs.items.some((x) => x.url === res.item.url);
-        if (exists) {
-          setToast(`Ya estaba guardado en Mis Lecturas: ${res.item.title}`);
+        const existingItem = currentWs.items.find((x) => x.url === res.item.url);
+        if (existingItem) {
+          setActiveReaderItem(existingItem);
+          setToast(`Ya estaba guardado en Mis Lecturas: ${existingItem.title}`);
         } else {
           const nextWs = saveLecturasWorkspace({
             ...currentWs,
             items: [res.item, ...currentWs.items]
           });
           setWorkspace(nextWs);
+          setActiveReaderItem(res.item);
           setToast(`Guardado en Mis Lecturas: ${res.item.title}`);
         }
       })

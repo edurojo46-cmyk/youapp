@@ -101,39 +101,107 @@ export async function resolveWebPointer(
   let finalUrl = normalized;
   let embeddable = false;
 
-  try {
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 5500);
-    const res = await fetch(`/api/mitv/social-meta?url=${encodeURIComponent(normalized)}`, {
-      signal: controller.signal
-    });
-    window.clearTimeout(timer);
-    if (res.ok) {
-      const meta = await res.json();
-      if (typeof meta?.title === 'string' && meta.title.trim()) {
-        title = meta.title.trim();
+  let gotRemoteMeta = false;
+
+  // 1. Metadata local (Vite dev middleware en localhost / LAN)
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      /^192\.168\./.test(window.location.hostname))
+  ) {
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`/api/mitv/social-meta?url=${encodeURIComponent(normalized)}`, {
+        signal: controller.signal
+      });
+      window.clearTimeout(timer);
+      if (res.ok) {
+        const meta = await res.json();
+        if (typeof meta?.title === 'string' && meta.title.trim()) {
+          title = meta.title.trim();
+          gotRemoteMeta = true;
+        }
+        if (typeof meta?.description === 'string' && meta.description.trim()) {
+          description = meta.description.trim();
+        }
+        if (typeof meta?.siteName === 'string' && meta.siteName.trim()) {
+          sourceName = meta.siteName.trim();
+        }
+        if (typeof meta?.thumbnailUrl === 'string' && meta.thumbnailUrl.trim()) {
+          thumbnailUrl = meta.thumbnailUrl.trim();
+        }
+        if (typeof meta?.publishedAt === 'string' && meta.publishedAt.trim()) {
+          publishedAt = meta.publishedAt.trim();
+        }
+        if (typeof meta?.finalUrl === 'string' && /^https?:\/\//i.test(meta.finalUrl)) {
+          finalUrl = normalizeWebUrl(meta.finalUrl) || normalized;
+        }
+        if (typeof meta?.embeddable === 'boolean') {
+          embeddable = meta.embeddable;
+        }
       }
-      if (typeof meta?.description === 'string' && meta.description.trim()) {
-        description = meta.description.trim();
-      }
-      if (typeof meta?.siteName === 'string' && meta.siteName.trim()) {
-        sourceName = meta.siteName.trim();
-      }
-      if (typeof meta?.thumbnailUrl === 'string' && meta.thumbnailUrl.trim()) {
-        thumbnailUrl = meta.thumbnailUrl.trim();
-      }
-      if (typeof meta?.publishedAt === 'string' && meta.publishedAt.trim()) {
-        publishedAt = meta.publishedAt.trim();
-      }
-      if (typeof meta?.finalUrl === 'string' && /^https?:\/\//i.test(meta.finalUrl)) {
-        finalUrl = normalizeWebUrl(meta.finalUrl) || normalized;
-      }
-      if (typeof meta?.embeddable === 'boolean') {
-        embeddable = meta.embeddable;
-      }
+    } catch {
+      // continúa al fallback público
     }
-  } catch {
-    // Fallback silencioso: nunca fallar al guardar un enlace válido si el sitio bloquea bots
+  }
+
+  // 2. Fallback público CORS-friendly (funciona en youapptv.com / celular · obtiene foto, título y bajada oficial OG)
+  if (!gotRemoteMeta || !thumbnailUrl) {
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 6000);
+      const mlRes = await fetch(
+        `https://api.microlink.io/?url=${encodeURIComponent(normalized)}`,
+        { signal: controller.signal }
+      );
+      window.clearTimeout(timer);
+      if (mlRes.ok) {
+        const mlJson = await mlRes.json();
+        const d = mlJson?.data;
+        if (d) {
+          if (!gotRemoteMeta && typeof d.title === 'string' && d.title.trim()) {
+            title = d.title.trim();
+            gotRemoteMeta = true;
+          }
+          if (!description && typeof d.description === 'string' && d.description.trim()) {
+            description = d.description.trim();
+          }
+          if (typeof d.publisher === 'string' && d.publisher.trim()) {
+            sourceName = d.publisher.trim();
+          }
+          const imgUrl = d.image?.url || d.logo?.url || '';
+          if (!thumbnailUrl && typeof imgUrl === 'string' && /^https?:\/\//i.test(imgUrl)) {
+            thumbnailUrl = imgUrl;
+          }
+          if (!publishedAt && typeof d.date === 'string' && d.date.trim()) {
+            publishedAt = d.date.trim();
+          }
+        }
+      }
+    } catch {
+      // fallback silencioso
+    }
+  }
+
+  // 3. Si no llegó título, extraer un titular legible desde el slug de la URL
+  if (!gotRemoteMeta && (!titleHint || !titleHint.trim())) {
+    try {
+      const parts = new URL(finalUrl).pathname.split('/').filter(Boolean);
+      const slug = [...parts].reverse().find((p) => p.includes('-') && p.length > 10);
+      if (slug) {
+        const cleanSlug = decodeURIComponent(slug)
+          .replace(/\.[a-z0-9]+$/i, '')
+          .replace(/[-_]+/g, ' ')
+          .trim();
+        if (cleanSlug.length > 6) {
+          title = cleanSlug.charAt(0).toUpperCase() + cleanSlug.slice(1);
+        }
+      }
+    } catch {
+      // ignore
+    }
   }
 
   return {

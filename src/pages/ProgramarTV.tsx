@@ -68,8 +68,8 @@ import {
   formatPublishedDateEs,
   loadSocialGraph,
   loadSocialGraphFromCloud,
-  saveSocialGraph,
-  toggleInList,
+  toggleFollowCreatorWithMeta,
+  toggleLikeVideoWithMeta,
   type VideoPublicMeta,
   type YouAppSocialGraph
 } from '../lib/tv/youappSocialStore';
@@ -2154,6 +2154,9 @@ export default function ProgramarTV() {
                         ? `ch:${currentItem.providerId}`
                         : `mitv:${displayedChannel?.id || 'default'}`;
                     const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
+                    const likeCount = Number(
+                      socialGraph.likeCounts?.[likeKey] ?? (isLiked ? 1 : 0)
+                    );
                     const isFollowed = socialGraph.followedSignalIds.includes(followKey);
                     const ytSubUrl =
                       currentItem.provider === 'youtube' || currentItem.provider === 'youtube_live'
@@ -2170,23 +2173,34 @@ export default function ProgramarTV() {
                         <div className="mitv-top-social-icons">
                           <button
                             type="button"
-                            className={`mitv-top-icon-btn ${isLiked ? 'is-liked' : ''}`}
+                            className={`mitv-top-icon-btn ${likeCount > 0 ? 'has-count' : ''} ${isLiked ? 'is-liked' : ''}`}
                             onClick={() => {
                               setSocialGraph((prev) => {
-                                const { next, active } = toggleInList(prev.likedVideoKeys, likeKey);
+                                const res = toggleLikeVideoWithMeta(prev, {
+                                  key: likeKey,
+                                  title: currentItem.title,
+                                  author: currentItem.author,
+                                  thumbnailUrl: currentItem.thumbnailUrl,
+                                  sourceUrl: currentItem.sourceUrl
+                                });
                                 setToast(
-                                  active
-                                    ? 'Me gusta guardado en YOUAPP.'
-                                    : 'Me gusta quitado de YOUAPP.'
+                                  res.active
+                                    ? `❤️ Me gusta (${res.count}) guardado en Mis Listas.`
+                                    : 'Me gusta quitado.'
                                 );
-                                return saveSocialGraph({ ...prev, likedVideoKeys: next });
+                                return res.graph;
                               });
                             }}
-                            title={isLiked ? 'Quitar Me gusta' : 'Me gusta en YOUAPP'}
+                            title={isLiked ? `Te gusta (${likeCount})` : 'Me gusta en YOUAPP'}
                             aria-label="Me gusta"
                             aria-pressed={isLiked}
                           >
-                            <Heart size={15} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
+                            <Heart size={14} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
+                            {likeCount > 0 && (
+                              <span key={`lc-${likeCount}`} className="mitv-like-count">
+                                {likeCount}
+                              </span>
+                            )}
                           </button>
                           <button
                             type="button"
@@ -2194,8 +2208,13 @@ export default function ProgramarTV() {
                             onClick={() => {
                               const willSubscribe = !isFollowed;
                               setSocialGraph((prev) => {
-                                const { next } = toggleInList(prev.followedSignalIds, followKey);
-                                return saveSocialGraph({ ...prev, followedSignalIds: next });
+                                const res = toggleFollowCreatorWithMeta(prev, {
+                                  key: followKey,
+                                  name: currentItem.author || displayedChannel?.name || 'Creador',
+                                  provider: currentItem.provider,
+                                  sourceUrl: currentItem.sourceUrl
+                                });
+                                return res.graph;
                               });
                               if (willSubscribe && ytSubUrl) {
                                 window.open(
@@ -2204,13 +2223,13 @@ export default function ProgramarTV() {
                                   'width=540,height=660,noopener,noreferrer'
                                 );
                                 setToast(
-                                  `Suscripto a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
+                                  `Siguiendo a «${currentItem.author}» en YOUAPP · Confirmá también en YouTube.`
                                 );
                               } else {
                                 setToast(
                                   willSubscribe
-                                    ? `Suscripto a «${currentItem.author}» en YOUAPP.`
-                                    : `Dejaste de seguir a «${currentItem.author}» en YOUAPP.`
+                                    ? `Siguiendo a «${currentItem.author}» en YOUAPP.`
+                                    : `Dejaste de seguir a «${currentItem.author}».`
                                 );
                               }
                             }}
@@ -2218,10 +2237,10 @@ export default function ProgramarTV() {
                               ytSubUrl
                                 ? 'Suscribirse en YOUAPP y YouTube'
                                 : isFollowed
-                                  ? 'Suscripto'
+                                  ? 'Siguiendo'
                                   : 'Suscribirse'
                             }
-                            aria-label={isFollowed ? 'Suscripto' : 'Suscribirse'}
+                            aria-label={isFollowed ? 'Siguiendo' : 'Suscribirse'}
                             aria-pressed={isFollowed}
                           >
                             {isFollowed ? (
@@ -3299,6 +3318,23 @@ export default function ProgramarTV() {
         }
         .mitv-top-icon-btn:active {
           transform: scale(0.92);
+        }
+        .mitv-top-icon-btn.has-count {
+          width: auto;
+          padding: 0 9px;
+          gap: 4px;
+        }
+        .mitv-like-count {
+          font-size: 11.5px;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+          line-height: 1;
+          animation: mitvLikePop 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes mitvLikePop {
+          0% { transform: scale(0.6); opacity: 0.4; }
+          60% { transform: scale(1.22); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
         }
         .mitv-top-icon-btn.is-liked {
           color: #ff375f;

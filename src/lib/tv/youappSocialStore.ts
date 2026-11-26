@@ -8,11 +8,32 @@
 import { supabase } from '../supabase';
 
 const STORAGE_KEY = 'youapp_social_graph_v1';
+export const SOCIAL_GRAPH_CHANGED_EVENT = 'youapp:social-graph-changed';
+
+export interface FollowedCreatorMeta {
+  key: string;
+  name: string;
+  provider?: string;
+  sourceUrl?: string;
+  followedAt: string;
+}
+
+export interface LikedVideoMeta {
+  key: string;
+  title: string;
+  author?: string;
+  thumbnailUrl?: string;
+  sourceUrl?: string;
+  likedAt: string;
+}
 
 export interface YouAppSocialGraph {
   likedSignalIds: string[];
   followedSignalIds: string[];
   likedVideoKeys: string[];
+  followedCreatorsMeta?: FollowedCreatorMeta[];
+  likedVideosMeta?: LikedVideoMeta[];
+  likeCounts?: Record<string, number>;
   updatedAt: string;
 }
 
@@ -21,6 +42,9 @@ function defaultGraph(): YouAppSocialGraph {
     likedSignalIds: [],
     followedSignalIds: [],
     likedVideoKeys: [],
+    followedCreatorsMeta: [],
+    likedVideosMeta: [],
+    likeCounts: {},
     updatedAt: new Date().toISOString()
   };
 }
@@ -35,6 +59,9 @@ export function loadSocialGraph(): YouAppSocialGraph {
       likedSignalIds: Array.isArray(parsed?.likedSignalIds) ? parsed.likedSignalIds : [],
       followedSignalIds: Array.isArray(parsed?.followedSignalIds) ? parsed.followedSignalIds : [],
       likedVideoKeys: Array.isArray(parsed?.likedVideoKeys) ? parsed.likedVideoKeys : [],
+      followedCreatorsMeta: Array.isArray(parsed?.followedCreatorsMeta) ? parsed.followedCreatorsMeta : [],
+      likedVideosMeta: Array.isArray(parsed?.likedVideosMeta) ? parsed.likedVideosMeta : [],
+      likeCounts: parsed?.likeCounts && typeof parsed.likeCounts === 'object' ? parsed.likeCounts : {},
       updatedAt: typeof parsed?.updatedAt === 'string' ? parsed.updatedAt : new Date().toISOString()
     };
   } catch {
@@ -47,17 +74,66 @@ export function saveSocialGraph(graph: YouAppSocialGraph): YouAppSocialGraph {
     likedSignalIds: Array.from(new Set(graph.likedSignalIds)).slice(0, 120),
     followedSignalIds: Array.from(new Set(graph.followedSignalIds)).slice(0, 120),
     likedVideoKeys: Array.from(new Set(graph.likedVideoKeys)).slice(0, 200),
+    followedCreatorsMeta: (graph.followedCreatorsMeta || []).slice(0, 120),
+    likedVideosMeta: (graph.likedVideosMeta || []).slice(0, 120),
+    likeCounts: graph.likeCounts || {},
     updatedAt: new Date().toISOString()
   };
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event(SOCIAL_GRAPH_CHANGED_EVENT));
     } catch {
       // ignore quota
     }
   }
   void syncSocialGraphToCloud(next);
   return next;
+}
+
+export function toggleLikeVideoWithMeta(
+  prev: YouAppSocialGraph,
+  meta: Omit<LikedVideoMeta, 'likedAt'>
+): { graph: YouAppSocialGraph; active: boolean; count: number } {
+  const exists = prev.likedVideoKeys.includes(meta.key);
+  const nextKeys = exists
+    ? prev.likedVideoKeys.filter((x) => x !== meta.key)
+    : [meta.key, ...prev.likedVideoKeys.filter((x) => x !== meta.key)];
+  const prevMeta = prev.likedVideosMeta || [];
+  const nextMeta = exists
+    ? prevMeta.filter((x) => x.key !== meta.key)
+    : [{ ...meta, likedAt: new Date().toISOString() }, ...prevMeta.filter((x) => x.key !== meta.key)];
+  const prevCounts = prev.likeCounts || {};
+  const curCount = Number(prevCounts[meta.key] || (exists ? 1 : 0));
+  const nextCount = exists ? Math.max(0, curCount - 1) : curCount + 1;
+  const nextCounts = { ...prevCounts, [meta.key]: nextCount };
+  const saved = saveSocialGraph({
+    ...prev,
+    likedVideoKeys: nextKeys,
+    likedVideosMeta: nextMeta,
+    likeCounts: nextCounts
+  });
+  return { graph: saved, active: !exists, count: nextCount };
+}
+
+export function toggleFollowCreatorWithMeta(
+  prev: YouAppSocialGraph,
+  meta: Omit<FollowedCreatorMeta, 'followedAt'>
+): { graph: YouAppSocialGraph; active: boolean } {
+  const exists = prev.followedSignalIds.includes(meta.key);
+  const nextIds = exists
+    ? prev.followedSignalIds.filter((x) => x !== meta.key)
+    : [meta.key, ...prev.followedSignalIds.filter((x) => x !== meta.key)];
+  const prevMeta = prev.followedCreatorsMeta || [];
+  const nextMeta = exists
+    ? prevMeta.filter((x) => x.key !== meta.key)
+    : [{ ...meta, followedAt: new Date().toISOString() }, ...prevMeta.filter((x) => x.key !== meta.key)];
+  const saved = saveSocialGraph({
+    ...prev,
+    followedSignalIds: nextIds,
+    followedCreatorsMeta: nextMeta
+  });
+  return { graph: saved, active: !exists };
 }
 
 async function syncSocialGraphToCloud(graph: YouAppSocialGraph): Promise<void> {

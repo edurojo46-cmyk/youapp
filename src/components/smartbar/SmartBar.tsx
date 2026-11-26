@@ -868,7 +868,7 @@ export const SmartBar: React.FC<SmartBarProps> = ({
             </button>
           )}
 
-          {capabilities.followCreator && content.channelId && (
+          {!unifiedAppleMode && capabilities.followCreator && content.channelId && (
             <button
               type="button"
               className="bv-more-item"

@@ -20,7 +20,13 @@ import { useStore } from '../store/useStore';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { loadYouReelsWorkspace } from '../lib/tv/youReelsStore';
-import { loadSocialGraph } from '../lib/tv/youappSocialStore';
+import {
+  SOCIAL_GRAPH_CHANGED_EVENT,
+  loadSocialGraph,
+  toggleFollowCreatorWithMeta,
+  toggleLikeVideoWithMeta,
+  type YouAppSocialGraph
+} from '../lib/tv/youappSocialStore';
 import { loadYouMusicWorkspace } from '../lib/tv/youMusicPlaylistStore';
 import { loadLecturasWorkspace } from '../lib/tv/youLecturasStore';
 import { loadMiTvWorkspace } from '../lib/tv/miTvStore';
@@ -88,7 +94,14 @@ export default function MyLists() {
 
   const reelsWorkspace = loadYouReelsWorkspace();
   const totalReelsCount = reelsWorkspace.collections.reduce((acc, col) => acc + col.items.length, 0);
-  const socialGraph = loadSocialGraph();
+  const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
+  useEffect(() => {
+    const onSocialChange = () => setSocialGraph(loadSocialGraph());
+    window.addEventListener(SOCIAL_GRAPH_CHANGED_EVENT, onSocialChange);
+    return () => window.removeEventListener(SOCIAL_GRAPH_CHANGED_EVENT, onSocialChange);
+  }, []);
+  const followedCreators = socialGraph.followedCreatorsMeta || [];
+  const likedVideos = socialGraph.likedVideosMeta || [];
   const totalLikesCount = socialGraph.likedVideoKeys.length;
   const musicWorkspace = useMemo(() => loadYouMusicWorkspace(), []);
   const lecturasWorkspace = useMemo(() => loadLecturasWorkspace(), []);
@@ -418,6 +431,42 @@ export default function MyLists() {
               </div>
             </section>
 
+            {followedCreators.length > 0 && (
+              <section className="ml-glass-card">
+                <div className="ml-section-head">
+                  <h2>Siguiendo ({followedCreators.length})</h2>
+                </div>
+                <div className="ml-grid">
+                  {followedCreators.map((creator) => (
+                    <div key={creator.key} className="ml-row-card" style={{ cursor: 'default' }}>
+                      <div className="ml-icon-box blue">
+                        <Radio size={18} />
+                      </div>
+                      <button
+                        type="button"
+                        className="ml-row-info"
+                        style={{ background: 'transparent', border: 'none', textAlign: 'left', padding: 0, cursor: 'pointer' }}
+                        onClick={() => navigate(`/search?q=${encodeURIComponent(creator.name)}`)}
+                      >
+                        <strong>{creator.name}</strong>
+                        <span>Ver videos y novedades en Buscar</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="ml-icon-action danger"
+                        title="Dejar de seguir"
+                        onClick={() =>
+                          setSocialGraph((prev) => toggleFollowCreatorWithMeta(prev, creator).graph)
+                        }
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {userSignals.length > 0 && (
               <section className="ml-glass-card">
                 <div className="ml-section-head">
@@ -530,12 +579,56 @@ export default function MyLists() {
           </div>
         )}
 
-        {/* TAB 2: VIDEOS GUARDADOS */}
+        {/* TAB 2: VIDEOS GUARDADOS Y ME GUSTA */}
         {activeTab === 'guardados' && (
-          <section className="ml-glass-card">
-            <div className="ml-section-head">
-              <h2>Videos guardados ({savedContent.length})</h2>
-            </div>
+          <div className="ml-sections">
+            {likedVideos.length > 0 && (
+              <section className="ml-glass-card">
+                <div className="ml-section-head">
+                  <h2>Me gusta ❤️ ({likedVideos.length})</h2>
+                </div>
+                <div className="ml-saved-list">
+                  {likedVideos.map((vid) => (
+                    <div key={vid.key} className="ml-saved-row">
+                      {vid.thumbnailUrl && (
+                        <img src={vid.thumbnailUrl} alt={vid.title} className="ml-saved-thumb" loading="lazy" />
+                      )}
+                      <div className="ml-row-info">
+                        <strong>{vid.title}</strong>
+                        <span>{vid.author || 'YOUAPP'}</span>
+                      </div>
+                      <div className="ml-row-actions">
+                        {vid.sourceUrl && (
+                          <button
+                            type="button"
+                            className="ml-play-circle"
+                            title="Ver en MiTV"
+                            onClick={() => navigate(`/mitv?add=${encodeURIComponent(vid.sourceUrl!)}`)}
+                          >
+                            <Play size={14} fill="#ffffff" color="#ffffff" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="ml-icon-action danger"
+                          title="Quitar Me gusta"
+                          onClick={() =>
+                            setSocialGraph((prev) => toggleLikeVideoWithMeta(prev, vid).graph)
+                          }
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="ml-glass-card">
+              <div className="ml-section-head">
+                <h2>Videos guardados ({savedContent.length})</h2>
+              </div>
 
             {savedContent.length === 0 ? (
               <div className="ml-empty">
@@ -582,7 +675,8 @@ export default function MyLists() {
                 ))}
               </div>
             )}
-          </section>
+            </section>
+          </div>
         )}
 
         {/* TAB 3: MOMENTOS GUARDADOS */}

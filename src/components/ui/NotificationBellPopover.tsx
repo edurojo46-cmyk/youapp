@@ -9,6 +9,7 @@ import {
 } from '../../lib/geo/userCountry';
 import { useAtlasAuthStore } from '../../store/atlas/atlasAuthStore';
 import { formatWatchTime, useWatchContinuityStore } from '../../lib/tv/watchContinuityStore';
+import { loadSocialGraph } from '../../lib/tv/youappSocialStore';
 
 interface NotificationItem {
   id: string;
@@ -102,6 +103,40 @@ export function NotificationBellPopover({ variant = 'glass' }: { variant?: 'ligh
           timeLabel: 'En curso',
           route: latestCp.route || '/misenal1'
         });
+      }
+
+      // 1b. Novedades de creadores seguidos por el usuario en YOUAPP (prioridad alta)
+      try {
+        const followedNames = (loadSocialGraph().followedCreatorsMeta || [])
+          .map((c) => c.name?.trim())
+          .filter((n): n is string => Boolean(n && n.length >= 2))
+          .slice(0, 6);
+        if (followedNames.length > 0) {
+          const { data: followedRows } = await supabase
+            .from('youapp_index')
+            .select('video_id, title, creator_name, thumbnail_url, published_at')
+            .eq('provider', 'youtube')
+            .in('creator_name', followedNames)
+            .order('published_at', { ascending: false })
+            .limit(3);
+          if (Array.isArray(followedRows)) {
+            for (const r of followedRows) {
+              const vid = String(r?.video_id || '').trim();
+              if (!vid) continue;
+              built.push({
+                id: `fol-${vid}`,
+                kind: 'country_new',
+                title: String(r?.title || 'Nuevo video'),
+                subtitle: `★ Siguiendo · ${String(r?.creator_name || 'Creador')}`,
+                thumb: String(r?.thumbnail_url || `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`),
+                timeLabel: relativeTimeEs(r?.published_at),
+                route: `/?v=${encodeURIComponent(vid)}&title=${encodeURIComponent(String(r?.title || '').slice(0, 80))}`
+              });
+            }
+          }
+        }
+      } catch {
+        // fallback silencioso
       }
 
       // 2. Novedades recientes reales del país activo en `youapp_index` (0 cuota)

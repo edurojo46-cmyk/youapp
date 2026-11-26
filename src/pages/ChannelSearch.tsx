@@ -71,6 +71,7 @@ import { SmartBar } from '../components/smartbar/SmartBar';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
 import { setGlobalMiniVideo } from '../components/player/GlobalMiniPlayer';
+import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import {
   canAutoSkip,
   isUnplayableYouTubeError,
@@ -2459,24 +2460,11 @@ export default function ChannelSearch() {
     const shareUrl = isYt
       ? `https://youapptv.com/?v=${encodeURIComponent(previewVideo.videoId)}`
       : previewVideo.watchUrl || `https://youapptv.com/search`;
-    const title = `${previewVideo.title} · YOUAPP TV`;
-    const text = `Mirá «${previewVideo.title}» en YOUAPP TV`;
-    const androidBridge = (window as any).YouAppAndroidPiP;
-    try {
-      if (androidBridge && typeof androidBridge.share === 'function') {
-        androidBridge.share(title, text, shareUrl);
-        return;
-      }
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-        await navigator.share({ title, text, url: shareUrl });
-        return;
-      }
-    } catch {
-      // fallback portapapeles
-    }
-    await navigator.clipboard?.writeText(shareUrl).catch(() => {});
-    setCastNotice('Enlace del video copiado para compartir.');
-    window.setTimeout(() => setCastNotice(null), 3000);
+    await shareContentUniversal({
+      title: `${previewVideo.title} · YOUAPP TV`,
+      text: `Mirá «${previewVideo.title}» en YOUAPP TV`,
+      url: shareUrl
+    });
   }, [previewVideo]);
 
   const hiddenShortsCount = useMemo(

@@ -34,6 +34,7 @@ import {
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
+import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { XOfficialTweetEmbed } from '../components/player/XOfficialTweetEmbed';
 import { SmartBar } from '../components/smartbar/SmartBar';
@@ -2345,24 +2346,11 @@ export default function ProgramarTV() {
                               const shareUrl = isYt
                                 ? `https://youapptv.com/?v=${encodeURIComponent(currentItem.providerId)}`
                                 : currentItem.sourceUrl || 'https://youapptv.com/mitv';
-                              const title = `${currentItem.title} · YOUAPP TV`;
-                              const text = `Mirá «${currentItem.title}» en MiTV (YOUAPP)`;
-                              const androidBridge = (window as any).YouAppAndroidPiP;
-                              try {
-                                if (androidBridge && typeof androidBridge.share === 'function') {
-                                  androidBridge.share(title, text, shareUrl);
-                                  return;
-                                }
-                                if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-                                  await navigator.share({ title, text, url: shareUrl });
-                                  return;
-                                }
-                              } catch {
-                                // fallback portapapeles
-                              }
-                              await navigator.clipboard?.writeText(shareUrl).catch(() => {});
-                              setCastNotice('Enlace del video copiado para compartir.');
-                              window.setTimeout(() => setCastNotice(null), 2800);
+                              await shareContentUniversal({
+                                title: `${currentItem.title} · YOUAPP TV`,
+                                text: `Mirá «${currentItem.title}» en MiTV (YOUAPP)`,
+                                url: shareUrl
+                              });
                             }}
                             title="Compartir este video"
                             aria-label="Compartir este video"

@@ -41,6 +41,7 @@ jobs:
           VITE_YOUTUBE_API_KEYS: AIzaSyBMhLs1XEBfInBFB7vQ3DjMZfP-2OCM1xw
           VITE_ATLAS_PUBLIC_URL: https://youapptv.com
           ATLAS_PUBLIC_URL: https://youapptv.com
+          VITE_DAILYMOTION_PLAYER_ID: ${{ secrets.VITE_DAILYMOTION_PLAYER_ID }}
         run: |
           npm run build
           echo "{\"version\":\"${GITHUB_SHA}\",\"builtAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > dist/version.json

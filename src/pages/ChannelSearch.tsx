@@ -2839,6 +2839,8 @@ export default function ChannelSearch() {
                   <DailymotionOfficialPlayer
                     key={previewVideo.videoId}
                     videoIdOrUrl={previewVideo.watchUrl || previewVideo.videoId.replace(/^dm_/, '')}
+                    thumbnailUrl={previewVideo.thumbnail}
+                    title={previewVideo.title}
                   />
                 ) : previewVideo.provider === 'vimeo' ? (
                   <iframe

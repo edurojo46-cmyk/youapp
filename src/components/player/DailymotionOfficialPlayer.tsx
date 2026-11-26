@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 
 const CUSTOM_DM_PLAYER_ID: string =
   ((import.meta as any).env?.VITE_DAILYMOTION_PLAYER_ID || '').trim();
@@ -18,79 +18,148 @@ interface DailymotionOfficialPlayerProps {
   videoIdOrUrl: string;
   playerId?: string;
   className?: string;
+  thumbnailUrl?: string;
+  title?: string;
 }
 
 /**
  * Reproductor oficial de Dailymotion:
- * - En dominio HTTPS público (tu web online): usa el iframe oficial o Player Script de Dailymotion.
- * - En localhost (donde geo.dailymotion.com devuelve 403): muestra tarjeta limpia con miniatura
- *   y botón directo "Abrir en Dailymotion ↗" en lugar de pantalla negra.
+ * - Dailymotion bloquea (HTTP 403) los embeds genéricos sin Player ID de Dailymotion Studio.
+ * - Si existe VITE_DAILYMOTION_PLAYER_ID: usa el iframe oficial geo.dailymotion.com/player/{playerId}.html?video={videoId}.
+ * - Si aún no está configurado: muestra la miniatura real con botón directo "Ver en Dailymotion ↗"
+ *   para evitar pantalla negra.
  */
 export const DailymotionOfficialPlayer: React.FC<DailymotionOfficialPlayerProps> = ({
   videoIdOrUrl,
   playerId = CUSTOM_DM_PLAYER_ID,
-  className = ''
+  className = '',
+  thumbnailUrl,
+  title
 }) => {
-  const hostRef = useRef<HTMLDivElement | null>(null);
   const videoId = extractDailymotionVideoId(videoIdOrUrl);
-  const isLocalhost =
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1' ||
-      window.location.protocol === 'http:');
-
-  useEffect(() => {
-    if (!playerId || isLocalhost) return;
-    const container = hostRef.current;
-    if (!container || !videoId) return;
-
-    container.innerHTML = '';
-    const script = document.createElement('script');
-    script.src = `https://geo.dailymotion.com/player/${encodeURIComponent(playerId)}.js`;
-    script.setAttribute('data-video', videoId);
-    script.async = true;
-    container.appendChild(script);
-
-    return () => {
-      container.innerHTML = '';
-    };
-  }, [isLocalhost, playerId, videoId]);
-
   if (!videoId) return null;
 
-  if (playerId && !isLocalhost) {
+  const watchUrl = `https://www.dailymotion.com/video/${encodeURIComponent(videoId)}`;
+
+  if (playerId) {
     return (
-      <div
-        ref={hostRef}
+      <iframe
+        key={`${playerId}-${videoId}`}
+        title={title ? `Dailymotion · ${title}` : `Dailymotion · ${videoId}`}
+        src={`https://geo.dailymotion.com/player/${encodeURIComponent(playerId)}.html?video=${encodeURIComponent(videoId)}`}
         className={className}
+        frameBorder="0"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allow="autoplay; fullscreen; picture-in-picture; web-share"
+        allowFullScreen
         style={{
+          position: 'absolute',
+          inset: 0,
           width: '100%',
           height: '100%',
-          minHeight: '220px',
-          background: '#000000',
-          position: 'relative'
+          border: 0,
+          background: '#000000'
         }}
       />
     );
   }
 
+  const posterSrc = thumbnailUrl || `https://www.dailymotion.com/thumbnail/video/${encodeURIComponent(videoId)}`;
+
   return (
-    <iframe
-      key={videoId}
-      title={`Dailymotion · ${videoId}`}
-      src={`https://www.dailymotion.com/embed/video/${encodeURIComponent(videoId)}?autoplay=1&queue-enable=false`}
+    <div
       className={className}
-      frameBorder="0"
-      allow="autoplay; fullscreen; picture-in-picture; web-share"
-      allowFullScreen
       style={{
         position: 'absolute',
         inset: 0,
         width: '100%',
         height: '100%',
-        border: 0,
-        background: '#000000'
+        background: '#070b14',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '18px',
+        textAlign: 'center'
       }}
-    />
+    >
+      <img
+        src={posterSrc}
+        alt={title || 'Video de Dailymotion'}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          opacity: 0.42,
+          filter: 'blur(2px) scale(1.03)'
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(180deg, rgba(5,7,12,0.45) 0%, rgba(5,7,12,0.82) 100%)'
+        }}
+      />
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '10px',
+          maxWidth: '340px'
+        }}
+      >
+        <span
+          style={{
+            padding: '4px 10px',
+            borderRadius: '999px',
+            background: 'rgba(10, 132, 255, 0.25)',
+            border: '1px solid rgba(100, 210, 255, 0.5)',
+            color: '#93d5ff',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.04em'
+          }}
+        >
+          DAILYMOTION
+        </span>
+        <a
+          href={watchUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            borderRadius: '999px',
+            background: '#0071e3',
+            color: '#ffffff',
+            fontSize: '13.5px',
+            fontWeight: 700,
+            textDecoration: 'none',
+            boxShadow: '0 8px 24px rgba(0, 113, 227, 0.45)'
+          }}
+        >
+          ▶ Ver en Dailymotion ↗
+        </a>
+        <span
+          style={{
+            fontSize: '11.5px',
+            color: 'rgba(235, 240, 255, 0.78)',
+            lineHeight: 1.35
+          }}
+        >
+          Dailymotion requiere un Player ID de Dailymotion Studio para reproducir embebido.
+        </span>
+      </div>
+    </div>
   );
 };

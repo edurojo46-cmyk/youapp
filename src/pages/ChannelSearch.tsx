@@ -3145,11 +3145,6 @@ export default function ChannelSearch() {
                                 <span className="ys-live-dot" /> Sonando
                               </span>
                             )}
-                            {!isPlayingCard && item.provider && item.provider !== 'youtube' && (
-                              <span className="ys-provider-badge">
-                                {item.provider === 'dailymotion' ? 'Dailymotion' : 'Vimeo'}
-                              </span>
-                            )}
                             {item.duration && cardViewMode === 'cinema' && (
                               <span className="ys-duration">{item.duration}</span>
                             )}
@@ -3228,39 +3223,55 @@ export default function ChannelSearch() {
 
                           {cardViewMode === 'cinema' && (
                             <div className="ys-float-dock" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="ys-dock-btn primary"
-                                onClick={() => handlePasteToMiSenal(item)}
-                                title="Sumar a Mi Señal"
+                              <span
+                                className={`ys-dock-platform ys-dock-platform--${item.provider || 'youtube'}`}
+                                title={`Plataforma: ${item.provider === 'dailymotion' ? 'Dailymotion' : item.provider === 'vimeo' ? 'Vimeo' : 'YouTube'}`}
                               >
-                                <Plus size={12} /> Señal
-                              </button>
-                              <button
-                                type="button"
-                                className="ys-dock-btn"
-                                onClick={() => handlePasteToMiTv(item)}
-                                title="Programar en MiTV"
-                              >
-                                <Tv size={12} /> MiTV
-                              </button>
-                              <button
-                                type="button"
-                                className="ys-dock-btn"
-                                onClick={() => handlePasteToYouMusic(item)}
-                                title="Sumar a YOU MUSIC"
-                              >
-                                <Music size={12} />
-                              </button>
-                              <button
-                                type="button"
-                                className={`ys-dock-btn ${isLikedCard ? 'liked' : ''}`}
-                                onClick={() => handleToggleLike(item.videoId)}
-                                title={isLikedCard ? 'Quitar de favoritos' : 'Guardar en favoritos'}
-                                aria-label="Me gusta"
-                              >
-                                <Heart size={12} fill={isLikedCard ? '#ff453a' : 'none'} color={isLikedCard ? '#ff453a' : 'currentColor'} />
-                              </button>
+                                <span className="ys-dock-platform-dot" />
+                                {item.provider === 'dailymotion'
+                                  ? 'Dailymotion'
+                                  : item.provider === 'vimeo'
+                                    ? 'Vimeo'
+                                    : 'YouTube'}
+                              </span>
+                              <div className="ys-dock-icons">
+                                <button
+                                  type="button"
+                                  className="ys-dock-icon-btn"
+                                  onClick={() => handlePasteToMiSenal(item)}
+                                  title="Sumar a Mi Señal"
+                                  aria-label="Sumar a Mi Señal"
+                                >
+                                  <Radio size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ys-dock-icon-btn"
+                                  onClick={() => handlePasteToMiTv(item)}
+                                  title="Programar en MiTV"
+                                  aria-label="Programar en MiTV"
+                                >
+                                  <Tv size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ys-dock-icon-btn"
+                                  onClick={() => handlePasteToYouMusic(item)}
+                                  title="Sumar a YOU MUSIC"
+                                  aria-label="Sumar a YOU MUSIC"
+                                >
+                                  <Music size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`ys-dock-icon-btn ${isLikedCard ? 'liked' : ''}`}
+                                  onClick={() => handleToggleLike(item.videoId)}
+                                  title={isLikedCard ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                                  aria-label="Me gusta"
+                                >
+                                  <Heart size={13} fill={isLikedCard ? '#ff453a' : 'none'} color={isLikedCard ? '#ff453a' : 'currentColor'} />
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -4638,10 +4649,74 @@ export default function ChannelSearch() {
         .ys-float-dock {
           display: flex;
           align-items: center;
-          gap: 6px;
+          justify-content: space-between;
+          gap: 8px;
           margin-top: 6px;
           padding-top: 6px;
           border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .ys-dock-platform {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+          white-space: nowrap;
+        }
+        .ys-dock-platform-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 999px;
+          background: currentColor;
+        }
+        .ys-dock-platform--youtube {
+          background: rgba(255, 59, 48, 0.16);
+          border: 1px solid rgba(255, 69, 58, 0.36);
+          color: #ff6961;
+        }
+        .ys-dock-platform--dailymotion {
+          background: rgba(56, 189, 248, 0.16);
+          border: 1px solid rgba(56, 189, 248, 0.4);
+          color: #7dd3fc;
+        }
+        .ys-dock-platform--vimeo {
+          background: rgba(34, 211, 238, 0.16);
+          border: 1px solid rgba(34, 211, 238, 0.4);
+          color: #67e8f9;
+        }
+        .ys-dock-icons {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .ys-dock-icon-btn {
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.88);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+        }
+        .ys-dock-icon-btn:hover {
+          background: rgba(255, 255, 255, 0.18);
+          color: #ffffff;
+        }
+        .ys-dock-icon-btn:active {
+          transform: scale(0.92);
+        }
+        .ys-dock-icon-btn.liked {
+          background: rgba(255, 69, 58, 0.2);
+          border-color: rgba(255, 69, 58, 0.48);
+          color: #ff453a;
         }
         .ys-dock-btn {
           display: inline-flex;

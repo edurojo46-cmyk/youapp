@@ -1548,27 +1548,29 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
   // 5. Twitch (Directorio curado en vivo de streams LATAM/España/Global, 0 cuota, 100% embebible con parent)
   const twitchHits: SearchVideoItem[] = (() => {
     const TWITCH_CATALOG: Array<{ login: string; title: string; keywords: string }> = [
-      { login: 'ibai', title: 'Ibai · Streaming en Vivo (Twitch)', keywords: 'ibai streaming espana entretenimiento eventos velada futbol' },
-      { login: 'davooxeneize', title: 'DavoXeneize · Fútbol y Streaming (Twitch)', keywords: 'davo davoxeneize futbol argentina boca deportes streaming' },
-      { login: 'lacobraaa', title: 'La Cobra · Fútbol y Debate en Vivo (Twitch)', keywords: 'lacobra cobra futbol argentina deportes streaming' },
-      { login: 'elspreen', title: 'Spreen · Gaming y Streaming Argentina (Twitch)', keywords: 'spreen gaming minecraft argentina streaming' },
-      { login: 'coscu', title: 'Coscu · Charlas y Streaming Argentina (Twitch)', keywords: 'coscu streaming argentina musica charlas' },
-      { login: 'illojuan', title: 'IlloJuan · Gaming y Variedad (Twitch)', keywords: 'illojuan gaming comedia espana streaming' },
-      { login: 'auronplay', title: 'AuronPlay · Streaming y Humor (Twitch)', keywords: 'auron auronplay humor comedia gaming streaming' },
-      { login: 'rivers_gg', title: 'Rivers_GG · Streaming México y Gaming (Twitch)', keywords: 'rivers mexico gaming streaming futbol' },
-      { login: 'elxokas', title: 'ElXokas · Opinión, Gaming y Streaming (Twitch)', keywords: 'xokas elxokas gaming opinion streaming' },
-      { login: 'nasa', title: 'NASA Live · Ciencia y Espacio en Vivo (Twitch)', keywords: 'nasa ciencia espacio documental tecnologia astronomia' },
-      { login: 'monstercat', title: 'Monstercat · Música Electrónica 24/7 (Twitch)', keywords: 'musica electronica dj radio live monstercat' },
-      { login: 'chess', title: 'Chess.com · Ajedrez Internacional en Vivo (Twitch)', keywords: 'ajedrez chess deportes estrategia torneos' }
+      { login: 'ibai', title: 'Ibai · Streaming en Vivo (Twitch)', keywords: 'twitch ibai streaming espana entretenimiento eventos velada futbol vivo' },
+      { login: 'davooxeneize', title: 'DavoXeneize · Fútbol y Streaming (Twitch)', keywords: 'twitch davo davoxeneize futbol argentina boca deportes streaming vivo' },
+      { login: 'lacobraaa', title: 'La Cobra · Fútbol y Debate en Vivo (Twitch)', keywords: 'twitch lacobra cobra futbol argentina deportes streaming vivo' },
+      { login: 'elspreen', title: 'Spreen · Gaming y Streaming Argentina (Twitch)', keywords: 'twitch spreen gaming minecraft argentina streaming vivo' },
+      { login: 'coscu', title: 'Coscu · Charlas y Streaming Argentina (Twitch)', keywords: 'twitch coscu streaming argentina musica charlas vivo' },
+      { login: 'illojuan', title: 'IlloJuan · Gaming y Variedad (Twitch)', keywords: 'twitch illojuan gaming comedia espana streaming vivo' },
+      { login: 'auronplay', title: 'AuronPlay · Streaming y Humor (Twitch)', keywords: 'twitch auron auronplay humor comedia gaming streaming vivo' },
+      { login: 'rivers_gg', title: 'Rivers_GG · Streaming México y Gaming (Twitch)', keywords: 'twitch rivers mexico gaming streaming futbol vivo' },
+      { login: 'elxokas', title: 'ElXokas · Opinión, Gaming y Streaming (Twitch)', keywords: 'twitch xokas elxokas gaming opinion streaming vivo' },
+      { login: 'nasa', title: 'NASA Live · Ciencia y Espacio en Vivo (Twitch)', keywords: 'twitch nasa ciencia espacio documental tecnologia astronomia vivo' },
+      { login: 'monstercat', title: 'Monstercat · Música Electrónica 24/7 (Twitch)', keywords: 'twitch musica electronica dj radio live monstercat rock jazz vivo' },
+      { login: 'chess', title: 'Chess.com · Ajedrez Internacional en Vivo (Twitch)', keywords: 'twitch ajedrez chess deportes estrategia torneos vivo' }
     ];
     const host = typeof window !== 'undefined' ? window.location.hostname || 'youapptv.com' : 'youapptv.com';
     const qNorm = normText(clean);
     const matched = trendingMode
       ? TWITCH_CATALOG.slice(0, 4)
-      : TWITCH_CATALOG.filter((ch) => {
-          const hay = normText(`${ch.login} ${ch.title} ${ch.keywords}`);
-          return qNorm.split(/\s+/).filter((t) => t.length >= 2).some((t) => hay.includes(t));
-        }).slice(0, 3);
+      : qNorm === 'twitch' || qNorm === 'streaming' || qNorm === 'en vivo'
+        ? TWITCH_CATALOG.slice(0, 6)
+        : TWITCH_CATALOG.filter((ch) => {
+            const hay = normText(`${ch.login} ${ch.title} ${ch.keywords}`);
+            return qNorm.split(/\s+/).filter((t) => t.length >= 2).some((t) => hay.includes(t));
+          }).slice(0, 3);
     return matched.map((ch) => ({
       videoId: `tw_${ch.login}`,
       title: ch.title,
@@ -1603,7 +1605,7 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
   const cleanAr = filterStrict(arHits);
   const maxLen = Math.max(cleanVm.length, cleanPt.length, cleanAr.length, cleanOd.length, twitchHits.length);
   for (let i = 0; i < maxLen; i += 1) {
-    for (const it of [cleanVm[i], cleanOd[i], twitchHits[i], cleanPt[i], cleanAr[i]]) {
+    for (const it of [twitchHits[i], cleanVm[i], cleanOd[i], cleanPt[i], cleanAr[i]]) {
       if (it && !seen.has(it.videoId) && it.thumbnail) {
         seen.add(it.videoId);
         out.push(it);
@@ -5324,14 +5326,14 @@ export default function ChannelSearch() {
           color: #fde047;
         }
         .ys-dock-platform--odysee {
-          background: rgba(244, 63, 94, 0.16);
-          border: 1px solid rgba(244, 63, 94, 0.42);
-          color: #fda4af;
+          background: rgba(168, 85, 247, 0.22);
+          border: 1px solid rgba(192, 132, 252, 0.52);
+          color: #d8b4fe;
         }
         .ys-dock-platform--twitch {
-          background: rgba(145, 70, 255, 0.2);
-          border: 1px solid rgba(169, 112, 255, 0.48);
-          color: #d8b4fe;
+          background: rgba(16, 185, 129, 0.2);
+          border: 1px solid rgba(52, 211, 153, 0.5);
+          color: #6ee7b7;
         }
         .ys-dock-icons {
           display: inline-flex;

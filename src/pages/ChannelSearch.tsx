@@ -203,7 +203,7 @@ type SearchVideoItem = {
   durationSeconds?: number;
   views?: number | string;
   publishedAt?: string;
-  provider?: 'youtube' | 'dailymotion' | 'vimeo' | 'peertube' | 'archive';
+  provider?: 'youtube' | 'dailymotion' | 'vimeo' | 'peertube' | 'archive' | 'odysee' | 'twitch';
   sourceLabel:
     | 'Base ATLAS (0 cuota)'
     | 'Catálogo Musical'
@@ -211,7 +211,9 @@ type SearchVideoItem = {
     | 'Dailymotion'
     | 'Vimeo'
     | 'PeerTube'
-    | 'Archive';
+    | 'Archive'
+    | 'Odysee'
+    | 'Twitch';
   tags?: string[];
 };
 
@@ -1472,25 +1474,106 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
     }
   })();
 
+  // 4. Odysee (Lighthouse API pública oficial, 100% embebible sin anuncios, nsfw=false, 0 cuota)
+  const odyseePromise = (async (): Promise<SearchVideoItem[]> => {
+    try {
+      const odQuery = trendingMode ? 'music documentary cinema science' : clean;
+      if (odQuery.length < 2) return [];
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 2400);
+      const odUrl = `https://lighthouse.odysee.tv/search?s=${encodeURIComponent(odQuery)}&size=6&mediaType=video&nsfw=false&include=title,thumbnail_url,duration,channel,release_time`;
+      const res = await fetch(odUrl, { signal: controller.signal });
+      window.clearTimeout(timer);
+      if (!res.ok) return [];
+      const list = await res.json();
+      if (!Array.isArray(list)) return [];
+      const mapped: SearchVideoItem[] = [];
+      for (const v of list) {
+        const claimId = String(v?.claimId || '').trim();
+        const name = String(v?.name || '').trim();
+        const title = String(v?.title || name || '').trim();
+        const thumb = String(v?.thumbnail_url || '').trim();
+        const dur = Number(v?.duration || 0);
+        if (!claimId || !name || !title || !thumb) continue;
+        if (dur > 0 && dur <= 62) continue;
+        mapped.push({
+          videoId: `od_${claimId}`,
+          title,
+          channelName: String(v?.channel || 'Odysee').replace(/^@/, ''),
+          thumbnail: thumb,
+          watchUrl: `https://odysee.com/${encodeURIComponent(name)}:${encodeURIComponent(claimId)}`,
+          embedUrl: `https://odysee.com/$/embed/${encodeURIComponent(name)}/${encodeURIComponent(claimId)}`,
+          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
+          durationSeconds: dur > 0 ? dur : undefined,
+          publishedAt: v?.release_time ? String(v.release_time) : undefined,
+          provider: 'odysee',
+          sourceLabel: 'Odysee',
+          tags: ['odysee']
+        });
+      }
+      return mapped;
+    } catch {
+      return [];
+    }
+  })();
+
+  // 5. Twitch (Directorio curado en vivo de streams LATAM/España/Global, 0 cuota, 100% embebible con parent)
+  const twitchHits: SearchVideoItem[] = (() => {
+    const TWITCH_CATALOG: Array<{ login: string; title: string; keywords: string }> = [
+      { login: 'ibai', title: 'Ibai · Streaming en Vivo (Twitch)', keywords: 'ibai streaming espana entretenimiento eventos velada futbol' },
+      { login: 'davooxeneize', title: 'DavoXeneize · Fútbol y Streaming (Twitch)', keywords: 'davo davoxeneize futbol argentina boca deportes streaming' },
+      { login: 'lacobraaa', title: 'La Cobra · Fútbol y Debate en Vivo (Twitch)', keywords: 'lacobra cobra futbol argentina deportes streaming' },
+      { login: 'elspreen', title: 'Spreen · Gaming y Streaming Argentina (Twitch)', keywords: 'spreen gaming minecraft argentina streaming' },
+      { login: 'coscu', title: 'Coscu · Charlas y Streaming Argentina (Twitch)', keywords: 'coscu streaming argentina musica charlas' },
+      { login: 'illojuan', title: 'IlloJuan · Gaming y Variedad (Twitch)', keywords: 'illojuan gaming comedia espana streaming' },
+      { login: 'auronplay', title: 'AuronPlay · Streaming y Humor (Twitch)', keywords: 'auron auronplay humor comedia gaming streaming' },
+      { login: 'rivers_gg', title: 'Rivers_GG · Streaming México y Gaming (Twitch)', keywords: 'rivers mexico gaming streaming futbol' },
+      { login: 'elxokas', title: 'ElXokas · Opinión, Gaming y Streaming (Twitch)', keywords: 'xokas elxokas gaming opinion streaming' },
+      { login: 'nasa', title: 'NASA Live · Ciencia y Espacio en Vivo (Twitch)', keywords: 'nasa ciencia espacio documental tecnologia astronomia' },
+      { login: 'monstercat', title: 'Monstercat · Música Electrónica 24/7 (Twitch)', keywords: 'musica electronica dj radio live monstercat' },
+      { login: 'chess', title: 'Chess.com · Ajedrez Internacional en Vivo (Twitch)', keywords: 'ajedrez chess deportes estrategia torneos' }
+    ];
+    const host = typeof window !== 'undefined' ? window.location.hostname || 'youapptv.com' : 'youapptv.com';
+    const qNorm = normText(clean);
+    const matched = trendingMode
+      ? TWITCH_CATALOG.slice(0, 4)
+      : TWITCH_CATALOG.filter((ch) => {
+          const hay = normText(`${ch.login} ${ch.title} ${ch.keywords}`);
+          return qNorm.split(/\s+/).filter((t) => t.length >= 2).some((t) => hay.includes(t));
+        }).slice(0, 3);
+    return matched.map((ch) => ({
+      videoId: `tw_${ch.login}`,
+      title: ch.title,
+      channelName: `${ch.login} · Twitch`,
+      thumbnail: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${encodeURIComponent(ch.login)}-640x360.jpg`,
+      watchUrl: `https://www.twitch.tv/${encodeURIComponent(ch.login)}`,
+      embedUrl: `https://player.twitch.tv/?channel=${encodeURIComponent(ch.login)}&parent=${encodeURIComponent(host)}&parent=youapptv.com&muted=false`,
+      provider: 'twitch' as const,
+      sourceLabel: 'Twitch' as const,
+      tags: ['twitch', 'en-vivo']
+    }));
+  })();
+
   // Nota: Dailymotion queda en reserva en ATLAS (`youapp_index`) y no se muestra en /search
   // para que el usuario nunca salga de YOUAPP (100% reproducción embebida in-app).
-  const [vmHits, ptHits, arHits] = await Promise.all([
+  const [vmHits, ptHits, arHits, odHits] = await Promise.all([
     vimeoPromise,
     peertubePromise,
-    archivePromise
+    archivePromise,
+    odyseePromise
   ]);
   const out: SearchVideoItem[] = [];
   const seen = new Set<string>();
-  const maxLen = Math.max(vmHits.length, ptHits.length, arHits.length);
+  const maxLen = Math.max(vmHits.length, ptHits.length, arHits.length, odHits.length, twitchHits.length);
   for (let i = 0; i < maxLen; i += 1) {
-    for (const it of [vmHits[i], ptHits[i], arHits[i]]) {
+    for (const it of [vmHits[i], odHits[i], twitchHits[i], ptHits[i], arHits[i]]) {
       if (it && !seen.has(it.videoId) && it.thumbnail) {
         seen.add(it.videoId);
         out.push(it);
       }
     }
   }
-  const finalOut = out.slice(0, 12);
+  const finalOut = out.slice(0, 14);
   if (finalOut.length > 0) {
     MULTI_PROV_CACHE.set(cacheKey, { items: finalOut, expires: Date.now() + MULTI_PROV_TTL_MS });
   }
@@ -3121,6 +3204,14 @@ export default function ChannelSearch() {
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />
+                ) : (previewVideo.provider === 'odysee' || previewVideo.provider === 'twitch') && previewVideo.embedUrl ? (
+                  <iframe
+                    key={previewVideo.videoId}
+                    src={previewVideo.embedUrl}
+                    title={previewVideo.title}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
                 ) : (
                   <iframe
                     ref={previewIframeRef}
@@ -3589,9 +3680,13 @@ export default function ChannelSearch() {
                                       ? 'PeerTube'
                                       : item.provider === 'archive'
                                         ? 'Archive'
-                                        : item.provider === 'dailymotion'
-                                          ? 'Dailymotion'
-                                          : 'YouTube'
+                                        : item.provider === 'odysee'
+                                          ? 'Odysee'
+                                          : item.provider === 'twitch'
+                                            ? 'Twitch'
+                                            : item.provider === 'dailymotion'
+                                              ? 'Dailymotion'
+                                              : 'YouTube'
                                 }`}
                               >
                                 <span className="ys-dock-platform-dot" />
@@ -3601,9 +3696,13 @@ export default function ChannelSearch() {
                                     ? 'PeerTube'
                                     : item.provider === 'archive'
                                       ? 'Archive'
-                                      : item.provider === 'dailymotion'
-                                        ? 'Dailymotion ↗'
-                                        : 'YouTube'}
+                                      : item.provider === 'odysee'
+                                        ? 'Odysee'
+                                        : item.provider === 'twitch'
+                                          ? 'Twitch'
+                                          : item.provider === 'dailymotion'
+                                            ? 'Dailymotion ↗'
+                                            : 'YouTube'}
                               </span>
                               <div className="ys-dock-icons">
                                 <button
@@ -5186,6 +5285,16 @@ export default function ChannelSearch() {
           background: rgba(250, 204, 21, 0.16);
           border: 1px solid rgba(250, 204, 21, 0.42);
           color: #fde047;
+        }
+        .ys-dock-platform--odysee {
+          background: rgba(244, 63, 94, 0.16);
+          border: 1px solid rgba(244, 63, 94, 0.42);
+          color: #fda4af;
+        }
+        .ys-dock-platform--twitch {
+          background: rgba(145, 70, 255, 0.2);
+          border: 1px solid rgba(169, 112, 255, 0.48);
+          color: #d8b4fe;
         }
         .ys-dock-icons {
           display: inline-flex;

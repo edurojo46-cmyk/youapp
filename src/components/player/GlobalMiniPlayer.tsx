@@ -6,7 +6,7 @@ export interface GlobalMiniVideoItem {
   videoId: string;
   title: string;
   channelName?: string;
-  provider?: 'youtube' | 'vimeo' | 'peertube' | 'archive' | 'dailymotion';
+  provider?: 'youtube' | 'vimeo' | 'peertube' | 'archive' | 'odysee' | 'twitch' | 'dailymotion';
   embedUrl?: string;
   watchUrl?: string;
   originPath: string;
@@ -33,7 +33,7 @@ function buildEmbedSrc(v: GlobalMiniVideoItem): string | null {
     const id = v.videoId.replace(/^vm_/, '');
     return `https://player.vimeo.com/video/${encodeURIComponent(id)}?autoplay=1&dnt=1`;
   }
-  if (v.provider === 'peertube' && v.embedUrl) {
+  if ((v.provider === 'peertube' || v.provider === 'odysee' || v.provider === 'twitch') && v.embedUrl) {
     return v.embedUrl;
   }
   if (v.provider === 'archive') {

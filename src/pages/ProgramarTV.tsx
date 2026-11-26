@@ -2659,7 +2659,7 @@ export default function ProgramarTV() {
               <Film size={28} color="#64d2ff" />
               <strong>Tu televisor personal está listo.</strong>
               <span>
-                Pegá arriba cualquier enlace de YouTube, Vimeo, Dailymotion o MP4 para armar tu
+                Pegá arriba cualquier enlace de YouTube, Vimeo, Twitch, PeerTube, Odysee, Archive o MP4 para armar tu
                 propia programación sin algoritmos.
               </span>
             </div>

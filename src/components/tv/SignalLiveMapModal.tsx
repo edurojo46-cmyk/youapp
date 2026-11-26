@@ -147,9 +147,8 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           attributionControl: true
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; OpenStreetMap &copy; CARTO',
-          subdomains: 'abcd',
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
           maxZoom: 18
         }).addTo(map);
 
@@ -373,6 +372,10 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           width: 100%;
           height: 100%;
           z-index: 1;
+          background: #0b111c;
+        }
+        .slm-leaflet-host .leaflet-tile-pane {
+          filter: invert(100%) hue-rotate(180deg) brightness(92%) contrast(92%) saturate(85%);
         }
         .slm-map-loading {
           width: 100%;

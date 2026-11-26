@@ -13,11 +13,35 @@ export interface GlobalMiniVideoItem {
 }
 
 const GLOBAL_MINI_EVENT = 'youapp:global-mini-video';
-let currentGlobalMiniVideo: GlobalMiniVideoItem | null = null;
+const GLOBAL_MINI_STORAGE_KEY = 'youapp_global_mini_video_v1';
+
+function readStoredMiniVideo(): GlobalMiniVideoItem | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(GLOBAL_MINI_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.videoId !== 'string' || !parsed.videoId) return null;
+    return parsed as GlobalMiniVideoItem;
+  } catch {
+    return null;
+  }
+}
+
+let currentGlobalMiniVideo: GlobalMiniVideoItem | null = readStoredMiniVideo();
 
 export function setGlobalMiniVideo(video: GlobalMiniVideoItem | null): void {
   currentGlobalMiniVideo = video;
   if (typeof window !== 'undefined') {
+    try {
+      if (video) {
+        sessionStorage.setItem(GLOBAL_MINI_STORAGE_KEY, JSON.stringify(video));
+      } else {
+        sessionStorage.removeItem(GLOBAL_MINI_STORAGE_KEY);
+      }
+    } catch {
+      // ignore storage quota
+    }
     window.dispatchEvent(new Event(GLOBAL_MINI_EVENT));
   }
 }
@@ -114,7 +138,7 @@ export const GlobalMiniPlayer: React.FC = () => {
           bottom: max(14px, env(safe-area-inset-bottom));
           width: 310px;
           max-width: calc(100vw - 24px);
-          z-index: 960;
+          z-index: 99990;
           border-radius: 14px;
           overflow: hidden;
           background: rgba(12, 15, 22, 0.96);

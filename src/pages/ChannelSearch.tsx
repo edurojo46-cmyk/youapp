@@ -1629,6 +1629,7 @@ export default function ChannelSearch() {
   const [previewIsPlaying, setPreviewIsPlaying] = useState(true);
   const [isMiniPlayerManual, setIsMiniPlayerManual] = useState(false);
   const [isScrolledPastPlayer, setIsScrolledPastPlayer] = useState(false);
+  const [lockedSlotHeight, setLockedSlotHeight] = useState<number>(0);
   const [hiddenToast, setHiddenToast] = useState<{ key: string; name: string } | null>(null);
   const hiddenToastTimerRef = useRef<number | null>(null);
   const [isYou4Mode, setIsYou4Mode] = useState(false);
@@ -2307,26 +2308,62 @@ export default function ChannelSearch() {
     });
   }, [previewVideo]);
 
-  // Mini-reproductor flotante automático cuando hacés scroll y el reproductor sale de pantalla
+  // Mini-reproductor flotante con histéresis (banda muerta de 120px) + altura bloqueada: CERO titileo
   useEffect(() => {
     if (!previewVideo) {
       setIsScrolledPastPlayer(false);
       setIsMiniPlayerManual(false);
+      setLockedSlotHeight(0);
       return;
     }
-    const sentinel = previewSentinelRef.current;
-    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry) return;
-        // Solo flota cuando el reproductor quedó ARRIBA fuera de pantalla (scroll hacia abajo)
-        setIsScrolledPastPlayer(!entry.isIntersecting && entry.boundingClientRect.bottom < 80);
-      },
-      { threshold: 0 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
+
+    const measureCard = () => {
+      const card = previewRef.current;
+      if (card && !card.classList.contains('is-mini-floating') && !card.classList.contains('is-expanded')) {
+        const h = Math.round(card.getBoundingClientRect().height);
+        if (h > 140) setLockedSlotHeight(h);
+      }
+    };
+
+    const rafInit = window.requestAnimationFrame(measureCard);
+    const appScroller = document.querySelector('.app-layout');
+    let ticking = false;
+
+    const checkScroll = () => {
+      ticking = false;
+      const slot = previewSentinelRef.current;
+      if (!slot) return;
+      const rect = slot.getBoundingClientRect();
+      setIsScrolledPastPlayer((wasFloating) => {
+        if (!wasFloating) {
+          // Solo pasa a flotante cuando TODO el reproductor quedó arriba fuera de pantalla
+          if (rect.bottom < 40) {
+            measureCard();
+            return true;
+          }
+          return false;
+        }
+        // Solo vuelve a normal cuando subís claramente hasta ver el bloque (120px de histéresis)
+        return rect.bottom < 160;
+      });
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        window.requestAnimationFrame(checkScroll);
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    appScroller?.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', measureCard, { passive: true });
+    return () => {
+      window.cancelAnimationFrame(rafInit);
+      window.removeEventListener('scroll', onScroll);
+      appScroller?.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', measureCard);
+    };
   }, [previewVideo]);
 
   const handleHideChannel = useCallback(
@@ -3031,14 +3068,17 @@ export default function ChannelSearch() {
           </div>
         </section>
 
-        {/* REPRODUCTOR ARRIBA (IDÉNTICO A MITV: 1 PANTALLA / MOMENTOS 4x / YOU4 + MINI-REPRODUCTOR FLOTANTE) */}
+        {/* REPRODUCTOR ARRIBA (IDÉNTICO A MITV: 1 PANTALLA / MOMENTOS 4x / YOU4 + MINI-REPRODUCTOR FLOTANTE SIN TITILEO) */}
         {previewVideo && (
-          <>
-            <div
-              ref={previewSentinelRef}
-              className={`ys-preview-sentinel ${isFloatingMini ? 'is-placeholder' : ''}`}
-              aria-hidden="true"
-            />
+          <div
+            ref={previewSentinelRef}
+            className="ys-preview-slot"
+            style={
+              isFloatingMini && lockedSlotHeight > 0
+                ? { minHeight: `${lockedSlotHeight}px` }
+                : undefined
+            }
+          >
             <section
               ref={previewRef}
               className={`ys-preview-card ${isFullscreen ? 'is-expanded' : ''} ${isFloatingMini ? 'is-mini-floating' : ''}`}
@@ -3495,7 +3535,7 @@ export default function ChannelSearch() {
               />
             </div>
           </section>
-          </>
+          </div>
         )}
 
         {hiddenToast && (
@@ -4149,13 +4189,9 @@ export default function ChannelSearch() {
         .ys-preview-card.is-expanded .mitv-smartbar-slot {
           display: none !important;
         }
-        .ys-preview-sentinel {
+        .ys-preview-slot {
           width: 100%;
-          height: 1px;
-          pointer-events: none;
-        }
-        .ys-preview-sentinel.is-placeholder {
-          height: 180px;
+          position: relative;
         }
         .ys-preview-card.is-mini-floating {
           position: fixed !important;

@@ -837,7 +837,11 @@ export default function YouMusicPage() {
       playsinline: '1',
       enablejsapi: '1'
     });
-    if (typeof window !== 'undefined' && window.location?.origin) {
+    if (
+      typeof window !== 'undefined' &&
+      window.location?.origin &&
+      (window.location.protocol === 'https:' || window.location.hostname === 'localhost')
+    ) {
       params.set('origin', window.location.origin);
     }
     if (remainingIds.length > 0 && isYtId(currentItem.videoId)) {

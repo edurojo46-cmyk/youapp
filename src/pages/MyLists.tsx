@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
-  Clock,
-  Heart,
   Tv,
   Play,
   Search,
@@ -11,25 +9,44 @@ import {
   Music,
   Film,
   Bookmark,
+  BookOpen,
   Trash2,
-  ExternalLink,
-  ChevronRight
+  Share2,
+  ChevronDown,
+  Users
 } from 'lucide-react';
 import { type UniversalChannel } from '../lib/universalChannels';
 import { useStore } from '../store/useStore';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
-import { loadYouReelsWorkspace } from '../lib/tv/youReelsStore';
+import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
+import {
+  loadYouReelsWorkspace,
+  saveYouReelsWorkspace,
+  type YouReelsWorkspace
+} from '../lib/tv/youReelsStore';
 import {
   SOCIAL_GRAPH_CHANGED_EVENT,
   loadSocialGraph,
   toggleFollowCreatorWithMeta,
-  toggleLikeVideoWithMeta,
   type YouAppSocialGraph
 } from '../lib/tv/youappSocialStore';
-import { loadYouMusicWorkspace } from '../lib/tv/youMusicPlaylistStore';
-import { loadLecturasWorkspace } from '../lib/tv/youLecturasStore';
-import { loadMiTvWorkspace } from '../lib/tv/miTvStore';
+import {
+  loadYouMusicWorkspace,
+  saveYouMusicWorkspace,
+  type YouMusicWorkspace
+} from '../lib/tv/youMusicPlaylistStore';
+import {
+  loadLecturasWorkspace,
+  saveLecturasWorkspace,
+  type LecturasWorkspace
+} from '../lib/tv/youLecturasStore';
+import {
+  loadMiTvWorkspace,
+  saveMiTvWorkspace,
+  OFFICIAL_LIVE_TV_CHANNEL_ID,
+  type MiTvWorkspace
+} from '../lib/tv/miTvStore';
 import { useSignalStore } from '../lib/tv/signalStore';
 import { listSwitchableSignals, type UserSignalSummary } from '../lib/tv/associationsService';
 import { loadCloudBranding } from '../lib/tv/signalPersistence';
@@ -43,6 +60,21 @@ type SignalBrandingEntry = {
   coverDataUrl?: string;
 };
 
+type VaultFilter = 'all' | 'videos' | 'music' | 'reels' | 'lecturas' | 'senales' | 'siguiendo';
+
+interface VaultEntry {
+  id: string;
+  kind: 'video' | 'mitv' | 'music' | 'reel' | 'lectura';
+  badge: string;
+  title: string;
+  subtitle: string;
+  thumb: string;
+  timestamp: number;
+  shareUrl: string;
+  onOpen: () => void;
+  onDelete: () => void;
+}
+
 function readLocalSignalBranding(): Record<string, SignalBrandingEntry> {
   try {
     const raw = localStorage.getItem('youapp_signal_branding_v1');
@@ -52,173 +84,33 @@ function readLocalSignalBranding(): Record<string, SignalBrandingEntry> {
   }
 }
 
-type SavedMomentEntry = {
-  id: string;
-  contentId: string;
-  providerId?: string;
-  title: string;
-  channelTitle: string;
-  startSec: number;
-  shareUrl?: string;
-  savedAt: string;
-};
-
-function readSavedMoments(): SavedMomentEntry[] {
-  try {
-    const raw = localStorage.getItem('youapp_saved_moments_v1');
-    const parsed = JSON.parse(raw || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function formatSec(sec: number): string {
-  const s = Math.max(0, Math.floor(sec || 0));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
-}
-
 export default function MyLists() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'listas' | 'guardados' | 'momentos'>('listas');
+  const [filter, setFilter] = useState<VaultFilter>('all');
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [savedChannels, setSavedChannels] = useState<UniversalChannel[]>([]);
   const [userSignals, setUserSignals] = useState<UserSignalSummary[]>([]);
   const [signalBranding, setSignalBranding] = useState<Record<string, SignalBrandingEntry>>(() =>
     readLocalSignalBranding()
   );
-  const [savedMoments, setSavedMoments] = useState<SavedMomentEntry[]>(() => readSavedMoments());
+
   const { savedContent, unsaveContent } = useStore();
   const activeSignal = useSignalStore((s) => s.activeSignal);
 
-  const reelsWorkspace = loadYouReelsWorkspace();
-  const totalReelsCount = reelsWorkspace.collections.reduce((acc, col) => acc + col.items.length, 0);
+  const [reelsWorkspace, setReelsWorkspace] = useState<YouReelsWorkspace>(() => loadYouReelsWorkspace());
+  const [musicWorkspace, setMusicWorkspace] = useState<YouMusicWorkspace>(() => loadYouMusicWorkspace());
+  const [lecturasWorkspace, setLecturasWorkspace] = useState<LecturasWorkspace>(() => loadLecturasWorkspace());
+  const [mitvWorkspace, setMitvWorkspace] = useState<MiTvWorkspace>(() => loadMiTvWorkspace());
   const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
+
   useEffect(() => {
     const onSocialChange = () => setSocialGraph(loadSocialGraph());
     window.addEventListener(SOCIAL_GRAPH_CHANGED_EVENT, onSocialChange);
     return () => window.removeEventListener(SOCIAL_GRAPH_CHANGED_EVENT, onSocialChange);
   }, []);
+
   const followedCreators = socialGraph.followedCreatorsMeta || [];
-  const likedVideos = socialGraph.likedVideosMeta || [];
-  const totalLikesCount = socialGraph.likedVideoKeys.length;
-  const musicWorkspace = useMemo(() => loadYouMusicWorkspace(), []);
-  const lecturasWorkspace = useMemo(() => loadLecturasWorkspace(), []);
-  const mitvWorkspace = useMemo(() => loadMiTvWorkspace(), []);
-
-  const completeSignalVisualData = useMemo<CompleteSignalVisualData>(() => {
-    const primarySignalId = activeSignal?.id || userSignals[0]?.id || 'justicia-social-signal-1';
-    const primarySignalName = activeSignal?.name || userSignals[0]?.name || 'Mi Señal YOUAPP';
-    const primaryBranding = signalBranding[primarySignalId] || {};
-
-    const channelThumbs: Array<{ title: string; thumb: string }> = [];
-    const seenThumbs = new Set<string>();
-    const pushChannelThumb = (title: string, thumb?: string) => {
-      const clean = String(thumb || '').trim();
-      if (!clean || seenThumbs.has(clean)) return;
-      seenThumbs.add(clean);
-      channelThumbs.push({ title, thumb: clean });
-    };
-
-    for (const sig of userSignals) {
-      const b = signalBranding[sig.id];
-      pushChannelThumb(sig.name, b?.coverDataUrl || b?.avatarDataUrl);
-    }
-    for (const blk of activeSignal?.schedule || []) {
-      const ci = blk?.contentItem as any;
-      const thumb =
-        ci?.thumbnail ||
-        ci?.thumbnailUrl ||
-        (ci?.providerId && /^[A-Za-z0-9_-]{11}$/.test(ci.providerId)
-          ? `https://i.ytimg.com/vi/${ci.providerId}/hqdefault.jpg`
-          : '');
-      pushChannelThumb(ci?.title || activeSignal?.name || 'Canal', thumb);
-    }
-    for (const ch of savedChannels) {
-      const chAny = ch as any;
-      pushChannelThumb(ch.name, chAny.coverUrl || chAny.thumbnail || ch.logo);
-    }
-
-    const allMiTvItems = (mitvWorkspace.channels || []).flatMap((ch) =>
-      (ch.items || []).map((it) => ({
-        title: it.title || ch.name || 'MiTV',
-        thumb:
-          it.thumbnailUrl ||
-          (it.liveVideoId && /^[A-Za-z0-9_-]{11}$/.test(it.liveVideoId)
-            ? `https://i.ytimg.com/vi/${it.liveVideoId}/hqdefault.jpg`
-            : it.providerId && /^[A-Za-z0-9_-]{11}$/.test(it.providerId)
-              ? `https://i.ytimg.com/vi/${it.providerId}/hqdefault.jpg`
-              : '')
-      }))
-    );
-    const mitvThumbs = allMiTvItems.filter((it) => Boolean(it.thumb));
-
-    const allMusicItems = musicWorkspace.playlists.flatMap((pl) => pl.items || []);
-    const musicThumbs = allMusicItems
-      .map((it) => ({
-        title: it.title || it.author || 'Música',
-        thumb:
-          it.thumbnailUrl ||
-          (it.videoId ? `https://i.ytimg.com/vi/${it.videoId}/hqdefault.jpg` : '')
-      }))
-      .filter((it) => Boolean(it.thumb));
-
-    const lecturas = (lecturasWorkspace.items || []).map((it) => ({
-      title: it.title || it.sourceName || it.domain,
-      source: it.sourceName || it.domain || 'Lectura',
-      thumb: it.thumbnailUrl || it.faviconUrl || ''
-    }));
-
-    const reelThumbs = reelsWorkspace.collections
-      .flatMap((col) => col.items || [])
-      .map((it: any) => ({
-        title: it.title || 'Reel',
-        thumb:
-          it.thumbnailUrl ||
-          it.thumbnail ||
-          (it.providerId && /^[A-Za-z0-9_-]{11}$/.test(it.providerId)
-            ? `https://i.ytimg.com/vi/${it.providerId}/hqdefault.jpg`
-            : '')
-      }))
-      .filter((it) => Boolean(it.thumb));
-
-    const savedThumbs = savedContent
-      .map((it) => ({
-        title: it.title || 'Video guardado',
-        thumb: it.thumbnail || ''
-      }))
-      .filter((it) => Boolean(it.thumb));
-
-    return {
-      signalId: primarySignalId,
-      signalName: primarySignalName,
-      avatarUrl: primaryBranding.avatarDataUrl,
-      heroCoverUrl: primaryBranding.coverDataUrl || channelThumbs[0]?.thumb,
-      channelThumbs,
-      mitvThumbs,
-      mitvChannelsCount: (mitvWorkspace.channels || []).length,
-      mitvItemsCount: allMiTvItems.length,
-      musicThumbs,
-      musicCount: allMusicItems.length,
-      lecturas,
-      lecturasCount: lecturas.length,
-      reelsAndSavedThumbs: [...reelThumbs, ...savedThumbs],
-      reelsAndSavedCount: totalReelsCount + savedContent.length,
-      signalsCount: Math.max(userSignals.length, savedChannels.length, activeSignal ? 1 : 0)
-    };
-  }, [
-    activeSignal,
-    userSignals,
-    signalBranding,
-    savedChannels,
-    musicWorkspace,
-    lecturasWorkspace,
-    mitvWorkspace,
-    reelsWorkspace,
-    savedContent,
-    totalReelsCount
-  ]);
 
   useEffect(() => {
     try {
@@ -256,28 +148,283 @@ export default function MyLists() {
     navigate('/live');
   };
 
-  const handleDeleteMoment = (id: string) => {
-    const next = savedMoments.filter((m) => m.id !== id);
-    setSavedMoments(next);
-    try {
-      localStorage.setItem('youapp_saved_moments_v1', JSON.stringify(next));
-    } catch {
-      // ignore
+  // BÓVEDA UNIFICADA: Todo lo que guardaste en YOUAPP (sin Me gusta ni Momentos)
+  const allVaultEntries = useMemo<VaultEntry[]>(() => {
+    const out: VaultEntry[] = [];
+
+    // 1. Videos guardados desde Buscar / Mi Señal
+    for (const item of savedContent) {
+      const ytId = item.providerId || item.id;
+      const shareUrl = `https://www.youtube.com/watch?v=${ytId}`;
+      out.push({
+        id: `vid-${item.id}`,
+        kind: 'video',
+        badge: 'Video',
+        title: item.title || 'Video guardado',
+        subtitle: item.channelTitle || 'YouTube',
+        thumb:
+          item.thumbnail ||
+          (/^[A-Za-z0-9_-]{11}$/.test(ytId) ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : ''),
+        timestamp: Date.parse((item as any).savedAt || (item as any).publishedAt || '') || 0,
+        shareUrl,
+        onOpen: () => navigate(`/search?v=${encodeURIComponent(ytId)}`),
+        onDelete: () => unsaveContent(item.id)
+      });
     }
-  };
+
+    // 2. Videos guardados en grillas propias de MiTV (excluye TV en vivo oficial precargada)
+    for (const ch of mitvWorkspace.channels || []) {
+      if (ch.id === OFFICIAL_LIVE_TV_CHANNEL_ID) continue;
+      for (const it of ch.items || []) {
+        const ytId =
+          (it.liveVideoId && /^[A-Za-z0-9_-]{11}$/.test(it.liveVideoId) && it.liveVideoId) ||
+          (it.providerId && /^[A-Za-z0-9_-]{11}$/.test(it.providerId) && it.providerId) ||
+          '';
+        const thumb = it.thumbnailUrl || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : '');
+        const url = it.sourceUrl || (ytId ? `https://www.youtube.com/watch?v=${ytId}` : '');
+        out.push({
+          id: `mitv-${ch.id}-${it.id}`,
+          kind: 'mitv',
+          badge: 'MiTV',
+          title: it.title || ch.name || 'MiTV',
+          subtitle: ch.name || 'MiTV',
+          thumb,
+          timestamp: Date.parse((it as any).addedAt || '') || 0,
+          shareUrl: url || `${window.location.origin}/mitv`,
+          onOpen: () =>
+            url
+              ? navigate(`/mitv?add=${encodeURIComponent(url)}&t=${encodeURIComponent(it.title || '')}`)
+              : navigate('/mitv'),
+          onDelete: () => {
+            setMitvWorkspace((prev) =>
+              saveMiTvWorkspace({
+                ...prev,
+                channels: prev.channels.map((c) =>
+                  c.id === ch.id ? { ...c, items: c.items.filter((x) => x.id !== it.id) } : c
+                )
+              })
+            );
+          }
+        });
+      }
+    }
+
+    // 3. Canciones / listas guardadas en YOU MUSIC
+    for (const pl of musicWorkspace.playlists || []) {
+      for (const it of pl.items || []) {
+        const thumb =
+          it.thumbnailUrl || (it.videoId ? `https://i.ytimg.com/vi/${it.videoId}/hqdefault.jpg` : '');
+        const url = it.sourceUrl || (it.videoId ? `https://www.youtube.com/watch?v=${it.videoId}` : '');
+        out.push({
+          id: `mus-${pl.id}-${it.id}`,
+          kind: 'music',
+          badge: 'Música',
+          title: it.title || it.author || 'Música',
+          subtitle: `${it.author || 'YouMusic'} · ${pl.name}`,
+          thumb,
+          timestamp: Date.parse(it.addedAt || '') || 0,
+          shareUrl: url || `${window.location.origin}/youmusic`,
+          onOpen: () =>
+            it.videoId
+              ? navigate(`/youmusic?v=${encodeURIComponent(it.videoId)}&t=${encodeURIComponent(it.title || '')}`)
+              : navigate('/youmusic'),
+          onDelete: () => {
+            setMusicWorkspace((prev) =>
+              saveYouMusicWorkspace({
+                ...prev,
+                playlists: prev.playlists.map((p) =>
+                  p.id === pl.id ? { ...p, items: p.items.filter((x) => x.id !== it.id) } : p
+                )
+              })
+            );
+          }
+        });
+      }
+    }
+
+    // 4. Reels guardados en colecciones
+    for (const col of reelsWorkspace.collections || []) {
+      for (const it of col.items || []) {
+        const anyIt = it as any;
+        const ytId =
+          anyIt.providerId && /^[A-Za-z0-9_-]{11}$/.test(anyIt.providerId) ? anyIt.providerId : '';
+        const thumb =
+          anyIt.thumbnailUrl ||
+          anyIt.thumbnail ||
+          (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : '');
+        out.push({
+          id: `reel-${col.id}-${it.id}`,
+          kind: 'reel',
+          badge: 'Reel',
+          title: it.title || 'Reel guardado',
+          subtitle: col.name || 'Colección Reels',
+          thumb,
+          timestamp: Date.parse(anyIt.addedAt || '') || 0,
+          shareUrl: anyIt.sourceUrl || `${window.location.origin}/reels`,
+          onOpen: () => navigate('/reels'),
+          onDelete: () => {
+            setReelsWorkspace((prev) =>
+              saveYouReelsWorkspace({
+                ...prev,
+                collections: prev.collections.map((c) =>
+                  c.id === col.id ? { ...c, items: c.items.filter((x) => x.id !== it.id) } : c
+                )
+              })
+            );
+          }
+        });
+      }
+    }
+
+    // 5. Notas guardadas en Lecturas
+    for (const it of lecturasWorkspace.items || []) {
+      out.push({
+        id: `lec-${it.id}`,
+        kind: 'lectura',
+        badge: 'Lectura',
+        title: it.title || it.sourceName || it.domain,
+        subtitle: `${it.sourceName || it.domain} · ${it.topic}`,
+        thumb: it.thumbnailUrl || it.faviconUrl || '',
+        timestamp: Date.parse(it.addedAt || it.publishedAt || '') || 0,
+        shareUrl: it.url,
+        onOpen: () =>
+          navigate(`/lecturas?add=${encodeURIComponent(it.url)}&t=${encodeURIComponent(it.title)}`),
+        onDelete: () => {
+          setLecturasWorkspace((prev) =>
+            saveLecturasWorkspace({
+              ...prev,
+              items: prev.items.filter((x) => x.id !== it.id)
+            })
+          );
+        }
+      });
+    }
+
+    return out.sort((a, b) => b.timestamp - a.timestamp);
+  }, [savedContent, mitvWorkspace, musicWorkspace, reelsWorkspace, lecturasWorkspace, navigate, unsaveContent]);
+
+  const counts = useMemo(() => {
+    let videos = 0;
+    let music = 0;
+    let reels = 0;
+    let lecturas = 0;
+    for (const e of allVaultEntries) {
+      if (e.kind === 'video' || e.kind === 'mitv') videos++;
+      else if (e.kind === 'music') music++;
+      else if (e.kind === 'reel') reels++;
+      else if (e.kind === 'lectura') lecturas++;
+    }
+    return {
+      all: allVaultEntries.length,
+      videos,
+      music,
+      reels,
+      lecturas,
+      senales: userSignals.length + savedChannels.length,
+      siguiendo: followedCreators.length
+    };
+  }, [allVaultEntries, userSignals.length, savedChannels.length, followedCreators.length]);
+
+  const visibleEntries = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return allVaultEntries.filter((e) => {
+      if (filter === 'videos' && e.kind !== 'video' && e.kind !== 'mitv') return false;
+      if (filter === 'music' && e.kind !== 'music') return false;
+      if (filter === 'reels' && e.kind !== 'reel') return false;
+      if (filter === 'lecturas' && e.kind !== 'lectura') return false;
+      if (q && !`${e.title} ${e.subtitle} ${e.badge}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [allVaultEntries, filter, searchQuery]);
+
+  const completeSignalVisualData = useMemo<CompleteSignalVisualData>(() => {
+    const primarySignalId = activeSignal?.id || userSignals[0]?.id || 'justicia-social-signal-1';
+    const primarySignalName = activeSignal?.name || userSignals[0]?.name || 'Mi Señal YOUAPP';
+    const primaryBranding = signalBranding[primarySignalId] || {};
+
+    const channelThumbs: Array<{ title: string; thumb: string }> = [];
+    const seenThumbs = new Set<string>();
+    const pushChannelThumb = (title: string, thumb?: string) => {
+      const clean = String(thumb || '').trim();
+      if (!clean || seenThumbs.has(clean)) return;
+      seenThumbs.add(clean);
+      channelThumbs.push({ title, thumb: clean });
+    };
+
+    for (const sig of userSignals) {
+      const b = signalBranding[sig.id];
+      pushChannelThumb(sig.name, b?.coverDataUrl || b?.avatarDataUrl);
+    }
+    for (const ch of savedChannels) {
+      const chAny = ch as any;
+      pushChannelThumb(ch.name, chAny.coverUrl || chAny.thumbnail || ch.logo);
+    }
+
+    const mitvThumbs = allVaultEntries
+      .filter((e) => e.kind === 'mitv' && e.thumb)
+      .map((e) => ({ title: e.title, thumb: e.thumb }));
+    const musicThumbs = allVaultEntries
+      .filter((e) => e.kind === 'music' && e.thumb)
+      .map((e) => ({ title: e.title, thumb: e.thumb }));
+    const lecturas = lecturasWorkspace.items.map((it) => ({
+      title: it.title || it.sourceName || it.domain,
+      source: it.sourceName || it.domain || 'Lectura',
+      thumb: it.thumbnailUrl || it.faviconUrl || ''
+    }));
+    const reelsAndSavedThumbs = allVaultEntries
+      .filter((e) => (e.kind === 'reel' || e.kind === 'video') && e.thumb)
+      .map((e) => ({ title: e.title, thumb: e.thumb }));
+
+    return {
+      signalId: primarySignalId,
+      signalName: primarySignalName,
+      avatarUrl: primaryBranding.avatarDataUrl,
+      heroCoverUrl: primaryBranding.coverDataUrl || channelThumbs[0]?.thumb,
+      channelThumbs,
+      mitvThumbs,
+      mitvChannelsCount: (mitvWorkspace.channels || []).length,
+      mitvItemsCount: mitvThumbs.length,
+      musicThumbs,
+      musicCount: counts.music,
+      lecturas,
+      lecturasCount: counts.lecturas,
+      reelsAndSavedThumbs,
+      reelsAndSavedCount: counts.reels + savedContent.length,
+      signalsCount: Math.max(userSignals.length, savedChannels.length, activeSignal ? 1 : 0)
+    };
+  }, [
+    activeSignal,
+    userSignals,
+    signalBranding,
+    savedChannels,
+    allVaultEntries,
+    lecturasWorkspace.items,
+    mitvWorkspace.channels,
+    counts,
+    savedContent.length
+  ]);
+
+  const filterChips: Array<{ id: VaultFilter; label: string; count: number }> = [
+    { id: 'all', label: 'Todo', count: counts.all },
+    { id: 'videos', label: 'Videos', count: counts.videos },
+    { id: 'music', label: 'Música', count: counts.music },
+    { id: 'reels', label: 'Reels', count: counts.reels },
+    { id: 'lecturas', label: 'Lecturas', count: counts.lecturas },
+    { id: 'senales', label: 'Señales', count: counts.senales },
+    { id: 'siguiendo', label: 'Siguiendo', count: counts.siguiendo }
+  ];
 
   return (
     <div className="ml-page">
       <div className="ml-stage-bg" aria-hidden="true" />
       <div className="ml-stage-veil" aria-hidden="true" />
 
-      {/* BARRA SUPERIOR UNIFICADA EN MAYÚSCULAS */}
       <header className="ml-topbar">
         <div className="ml-topbar-left">
           <button type="button" className="ml-logo-btn" onClick={() => navigate('/')}>
             <YouAppOfficialLogo theme="dark" />
           </button>
-          <span className="ml-brand-pill">MIS LISTAS</span>
+          <span className="ml-brand-pill">MI LISTA</span>
         </div>
 
         <nav className="ml-nav">
@@ -304,428 +451,308 @@ export default function MyLists() {
       </header>
 
       <main className="ml-main">
-        {/* ENCABEZADO + ACCIÓN */}
-        <section className="ml-hero">
-          <div className="ml-hero-text">
-            <h1>Mis Listas</h1>
-            <p>Tus señales, colecciones, videos guardados y momentos clave en un solo lugar.</p>
-          </div>
-          <button type="button" className="ml-cta-btn" onClick={() => navigate('/create-signal')}>
-            <Plus size={15} />
-            <span>Nueva señal</span>
+        {/* 1. BARRA SUPERIOR DESPLEGABLE SUTIL (Buscar · Compartir Señal · Nueva Señal) */}
+        <section className={`ml-tools-drawer ${isToolsOpen ? 'is-open' : ''}`} aria-label="Herramientas de Mi Lista">
+          <button
+            type="button"
+            className="ml-tools-toggle"
+            onClick={() => setIsToolsOpen((v) => !v)}
+            aria-expanded={isToolsOpen}
+          >
+            <span className="ml-tools-toggle-left">
+              <Bookmark size={14} color="#64d2ff" />
+              <strong>Mi Lista</strong>
+              <span className="ml-tools-sub">
+                · {counts.all} guardados · Buscar · Compartir señal
+              </span>
+            </span>
+            <ChevronDown
+              size={15}
+              style={{
+                transition: 'transform 0.18s ease',
+                transform: isToolsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                opacity: 0.78
+              }}
+            />
           </button>
+
+          {isToolsOpen && (
+            <div className="ml-tools-body">
+              <div className="ml-tools-row">
+                <div className="ml-search-box">
+                  <Search size={14} color="rgba(245,245,247,0.58)" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar en tus videos, música, reels y lecturas…"
+                    aria-label="Buscar en Mi Lista"
+                  />
+                </div>
+                <button type="button" className="ml-cta-btn" onClick={() => navigate('/create-signal')}>
+                  <Plus size={14} />
+                  <span>Nueva señal</span>
+                </button>
+              </div>
+              <CompleteSignalShareCard data={completeSignalVisualData} />
+            </div>
+          )}
         </section>
 
-        {/* SEÑAL COMPLETA VISUAL COMPACTA PARA COMPARTIR */}
-        <CompleteSignalShareCard data={completeSignalVisualData} />
-
-        {/* PESTAÑAS */}
-        <div className="ml-tabs" role="tablist" aria-label="Secciones de Mis Listas">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'listas'}
-            className={`ml-tab ${activeTab === 'listas' ? 'active' : ''}`}
-            onClick={() => setActiveTab('listas')}
-          >
-            Mis Listas y Señales
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'guardados'}
-            className={`ml-tab ${activeTab === 'guardados' ? 'active' : ''}`}
-            onClick={() => setActiveTab('guardados')}
-          >
-            Guardados ({savedContent.length})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'momentos'}
-            className={`ml-tab ${activeTab === 'momentos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('momentos')}
-          >
-            Momentos ({savedMoments.length})
-          </button>
+        {/* 2. CARRUSEL HORIZONTAL DE 1 FILA */}
+        <div className="ml-filter-carousel" role="tablist" aria-label="Filtrar Mi Lista">
+          {filterChips.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              role="tab"
+              aria-selected={filter === chip.id}
+              className={`ml-filter-chip ${filter === chip.id ? 'active' : ''}`}
+              onClick={() => setFilter(chip.id)}
+            >
+              <span>{chip.label}</span>
+              {chip.count > 0 && <span className="ml-chip-count">{chip.count}</span>}
+            </button>
+          ))}
         </div>
 
-        {/* TAB 1: MIS LISTAS Y SEÑALES */}
-        {activeTab === 'listas' && (
-          <div className="ml-sections">
-            <section className="ml-glass-card">
-              <div className="ml-section-head">
-                <h2>Tus espacios en YOUAPP</h2>
-              </div>
-              <div className="ml-grid">
-                <button type="button" className="ml-row-card" onClick={() => navigate('/misenal1')}>
-                  <div className="ml-icon-box blue">
-                    <Radio size={20} />
-                  </div>
-                  <div className="ml-row-info">
-                    <strong>Mi Señal</strong>
-                    <span>Tu canal propio en vivo y programación</span>
-                  </div>
-                  <ChevronRight size={17} className="ml-chev" />
-                </button>
-
-                <button type="button" className="ml-row-card" onClick={() => navigate('/mitv')}>
-                  <div className="ml-icon-box cyan">
-                    <Tv size={20} />
-                  </div>
-                  <div className="ml-row-info">
-                    <strong>MITV</strong>
-                    <span>Tus grillas y canales de TV personalizados</span>
-                  </div>
-                  <ChevronRight size={17} className="ml-chev" />
-                </button>
-
-                <button type="button" className="ml-row-card" onClick={() => navigate('/youmusic')}>
-                  <div className="ml-icon-box purple">
-                    <Music size={20} />
-                  </div>
-                  <div className="ml-row-info">
-                    <strong>YOU MUSIC</strong>
-                    <span>Tus listas y señales musicales</span>
-                  </div>
-                  <ChevronRight size={17} className="ml-chev" />
-                </button>
-
-                <button type="button" className="ml-row-card" onClick={() => navigate('/reels')}>
-                  <div className="ml-icon-box pink">
-                    <Film size={20} />
-                  </div>
-                  <div className="ml-row-info">
-                    <strong>Colecciones de Reels</strong>
-                    <span>
-                      {reelsWorkspace.collections.length}{' '}
-                      {reelsWorkspace.collections.length === 1 ? 'colección' : 'colecciones'} · {totalReelsCount} guardados
-                    </span>
-                  </div>
-                  <ChevronRight size={17} className="ml-chev" />
-                </button>
-
-                <button type="button" className="ml-row-card" onClick={() => setActiveTab('guardados')}>
-                  <div className="ml-icon-box red">
-                    <Heart size={20} />
-                  </div>
-                  <div className="ml-row-info">
-                    <strong>Favoritos y Guardados</strong>
-                    <span>
-                      {savedContent.length} guardados · {totalLikesCount} me gusta
-                    </span>
-                  </div>
-                  <ChevronRight size={17} className="ml-chev" />
-                </button>
-
-                <button type="button" className="ml-row-card" onClick={() => setActiveTab('momentos')}>
-                  <div className="ml-icon-box amber">
-                    <Clock size={20} />
-                  </div>
-                  <div className="ml-row-info">
-                    <strong>Momentos clave</strong>
-                    <span>{savedMoments.length} fragmentos guardados al segundo</span>
-                  </div>
-                  <ChevronRight size={17} className="ml-chev" />
+        {/* 3. CONTENIDO UNIFICADO */}
+        {filter === 'senales' ? (
+          <section className="ml-vault-section">
+            {userSignals.length === 0 && savedChannels.length === 0 ? (
+              <div className="ml-empty-card">
+                <Radio size={28} color="#64d2ff" />
+                <strong>Todavía no creaste señales</strong>
+                <p>Armá tu propia señal en vivo con videos, música y noticias.</p>
+                <button type="button" className="ml-cta-btn" onClick={() => navigate('/create-signal')}>
+                  <Plus size={14} /> Nueva señal
                 </button>
               </div>
-            </section>
-
-            {followedCreators.length > 0 && (
-              <section className="ml-glass-card">
-                <div className="ml-section-head">
-                  <h2>Siguiendo ({followedCreators.length})</h2>
-                </div>
-                <div className="ml-grid">
-                  {followedCreators.map((creator) => (
-                    <div key={creator.key} className="ml-row-card" style={{ cursor: 'default' }}>
-                      <div className="ml-icon-box blue">
-                        <Radio size={18} />
-                      </div>
-                      <button
-                        type="button"
-                        className="ml-row-info"
-                        style={{ background: 'transparent', border: 'none', textAlign: 'left', padding: 0, cursor: 'pointer' }}
-                        onClick={() => navigate(`/search?q=${encodeURIComponent(creator.name)}`)}
-                      >
-                        <strong>{creator.name}</strong>
-                        <span>Ver videos y novedades en Buscar</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="ml-icon-action danger"
-                        title="Dejar de seguir"
-                        onClick={() =>
-                          setSocialGraph((prev) => toggleFollowCreatorWithMeta(prev, creator).graph)
-                        }
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {userSignals.length > 0 && (
-              <section className="ml-glass-card">
-                <div className="ml-section-head">
-                  <h2>Mis señales ({userSignals.length})</h2>
-                </div>
-                <div className="ml-grid">
-                  {userSignals.map((sig) => {
-                    const branding = signalBranding[sig.id] || {};
-                    const coverSrc = branding.coverDataUrl || branding.avatarDataUrl || '';
-                    return (
-                      <button
-                        key={sig.id}
-                        type="button"
-                        className={`ml-row-card ${coverSrc ? 'has-cover' : ''}`}
-                        onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
-                      >
-                        {coverSrc ? (
-                          <div className="ml-signal-cover-banner">
-                            <img src={coverSrc} alt={`Portada de ${sig.name}`} loading="lazy" />
-                            <div className="ml-signal-cover-scrim" />
-                            <div className="ml-signal-cover-footer">
-                              <div className="ml-row-info">
-                                <strong>{sig.name}</strong>
-                                <span>Abrir señal</span>
-                              </div>
-                              <span className="ml-play-circle">
-                                <Play size={14} fill="#ffffff" color="#ffffff" />
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="ml-icon-box blue">
-                              <Radio size={20} />
-                            </div>
+            ) : (
+              <div className="ml-signals-grid">
+                {userSignals.map((sig) => {
+                  const branding = signalBranding[sig.id] || {};
+                  const coverSrc = branding.coverDataUrl || branding.avatarDataUrl || '';
+                  return (
+                    <button
+                      key={sig.id}
+                      type="button"
+                      className={`ml-signal-card ${coverSrc ? 'has-cover' : ''}`}
+                      onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                    >
+                      {coverSrc ? (
+                        <div className="ml-signal-cover">
+                          <img src={coverSrc} alt={sig.name} loading="lazy" />
+                          <div className="ml-signal-scrim" />
+                          <div className="ml-signal-footer">
                             <div className="ml-row-info">
                               <strong>{sig.name}</strong>
-                              <span>Señal en Mi Señal</span>
+                              <span>Mi Señal</span>
                             </div>
                             <span className="ml-play-circle">
-                              <Play size={14} fill="#ffffff" color="#ffffff" />
+                              <Play size={13} fill="#fff" color="#fff" />
                             </span>
-                          </>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-
-            {savedChannels.length > 0 && (
-              <section className="ml-glass-card">
-                <div className="ml-section-head">
-                  <h2>Tus señales creadas ({savedChannels.length})</h2>
-                </div>
-                <div className="ml-grid">
-                  {savedChannels.map((channel) => {
-                    const chAny = channel as any;
-                    const branding = signalBranding[channel.id] || {};
-                    const coverSrc =
-                      branding.coverDataUrl ||
-                      branding.avatarDataUrl ||
-                      chAny.coverUrl ||
-                      chAny.bannerUrl ||
-                      chAny.thumbnail ||
-                      channel.logo ||
-                      '';
-                    return (
-                      <button
-                        key={channel.id}
-                        type="button"
-                        className={`ml-row-card ${coverSrc ? 'has-cover' : ''}`}
-                        onClick={() => handlePlayChannel(channel)}
-                      >
-                        {coverSrc ? (
-                          <div className="ml-signal-cover-banner">
-                            <img src={coverSrc} alt={`Portada de ${channel.name}`} loading="lazy" />
-                            <div className="ml-signal-cover-scrim" />
-                            <div className="ml-signal-cover-footer">
-                              <div className="ml-row-info">
-                                <strong>{channel.name}</strong>
-                                <span>Señal personalizada</span>
-                              </div>
-                              <span className="ml-play-circle">
-                                <Play size={14} fill="#ffffff" color="#ffffff" />
-                              </span>
-                            </div>
                           </div>
-                        ) : (
-                          <>
-                            <div className="ml-icon-box purple">
-                              <Tv size={20} />
-                            </div>
+                        </div>
+                      ) : (
+                        <div className="ml-signal-plain">
+                          <div className="ml-icon-box blue"><Radio size={18} /></div>
+                          <div className="ml-row-info">
+                            <strong>{sig.name}</strong>
+                            <span>Mi Señal</span>
+                          </div>
+                          <span className="ml-play-circle">
+                            <Play size={13} fill="#fff" color="#fff" />
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+                {savedChannels.map((channel) => {
+                  const chAny = channel as any;
+                  const branding = signalBranding[channel.id] || {};
+                  const coverSrc =
+                    branding.coverDataUrl ||
+                    branding.avatarDataUrl ||
+                    chAny.coverUrl ||
+                    chAny.thumbnail ||
+                    channel.logo ||
+                    '';
+                  return (
+                    <button
+                      key={channel.id}
+                      type="button"
+                      className={`ml-signal-card ${coverSrc ? 'has-cover' : ''}`}
+                      onClick={() => handlePlayChannel(channel)}
+                    >
+                      {coverSrc ? (
+                        <div className="ml-signal-cover">
+                          <img src={coverSrc} alt={channel.name} loading="lazy" />
+                          <div className="ml-signal-scrim" />
+                          <div className="ml-signal-footer">
                             <div className="ml-row-info">
                               <strong>{channel.name}</strong>
                               <span>Señal personalizada</span>
                             </div>
                             <span className="ml-play-circle">
-                              <Play size={14} fill="#ffffff" color="#ffffff" />
+                              <Play size={13} fill="#fff" color="#fff" />
                             </span>
-                          </>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-          </div>
-        )}
-
-        {/* TAB 2: VIDEOS GUARDADOS Y ME GUSTA */}
-        {activeTab === 'guardados' && (
-          <div className="ml-sections">
-            {likedVideos.length > 0 && (
-              <section className="ml-glass-card">
-                <div className="ml-section-head">
-                  <h2>Me gusta ❤️ ({likedVideos.length})</h2>
-                </div>
-                <div className="ml-saved-list">
-                  {likedVideos.map((vid) => (
-                    <div key={vid.key} className="ml-saved-row">
-                      {vid.thumbnailUrl && (
-                        <img src={vid.thumbnailUrl} alt={vid.title} className="ml-saved-thumb" loading="lazy" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="ml-signal-plain">
+                          <div className="ml-icon-box purple"><Tv size={18} /></div>
+                          <div className="ml-row-info">
+                            <strong>{channel.name}</strong>
+                            <span>Señal personalizada</span>
+                          </div>
+                          <span className="ml-play-circle">
+                            <Play size={13} fill="#fff" color="#fff" />
+                          </span>
+                        </div>
                       )}
-                      <div className="ml-row-info">
-                        <strong>{vid.title}</strong>
-                        <span>{vid.author || 'YOUAPP'}</span>
-                      </div>
-                      <div className="ml-row-actions">
-                        {vid.sourceUrl && (
-                          <button
-                            type="button"
-                            className="ml-play-circle"
-                            title="Ver en MiTV"
-                            onClick={() => navigate(`/mitv?add=${encodeURIComponent(vid.sourceUrl!)}`)}
-                          >
-                            <Play size={14} fill="#ffffff" color="#ffffff" />
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className="ml-icon-action danger"
-                          title="Quitar Me gusta"
-                          onClick={() =>
-                            setSocialGraph((prev) => toggleLikeVideoWithMeta(prev, vid).graph)
-                          }
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section className="ml-glass-card">
-              <div className="ml-section-head">
-                <h2>Videos guardados ({savedContent.length})</h2>
+                    </button>
+                  );
+                })}
               </div>
-
-            {savedContent.length === 0 ? (
-              <div className="ml-empty">
-                <Bookmark size={28} />
-                <p>Todavía no guardaste videos. Podés buscar y guardar desde Buscar o Mi Señal.</p>
+            )}
+          </section>
+        ) : filter === 'siguiendo' ? (
+          <section className="ml-vault-section">
+            {followedCreators.length === 0 ? (
+              <div className="ml-empty-card">
+                <Users size={28} color="#64d2ff" />
+                <strong>Todavía no seguís creadores</strong>
+                <p>Cuando sigas un canal en Buscar, va a aparecer acá para abrir sus videos en 1 toque.</p>
                 <button type="button" className="ml-cta-btn" onClick={() => navigate('/search')}>
-                  <Search size={14} /> Ir a Buscar
+                  <Search size={14} /> Explorar en Buscar
                 </button>
               </div>
             ) : (
-              <div className="ml-saved-list">
-                {savedContent.map((item) => (
-                  <div key={item.id} className="ml-saved-row">
-                    {item.thumbnail && (
-                      <img src={item.thumbnail} alt={item.title} className="ml-saved-thumb" loading="lazy" />
-                    )}
-                    <div className="ml-row-info">
-                      <strong>{item.title}</strong>
-                      <span>{item.channelTitle || 'YouTube'}</span>
-                    </div>
-                    <div className="ml-row-actions">
-                      <button
-                        type="button"
-                        className="ml-icon-action"
-                        title="Sumar a Mi Señal"
-                        onClick={() =>
-                          navigate(
-                            `/misenal1?add=${encodeURIComponent(`https://www.youtube.com/watch?v=${item.providerId || item.id}`)}&t=${encodeURIComponent(item.title)}`
-                          )
-                        }
-                      >
-                        <Play size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="ml-icon-action danger"
-                        title="Quitar de guardados"
-                        onClick={() => unsaveContent(item.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+              <div className="ml-vault-list">
+                {followedCreators.map((creator) => (
+                  <div key={creator.key} className="ml-vault-row">
+                    <div className="ml-icon-box blue"><Radio size={18} /></div>
+                    <button
+                      type="button"
+                      className="ml-row-click"
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(creator.name)}`)}
+                    >
+                      <strong>{creator.name}</strong>
+                      <span>Ver videos y novedades en Buscar</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="ml-icon-action danger"
+                      title="Dejar de seguir"
+                      onClick={() =>
+                        setSocialGraph((prev) => toggleFollowCreatorWithMeta(prev, creator).graph)
+                      }
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
-            </section>
-          </div>
-        )}
-
-        {/* TAB 3: MOMENTOS GUARDADOS */}
-        {activeTab === 'momentos' && (
-          <section className="ml-glass-card">
-            <div className="ml-section-head">
-              <h2>Momentos guardados ({savedMoments.length})</h2>
-            </div>
-
-            {savedMoments.length === 0 ? (
-              <div className="ml-empty">
-                <Clock size={28} />
-                <p>Todavía no guardaste momentos. Usá el botón «Momentos» en la Barra Inteligente mientras mirás un video.</p>
+          </section>
+        ) : (
+          <section className="ml-vault-section">
+            {visibleEntries.length === 0 ? (
+              <div className="ml-empty-card">
+                <Bookmark size={28} color="#64d2ff" />
+                <strong>Tu Lista está lista para guardar</strong>
+                <p>
+                  Todo lo que guardes en Buscar, MiTV, YouMusic, Reels o Lecturas aparece acá ordenado y listo para abrir en 1 toque.
+                </p>
+                <div className="ml-empty-actions">
+                  <button type="button" className="ml-cta-btn" onClick={() => navigate('/search')}>
+                    <Search size={14} /> Buscar videos
+                  </button>
+                  <button type="button" className="ml-ghost-btn" onClick={() => navigate('/lecturas')}>
+                    <BookOpen size={14} /> Ir a Lecturas
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="ml-saved-list">
-                {savedMoments.map((m) => {
-                  const watchUrl =
-                    m.shareUrl ||
-                    `https://www.youtube.com/watch?v=${m.providerId || m.contentId}&t=${Math.floor(m.startSec)}s`;
-                  return (
-                    <div key={m.id} className="ml-saved-row">
-                      <div className="ml-time-badge">{formatSec(m.startSec)}</div>
-                      <div className="ml-row-info">
-                        <strong>{m.title}</strong>
-                        <span>{m.channelTitle}</span>
+              <div className="ml-vault-list">
+                {visibleEntries.map((entry) => (
+                  <article key={entry.id} className="ml-vault-row">
+                    <button
+                      type="button"
+                      className="ml-thumb-wrap"
+                      onClick={entry.onOpen}
+                      aria-label={`Abrir ${entry.title}`}
+                    >
+                      {entry.thumb ? (
+                        <img
+                          src={entry.thumb}
+                          alt={entry.title}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span className="ml-thumb-fallback">
+                          {entry.kind === 'music' ? (
+                            <Music size={16} />
+                          ) : entry.kind === 'reel' ? (
+                            <Film size={16} />
+                          ) : entry.kind === 'lectura' ? (
+                            <BookOpen size={16} />
+                          ) : (
+                            <Tv size={16} />
+                          )}
+                        </span>
+                      )}
+                    </button>
+
+                    <button type="button" className="ml-row-click" onClick={entry.onOpen}>
+                      <div className="ml-meta-line">
+                        <span className={`ml-kind-badge is-${entry.kind}`}>{entry.badge}</span>
+                        <span className="ml-subtitle-inline">{entry.subtitle}</span>
                       </div>
-                      <div className="ml-row-actions">
-                        <a
-                          href={watchUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-icon-action"
-                          title="Abrir momento en YouTube"
-                        >
-                          <ExternalLink size={14} />
-                        </a>
-                        <button
-                          type="button"
-                          className="ml-icon-action danger"
-                          title="Eliminar momento"
-                          onClick={() => handleDeleteMoment(m.id)}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      <strong>{entry.title}</strong>
+                    </button>
+
+                    <div className="ml-row-actions">
+                      <button
+                        type="button"
+                        className="ml-icon-action play"
+                        title="Abrir"
+                        onClick={entry.onOpen}
+                      >
+                        {entry.kind === 'lectura' ? (
+                          <BookOpen size={14} />
+                        ) : (
+                          <Play size={14} fill="currentColor" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="ml-icon-action"
+                        title="Compartir"
+                        onClick={() =>
+                          void shareContentUniversal({
+                            title: entry.title,
+                            text: `${entry.title} · YOUAPP`,
+                            url: entry.shareUrl
+                          })
+                        }
+                      >
+                        <Share2 size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="ml-icon-action danger"
+                        title="Quitar de Mi Lista"
+                        onClick={entry.onDelete}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-                  );
-                })}
+                  </article>
+                ))}
               </div>
             )}
           </section>
@@ -736,7 +763,7 @@ export default function MyLists() {
         .ml-page {
           position: relative;
           min-height: 100dvh;
-          background-color: #14161a;
+          background-color: #12151c;
           color: #f5f5f7;
           font-family: var(--you-font-sans, 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif);
           padding-bottom: 64px;
@@ -747,24 +774,22 @@ export default function MyLists() {
           position: fixed;
           inset: -16px;
           z-index: 0;
-          background-color: #18140d;
-          background-image: url('/my-lists-autumn-lake-bg.png');
+          background-color: #141822;
+          background-image:
+            radial-gradient(ellipse 46% 48% at 18% 18%, rgba(100, 210, 255, 0.22) 0%, transparent 62%),
+            radial-gradient(ellipse 48% 46% at 82% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 64%),
+            url('/my-lists-autumn-lake-bg.png');
           background-size: cover;
           background-position: center;
-          filter: blur(10px) brightness(0.8) contrast(1.06);
-          transform: scale(1.04) translateZ(0);
+          filter: blur(18px) brightness(0.55) contrast(1.06);
+          transform: scale(1.05) translateZ(0);
           pointer-events: none;
         }
         .ml-stage-veil {
           position: fixed;
           inset: 0;
           z-index: 1;
-          background: linear-gradient(
-            180deg,
-            rgba(18, 14, 8, 0.2) 0%,
-            rgba(16, 14, 10, 0.16) 50%,
-            rgba(12, 10, 8, 0.42) 100%
-          );
+          background: linear-gradient(180deg, rgba(12, 15, 22, 0.55) 0%, rgba(12, 15, 22, 0.72) 100%);
           pointer-events: none;
         }
         .ml-topbar,
@@ -781,10 +806,10 @@ export default function MyLists() {
           justify-content: space-between;
           gap: 12px;
           padding: 10px 22px;
-          background: rgba(24, 26, 30, 0.48);
-          backdrop-filter: saturate(180%) blur(24px);
-          -webkit-backdrop-filter: saturate(180%) blur(24px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(18, 22, 32, 0.62);
+          backdrop-filter: saturate(180%) blur(22px);
+          -webkit-backdrop-filter: saturate(180%) blur(22px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
         }
         .ml-topbar-left {
           display: flex;
@@ -804,7 +829,7 @@ export default function MyLists() {
           padding: 3px 10px;
           border-radius: 999px;
           background: rgba(0, 113, 227, 0.28);
-          border: 1px solid rgba(100, 210, 255, 0.5);
+          border: 1px solid rgba(100, 210, 255, 0.45);
           color: #d8f3ff;
           font-size: 11px;
           font-weight: 800;
@@ -831,201 +856,329 @@ export default function MyLists() {
           white-space: nowrap;
           flex-shrink: 0;
         }
-        .ml-nav-btn:hover {
+        .ml-nav-btn:hover,
+        .ml-nav-btn.active {
           background: rgba(255, 255, 255, 0.14);
           border-color: rgba(100, 210, 255, 0.45);
           color: #ffffff;
         }
 
         .ml-main {
-          max-width: 1040px;
+          max-width: 980px;
           margin: 0 auto;
-          padding: 28px 24px 0;
+          padding: 14px 16px 0;
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 12px;
         }
-        .ml-hero {
+
+        /* BARRA DESPLEGABLE SUTIL ARRIBA */
+        .ml-tools-drawer {
+          border-radius: 14px;
+          background: rgba(16, 20, 30, 0.72);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          overflow: hidden;
+        }
+        .ml-tools-toggle {
+          width: 100%;
           display: flex;
-          flex-wrap: wrap;
-          align-items: flex-end;
+          align-items: center;
           justify-content: space-between;
-          gap: 16px;
+          gap: 10px;
+          padding: 10px 14px;
+          background: transparent;
+          border: 0;
+          color: rgba(245, 245, 247, 0.94);
+          font-size: 12.5px;
+          cursor: pointer;
         }
-        .ml-hero-text h1 {
-          margin: 0 0 6px;
-          font-family: var(--you-font-display, 'Space Grotesk', sans-serif);
-          font-size: clamp(28px, 4vw, 38px);
-          font-weight: 700;
-          letter-spacing: -0.02em;
+        .ml-tools-toggle:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .ml-tools-toggle-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 0;
+        }
+        .ml-tools-sub {
+          font-size: 11.5px;
+          color: rgba(235, 240, 255, 0.56);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ml-tools-body {
+          padding: 10px 12px 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .ml-tools-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .ml-search-box {
+          flex: 1 1 220px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.34);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+        .ml-search-box input {
+          flex: 1;
+          min-width: 0;
+          border: 0;
+          background: transparent;
           color: #ffffff;
+          font-size: 13px;
+          outline: none;
         }
-        .ml-hero-text p {
-          margin: 0;
-          font-size: 14px;
-          color: rgba(245, 245, 247, 0.78);
+        .ml-search-box input::placeholder {
+          color: rgba(245, 245, 247, 0.48);
         }
         .ml-cta-btn {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
-          padding: 9px 18px;
+          gap: 6px;
+          padding: 8px 14px;
           border-radius: 999px;
-          border: 1px solid rgba(100, 210, 255, 0.6);
+          border: 1px solid rgba(100, 210, 255, 0.55);
           background: #0071e3;
           color: #ffffff;
-          font-size: 13px;
+          font-size: 12.5px;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 8px 22px rgba(0, 113, 227, 0.36);
+          white-space: nowrap;
         }
         .ml-cta-btn:hover {
           background: #0a84ff;
         }
-
-        .ml-tabs {
+        .ml-ghost-btn {
           display: inline-flex;
-          flex-wrap: wrap;
-          align-self: flex-start;
+          align-items: center;
           gap: 6px;
-          padding: 4px;
+          padding: 8px 14px;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.08);
           border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        .ml-tab {
-          padding: 7px 16px;
-          border-radius: 999px;
-          border: none;
-          background: transparent;
-          color: rgba(245, 245, 247, 0.8);
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f5f7;
           font-size: 12.5px;
-          font-weight: 700;
+          font-weight: 650;
           cursor: pointer;
         }
-        .ml-tab.active,
-        .ml-tab:hover {
+
+        /* CARRUSEL 1 FILA */
+        .ml-filter-carousel {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 7px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+          padding: 2px 0;
+        }
+        .ml-filter-carousel::-webkit-scrollbar {
+          display: none;
+        }
+        .ml-filter-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+          white-space: nowrap;
+          padding: 6px 13px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(245, 245, 247, 0.86);
+          font-size: 12.5px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .ml-filter-chip.active {
           background: #0071e3;
+          border-color: #64d2ff;
           color: #ffffff;
         }
-
-        .ml-sections {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-        .ml-glass-card {
-          position: relative;
-          border-radius: 24px;
-          padding: 22px 24px;
-          background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.12) 0%,
-            rgba(255, 255, 255, 0.04) 55%,
-            rgba(255, 255, 255, 0.08) 100%
-          );
-          backdrop-filter: blur(22px) saturate(140%);
-          -webkit-backdrop-filter: blur(22px) saturate(140%);
-          border: 1px solid rgba(255, 255, 255, 0.28);
-          box-shadow:
-            inset 0 1px 2px rgba(255, 255, 255, 0.48),
-            0 16px 40px rgba(0, 0, 0, 0.3);
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          overflow: hidden;
-        }
-        .ml-glass-card::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          border-radius: inherit;
-          padding: 2px;
-          background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.9) 0%,
-            rgba(255, 255, 255, 0.35) 20%,
-            rgba(255, 255, 255, 0.12) 50%,
-            rgba(255, 255, 255, 0.35) 80%,
-            rgba(255, 255, 255, 0.9) 100%
-          );
-          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          -webkit-mask-composite: xor;
-          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-          mask-composite: exclude;
-          pointer-events: none;
-        }
-        .ml-glass-card > * {
-          position: relative;
-          z-index: 1;
-        }
-        .ml-section-head h2 {
-          margin: 0;
-          font-size: 14px;
-          font-weight: 700;
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-          color: rgba(255, 255, 255, 0.9);
+        .ml-chip-count {
+          font-size: 11px;
+          font-weight: 750;
+          opacity: 0.78;
         }
 
-        .ml-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-          gap: 12px;
+        /* LISTA BÓVEDA UNIFICADA */
+        .ml-vault-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
         }
-        .ml-row-card {
+        .ml-vault-row {
           display: flex;
           align-items: center;
-          gap: 14px;
-          padding: 14px 16px;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          background: rgba(255, 255, 255, 0.06);
-          color: #ffffff;
+          gap: 11px;
+          padding: 9px 11px;
+          border-radius: 15px;
+          background: rgba(22, 26, 36, 0.78);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          transition: border-color 0.15s ease, background 0.15s ease;
+        }
+        .ml-vault-row:hover {
+          background: rgba(30, 36, 50, 0.86);
+          border-color: rgba(100, 210, 255, 0.36);
+        }
+        .ml-thumb-wrap {
+          width: 78px;
+          height: 54px;
+          border-radius: 10px;
+          overflow: hidden;
+          border: 0;
+          padding: 0;
+          background: rgba(255, 255, 255, 0.08);
+          flex-shrink: 0;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .ml-thumb-wrap img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .ml-thumb-fallback {
+          color: rgba(245, 245, 247, 0.65);
+        }
+        .ml-row-click {
+          flex: 1;
+          min-width: 0;
+          background: transparent;
+          border: 0;
+          padding: 0;
           text-align: left;
           cursor: pointer;
-          transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
         }
-        .ml-row-card:hover {
-          background: rgba(255, 255, 255, 0.14);
-          border-color: rgba(100, 210, 255, 0.5);
-          transform: translateY(-1px);
+        .ml-row-click strong {
+          font-size: 13.5px;
+          font-weight: 680;
+          color: #ffffff;
+          line-height: 1.28;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
-        .ml-row-card.has-cover {
+        .ml-row-click > span {
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.65);
+        }
+        .ml-meta-line {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 0;
+        }
+        .ml-kind-badge {
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.03em;
+          padding: 2px 7px;
+          border-radius: 999px;
+          flex-shrink: 0;
+        }
+        .ml-kind-badge.is-video { background: rgba(239, 68, 68, 0.22); color: #fca5a5; }
+        .ml-kind-badge.is-mitv { background: rgba(6, 182, 212, 0.22); color: #67e8f9; }
+        .ml-kind-badge.is-music { background: rgba(139, 92, 246, 0.25); color: #d8b4fe; }
+        .ml-kind-badge.is-reel { background: rgba(236, 72, 153, 0.24); color: #f9a8d4; }
+        .ml-kind-badge.is-lectura { background: rgba(10, 132, 255, 0.24); color: #7dd3fc; }
+        .ml-subtitle-inline {
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.62);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ml-row-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          flex-shrink: 0;
+        }
+        .ml-icon-action {
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.08);
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .ml-icon-action.play {
+          background: #0071e3;
+          border-color: rgba(100, 210, 255, 0.55);
+        }
+        .ml-icon-action:hover {
+          background: #0a84ff;
+          border-color: #64d2ff;
+        }
+        .ml-icon-action.danger:hover {
+          background: rgba(239, 68, 68, 0.42);
+          border-color: rgba(252, 165, 165, 0.7);
+        }
+
+        /* SEÑALES */
+        .ml-signals-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 10px;
+        }
+        .ml-signal-card {
+          border-radius: 16px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(22, 26, 36, 0.8);
+          color: #ffffff;
           padding: 0;
           overflow: hidden;
-          min-height: 118px;
-          position: relative;
+          cursor: pointer;
+          text-align: left;
         }
-        .ml-signal-cover-banner {
+        .ml-signal-cover {
           position: relative;
           width: 100%;
-          height: 118px;
+          height: 112px;
           display: flex;
           align-items: flex-end;
         }
-        .ml-signal-cover-banner > img {
+        .ml-signal-cover > img {
           position: absolute;
           inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transition: transform 0.25s ease;
         }
-        .ml-row-card.has-cover:hover .ml-signal-cover-banner > img {
-          transform: scale(1.04);
-        }
-        .ml-signal-cover-scrim {
+        .ml-signal-scrim {
           position: absolute;
           inset: 0;
-          background: linear-gradient(
-            180deg,
-            rgba(8, 10, 14, 0.12) 0%,
-            rgba(8, 10, 14, 0.45) 45%,
-            rgba(8, 10, 14, 0.88) 100%
-          );
+          background: linear-gradient(180deg, rgba(8, 10, 14, 0.12) 0%, rgba(8, 10, 14, 0.86) 100%);
         }
-        .ml-signal-cover-footer {
+        .ml-signal-footer,
+        .ml-signal-plain {
           position: relative;
           z-index: 1;
           width: 100%;
@@ -1035,27 +1188,22 @@ export default function MyLists() {
           padding: 12px 14px;
         }
         .ml-icon-box {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
+          width: 40px;
+          height: 40px;
+          border-radius: 11px;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
         }
         .ml-icon-box.blue { background: rgba(0, 113, 227, 0.25); color: #7dd3fc; }
-        .ml-icon-box.cyan { background: rgba(6, 182, 212, 0.24); color: #67e8f9; }
         .ml-icon-box.purple { background: rgba(139, 92, 246, 0.25); color: #c4b5fd; }
-        .ml-icon-box.pink { background: rgba(236, 72, 153, 0.24); color: #f9a8d4; }
-        .ml-icon-box.red { background: rgba(239, 68, 68, 0.24); color: #fca5a5; }
-        .ml-icon-box.amber { background: rgba(245, 158, 11, 0.24); color: #fcd34d; }
-
         .ml-row-info {
           flex: 1;
           min-width: 0;
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 2px;
         }
         .ml-row-info strong {
           font-size: 14px;
@@ -1068,17 +1216,10 @@ export default function MyLists() {
         .ml-row-info span {
           font-size: 12px;
           color: rgba(245, 245, 247, 0.72);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .ml-chev {
-          color: rgba(255, 255, 255, 0.55);
-          flex-shrink: 0;
         }
         .ml-play-circle {
-          width: 34px;
-          height: 34px;
+          width: 32px;
+          height: 32px;
           border-radius: 999px;
           background: #0071e3;
           display: inline-flex;
@@ -1087,78 +1228,33 @@ export default function MyLists() {
           flex-shrink: 0;
         }
 
-        .ml-saved-list {
+        .ml-empty-card {
           display: flex;
           flex-direction: column;
+          align-items: center;
           gap: 10px;
-        }
-        .ml-saved-row {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          padding: 10px 14px;
-          border-radius: 14px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.14);
-        }
-        .ml-saved-thumb {
-          width: 76px;
-          aspect-ratio: 16 / 9;
-          border-radius: 8px;
-          object-fit: cover;
-          flex-shrink: 0;
-        }
-        .ml-time-badge {
-          padding: 5px 10px;
-          border-radius: 999px;
-          background: rgba(0, 113, 227, 0.28);
-          border: 1px solid rgba(100, 210, 255, 0.45);
-          color: #d8f3ff;
-          font-size: 12px;
-          font-weight: 800;
-          font-variant-numeric: tabular-nums;
-          flex-shrink: 0;
-        }
-        .ml-row-actions {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .ml-icon-action {
-          width: 34px;
-          height: 34px;
-          border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          background: rgba(255, 255, 255, 0.1);
-          color: #ffffff;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          text-decoration: none;
-        }
-        .ml-icon-action:hover {
-          background: #0071e3;
-          border-color: #64d2ff;
-        }
-        .ml-icon-action.danger:hover {
-          background: rgba(239, 68, 68, 0.45);
-          border-color: rgba(252, 165, 165, 0.7);
-        }
-
-        .ml-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          padding: 36px 16px;
+          padding: 34px 18px;
+          border-radius: 18px;
+          background: rgba(22, 26, 36, 0.76);
+          border: 1px solid rgba(255, 255, 255, 0.12);
           text-align: center;
-          color: rgba(245, 245, 247, 0.76);
         }
-        .ml-empty p {
+        .ml-empty-card strong {
+          font-size: 15px;
+          color: #ffffff;
+        }
+        .ml-empty-card p {
           margin: 0;
-          max-width: 420px;
-          font-size: 13.5px;
+          max-width: 380px;
+          font-size: 13px;
+          color: rgba(245, 245, 247, 0.72);
+        }
+        .ml-empty-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: center;
+          margin-top: 4px;
         }
 
         @media (max-width: 960px) {
@@ -1167,6 +1263,23 @@ export default function MyLists() {
           }
           .ml-nav {
             display: none;
+          }
+        }
+        @media (max-width: 640px) {
+          .ml-main {
+            padding: 10px 12px 0;
+          }
+          .ml-thumb-wrap {
+            width: 68px;
+            height: 50px;
+          }
+          .ml-vault-row {
+            gap: 9px;
+            padding: 8px 9px;
+          }
+          .ml-icon-action {
+            width: 30px;
+            height: 30px;
           }
         }
       `}</style>

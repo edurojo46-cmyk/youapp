@@ -2436,8 +2436,8 @@ export default function ChannelSearch() {
     }
 
     setIsMiniPlayerManual((v) => !v);
-    setCastNotice('Mini-reproductor activo dentro de YOUAPP · Para leer Infobae con video flotante en celular, abrilo en Lecturas.');
-    window.setTimeout(() => setCastNotice(null), 4500);
+    setCastNotice('En celular el mini-reproductor flota dentro de YOUAPP (ej. abrí Infobae en Lecturas). Para apps externas usá Pantalla Dividida de Android.');
+    window.setTimeout(() => setCastNotice(null), 5000);
   }, [previewVideo]);
 
   const hiddenShortsCount = useMemo(

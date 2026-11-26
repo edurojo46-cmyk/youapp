@@ -47,6 +47,15 @@ function formatShortDate(iso: string | null): string | null {
   }
 }
 
+const QUICK_NEWS_PORTALS: Array<{ name: string; url: string; domain: string }> = [
+  { name: 'Infobae', url: 'https://www.infobae.com/', domain: 'infobae.com' },
+  { name: 'Clarín', url: 'https://www.clarin.com/', domain: 'clarin.com' },
+  { name: 'La Nación', url: 'https://www.lanacion.com.ar/', domain: 'lanacion.com.ar' },
+  { name: 'TN', url: 'https://tn.com.ar/', domain: 'tn.com.ar' },
+  { name: 'BBC Mundo', url: 'https://www.bbc.com/mundo', domain: 'bbc.com' },
+  { name: 'El País', url: 'https://elpais.com/', domain: 'elpais.com' }
+];
+
 export default function YouLecturasPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -538,6 +547,35 @@ export default function YouLecturasPage() {
               <Plus size={12} /> Lecturas
             </a>
           </form>
+
+          {/* Accesos rápidos a portales de noticias (abren directo en Modo Lectura con video flotante encima) */}
+          <div className="yl-quick-portals" aria-label="Portales de noticias rápidos">
+            <span className="yl-quick-portals-label">Portales rápidos:</span>
+            {QUICK_NEWS_PORTALS.map((portal) => (
+              <button
+                key={portal.domain}
+                type="button"
+                className="yl-portal-chip"
+                onClick={() => {
+                  const quickItem: LecturaItem = {
+                    id: `quick-${portal.domain}`,
+                    url: portal.url,
+                    domain: portal.domain,
+                    title: `${portal.name} — Portada en vivo`,
+                    description: `Lectura rápida de ${portal.name} dentro de YOUAPP`,
+                    sourceName: portal.name,
+                    topic: 'Noticias',
+                    status: 'pendiente',
+                    embeddable: false,
+                    savedAt: new Date().toISOString()
+                  };
+                  setActiveReaderItem(quickItem);
+                }}
+              >
+                {portal.name}
+              </button>
+            ))}
+          </div>
           {errorMsg && <div className="yl-error">{errorMsg}</div>}
         </section>
 
@@ -2051,6 +2089,35 @@ export default function YouLecturasPage() {
           line-height: 1.4;
           border-top: 1px solid rgba(255, 255, 255, 0.1);
           padding-top: 10px;
+        }
+        .yl-quick-portals {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 10px;
+        }
+        .yl-quick-portals-label {
+          font-size: 11.5px;
+          font-weight: 700;
+          color: rgba(245, 245, 247, 0.65);
+          margin-right: 2px;
+        }
+        .yl-portal-chip {
+          padding: 5px 11px;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 210, 255, 0.32);
+          background: rgba(10, 132, 255, 0.14);
+          color: #e6f4ff;
+          font-size: 12px;
+          font-weight: 650;
+          cursor: pointer;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .yl-portal-chip:hover {
+          background: rgba(10, 132, 255, 0.3);
+          border-color: rgba(100, 210, 255, 0.7);
+          color: #ffffff;
         }
       `}</style>
     </div>

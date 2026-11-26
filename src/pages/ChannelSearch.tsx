@@ -1286,9 +1286,9 @@ function saveVerticalCache() {
   }
 }
 
-async function searchDailymotionAndVimeo(rawQuery: string): Promise<SearchVideoItem[]> {
+async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false): Promise<SearchVideoItem[]> {
   const clean = rawQuery.trim();
-  if (!clean || normText(clean) === 'todos') return [];
+  if (!trendingMode && (!clean || normText(clean) === 'todos')) return [];
 
   const out: SearchVideoItem[] = [];
 
@@ -1296,11 +1296,11 @@ async function searchDailymotionAndVimeo(rawQuery: string): Promise<SearchVideoI
   const dmPromise = (async () => {
     try {
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 4500);
-      const res = await fetch(
-        `https://api.dailymotion.com/videos?search=${encodeURIComponent(clean)}&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=8&flags=no_live`,
-        { signal: controller.signal }
-      );
+      const timer = window.setTimeout(() => controller.abort(), 5000);
+      const dmUrl = trendingMode
+        ? `https://api.dailymotion.com/videos?languages=es&sort=visited-month&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=10&flags=no_live`
+        : `https://api.dailymotion.com/videos?search=${encodeURIComponent(clean)}&sort=relevance&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=10&flags=no_live`;
+      const res = await fetch(dmUrl, { signal: controller.signal });
       window.clearTimeout(timer);
       if (!res.ok) return [];
       const json = await res.json();
@@ -1393,7 +1393,8 @@ function interleaveMultiProvider(primary: SearchVideoItem[], extra: SearchVideoI
   let eIdx = 0;
   for (let i = 0; i < primary.length; i += 1) {
     out.push(primary[i]);
-    if ((i + 1) % 5 === 0 && eIdx < extra.length) {
+    // Primer resultado Dailymotion/Vimeo en el 3er lugar (visible sin hacer scroll) y luego cada 4 videos
+    if ((i === 1 || (i > 1 && (i - 1) % 4 === 0)) && eIdx < extra.length) {
       out.push(extra[eIdx++]);
     }
   }
@@ -1614,9 +1615,12 @@ export default function ChannelSearch() {
       setCommitted(`Mi Algoritmo · ${targetAlgo?.name || 'Personalizado'}`);
       setStatus('loading');
       try {
-        const items = await fetchMyAlgorithmFeed(targetAlgo, userRegion, getHist(), likedVideoIds);
+        const [items, dmTrending] = await Promise.all([
+          fetchMyAlgorithmFeed(targetAlgo, userRegion, getHist(), likedVideoIds),
+          searchDailymotionAndVimeo('', true).catch(() => [])
+        ]);
         if (searchRaceRef.current !== raceId) return;
-        setResults(items);
+        setResults(interleaveMultiProvider(items, dmTrending).slice(0, 56));
         setHasMore(true);
         setPageOffset(50);
       } finally {

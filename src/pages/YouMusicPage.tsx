@@ -157,7 +157,7 @@ export default function YouMusicPage() {
 
   const fetchCloudAtlasPage = useCallback(
     async (opts: { reset: boolean; genre: string; search: string }) => {
-      const PAGE_ROWS = 120;
+      const PAGE_ROWS = 60;
       const from = opts.reset ? 0 : cloudAtlasOffsetRef.current;
       const to = from + PAGE_ROWS - 1;
       setCloudAtlasLoading(true);
@@ -169,10 +169,14 @@ export default function YouMusicPage() {
             .replace(/[\u0300-\u036f]/g, '')
             .toLowerCase();
           tagFilters.push(gNorm);
+        } else {
+          tagFilters.push('rock-curado');
         }
+        // Sin `count: 'exact'` ni sort sin índice en `updated_at` (evita HTTP 500 timeout en tabla >1M filas)
         let q = supabase
           .from('youapp_index')
-          .select('video_id,title,creator_id,creator_name,tags,thumbnail_url,published_at', { count: 'exact' })
+          .select('video_id,title,creator_id,creator_name,tags,thumbnail_url,published_at')
+          .eq('provider', 'youtube')
           .contains('tags', tagFilters);
 
         const cleanSearch = opts.search.trim().replace(/[,%()]/g, ' ').trim();
@@ -180,14 +184,13 @@ export default function YouMusicPage() {
           q = q.or(`creator_name.ilike.%${cleanSearch}%,title.ilike.%${cleanSearch}%`);
         }
 
-        const { data, count, error } = await q.order('updated_at', { ascending: false }).range(from, to);
+        const { data, error } = await q.range(from, to);
         if (error || !Array.isArray(data)) {
           return;
         }
-        const total = typeof count === 'number' ? count : 0;
-        setCloudAtlasTotalVideos(total);
         cloudAtlasOffsetRef.current = from + data.length;
-        setCloudAtlasHasMore(from + data.length < total);
+        setCloudAtlasTotalVideos((prev) => Math.max(prev, from + data.length));
+        setCloudAtlasHasMore(data.length >= PAGE_ROWS);
         setCloudAtlasChannels((prev) => mapRowsToAtlasChannels(data, opts.reset ? [] : prev));
       } finally {
         setCloudAtlasLoading(false);

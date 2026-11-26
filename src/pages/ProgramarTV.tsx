@@ -258,6 +258,7 @@ export default function ProgramarTV() {
     }
   }, []);
   const castReceiverBridgeRef = useRef<RemoteBridge | null>(null);
+  const playerCardRef = useRef<HTMLElement | null>(null);
   const volumeBoxRef = useRef<HTMLDivElement | null>(null);
   const castBoxRef = useRef<HTMLDivElement | null>(null);
   const ytHostRef = useRef<HTMLDivElement | null>(null);
@@ -298,18 +299,98 @@ export default function ProgramarTV() {
   }, [isChannelMenuOpen, isVolumeOpen, isCastOpen]);
 
   useEffect(() => {
-    if (!isFullscreen) return;
+    if (typeof document === 'undefined') return;
+    document.body.classList.toggle('mitv-is-fullscreen', isFullscreen);
+
+    const el = playerCardRef.current as
+      | (HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void })
+      | null;
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+
+    if (isFullscreen) {
+      if (el && !document.fullscreenElement && !doc.webkitFullscreenElement) {
+        try {
+          if (el.requestFullscreen) {
+            void el.requestFullscreen().catch(() => {});
+          } else if (el.webkitRequestFullscreen) {
+            void el.webkitRequestFullscreen();
+          }
+        } catch {
+          // fallback CSS 100vw x 100dvh
+        }
+      }
+    } else if (document.fullscreenElement || doc.webkitFullscreenElement) {
+      try {
+        if (document.exitFullscreen) {
+          void document.exitFullscreen().catch(() => {});
+        } else if (doc.webkitExitFullscreen) {
+          void doc.webkitExitFullscreen();
+        }
+      } catch {
+        // ignore
+      }
+    }
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsFullscreen(false);
       }
     };
+    const onFsChange = () => {
+      const nativeActive = Boolean(document.fullscreenElement || doc.webkitFullscreenElement);
+      if (!nativeActive && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
     window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+    };
   }, [isFullscreen]);
 
+  useEffect(() => {
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('mitv-is-fullscreen');
+      }
+    };
+  }, []);
+
   const handleToggleFullscreen = () => {
-    setIsFullscreen((prev) => !prev);
+    const next = !isFullscreen;
+    setIsFullscreen(next);
+    if (typeof document === 'undefined') return;
+    const el = playerCardRef.current as
+      | (HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void })
+      | null;
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+    try {
+      if (next && el && !document.fullscreenElement && !doc.webkitFullscreenElement) {
+        if (el.requestFullscreen) {
+          void el.requestFullscreen().catch(() => {});
+        } else if (el.webkitRequestFullscreen) {
+          void el.webkitRequestFullscreen();
+        }
+      } else if (!next && (document.fullscreenElement || doc.webkitFullscreenElement)) {
+        if (document.exitFullscreen) {
+          void document.exitFullscreen().catch(() => {});
+        } else if (doc.webkitExitFullscreen) {
+          void doc.webkitExitFullscreen();
+        }
+      }
+    } catch {
+      // fallback CSS 100vw x 100dvh
+    }
   };
 
   // Receptor YOUAPP Remote / Cast SIEMPRE activo en MiTV (con el PIN de 4 dígitos de esta pantalla)
@@ -1765,7 +1846,10 @@ export default function ProgramarTV() {
 
         {/* 2. REPRODUCTOR MiTV (MULTIFUENTE CONTINUO) */}
         {currentItem && (
-          <section className={`mitv-card mitv-player-card ${isFullscreen ? 'is-expanded' : ''}`}>
+          <section
+            ref={playerCardRef}
+            className={`mitv-card mitv-player-card ${isFullscreen ? 'is-expanded' : ''}`}
+          >
             <div className="mitv-video-wrap">
               {isMomentsMosaic && currentItem ? (() => {
                 const dur = progressRef.current.duration > 30 ? progressRef.current.duration : 240;
@@ -3349,26 +3433,39 @@ export default function ProgramarTV() {
         .mitv-player-card {
           overflow: visible;
         }
+        body.mitv-is-fullscreen .ymtb-bar,
+        body.mitv-is-fullscreen .mitv-header {
+          display: none !important;
+        }
         .mitv-player-card.is-expanded {
-          position: fixed;
-          inset: 0;
-          z-index: 9999;
-          border-radius: 0;
-          border: none;
-          background: #0a0c10;
-          backdrop-filter: none;
-          -webkit-backdrop-filter: none;
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          z-index: 99999 !important;
+          border-radius: 0 !important;
+          border: none !important;
+          background: #000000 !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
           display: flex;
           flex-direction: column;
         }
         .mitv-player-card.is-expanded .mitv-video-wrap {
           flex: 1;
+          width: 100%;
+          height: 100%;
           min-height: 0;
-          aspect-ratio: auto;
-          border-radius: 0;
+          aspect-ratio: auto !important;
+          border-radius: 0 !important;
         }
+        .mitv-player-card.is-expanded .mitv-now-bar,
         .mitv-player-card.is-expanded .mitv-smartbar-slot {
-          display: none;
+          display: none !important;
         }
         .mitv-video-wrap {
           position: relative;

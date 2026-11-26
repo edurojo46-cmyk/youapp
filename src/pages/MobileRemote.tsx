@@ -25,7 +25,7 @@ import {
   X
 } from 'lucide-react';
 import CastModal from '../components/CastModal';
-import { RemoteBridge } from '../utils/remoteBridge';
+import { RemoteBridge, resolveAccountTvPin } from '../utils/remoteBridge';
 import { VERIFIED_24_7_LIVE_CHANNELS, fetchTopViewedVideosByMood } from '../lib/youtube';
 import {
   loadMiTvWorkspace,
@@ -94,6 +94,23 @@ export default function MobileRemote() {
 
   const bridgeRef = useRef<RemoteBridge | null>(null);
   const actionTimerRef = useRef<number | null>(null);
+
+  // Auto-vinculación estilo YouTube/Spotify: si estás logueado en ambos dispositivos, usa el mismo PIN personal automáticamente
+  useEffect(() => {
+    const hasExplicit =
+      Boolean(routeSessionId) ||
+      Boolean(new URLSearchParams(window.location.search).get('room'));
+    if (hasExplicit) return;
+    let active = true;
+    void resolveAccountTvPin().then((accountPin) => {
+      if (!active || !accountPin) return;
+      setActiveSessionId(accountPin);
+      setPinDraft(accountPin);
+    });
+    return () => {
+      active = false;
+    };
+  }, [routeSessionId]);
 
   useEffect(() => {
     if (!activeSessionId) return;

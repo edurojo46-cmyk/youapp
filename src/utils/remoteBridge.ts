@@ -1,6 +1,28 @@
 import { Peer, type DataConnection } from 'peerjs';
 import { supabase } from '../lib/supabase';
 
+/** Deriva un PIN estable de 4 dígitos (1000-9999) por cuenta YOUAPP para vinculación automática estilo YouTube/Spotify */
+export function getPersonalTvPin(userId: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < userId.length; i++) {
+    hash ^= userId.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  const num = 1000 + (Math.abs(hash) % 9000);
+  return String(num);
+}
+
+export async function resolveAccountTvPin(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user || user.is_anonymous || !user.id) return null;
+    return getPersonalTvPin(user.id);
+  } catch {
+    return null;
+  }
+}
+
 // Multi-transport WebRTC & WebSocket Bridge con STUN servers y fallback transparente
 export class RemoteBridge {
   private sessionId: string;

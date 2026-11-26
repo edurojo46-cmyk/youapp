@@ -199,6 +199,8 @@ function App() {
         <Route path="/antena/:signalId" element={<DigitalAntennaEmbed />} />
         <Route path="/remote" element={<MobileRemote />} />
         <Route path="/remote/:sessionId" element={<MobileRemote />} />
+        <Route path="/r" element={<MobileRemote />} />
+        <Route path="/r/:sessionId" element={<MobileRemote />} />
 
         <Route path="/" element={<HomeOrSharedRoute />} />
         <Route path="/you4" element={<ProtectedRoute><LiveZapping forceQuad={true} /></ProtectedRoute>} />
@@ -218,6 +220,7 @@ function App() {
         
         {/* MiTV (antes Programar TV) - Sin DesktopLayout para barra superior limpia */}
         <Route path="/mitv" element={<MiTvPublicOrProtectedRoute />} />
+        <Route path="/tv" element={<MiTvPublicOrProtectedRoute />} />
         <Route path="/programartv" element={<Navigate to="/mitv" replace />} />
         <Route path="/misenal1" element={<MiSenalPublicOrProtectedRoute />} />
         <Route path="/misenal-medios" element={<ProtectedRoute><SignalAudioNewsPage /></ProtectedRoute>} />

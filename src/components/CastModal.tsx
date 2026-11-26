@@ -137,7 +137,7 @@ export default function CastModal({
 
   if (!isOpen) return null;
 
-  const tvUrl = `${window.location.origin}/mitv?room=${encodeURIComponent(pin || '1234')}`;
+  const tvUrl = `${window.location.origin}/tv?room=${encodeURIComponent(pin || '1234')}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(tvUrl)}&color=6366f1&bgcolor=0f111a`;
 
   const handleCopy = () => {

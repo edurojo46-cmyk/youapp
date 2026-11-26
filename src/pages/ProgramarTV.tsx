@@ -39,7 +39,7 @@ import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { XOfficialTweetEmbed } from '../components/player/XOfficialTweetEmbed';
 import { SmartBar } from '../components/smartbar/SmartBar';
 import RemoteConnectModal from '../components/RemoteConnectModal';
-import { RemoteBridge } from '../utils/remoteBridge';
+import { RemoteBridge, resolveAccountTvPin } from '../utils/remoteBridge';
 import { usePlayerStore } from '../store/usePlayerStore';
 import { useSignalStore } from '../lib/tv/signalStore';
 import { persistSignal } from '../lib/tv/signalPersistence';
@@ -114,8 +114,8 @@ export default function ProgramarTV() {
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const [isCastOpen, setIsCastOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // YOUAPP Cast propio (igual al sistema de código de TV de YouTube, 100% dentro de YOUAPP)
-  const [myTvCode] = useState<string>(() => {
+  // YOUAPP Cast propio (vinculación automática por cuenta YOUAPP estilo YouTube/Spotify + fallback PIN)
+  const [myTvCode, setMyTvCode] = useState<string>(() => {
     try {
       const roomParam = new URLSearchParams(window.location.search).get('room')?.replace(/\D/g, '').slice(0, 6);
       if (roomParam && roomParam.length >= 4) {
@@ -131,6 +131,24 @@ export default function ProgramarTV() {
       return '4829';
     }
   });
+
+  useEffect(() => {
+    const hasExplicitRoom = Boolean(new URLSearchParams(window.location.search).get('room'));
+    if (hasExplicitRoom) return;
+    let active = true;
+    void resolveAccountTvPin().then((accountPin) => {
+      if (!active || !accountPin) return;
+      setMyTvCode(accountPin);
+      try {
+        sessionStorage.setItem('youapp_mitv_code_v1', accountPin);
+      } catch {
+        // ignore
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   const [isReceivingCast] = useState(false);
   const [isRemoteQrOpen, setIsRemoteQrOpen] = useState(false);
   const [isRemotePhoneConnected, setIsRemotePhoneConnected] = useState(false);

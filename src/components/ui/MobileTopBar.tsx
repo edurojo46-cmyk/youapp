@@ -40,7 +40,6 @@ const DRAWER_LINKS = [
   { label: 'YOU MUSIC', path: '/youmusic', icon: Music2 },
   { label: 'Reels', path: '/reels', icon: Film },
   { label: 'Lecturas', path: '/lecturas', icon: BookOpen },
-  { label: 'YOU Dial', path: '/dial', icon: Compass },
   { label: 'Mis Listas', path: '/my-lists', icon: Bookmark },
   { label: 'Mi Algoritmo', path: '/my-algorithm', icon: Sparkles },
   { label: 'Repetidoras', path: '/repetidoras', icon: Share2 },

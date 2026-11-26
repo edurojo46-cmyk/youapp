@@ -554,9 +554,6 @@ export default function YouLecturasPage() {
           <button type="button" className="yl-nav-btn" onClick={() => navigate('/reels')}>
             REELS
           </button>
-          <button type="button" className="yl-nav-btn" onClick={() => navigate('/dial')}>
-            YOU DIAL
-          </button>
           <button type="button" className="yl-nav-btn" onClick={() => navigate('/my-lists')}>
             MIS LISTAS
           </button>

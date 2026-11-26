@@ -1770,14 +1770,6 @@ export default function MiSenal1() {
           <button type="button" className="ms-nav-btn" onClick={() => navigate('/lecturas')}>
             LECTURAS
           </button>
-          <button
-            type="button"
-            className="ms-nav-btn"
-            title="YOU DIAL: recorré señales de TV, radio, noticias y datos con un gesto"
-            onClick={() => navigate('/dial')}
-          >
-            YOU DIAL
-          </button>
           <button type="button" className="ms-nav-btn" onClick={() => navigate('/my-lists')}>
             MIS LISTAS
           </button>

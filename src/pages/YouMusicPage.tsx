@@ -65,6 +65,7 @@ import {
   type YouMusicWorkspace
 } from '../lib/tv/youMusicPlaylistStore';
 import atlasMusicCatalog from '../data/atlasMusicChannels.json';
+import { STARTER_AUDIO_PRESETS } from '../lib/tv/signalMediaSourcesStore';
 
 type AtlasMusicVideo = {
   videoId: string;
@@ -103,6 +104,28 @@ export default function YouMusicPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [activeRadioUrl, setActiveRadioUrl] = useState<string | null>(null);
+  const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleToggleLiveRadio = (streamUrl: string, label: string) => {
+    const audio = liveRadioAudioRef.current;
+    if (!audio) return;
+    if (activeRadioUrl === streamUrl) {
+      audio.pause();
+      setActiveRadioUrl(null);
+      return;
+    }
+    audio.src = streamUrl;
+    audio
+      .play()
+      .then(() => {
+        setActiveRadioUrl(streamUrl);
+        setToast(`📻 Escuchando en vivo: ${label}`);
+      })
+      .catch(() => {
+        setToast(`No se pudo conectar el stream de ${label}.`);
+      });
+  };
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
@@ -1359,9 +1382,6 @@ export default function YouMusicPage() {
           <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/lecturas')}>
             LECTURAS
           </button>
-          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/dial')}>
-            YOU DIAL
-          </button>
           <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/my-lists')}>
             MIS LISTAS
           </button>
@@ -1417,6 +1437,31 @@ export default function YouMusicPage() {
             </div>
           </div>
         )}
+
+        <audio ref={liveRadioAudioRef} preload="none" style={{ display: 'none' }} />
+
+        {/* RADIOS FM/AM EN VIVO (rescatadas de YouDial · 1 fila deslizable) */}
+        <section className="ymv1-radios-strip" aria-label="Radios en vivo">
+          <span className="ymv1-radios-label">
+            <Radio size={13} color="#34d399" />
+            <span>Radios</span>
+          </span>
+          {STARTER_AUDIO_PRESETS.map((r) => {
+            const isPlayingThis = activeRadioUrl === r.streamUrl;
+            return (
+              <button
+                key={r.streamUrl}
+                type="button"
+                className={`ymv1-radio-chip ${isPlayingThis ? 'is-live' : ''}`}
+                onClick={() => handleToggleLiveRadio(r.streamUrl, r.author)}
+              >
+                <span className="ymv1-radio-dot" />
+                <span>{r.author}</span>
+                <span className="ymv1-radio-state">{isPlayingThis ? '⏹' : '▶'}</span>
+              </button>
+            );
+          })}
+        </section>
 
         {/* 0. BARRA SUTIL DESPLEGABLE ARRIBA: MI SEÑAL MUSICAL (igual que MiTV) */}
         <section
@@ -3665,6 +3710,60 @@ export default function YouMusicPage() {
           align-items: center;
           justify-content: space-between;
           gap: 6px;
+        }
+        .ymv1-radios-strip {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 7px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+          padding: 2px 0;
+        }
+        .ymv1-radios-strip::-webkit-scrollbar {
+          display: none;
+        }
+        .ymv1-radios-label {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 11.5px;
+          font-weight: 750;
+          color: rgba(245, 245, 247, 0.78);
+          flex-shrink: 0;
+          padding-right: 2px;
+        }
+        .ymv1-radio-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+          white-space: nowrap;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(16, 20, 30, 0.72);
+          color: rgba(245, 245, 247, 0.9);
+          font-size: 12px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .ymv1-radio-chip.is-live {
+          background: rgba(22, 163, 74, 0.28);
+          border-color: rgba(52, 211, 153, 0.7);
+          color: #ffffff;
+        }
+        .ymv1-radio-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: #34d399;
+        }
+        .ymv1-radio-state {
+          font-size: 10px;
+          opacity: 0.8;
         }
         @media (max-width: 680px) {
           .ymv1-nav {

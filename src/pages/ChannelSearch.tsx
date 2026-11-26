@@ -2960,7 +2960,6 @@ export default function ChannelSearch() {
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/youmusic')}>YOU MUSIC</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/reels')}>REELS</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/lecturas')}>LECTURAS</button>
-          <button type="button" className="ys-nav-btn" onClick={() => navigate('/dial')}>YOU DIAL</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/my-lists')}>MIS LISTAS</button>
         </nav>
 

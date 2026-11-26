@@ -28,7 +28,7 @@ const HUD_ITEMS = [
   { id: 'music', icon: Music, label: 'YOU MUSIC', route: '/youmusic', angleDeg: 0 },
   { id: 'reels', icon: Film, label: 'REELS', route: '/reels', angleDeg: 45 },
   { id: 'lecturas', icon: BookOpen, label: 'LECTURAS', route: '/lecturas', angleDeg: 90 },
-  { id: 'dial', icon: Compass, label: 'YOU DIAL', route: '/dial', angleDeg: 135 },
+  { id: 'listas', icon: Bookmark, label: 'MIS LISTAS', route: '/my-lists', angleDeg: 135 },
   { id: 'misenal', icon: Radio, label: 'MI SEÑAL', route: '/misenal1', angleDeg: 180 },
   { id: 'agrandar', icon: Maximize, label: 'AGRANDAR', route: '/mitv', angleDeg: 225 },
 ];
@@ -118,9 +118,6 @@ export default function Home() {
           </button>
           <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/lecturas')} title="LECTURAS" aria-label="LECTURAS">
             <BookOpen size={17} />
-          </button>
-          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/dial')} title="YOU DIAL" aria-label="YOU DIAL">
-            <Compass size={17} />
           </button>
           <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/my-lists')} title="MIS LISTAS" aria-label="MIS LISTAS">
             <Bookmark size={17} />

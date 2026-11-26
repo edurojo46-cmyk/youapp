@@ -739,9 +739,6 @@ export default function YouReelsPage() {
           <button type="button" className="yr-nav-btn" onClick={() => navigate('/lecturas')}>
             LECTURAS
           </button>
-          <button type="button" className="yr-nav-btn" onClick={() => navigate('/dial')}>
-            YOU DIAL
-          </button>
           <button type="button" className="yr-nav-btn" onClick={() => navigate('/my-lists')}>
             MIS LISTAS
           </button>

@@ -9,6 +9,9 @@ on:
       - 'scripts/android/**'
       - '.github/workflows/build-android-apk.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build-android-apk:
     runs-on: ubuntu-latest
@@ -48,3 +51,13 @@ jobs:
           name: YOUAPP-TV-Android-PiP
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      - name: Publish direct APK download (GitHub Release)
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk YOUAPP-TV-Android-PiP.apk
+          gh release delete android-pip-latest --yes 2>/dev/null || true
+          gh release create android-pip-latest YOUAPP-TV-Android-PiP.apk \
+            --title "YOUAPP TV Android (PiP nativo)" \
+            --notes "Descarga directa del APK Android con Picture-in-Picture nativo y Share Target."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

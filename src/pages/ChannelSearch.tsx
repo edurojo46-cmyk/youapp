@@ -1697,6 +1697,8 @@ export default function ChannelSearch() {
     [navigate]
   );
 
+  const [previewVideo, setPreviewVideo] = useState<SearchVideoItem | null>(null);
+
   const sendYtCommand = useCallback(
     (func: string, args: unknown[] = []) => {
       const win = previewIframeRef.current?.contentWindow;
@@ -1760,7 +1762,6 @@ export default function ChannelSearch() {
 
   const [results, setResults] = useState<SearchVideoItem[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
-  const [previewVideo, setPreviewVideo] = useState<SearchVideoItem | null>(null);
   const [sortMode, setSortMode] = useState<'relevance' | 'views' | 'recent'>('relevance');
   const [isAlgoPanelOpen, setIsAlgoPanelOpen] = useState(false);
   const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());

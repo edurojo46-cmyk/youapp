@@ -22,6 +22,7 @@ import { TvUserSessionMenu } from '../tv/TvUserSessionMenu';
 
 const HIDDEN_PREFIXES = [
   '/login',
+  '/share',
   '/embed/',
   '/antena/',
   '/remote',

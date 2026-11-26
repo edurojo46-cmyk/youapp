@@ -215,8 +215,8 @@ function App() {
         {/* Nueva página Resumen IA */}
         <Route path="/ai-summary/:id" element={<ProtectedRoute><AiSummary /></ProtectedRoute>} />
         
-        {/* Ruta para capturar enlaces compartidos */}
-        <Route path="/share" element={<ProtectedRoute><ShareTarget /></ProtectedRoute>} />
+        {/* Ruta para capturar enlaces compartidos (abierta para invitados y registrados, sin flicker) */}
+        <Route path="/share" element={<ShareTarget />} />
 
         {/* Isolated Timeline Pilot */}
         <Route path="/tools/timeline-pilot" element={<AtlasTimelinePilotPage />} />

@@ -1,8 +1,8 @@
 {
   "name": "YouApp TV",
   "short_name": "YouApp",
-  "description": "La televisión del futuro. Canales en vivo 24/7 desde tu celular.",
-  "start_url": "/#/live",
+  "description": "Todo lo que te gusta, organizado por vos.",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],

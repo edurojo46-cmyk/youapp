@@ -100,6 +100,7 @@ export default function YouReelsPage() {
   const [isRenamingCol, setIsRenamingCol] = useState(false);
   const [renameColDraft, setRenameColDraft] = useState('');
   const [isYou4Mode, setIsYou4Mode] = useState(false);
+  const [isTopDrawerOpen, setIsTopDrawerOpen] = useState(false);
   const [you4AudioSlot, setYou4AudioSlot] = useState(0);
   const [you4Offset, setYou4Offset] = useState(0);
   const [singleReplayKey, setSingleReplayKey] = useState(0);
@@ -767,79 +768,87 @@ export default function YouReelsPage() {
           </div>
         )}
 
-        {/* 1. CABECERA DE FEED SHORTS / COLECCIONES */}
-        <section className="yr-card yr-top-card">
-          <div className="yr-mode-bar">
-            <div className="yr-mode-tabs" role="tablist" aria-label="Modo de Reels">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={feedMode === 'discover'}
-                className={`yr-mode-tab ${feedMode === 'discover' ? 'active' : ''}`}
-                onClick={() => {
-                  setFeedMode('discover');
-                  setCurrentIndex(0);
-                }}
-              >
-                <Sparkles size={13} /> Descubrir Shorts{' '}
-                {(discoverTotalCount || discoverShorts.length) > 0
-                  ? `(${(discoverTotalCount || discoverShorts.length).toLocaleString('es-AR')})`
-                  : ''}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={feedMode === 'collections'}
-                className={`yr-mode-tab ${feedMode === 'collections' ? 'active' : ''}`}
-                onClick={() => {
-                  setFeedMode('collections');
-                  setCurrentIndex(0);
-                }}
-              >
-                <Film size={13} /> Mis Colecciones ({activeCollection?.items.length || 0})
-              </button>
-            </div>
+        {/* 1. BARRA SUTIL DESPLEGABLE ARRIBA (Reels · Colecciones · Sumar URL · YOU4) */}
+        <section
+          className={`yr-top-collapsible ${isTopDrawerOpen ? 'is-open' : ''}`}
+          aria-label="Opciones de Reels"
+        >
+          <button
+            type="button"
+            className="yr-top-toggle"
+            onClick={() => setIsTopDrawerOpen((v) => !v)}
+            aria-expanded={isTopDrawerOpen}
+          >
+            <span className="yr-top-toggle-left">
+              <Film size={13} color="#64d2ff" />
+              <strong>{feedMode === 'discover' ? 'Reels' : activeCollection?.name || 'Mis Colecciones'}</strong>
+              <span className="yr-top-toggle-sub">· Colecciones · Sumar URL · YOU4</span>
+            </span>
+            <ChevronDown
+              size={15}
+              style={{
+                transition: 'transform 0.18s ease',
+                transform: isTopDrawerOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                opacity: 0.75
+              }}
+            />
+          </button>
 
-            {feedMode === 'discover' && currentItem && (
-              <button
-                type="button"
-                className="yr-save-short-btn"
-                onClick={() => {
-                  updateWorkspace((prev) => ({
-                    ...prev,
-                    collections: prev.collections.map((col) => {
-                      if (col.id !== activeCollection?.id) return col;
-                      if (col.items.some((it) => it.providerId === currentItem.providerId)) return col;
-                      return { ...col, items: [currentItem, ...col.items] };
-                    })
-                  }));
-                  setToast(`Guardado en «${activeCollection?.name || 'Mis Reels'}»`);
-                }}
-              >
-                <Plus size={13} /> Guardar en mi colección
-              </button>
-            )}
-          </div>
+          {isTopDrawerOpen && (
+            <div className="yr-top-panel">
+              <div className="yr-mode-bar">
+                <div className="yr-mode-tabs" role="tablist" aria-label="Modo de Reels">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={feedMode === 'discover'}
+                    className={`yr-mode-tab ${feedMode === 'discover' ? 'active' : ''}`}
+                    onClick={() => {
+                      setFeedMode('discover');
+                      setCurrentIndex(0);
+                    }}
+                  >
+                    <Sparkles size={13} /> Descubrir Shorts{' '}
+                    {(discoverTotalCount || discoverShorts.length) > 0
+                      ? `(${(discoverTotalCount || discoverShorts.length).toLocaleString('es-AR')})`
+                      : ''}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={feedMode === 'collections'}
+                    className={`yr-mode-tab ${feedMode === 'collections' ? 'active' : ''}`}
+                    onClick={() => {
+                      setFeedMode('collections');
+                      setCurrentIndex(0);
+                    }}
+                  >
+                    <Film size={13} /> Mis Colecciones ({activeCollection?.items.length || 0})
+                  </button>
+                </div>
 
-          {feedMode === 'discover' && (
-            <div className="yr-topic-row" role="tablist" aria-label="Temas de Shorts">
-              {SHORTS_TOPICS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={shortsTopic === t.id}
-                  className={`yr-topic-pill ${shortsTopic === t.id ? 'active' : ''}`}
-                  onClick={() => setShortsTopic(t.id)}
-                >
-                  {t.label}
-                </button>
-              ))}
-              {loadingShorts && <span className="yr-topic-loading">Cargando…</span>}
-            </div>
-          )}
+                {feedMode === 'discover' && currentItem && (
+                  <button
+                    type="button"
+                    className="yr-save-short-btn"
+                    onClick={() => {
+                      updateWorkspace((prev) => ({
+                        ...prev,
+                        collections: prev.collections.map((col) => {
+                          if (col.id !== activeCollection?.id) return col;
+                          if (col.items.some((it) => it.providerId === currentItem.providerId)) return col;
+                          return { ...col, items: [currentItem, ...col.items] };
+                        })
+                      }));
+                      setToast(`Guardado en «${activeCollection?.name || 'Mis Reels'}»`);
+                    }}
+                  >
+                    <Plus size={13} /> Guardar en mi colección
+                  </button>
+                )}
+              </div>
 
-          <div className="yr-top-row">
+              <div className="yr-top-row">
             <div className="yr-col-dropdown" ref={colMenuRef}>
               {isRenamingCol ? (
                 <form className="yr-inline-form" onSubmit={handleRenameCollection}>
@@ -956,51 +965,72 @@ export default function YouReelsPage() {
             </div>
           </div>
 
-          {isCreatingCol && (
-            <form className="yr-new-col-form" onSubmit={handleCreateCollection}>
-              <input
-                type="text"
-                value={newColName}
-                onChange={(e) => setNewColName(e.target.value)}
-                placeholder="Nombre de la lista (ej. Recetas, Humor, Deportes…)"
-                autoFocus
-              />
-              <button type="submit" className="yr-btn-primary">
-                Crear
-              </button>
-            </form>
+              {isCreatingCol && (
+                <form className="yr-new-col-form" onSubmit={handleCreateCollection}>
+                  <input
+                    type="text"
+                    value={newColName}
+                    onChange={(e) => setNewColName(e.target.value)}
+                    placeholder="Nombre de la lista (ej. Recetas, Humor, Deportes…)"
+                    autoFocus
+                  />
+                  <button type="submit" className="yr-btn-primary">
+                    Crear
+                  </button>
+                </form>
+              )}
+
+              {/* Sumar Reel por URL dentro del desplegable */}
+              <div className="yr-add-bar" aria-label="Sumar Reel por URL" style={{ marginTop: 8 }}>
+                <form className="yr-add-form" onSubmit={handleAddUrl}>
+                  <input
+                    type="text"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="+ Pegá URL de Instagram Reel, TikTok, YouTube Short, Facebook o X…"
+                    aria-label="Pegar enlace de Reel"
+                  />
+                  <button type="submit" className="yr-add-submit" disabled={isAdding}>
+                    <Plus size={14} />
+                    <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
+                  </button>
+                  <a
+                    ref={bookmarkletRef}
+                    href="#reels-bookmarklet"
+                    className="yr-bookmarklet"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setToast('Arrastrá «+ Reels» a tu barra de marcadores para guardar Reels en 1 clic.');
+                    }}
+                    title="Arrastrá a tu barra de marcadores para enviar Reels desde Instagram, TikTok o YouTube en 1 clic"
+                  >
+                    <Plus size={12} /> Reels
+                  </a>
+                </form>
+                {errorMsg && <div className="yr-error">{errorMsg}</div>}
+              </div>
+            </div>
           )}
         </section>
 
-        {/* 2. BARRA DISIMULADA PARA PEGAR URL + BOTÓN ARRASTRABLE + REELS */}
-        <section className="yr-add-bar" aria-label="Sumar Reel por URL">
-          <form className="yr-add-form" onSubmit={handleAddUrl}>
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="+ Pegá URL de Instagram Reel, TikTok, YouTube Short, Facebook o X…"
-              aria-label="Pegar enlace de Reel"
-            />
-            <button type="submit" className="yr-add-submit" disabled={isAdding}>
-              <Plus size={14} />
-              <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
-            </button>
-            <a
-              ref={bookmarkletRef}
-              href="#reels-bookmarklet"
-              className="yr-bookmarklet"
-              onClick={(e) => {
-                e.preventDefault();
-                setToast('Arrastrá «+ Reels» a tu barra de marcadores para guardar Reels en 1 clic.');
-              }}
-              title="Arrastrá a tu barra de marcadores para enviar Reels desde Instagram, TikTok o YouTube en 1 clic"
-            >
-              <Plus size={12} /> Reels
-            </a>
-          </form>
-          {errorMsg && <div className="yr-error">{errorMsg}</div>}
-        </section>
+        {/* 2. CARRUSEL HORIZONTAL DE 1 SOLA FILA (Para vos · Noticias · Deportes · Música...) */}
+        {feedMode === 'discover' && (
+          <div className="yr-topic-row" role="tablist" aria-label="Temas de Shorts">
+            {SHORTS_TOPICS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={shortsTopic === t.id}
+                className={`yr-topic-pill ${shortsTopic === t.id ? 'active' : ''}`}
+                onClick={() => setShortsTopic(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+            {loadingShorts && <span className="yr-topic-loading">Cargando…</span>}
+          </div>
+        )}
 
         {/* 3. ESCENARIO FLEXIBLE 9:16 (VERTICAL) / 16:9 (HORIZONTAL) o YOU4 (4 REELS) */}
         {currentItem ? (
@@ -2278,19 +2308,73 @@ export default function YouReelsPage() {
           background: #0071e3;
           color: #ffffff;
         }
+        .yr-top-collapsible {
+          border-radius: 14px;
+          background: rgba(16, 20, 30, 0.72);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          overflow: visible;
+        }
+        .yr-top-toggle {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 9px 14px;
+          background: transparent;
+          border: 0;
+          color: rgba(245, 245, 247, 0.92);
+          font-size: 12.5px;
+          cursor: pointer;
+        }
+        .yr-top-toggle:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .yr-top-toggle-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 0;
+        }
+        .yr-top-toggle-sub {
+          font-size: 11.5px;
+          color: rgba(235, 240, 255, 0.56);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .yr-top-panel {
+          padding: 10px 12px 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
         .yr-topic-row {
           display: flex;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           align-items: center;
-          gap: 6px;
-          margin-bottom: 10px;
+          gap: 7px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+          padding: 2px 0 4px;
+          margin-bottom: 4px;
+        }
+        .yr-topic-row::-webkit-scrollbar {
+          display: none;
         }
         .yr-topic-pill {
-          padding: 5px 12px;
+          flex-shrink: 0;
+          white-space: nowrap;
+          padding: 6px 13px;
           border-radius: 999px;
           border: 1px solid rgba(255, 255, 255, 0.18);
-          background: rgba(255, 255, 255, 0.07);
-          color: rgba(245, 245, 247, 0.84);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(245, 245, 247, 0.88);
           font-size: 12px;
           font-weight: 650;
           cursor: pointer;

@@ -2396,6 +2396,54 @@ export default function ChannelSearch() {
     !isYou4Mode &&
     !isMomentsMosaic;
 
+  // Picture-in-Picture REAL del sistema (Document PiP en Chrome/Edge PC: flota encima de Infobae, otras pestañas y apps).
+  // En celular (donde el navegador no soporta Document PiP), activa el mini-reproductor flotante dentro de YOUAPP.
+  const handleToggleMiniOrSystemPiP = useCallback(async () => {
+    if (!previewVideo) return;
+    setIsYou4Mode(false);
+    setIsMomentsMosaic(false);
+
+    const docPiP = (window as any).documentPictureInPicture;
+    if (docPiP && typeof docPiP.requestWindow === 'function') {
+      try {
+        if (docPiP.window && !docPiP.window.closed) {
+          docPiP.window.close();
+          return;
+        }
+        const embedSrc =
+          previewVideo.provider === 'vimeo'
+            ? `https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1`
+            : previewVideo.provider === 'peertube' && previewVideo.embedUrl
+              ? previewVideo.embedUrl
+              : previewVideo.provider === 'archive'
+                ? previewVideo.embedUrl ||
+                  `https://archive.org/embed/${encodeURIComponent(previewVideo.videoId.replace(/^ar_/, ''))}?autoplay=1`
+                : previewVideo.provider === 'odysee' && previewVideo.embedUrl
+                  ? previewVideo.embedUrl
+                  : `https://www.youtube.com/embed/${encodeURIComponent(previewVideo.videoId)}?autoplay=1&rel=0&modestbranding=1`;
+
+        const pipWin: Window = await docPiP.requestWindow({ width: 420, height: 245 });
+        pipWin.document.title = `${previewVideo.title} · YOUAPP`;
+        pipWin.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden;width:100vw;height:100vh;';
+        const ifr = pipWin.document.createElement('iframe');
+        ifr.src = embedSrc;
+        ifr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+        ifr.allowFullscreen = true;
+        ifr.style.cssText = 'border:0;width:100%;height:100%;display:block;';
+        pipWin.document.body.appendChild(ifr);
+        setCastNotice('Ventana flotante activa: podés cambiar de pestaña o abrir Infobae y sigue visible.');
+        window.setTimeout(() => setCastNotice(null), 4000);
+        return;
+      } catch {
+        // fallback a mini-reproductor in-app
+      }
+    }
+
+    setIsMiniPlayerManual((v) => !v);
+    setCastNotice('Mini-reproductor activo dentro de YOUAPP · Para leer Infobae con video flotante en celular, abrilo en Lecturas.');
+    window.setTimeout(() => setCastNotice(null), 4500);
+  }, [previewVideo]);
+
   const hiddenShortsCount = useMemo(
     () =>
       results.filter(
@@ -3379,13 +3427,9 @@ export default function ChannelSearch() {
                         <button
                           type="button"
                           className={`ys-top-icon-btn ${isMiniPlayerManual ? 'is-subbed' : ''}`}
-                          onClick={() => {
-                            setIsYou4Mode(false);
-                            setIsMomentsMosaic(false);
-                            setIsMiniPlayerManual((v) => !v);
-                          }}
-                          title="Mini-reproductor flotante"
-                          aria-label="Mini-reproductor flotante"
+                          onClick={() => void handleToggleMiniOrSystemPiP()}
+                          title="Ventana flotante (Picture-in-Picture)"
+                          aria-label="Ventana flotante (Picture-in-Picture)"
                         >
                           <PictureInPicture2 size={14} />
                         </button>

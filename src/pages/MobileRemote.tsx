@@ -28,7 +28,13 @@ import {
 import CastModal from '../components/CastModal';
 import { RemoteBridge } from '../utils/remoteBridge';
 import { VERIFIED_24_7_LIVE_CHANNELS, fetchTopViewedVideosByMood } from '../lib/youtube';
-import { loadMiTvWorkspace } from '../lib/tv/miTvStore';
+import {
+  loadMiTvWorkspace,
+  resolveMiTvPointer,
+  extractYouTubeId,
+  type MiTvItem
+} from '../lib/tv/miTvStore';
+import { useStore } from '../store/useStore';
 
 const QUICK_EMOJIS = ['🔥', '❤️', '👏', '😂', '🍿', '🚀'];
 
@@ -62,7 +68,10 @@ export default function MobileRemote() {
   const [isQuadActive, setIsQuadActive] = useState(false);
   const [isZenActive, setIsZenActive] = useState(false);
   const [tvQuery, setTvQuery] = useState('');
+  const [isCastingUrl, setIsCastingUrl] = useState(false);
+  const [castSearchResults, setCastSearchResults] = useState<MiTvItem[]>([]);
   const [chatMessage, setChatMessage] = useState('');
+  const savedContent = useStore((s) => s.savedContent);
 
   const [channels, setChannels] = useState<any[]>(() => {
     const mitv = loadMiTvWorkspace();
@@ -73,7 +82,8 @@ export default function MobileRemote() {
         currentVideoTitle: it.title,
         category: it.slot || 'MiTV',
         thumbnail: it.thumbnailUrl,
-        videoUrl: it.sourceUrl
+        videoUrl: it.sourceUrl,
+        mitvItem: it
       }))
     );
     return [...fromMiTv, ...VERIFIED_24_7_LIVE_CHANNELS];
@@ -178,6 +188,84 @@ export default function MobileRemote() {
       } catch {
         // ignore
       }
+    }
+  };
+
+  const castItemToTv = (item: MiTvItem) => {
+    if (bridgeRef.current) {
+      bridgeRef.current.sendAction('MITV_PLAY_ITEM', { item });
+    }
+    setSyncedChannel({
+      name: item.author || 'YOUAPP TV',
+      currentVideoTitle: item.title,
+      thumbnail: item.thumbnailUrl,
+      videoUrl: item.sourceUrl
+    });
+    setIsPlaying(true);
+    flashAction(`📺 Transmitiendo: ${item.title.slice(0, 22)}`);
+  };
+
+  const handleCastInputSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = tvQuery.trim();
+    if (!raw || isCastingUrl) return;
+
+    const looksLikeUrl =
+      /^https?:\/\//i.test(raw) ||
+      /(youtube\.com|youtu\.be|vimeo\.com|dailymotion\.com|odysee\.com|\.mp4|\.m3u8)/i.test(raw);
+
+    setIsCastingUrl(true);
+    try {
+      if (looksLikeUrl) {
+        const resolved = await resolveMiTvPointer(raw, 'Ahora');
+        if (resolved.ok) {
+          castItemToTv(resolved.item);
+          setCastSearchResults([]);
+          setTvQuery('');
+        } else {
+          flashAction(resolved.error.slice(0, 32));
+        }
+        return;
+      }
+
+      // Búsqueda para elegir y transmitir a la TV
+      flashAction('Buscando videos…');
+      const found = await fetchTopViewedVideosByMood(raw);
+      const mapped: MiTvItem[] = (Array.isArray(found) ? found : [])
+        .slice(0, 6)
+        .map((ch: any, idx: number): MiTvItem | null => {
+          const ytId =
+            ch?.youtubeVideoId ||
+            ch?.videoId ||
+            extractYouTubeId(ch?.videoUrl || ch?.sourceUrl || '') ||
+            '';
+          if (!ytId) return null;
+          return {
+            id: `remote-cast-${ytId}-${idx}`,
+            provider: 'youtube',
+            providerId: ytId,
+            title: ch?.currentVideoTitle || ch?.title || ch?.name || raw,
+            author: ch?.name || ch?.channelTitle || 'YouTube',
+            thumbnailUrl: ch?.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+            sourceUrl: `https://www.youtube.com/watch?v=${ytId}`,
+            slot: 'Ahora',
+            watched: false,
+            addedAt: new Date().toISOString()
+          };
+        })
+        .filter((x): x is MiTvItem => Boolean(x));
+
+      if (mapped.length > 0) {
+        setCastSearchResults(mapped);
+        flashAction(`${mapped.length} videos listos`);
+      } else {
+        void sendAction('SEARCH_QUERY', { query: raw });
+        setTvQuery('');
+      }
+    } catch {
+      void sendAction('SEARCH_QUERY', { query: raw });
+    } finally {
+      setIsCastingUrl(false);
     }
   };
 
@@ -427,27 +515,60 @@ export default function MobileRemote() {
           </div>
         </section>
 
-        {/* BUSCADOR DIRECTO A LA TELE */}
-        <form
-          className="yr-search-bar"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!tvQuery.trim()) return;
-            void sendAction('SEARCH_QUERY', { query: tvQuery.trim() });
-            setTvQuery('');
-          }}
-        >
-          <Search size={16} color="rgba(245,245,247,0.65)" />
+        {/* TRANSMITIR VIDEO DIRECTO A LA TELE (URL o Búsqueda) */}
+        <form className="yr-search-bar" onSubmit={(e) => void handleCastInputSubmit(e)}>
+          <Cast size={16} color="#64d2ff" />
           <input
             type="text"
             value={tvQuery}
             onChange={(e) => setTvQuery(e.target.value)}
-            placeholder="Sintonizar tema o canal en la TV…"
+            placeholder="Pegá una URL o buscá un video para transmitir…"
           />
-          <button type="submit" className="yr-btn-primary">
-            Enviar
+          <button type="submit" className="yr-btn-primary" disabled={isCastingUrl || !tvQuery.trim()}>
+            {isCastingUrl ? '…' : 'Transmitir'}
           </button>
         </form>
+
+        {castSearchResults.length > 0 && (
+          <section className="yr-cast-results" aria-label="Videos para transmitir">
+            <div className="yr-cast-results-head">
+              <span>Tocá un video para transmitir a la TV</span>
+              <button
+                type="button"
+                className="yr-cast-clear"
+                onClick={() => setCastSearchResults([])}
+                aria-label="Cerrar resultados"
+              >
+                <X size={13} />
+              </button>
+            </div>
+            <div className="yr-cast-results-list">
+              {castSearchResults.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="yr-cast-result-row"
+                  onClick={() => {
+                    castItemToTv(item);
+                    setCastSearchResults([]);
+                    setTvQuery('');
+                  }}
+                >
+                  {item.thumbnailUrl && (
+                    <img src={item.thumbnailUrl} alt={item.title} loading="lazy" />
+                  )}
+                  <div className="yr-guide-info">
+                    <strong>{item.title}</strong>
+                    <span>{item.author || 'YouTube'}</span>
+                  </div>
+                  <span className="yr-cast-send-badge">
+                    <Cast size={13} />
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* EXTRAS OPCIONALES (REACCIONES Y MENSAJE A PANTALLA) */}
         <button
@@ -514,12 +635,69 @@ export default function MobileRemote() {
               </button>
             </div>
             <div className="yr-guide-list">
+              {savedContent.map((sc) => {
+                const ytId = sc.providerId || sc.id;
+                const item: MiTvItem = {
+                  id: `saved-${sc.id}`,
+                  provider: 'youtube',
+                  providerId: ytId,
+                  title: sc.title || 'Video guardado',
+                  author: sc.channelTitle || 'Mi Lista',
+                  thumbnailUrl:
+                    sc.thumbnail ||
+                    (/^[A-Za-z0-9_-]{11}$/.test(ytId) ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : ''),
+                  sourceUrl: `https://www.youtube.com/watch?v=${ytId}`,
+                  slot: 'Ahora',
+                  watched: false,
+                  addedAt: new Date().toISOString()
+                };
+                return (
+                  <button
+                    key={`saved-${sc.id}`}
+                    type="button"
+                    className="yr-guide-item"
+                    onClick={() => {
+                      castItemToTv(item);
+                      setShowGuide(false);
+                    }}
+                  >
+                    <span className="yr-guide-num">★</span>
+                    <div className="yr-guide-info">
+                      <strong>{item.title}</strong>
+                      <span>Mi Lista · {item.author}</span>
+                    </div>
+                  </button>
+                );
+              })}
               {channels.map((ch, idx) => (
                 <button
                   key={`${ch.id || idx}-${idx}`}
                   type="button"
                   className={`yr-guide-item ${idx === channelIdx ? 'active' : ''}`}
                   onClick={() => {
+                    if (ch.mitvItem) {
+                      castItemToTv(ch.mitvItem as MiTvItem);
+                    } else {
+                      const ytId =
+                        ch.youtubeVideoId ||
+                        ch.videoId ||
+                        extractYouTubeId(ch.videoUrl || ch.sourceUrl || '') ||
+                        '';
+                      if (ytId) {
+                        castItemToTv({
+                          id: `ch-${ch.id || idx}`,
+                          provider: 'youtube',
+                          providerId: ytId,
+                          title: ch.currentVideoTitle || ch.name || 'Canal',
+                          author: ch.name || 'YOUAPP TV',
+                          thumbnailUrl: ch.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+                          sourceUrl: `https://www.youtube.com/watch?v=${ytId}`,
+                          slot: 'Ahora',
+                          watched: false,
+                          addedAt: new Date().toISOString()
+                        });
+                      }
+                    }
                     void sendAction('SET_CHANNEL_INDEX', { index: idx });
                     setShowGuide(false);
                   }}
@@ -1018,6 +1196,77 @@ export default function MobileRemote() {
         .yr-guide-info span {
           font-size: 11px;
           color: rgba(245, 245, 247, 0.65);
+        }
+        .yr-cast-results {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 10px;
+          border-radius: 18px;
+          background: rgba(16, 20, 32, 0.88);
+          border: 1px solid rgba(100, 210, 255, 0.34);
+        }
+        .yr-cast-results-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #64d2ff;
+        }
+        .yr-cast-clear {
+          border: 0;
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          width: 24px;
+          height: 24px;
+          border-radius: 999px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .yr-cast-results-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          max-height: 240px;
+          overflow-y: auto;
+        }
+        .yr-cast-result-row {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 6px 8px;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.06);
+          color: #ffffff;
+          text-align: left;
+          cursor: pointer;
+        }
+        .yr-cast-result-row:hover {
+          background: rgba(0, 113, 227, 0.25);
+          border-color: rgba(100, 210, 255, 0.55);
+        }
+        .yr-cast-result-row img {
+          width: 58px;
+          height: 38px;
+          border-radius: 7px;
+          object-fit: cover;
+          flex-shrink: 0;
+        }
+        .yr-cast-send-badge {
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          background: #0071e3;
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin-left: auto;
         }
       `}</style>
     </div>

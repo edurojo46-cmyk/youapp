@@ -2219,7 +2219,7 @@ export default function MiSenal1() {
                     <div className="ms-hero-sub-cta-row">
                       <button
                         type="button"
-                        className={`ms-hero-subscribe-btn ms-hero-icon-reveal ${isSub ? 'subscribed' : ''}`}
+                        className={`ms-hero-subscribe-btn ${isSub ? 'subscribed' : ''}`}
                         onClick={() => {
                           const willSubscribe = !isSub;
                           setSocialGraph((prev) => {
@@ -2245,27 +2245,15 @@ export default function MiSenal1() {
                         }}
                         title={
                           heroYtSubUrl
-                            ? `${isSub ? 'Suscripto' : 'Suscribirse'} · Suscripción universal (YOUAPP + YouTube)`
+                            ? `${isSub ? 'Suscripto' : 'Suscribite'} · Suscripción universal (YOUAPP + YouTube)`
                             : isSub
                             ? 'Suscripto a esta señal'
-                            : 'Suscribirse a esta señal'
+                            : 'Suscribite a esta señal'
                         }
-                        aria-label={isSub ? 'Suscripto' : 'Suscribirse'}
+                        aria-label={isSub ? 'Suscripto' : 'Suscribite'}
                       >
-                        {isSub ? <UserCheck size={14} /> : <UserPlus size={14} />}
-                        <span className="ms-hero-reveal-label">{isSub ? 'Suscripto' : 'Suscribirse'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`ms-hero-pill-btn ms-hero-icon-reveal ${alertsEnabled ? 'active-follow' : ''}`}
-                        onClick={() => void handleToggleSignalAlerts()}
-                        title={alertsEnabled ? 'Avisos activos' : 'Avisarme'}
-                        aria-label={alertsEnabled ? 'Avisos activos' : 'Avisarme'}
-                      >
-                        {alertsEnabled ? <BellRing size={14} /> : <Bell size={14} />}
-                        <span className="ms-hero-reveal-label">
-                          {alertsEnabled ? 'Avisos activos' : 'Avisarme'}
-                        </span>
+                        {isSub ? <UserCheck size={13} /> : <UserPlus size={13} />}
+                        <span>{isSub ? 'Suscripto' : 'Suscribite'}</span>
                       </button>
                     </div>
                   );
@@ -7166,9 +7154,13 @@ export default function MiSenal1() {
           .ms-hero-bar {
             padding: 10px 12px 10px !important;
             gap: 8px !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            justify-content: space-between !important;
           }
           .ms-hero-left {
-            flex: 1 1 100% !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
             gap: 10px !important;
           }
           .ms-hero-avatar-btn,
@@ -7178,14 +7170,15 @@ export default function MiSenal1() {
             margin-top: -22px !important;
           }
           .ms-hero-actions {
-            width: 100%;
+            width: auto !important;
+            flex-shrink: 0 !important;
             display: flex !important;
             flex-wrap: nowrap !important;
-            align-items: center;
+            align-items: center !important;
             justify-content: flex-end !important;
             gap: 6px !important;
             overflow: visible !important;
-            padding-bottom: 2px;
+            padding-bottom: 0 !important;
           }
           .ms-hero-actions > * {
             flex-shrink: 0;

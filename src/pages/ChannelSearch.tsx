@@ -69,6 +69,7 @@ import { passesCategoryGate } from '../lib/search/categoryGate';
 import { SmartBar } from '../components/smartbar/SmartBar';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
+import { setGlobalMiniVideo } from '../components/player/GlobalMiniPlayer';
 import {
   canAutoSkip,
   isUnplayableYouTubeError,
@@ -2209,6 +2210,20 @@ export default function ChannelSearch() {
     return list;
   }, [results, durationFilter, sortMode, detectedVerticalIds, socialGraph]);
 
+  // Sincroniza el video activo con el Mini-reproductor Global para que te acompañe al ir a /lecturas u otras secciones
+  useEffect(() => {
+    if (!previewVideo) return;
+    setGlobalMiniVideo({
+      videoId: previewVideo.videoId,
+      title: previewVideo.title,
+      channelName: previewVideo.channelName,
+      provider: previewVideo.provider || 'youtube',
+      embedUrl: previewVideo.embedUrl,
+      watchUrl: previewVideo.watchUrl,
+      originPath: '/search'
+    });
+  }, [previewVideo]);
+
   // Mini-reproductor flotante automático cuando hacés scroll y el reproductor sale de pantalla
   useEffect(() => {
     if (!previewVideo) {
@@ -2974,6 +2989,7 @@ export default function ChannelSearch() {
                         setIsYou4Mode(false);
                         setIsMomentsMosaic(false);
                         setPreviewVideo(null);
+                        setGlobalMiniVideo(null);
                       }}
                       title="Cerrar mini-reproductor"
                       aria-label="Cerrar mini-reproductor"
@@ -3260,6 +3276,7 @@ export default function ChannelSearch() {
                             setIsVolumeOpen(false);
                             setIsCastOpen(false);
                             setPreviewVideo(null);
+                            setGlobalMiniVideo(null);
                           }}
                           title="Cerrar reproductor"
                           aria-label="Cerrar reproductor"

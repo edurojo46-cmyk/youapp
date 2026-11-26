@@ -1307,6 +1307,34 @@ function saveVerticalCache() {
 const MULTI_PROV_CACHE = new Map<string, { items: SearchVideoItem[]; expires: number }>();
 const MULTI_PROV_TTL_MS = 5 * 60 * 1000;
 
+const EXTERNAL_STOPWORDS = new Set([
+  'de', 'del', 'la', 'las', 'el', 'los', 'en', 'y', 'o', 'un', 'una', 'unos', 'unas',
+  'con', 'por', 'para', 'al', 'lo', 'su', 'sus', 'mi', 'mis', 'the', 'of', 'and', 'in', 'to', 'on', 'for', 'with'
+]);
+
+/**
+ * Filtro semántico estricto para resultados externos (PeerTube, Archive, Odysee, Vimeo):
+ * evita coincidencias flojas tipo OR (ej. "Empathic Leon" al buscar "leon gieco").
+ * Exige que el título o canal contenga TODOS los términos clave (2-3 palabras) o >= 75% (4+ palabras).
+ */
+function matchesStrictExternalQuery(title: string, channelName: string, rawQuery: string): boolean {
+  const qNorm = normText(rawQuery);
+  const allTokens = qNorm.split(/\s+/).filter((t) => t.length >= 2);
+  const tokens = allTokens.filter((t) => !EXTERNAL_STOPWORDS.has(t));
+  const targetTokens = tokens.length > 0 ? tokens : allTokens;
+  if (targetTokens.length === 0) return true;
+
+  const hay = ` ${normText(`${title} ${channelName}`)} `;
+  if (targetTokens.length === 1) {
+    return hay.includes(targetTokens[0]);
+  }
+  const matchedCount = targetTokens.filter((t) => hay.includes(t)).length;
+  if (targetTokens.length <= 3) {
+    return matchedCount === targetTokens.length;
+  }
+  return matchedCount / targetTokens.length >= 0.75;
+}
+
 async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false): Promise<SearchVideoItem[]> {
   const clean = rawQuery.trim();
   if (!trendingMode && (!clean || normText(clean) === 'todos')) return [];
@@ -1564,9 +1592,18 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
   ]);
   const out: SearchVideoItem[] = [];
   const seen = new Set<string>();
-  const maxLen = Math.max(vmHits.length, ptHits.length, arHits.length, odHits.length, twitchHits.length);
+  const filterStrict = (list: SearchVideoItem[]) =>
+    trendingMode
+      ? list
+      : list.filter((it) => matchesStrictExternalQuery(it.title, it.channelName, clean));
+
+  const cleanVm = filterStrict(vmHits);
+  const cleanOd = filterStrict(odHits);
+  const cleanPt = filterStrict(ptHits);
+  const cleanAr = filterStrict(arHits);
+  const maxLen = Math.max(cleanVm.length, cleanPt.length, cleanAr.length, cleanOd.length, twitchHits.length);
   for (let i = 0; i < maxLen; i += 1) {
-    for (const it of [vmHits[i], odHits[i], twitchHits[i], ptHits[i], arHits[i]]) {
+    for (const it of [cleanVm[i], cleanOd[i], twitchHits[i], cleanPt[i], cleanAr[i]]) {
       if (it && !seen.has(it.videoId) && it.thumbnail) {
         seen.add(it.videoId);
         out.push(it);

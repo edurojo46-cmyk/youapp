@@ -2741,13 +2741,12 @@ export default function ChannelSearch() {
             w.postMessage(JSON.stringify({ method: 'getCurrentTime' }), '*');
             w.postMessage(JSON.stringify({ method: 'getDuration' }), '*');
           } else if (!previewVideo.provider || previewVideo.provider === 'youtube') {
-            w.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
+            w.postMessage(JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }), '*');
           }
         }
-        // Reloj suave de respaldo (1s) SOLO para proveedores sin telemetría continua (PeerTube/Odysee/Archive)
-        const isNativeTelemetry = !previewVideo.provider || previewVideo.provider === 'youtube' || previewVideo.provider === 'vimeo';
+        // Reloj suave de respaldo (1s): solo corre si el iframe no emitió ningún tick real en los últimos 2s
         const st = usePlayerStore.getState();
-        if (!isNativeTelemetry && st.isPlaying && Date.now() - lastRealTickAt > 1800) {
+        if (st.isPlaying && Date.now() - lastRealTickAt > 2000) {
           const dur = st.duration > 0 ? st.duration : initialDur;
           if (dur > 0) {
             st.setProgress(Math.min(dur, st.currentTime + 1), dur);
@@ -2913,9 +2912,13 @@ export default function ChannelSearch() {
 
   const handlePreviewSeek = useCallback(
     (sec: number) => {
-      sendYtCommand('seekTo', [Math.max(0, sec), true]);
+      const targetSec = Math.max(0, sec);
+      sendYtCommand('seekTo', [targetSec, true]);
+      const st = usePlayerStore.getState();
+      const dur = st.duration > 0 ? st.duration : (previewVideo?.durationSeconds || 300);
+      st.setProgress(Math.min(dur, targetSec), dur);
     },
-    [sendYtCommand]
+    [sendYtCommand, previewVideo?.durationSeconds]
   );
 
   const handlePreviewStep = useCallback(

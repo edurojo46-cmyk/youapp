@@ -1290,124 +1290,70 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
   const clean = rawQuery.trim();
   if (!trendingMode && (!clean || normText(clean) === 'todos')) return [];
 
-  const out: SearchVideoItem[] = [];
-
-  // 1. Dailymotion API pública oficial (0 cuota, CORS nativo, funciona en celular y PC)
-  const dmPromise = (async () => {
-    try {
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 5000);
-      const dmUrl = trendingMode
-        ? `https://api.dailymotion.com/videos?languages=es&sort=visited-month&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=10&flags=no_live`
-        : `https://api.dailymotion.com/videos?search=${encodeURIComponent(clean)}&sort=relevance&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=10&flags=no_live`;
-      const res = await fetch(dmUrl, { signal: controller.signal });
-      window.clearTimeout(timer);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const list = Array.isArray(json?.list) ? json.list : [];
-      const mapped: SearchVideoItem[] = [];
-      for (const item of list) {
-        const dmId = String(item?.id || '').trim();
-        const dur = Number(item?.duration || 0);
-        if (!dmId || (dur > 0 && dur <= 62)) continue;
-        const createdSec = Number(item?.created_time || 0);
-        mapped.push({
-          videoId: `dm_${dmId}`,
-          title: String(item?.title || 'Video en Dailymotion'),
-          channelName: String(item?.['owner.screenname'] || 'Dailymotion'),
-          thumbnail: String(item?.thumbnail_480_url || ''),
-          watchUrl: String(item?.url || `https://www.dailymotion.com/video/${dmId}`),
-          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
-          durationSeconds: dur > 0 ? dur : undefined,
-          views: typeof item?.views_total === 'number' && item.views_total > 0 ? item.views_total : undefined,
-          publishedAt: createdSec > 0 ? new Date(createdSec * 1000).toISOString() : undefined,
-          provider: 'dailymotion',
-          sourceLabel: 'Dailymotion',
-          tags: ['dailymotion']
-        });
-      }
-      return mapped;
-    } catch {
-      return [];
-    }
-  })();
-
-  // 2. Vimeo API oficial vía Supabase Edge Function `vimeo-provider` (fetch directo con anon key, inmune a sesiones expiradas)
-  const vimeoLivePromise = (async () => {
-    try {
-      const vQuery = trendingMode ? 'short film documentary cinema' : clean;
-      if (vQuery.length < 2) return [];
-      const sbUrl =
-        ((import.meta as any)?.env?.VITE_SUPABASE_URL as string) ||
-        'https://jtnurafmngaxdwlzpvxv.supabase.co';
-      const sbAnon =
-        ((import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY as string) ||
-        'sb_publishable_IWSDC0aWUR8cvOPrwYSaqg_JU8aASm8';
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 7000);
-      const res = await fetch(`${sbUrl}/functions/v1/vimeo-provider`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: sbAnon,
-          Authorization: `Bearer ${sbAnon}`
-        },
-        body: JSON.stringify({
-          query: vQuery,
-          limit: 8,
-          sort: 'relevant',
-          ingest: true
-        }),
-        signal: controller.signal
+  // Vimeo API oficial vía Supabase Edge Function `vimeo-provider` (100% embebible en HD, 0 cuota YouTube)
+  // Nota: Dailymotion se excluye de /search porque bloquea embeds con HTTP 403 sin plan pago Edge/Studio Player ID.
+  try {
+    const vQuery = trendingMode ? 'short film documentary cinema' : clean;
+    if (vQuery.length < 2) return [];
+    const sbUrl =
+      ((import.meta as any)?.env?.VITE_SUPABASE_URL as string) ||
+      'https://jtnurafmngaxdwlzpvxv.supabase.co';
+    const sbAnon =
+      ((import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY as string) ||
+      'sb_publishable_IWSDC0aWUR8cvOPrwYSaqg_JU8aASm8';
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 7000);
+    const res = await fetch(`${sbUrl}/functions/v1/vimeo-provider`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: sbAnon,
+        Authorization: `Bearer ${sbAnon}`
+      },
+      body: JSON.stringify({
+        query: vQuery,
+        limit: 10,
+        sort: 'relevant',
+        ingest: true
+      }),
+      signal: controller.signal
+    });
+    window.clearTimeout(timer);
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data?.items)) return [];
+    const out: SearchVideoItem[] = [];
+    const seen = new Set<string>();
+    for (const r of data.items) {
+      const rawId = String(r?.providerContentId || r?.id || '').replace(/^vimeo_/, '').trim();
+      if (!rawId) continue;
+      const dur = Number(r?.durationSeconds || 0);
+      if (dur > 0 && dur <= 62) continue;
+      const thumb = String(r?.thumbnailUrl || r?.thumbnail || '');
+      if (!thumb) continue;
+      const vid = `vm_${rawId}`;
+      if (seen.has(vid)) continue;
+      seen.add(vid);
+      out.push({
+        videoId: vid,
+        title: String(r?.title || 'Video en Vimeo'),
+        channelName: String(r?.creatorName || r?.channelTitle || 'Vimeo'),
+        channelId: r?.creatorId ? String(r.creatorId) : undefined,
+        thumbnail: thumb,
+        watchUrl: String(r?.canonicalUrl || `https://vimeo.com/${rawId}`),
+        duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
+        durationSeconds: dur > 0 ? dur : undefined,
+        views: typeof r?.viewCount === 'number' && r.viewCount > 0 ? r.viewCount : undefined,
+        publishedAt: r?.publishedAt ? String(r.publishedAt) : undefined,
+        provider: 'vimeo',
+        sourceLabel: 'Vimeo',
+        tags: ['vimeo']
       });
-      window.clearTimeout(timer);
-      if (!res.ok) return [];
-      const data = await res.json();
-      if (!Array.isArray(data?.items)) return [];
-      const mapped: SearchVideoItem[] = [];
-      for (const r of data.items) {
-        const rawId = String(r?.providerContentId || r?.id || '').replace(/^vimeo_/, '').trim();
-        if (!rawId) continue;
-        const dur = Number(r?.durationSeconds || 0);
-        if (dur > 0 && dur <= 62) continue;
-        const thumb = String(r?.thumbnailUrl || r?.thumbnail || '');
-        if (!thumb) continue;
-        mapped.push({
-          videoId: `vm_${rawId}`,
-          title: String(r?.title || 'Video en Vimeo'),
-          channelName: String(r?.creatorName || r?.channelTitle || 'Vimeo'),
-          channelId: r?.creatorId ? String(r.creatorId) : undefined,
-          thumbnail: thumb,
-          watchUrl: String(r?.canonicalUrl || `https://vimeo.com/${rawId}`),
-          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
-          durationSeconds: dur > 0 ? dur : undefined,
-          views: typeof r?.viewCount === 'number' && r.viewCount > 0 ? r.viewCount : undefined,
-          publishedAt: r?.publishedAt ? String(r.publishedAt) : undefined,
-          provider: 'vimeo',
-          sourceLabel: 'Vimeo',
-          tags: ['vimeo']
-        });
-      }
-      return mapped;
-    } catch {
-      return [];
     }
-  })();
-
-  const [dmHits, vmHits] = await Promise.all([dmPromise, vimeoLivePromise]);
-  const seen = new Set<string>();
-  // Intercalar 1 Vimeo + 1 Dailymotion para que ambas plataformas aparezcan arriba
-  const maxLen = Math.max(vmHits.length, dmHits.length);
-  for (let i = 0; i < maxLen; i += 1) {
-    const pair = [vmHits[i], dmHits[i]];
-    for (const it of pair) {
-      if (it && !seen.has(it.videoId) && it.thumbnail) {
-        seen.add(it.videoId);
-        out.push(it);
-      }
-    }
+    return out.slice(0, 10);
+  } catch {
+    return [];
   }
-  return out.slice(0, 10);
 }
 
 function interleaveMultiProvider(

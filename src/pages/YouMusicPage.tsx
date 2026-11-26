@@ -36,7 +36,7 @@ import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { SmartBar } from '../components/smartbar/SmartBar';
-import { MosaicPlayerGrid } from '../components/mosaic/MosaicPlayerGrid';
+import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { usePlayerStore } from '../store/usePlayerStore';
 import {
   SOCIAL_GRAPH_CHANGED_EVENT,

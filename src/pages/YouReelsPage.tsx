@@ -1988,8 +1988,35 @@ export default function YouReelsPage() {
         .yr-icon-btn:hover { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
         @media (max-width: 640px) {
           .yr-nav { display: none; }
-          .yr-stage-wrap { flex-direction: column; }
-          .yr-side-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+          .yr-stage-wrap {
+            position: relative;
+            flex-direction: row;
+            align-items: stretch;
+          }
+          .yr-side-rail {
+            position: absolute;
+            right: 8px;
+            bottom: 84px;
+            z-index: 14;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+          }
+          .yr-rail-btn {
+            width: 40px;
+            height: 40px;
+            background: rgba(10, 14, 22, 0.72);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.48);
+          }
+          .yr-rail-btn.mitv {
+            width: 40px;
+            padding: 0;
+            font-size: 9px;
+          }
+          .yr-reel-footer {
+            padding-right: 58px;
+          }
           .yr-add-bar { border-radius: 16px; }
           .yr-add-form { flex-wrap: wrap; }
         }

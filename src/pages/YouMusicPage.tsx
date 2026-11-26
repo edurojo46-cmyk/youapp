@@ -1433,8 +1433,7 @@ export default function YouMusicPage() {
               <Radio size={13} color="#64d2ff" />
               <strong>Mi Señal Musical</strong>
               <span className="ymv1-ms-toggle-count">
-                {savedMusicalSignalPlaylists.length}{' '}
-                {savedMusicalSignalPlaylists.length === 1 ? 'guardada' : 'guardadas'}
+                · Sumar URL · Modo Correr{runModeEnabled ? ' (ON)' : ''} · {savedMusicalSignalPlaylists.length}
               </span>
             </span>
             <ChevronDown
@@ -1448,7 +1447,76 @@ export default function YouMusicPage() {
           </button>
 
           {isMusicalSignalOpen && (
-            <div className="ymv1-ms-panel">
+            <div className="ymv1-ms-panel" style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 10 }}>
+              {/* Sumar canción por URL */}
+              <div className="ymv1-add-card" aria-label="Agregar canción desde YouTube" style={{ margin: 0 }}>
+                <form className="ymv1-add-form" onSubmit={handleAddYouTubeUrl}>
+                  <input
+                    type="text"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="+ Pegá una URL de YouTube (Queen, Soda Stereo, León Gieco, Beatles…)"
+                    aria-label="Pegar enlace de YouTube"
+                  />
+                  <button type="submit" className="ymv1-add-submit" disabled={isAdding}>
+                    <Plus size={14} />
+                    <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
+                  </button>
+                  <a
+                    ref={musicBookmarkletRef}
+                    href="#music-bookmarklet"
+                    className="ymv1-bookmarklet-pill"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setToast(
+                        'Arrastrá «+ Music» a tu barra de marcadores para sumar canciones en 1 clic desde YouTube.'
+                      );
+                    }}
+                    title="Arrastrá este botón a tu barra de marcadores para sumar canciones desde YouTube en 1 clic"
+                  >
+                    <Plus size={12} /> Music
+                  </a>
+                </form>
+                {errorMsg && <div className="ymv1-error">{errorMsg}</div>}
+              </div>
+
+              {/* Modo Correr (Screen Wake Lock) */}
+              <div className="ymv1-run-card" aria-label="Modo Correr" style={{ margin: 0 }}>
+                <div className="ymv1-run-info">
+                  <span className={`ymv1-run-icon ${wakeLockActive ? 'active' : ''}`}>
+                    <Smartphone size={16} />
+                  </span>
+                  <div className="ymv1-run-text">
+                    <div className="ymv1-run-title-row">
+                      <strong>Modo Correr · Mantener pantalla encendida</strong>
+                      <span className="ymv1-run-tag">V1</span>
+                    </div>
+                    <span>
+                      {wakeLockNotice
+                        ? wakeLockNotice
+                        : wakeLockActive
+                          ? 'Pantalla activa mientras YOU MUSIC siga visible · Puede aumentar el consumo de batería.'
+                          : 'Evita el bloqueo automático cuando es compatible · Puede aumentar el consumo de batería.'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className={`ymv1-run-toggle ${runModeEnabled ? 'active' : ''}`}
+                  onClick={handleToggleRunMode}
+                  aria-pressed={runModeEnabled}
+                  title={
+                    runModeEnabled
+                      ? 'Desactivar Modo Correr'
+                      : 'Activar Modo Correr para mantener la pantalla encendida'
+                  }
+                >
+                  <span className="ymv1-run-dot" />
+                  <span>{runModeEnabled ? (wakeLockActive ? 'Activado' : 'En espera') : 'Activar'}</span>
+                </button>
+              </div>
+
               {savedMusicalSignalPlaylists.length === 0 ? (
                 <div className="ymv1-empty" style={{ padding: '14px 12px' }}>
                   <Radio size={20} color="#0071e3" />
@@ -1836,76 +1904,6 @@ export default function YouMusicPage() {
             </div>
           </section>
         )}
-
-        {/* 1B. MODO CORRER V1 — MANTENER PANTALLA ENCENDIDA (SCREEN WAKE LOCK) */}
-        <section className="ymv1-run-card" aria-label="Modo Correr">
-          <div className="ymv1-run-info">
-            <span className={`ymv1-run-icon ${wakeLockActive ? 'active' : ''}`}>
-              <Smartphone size={16} />
-            </span>
-            <div className="ymv1-run-text">
-              <div className="ymv1-run-title-row">
-                <strong>Modo Correr · Mantener pantalla encendida</strong>
-                <span className="ymv1-run-tag">V1</span>
-              </div>
-              <span>
-                {wakeLockNotice
-                  ? wakeLockNotice
-                  : wakeLockActive
-                    ? 'Pantalla activa mientras YOU MUSIC siga visible · Puede aumentar el consumo de batería.'
-                    : 'Evita el bloqueo automático cuando es compatible · Puede aumentar el consumo de batería.'}
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className={`ymv1-run-toggle ${runModeEnabled ? 'active' : ''}`}
-            onClick={handleToggleRunMode}
-            aria-pressed={runModeEnabled}
-            title={
-              runModeEnabled
-                ? 'Desactivar Modo Correr'
-                : 'Activar Modo Correr para mantener la pantalla encendida'
-            }
-          >
-            <span className="ymv1-run-dot" />
-            <span>{runModeEnabled ? (wakeLockActive ? 'Activado' : 'En espera') : 'Activar'}</span>
-          </button>
-        </section>
-
-        {/* 2. BARRA DISIMULADA: SUMAR CANCIÓN POR URL -> PUNTERO EN MI PLAYLIST */}
-        <section className="ymv1-add-card" aria-label="Agregar canción desde YouTube">
-          <form className="ymv1-add-form" onSubmit={handleAddYouTubeUrl}>
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="+ Pegá una URL de YouTube (Queen, Soda Stereo, León Gieco, Beatles…)"
-              aria-label="Pegar enlace de YouTube"
-            />
-            <button type="submit" className="ymv1-add-submit" disabled={isAdding}>
-              <Plus size={14} />
-              <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
-            </button>
-            <a
-              ref={musicBookmarkletRef}
-              href="#music-bookmarklet"
-              className="ymv1-bookmarklet-pill"
-              onClick={(e) => {
-                e.preventDefault();
-                setToast(
-                  'Arrastrá «+ Music» a tu barra de marcadores para sumar canciones en 1 clic desde YouTube.'
-                );
-              }}
-              title="Arrastrá este botón a tu barra de marcadores para sumar canciones desde YouTube en 1 clic"
-            >
-              <Plus size={12} /> Music
-            </a>
-          </form>
-
-          {errorMsg && <div className="ymv1-error">{errorMsg}</div>}
-        </section>
 
         {/* 3. SELECTOR DE PLAYLISTS + MI PLAYLIST */}
         <section className="ymv1-playlist-card">

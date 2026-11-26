@@ -415,14 +415,17 @@ export default function ProgramarTV() {
       } else if (action === 'MITV_PLAY_PAUSE' || action === 'TOGGLE_PLAY') {
         handleSmartPlayPause();
       } else if (action === 'NEXT_CHANNEL') {
+        setCastIncomingItem(null);
         if (itemsCountRef.current > 1) {
           setCurrentIndex((prev) => (prev + 1) % itemsCountRef.current);
         }
       } else if (action === 'PREV_CHANNEL') {
+        setCastIncomingItem(null);
         if (itemsCountRef.current > 1) {
           setCurrentIndex((prev) => (prev - 1 + itemsCountRef.current) % itemsCountRef.current);
         }
       } else if (action === 'SET_CHANNEL_INDEX' && typeof payload?.index === 'number') {
+        setCastIncomingItem(null);
         if (itemsCountRef.current > 0) {
           setCurrentIndex(Math.max(0, Math.min(itemsCountRef.current - 1, payload.index)));
         }
@@ -702,6 +705,11 @@ export default function ProgramarTV() {
   const safeIndex = items.length > 0 ? Math.min(currentIndex, items.length - 1) : 0;
   const currentItem = castIncomingItem || items[safeIndex] || null;
   const nextItem = items.length > 1 ? items[(safeIndex + 1) % items.length] : null;
+
+  // Al cambiar de video o de canal en MiTV, libera cualquier video transmitido por remoto
+  useEffect(() => {
+    setCastIncomingItem(null);
+  }, [currentIndex, displayedChannel?.id]);
 
   // Cuando estás transmitiendo a otra TV YOUAPP, cada cambio de video/canal se envía al instante
   useEffect(() => {
@@ -2751,7 +2759,10 @@ export default function ProgramarTV() {
                     <button
                       type="button"
                       className="mitv-thumb-btn"
-                      onClick={() => setCurrentIndex(idx)}
+                      onClick={() => {
+                        setCastIncomingItem(null);
+                        setCurrentIndex(idx);
+                      }}
                       aria-label={`Ver ${item.title}`}
                     >
                       {item.thumbnailUrl ? (
@@ -2793,12 +2804,16 @@ export default function ProgramarTV() {
                     ) : (
                       <div
                         className="mitv-row-meta"
-                        onClick={() => setCurrentIndex(idx)}
+                        onClick={() => {
+                          setCastIncomingItem(null);
+                          setCurrentIndex(idx);
+                        }}
                         role="button"
                         tabIndex={0}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
+                            setCastIncomingItem(null);
                             setCurrentIndex(idx);
                           }
                         }}

@@ -724,9 +724,11 @@ export default function MobileRemote() {
                           watched: false,
                           addedAt: new Date().toISOString()
                         });
+                      } else {
+                        void sendAction('SET_CHANNEL_INDEX', { index: idx });
                       }
                     }
-                    void sendAction('SET_CHANNEL_INDEX', { index: idx });
+                    setChannelIdx(idx);
                     setShowGuide(false);
                   }}
                 >

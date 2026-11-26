@@ -1855,8 +1855,53 @@ export default function ChannelSearch() {
   );
 
   // Al entrar a /search, llenar automáticamente con «Mi Algoritmo» (0 espacio vacío, ~225 ms)
+  // Si viene un video compartido (?v=...), abrirlo y reproducirlo directamente en /search
   useEffect(() => {
     void loadMyAlgorithmFeed();
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const sharedVid = (sp.get('v') || '').trim();
+      if (sharedVid) {
+        const prov = (sp.get('p') || 'youtube').trim() as SearchVideoItem['provider'];
+        const title = (sp.get('title') || 'Video compartido en YOUAPP').trim();
+        const ch = (sp.get('ch') || 'YOUAPP TV').trim();
+        const embed = (sp.get('embed') || '').trim() || undefined;
+        const watch =
+          (sp.get('u') || '').trim() ||
+          (prov === 'vimeo'
+            ? `https://vimeo.com/${sharedVid.replace(/^vm_/, '')}`
+            : prov === 'archive'
+              ? `https://archive.org/details/${sharedVid.replace(/^ar_/, '')}`
+              : `https://www.youtube.com/watch?v=${sharedVid}`);
+        const thumb =
+          prov === 'youtube' || !prov
+            ? `https://i.ytimg.com/vi/${sharedVid}/hqdefault.jpg`
+            : prov === 'archive'
+              ? `https://archive.org/services/img/${sharedVid.replace(/^ar_/, '')}`
+              : '';
+        setPreviewVideo({
+          videoId: sharedVid,
+          title,
+          channelName: ch,
+          thumbnail: thumb,
+          watchUrl: watch,
+          embedUrl: embed,
+          provider: prov || 'youtube',
+          sourceLabel:
+            prov === 'vimeo'
+              ? 'Vimeo'
+              : prov === 'peertube'
+                ? 'PeerTube'
+                : prov === 'archive'
+                  ? 'Archive'
+                  : prov === 'odysee'
+                    ? 'Odysee'
+                    : 'YouTube'
+        });
+      }
+    } catch {
+      // ignore
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeAlgorithmId]);
 
@@ -2456,10 +2501,18 @@ export default function ChannelSearch() {
 
   const handleSharePreviewVideo = useCallback(async () => {
     if (!previewVideo) return;
-    const isYt = !previewVideo.provider || previewVideo.provider === 'youtube';
-    const shareUrl = isYt
-      ? `https://youapptv.com/?v=${encodeURIComponent(previewVideo.videoId)}`
-      : previewVideo.watchUrl || `https://youapptv.com/search`;
+    const sp = new URLSearchParams();
+    sp.set('v', previewVideo.videoId);
+    if (previewVideo.provider && previewVideo.provider !== 'youtube') {
+      sp.set('p', previewVideo.provider);
+    }
+    if (previewVideo.title) sp.set('title', previewVideo.title.slice(0, 110));
+    if (previewVideo.channelName) sp.set('ch', previewVideo.channelName.slice(0, 60));
+    if (previewVideo.embedUrl) sp.set('embed', previewVideo.embedUrl);
+    else if (previewVideo.provider && previewVideo.provider !== 'youtube' && previewVideo.watchUrl) {
+      sp.set('u', previewVideo.watchUrl);
+    }
+    const shareUrl = `https://youapptv.com/search?${sp.toString()}`;
     await shareContentUniversal({
       title: `${previewVideo.title} · YOUAPP TV`,
       text: `Mirá «${previewVideo.title}» en YOUAPP TV`,

@@ -2342,10 +2342,14 @@ export default function ProgramarTV() {
                             type="button"
                             className="mitv-top-icon-btn"
                             onClick={async () => {
-                              const isYt = currentItem.provider === 'youtube' && currentItem.providerId;
-                              const shareUrl = isYt
-                                ? `https://youapptv.com/?v=${encodeURIComponent(currentItem.providerId)}`
-                                : currentItem.sourceUrl || 'https://youapptv.com/mitv';
+                              const targetWatchUrl =
+                                currentItem.sourceUrl ||
+                                (currentItem.provider === 'youtube' && currentItem.providerId
+                                  ? `https://www.youtube.com/watch?v=${currentItem.providerId}`
+                                  : '');
+                              const shareUrl = targetWatchUrl
+                                ? `https://youapptv.com/mitv?add=${encodeURIComponent(targetWatchUrl)}`
+                                : 'https://youapptv.com/mitv';
                               await shareContentUniversal({
                                 title: `${currentItem.title} · YOUAPP TV`,
                                 text: `Mirá «${currentItem.title}» en MiTV (YOUAPP)`,

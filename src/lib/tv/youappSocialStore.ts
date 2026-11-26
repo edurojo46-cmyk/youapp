@@ -238,15 +238,51 @@ export interface VideoPublicMeta {
 }
 
 const clientMetaCache = new Map<string, VideoPublicMeta>();
+const META_SESSION_PREFIX = 'youapp_yt_meta_v1:';
 
-/** Obtiene vistas reales y fecha de publicación de un video de YouTube (0 cuota API · Supabase + fallback local) */
+function readCachedMeta(videoId: string): VideoPublicMeta | null {
+  const mem = clientMetaCache.get(videoId);
+  if (mem) return mem;
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(META_SESSION_PREFIX + videoId);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      const meta: VideoPublicMeta = {
+        viewCount: typeof parsed.viewCount === 'number' ? parsed.viewCount : null,
+        publishedAt: typeof parsed.publishedAt === 'string' ? parsed.publishedAt : null,
+        isLive: Boolean(parsed.isLive)
+      };
+      clientMetaCache.set(videoId, meta);
+      return meta;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function writeCachedMeta(videoId: string, meta: VideoPublicMeta) {
+  clientMetaCache.set(videoId, meta);
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(META_SESSION_PREFIX + videoId, JSON.stringify(meta));
+  } catch {
+    // ignore
+  }
+}
+
+/** Obtiene vistas reales y fecha de publicación de un video de YouTube (Supabase + local + YouTube videos.list 1u cacheado) */
 export async function fetchYouTubeVideoMeta(videoId: string): Promise<VideoPublicMeta | null> {
   const clean = (videoId || '').trim();
   if (!/^[A-Za-z0-9_-]{11}$/.test(clean)) return null;
-  const cached = clientMetaCache.get(clean);
-  if (cached) return cached;
+  const cached = readCachedMeta(clean);
+  if (cached && cached.viewCount !== null) return cached;
 
-  // 1. Consulta directa a Supabase `youapp_index` (funciona en youapptv.com y en local · 0 cuota)
+  let partial: VideoPublicMeta = cached || { viewCount: null, publishedAt: null, isLive: false };
+
+  // 1. Consulta directa a Supabase `youapp_index` (0 cuota)
   try {
     const { data: row } = await supabase
       .from('youapp_index')
@@ -261,50 +297,97 @@ export async function fetchYouTubeVideoMeta(videoId: string): Promise<VideoPubli
       const rawDate =
         (typeof r.published_at === 'string' && r.published_at) ||
         (typeof r.metadata?.publishedAt === 'string' && r.metadata.publishedAt) ||
-        (typeof r.created_at === 'string' && r.created_at) ||
         null;
-      const meta: VideoPublicMeta = {
-        viewCount: Number.isFinite(rawViews) && rawViews > 0 ? rawViews : null,
-        publishedAt: rawDate,
+      partial = {
+        viewCount: Number.isFinite(rawViews) && rawViews > 0 ? rawViews : partial.viewCount,
+        publishedAt: rawDate || partial.publishedAt,
         isLive: Boolean(r.is_live)
       };
-      if (meta.viewCount !== null || meta.publishedAt !== null) {
-        clientMetaCache.set(clean, meta);
-        return meta;
+      if (partial.viewCount !== null && partial.publishedAt !== null) {
+        writeCachedMeta(clean, partial);
+        return partial;
       }
     }
   } catch {
-    // continúa al fallback local
+    // continúa
   }
 
-  // 2. Fallback local (Vite dev middleware en localhost / LAN)
-  try {
-    const res = await fetch(`/api/mitv/video-meta?v=${encodeURIComponent(clean)}`);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data?.ok) return null;
-    const meta: VideoPublicMeta = {
-      viewCount: typeof data.viewCount === 'number' ? data.viewCount : null,
-      publishedAt: typeof data.publishedAt === 'string' ? data.publishedAt : null,
-      isLive: Boolean(data.isLive)
-    };
-    clientMetaCache.set(clean, meta);
-    return meta;
-  } catch {
-    return null;
+  // 2. Fallback local (Vite dev middleware en localhost / LAN, 0 cuota)
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      /^192\.168\./.test(window.location.hostname))
+  ) {
+    try {
+      const res = await fetch(`/api/mitv/video-meta?v=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.ok) {
+          partial = {
+            viewCount: typeof data.viewCount === 'number' && data.viewCount > 0 ? data.viewCount : partial.viewCount,
+            publishedAt: typeof data.publishedAt === 'string' ? data.publishedAt : partial.publishedAt,
+            isLive: Boolean(data.isLive)
+          };
+          if (partial.viewCount !== null) {
+            writeCachedMeta(clean, partial);
+            return partial;
+          }
+        }
+      }
+    } catch {
+      // continúa
+    }
   }
+
+  // 3. Fallback oficial YouTube Data API (videos.list = 1 unidad, cacheado en sessionStorage)
+  try {
+    const apiKey =
+      (import.meta as any)?.env?.VITE_YOUTUBE_API_KEY ||
+      String((import.meta as any)?.env?.VITE_YOUTUBE_API_KEYS || '').split(',')[0]?.trim();
+    if (apiKey) {
+      const ytRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id=${encodeURIComponent(clean)}&key=${encodeURIComponent(apiKey)}`
+      );
+      if (ytRes.ok) {
+        const ytJson = await ytRes.json();
+        const item = Array.isArray(ytJson?.items) ? ytJson.items[0] : null;
+        if (item) {
+          const vCount = Number(item?.statistics?.viewCount ?? 0);
+          const pub = typeof item?.snippet?.publishedAt === 'string' ? item.snippet.publishedAt : null;
+          partial = {
+            viewCount: Number.isFinite(vCount) && vCount > 0 ? vCount : partial.viewCount,
+            publishedAt: pub || partial.publishedAt,
+            isLive: item?.snippet?.liveBroadcastContent === 'live'
+          };
+          writeCachedMeta(clean, partial);
+          return partial;
+        }
+      }
+    }
+  } catch {
+    // fallback silencioso
+  }
+
+  if (partial.viewCount !== null || partial.publishedAt !== null) {
+    writeCachedMeta(clean, partial);
+    return partial;
+  }
+  return null;
 }
 
-/** Solo número de vistas compacto (ej: "12,4 mil", "1,2 M", "845") */
+/** Número de vistas compacto (ej: "12,4 mil vistas", "1,2 M vistas", "845 vistas") */
 export function formatCompactViews(views: number | null | undefined, _isLive = false): string | null {
   if (typeof views !== 'number' || !Number.isFinite(views) || views <= 0) return null;
+  let num: string;
   if (views >= 1_000_000) {
-    return `${(views / 1_000_000).toFixed(views >= 10_000_000 ? 0 : 1).replace('.', ',')} M`;
+    num = `${(views / 1_000_000).toFixed(views >= 10_000_000 ? 0 : 1).replace('.', ',')} M`;
+  } else if (views >= 1_000) {
+    num = `${(views / 1_000).toFixed(views >= 100_000 ? 0 : 1).replace('.', ',')} mil`;
+  } else {
+    num = views.toLocaleString('es-AR');
   }
-  if (views >= 1_000) {
-    return `${(views / 1_000).toFixed(views >= 100_000 ? 0 : 1).replace('.', ',')} mil`;
-  }
-  return views.toLocaleString('es-AR');
+  return `${num} vistas`;
 }
 
 /** Solo fecha corta d/m/aa (ej: "1/7/23") */

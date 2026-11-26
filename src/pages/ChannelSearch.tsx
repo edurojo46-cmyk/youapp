@@ -61,6 +61,7 @@ import {
 import { passesCategoryGate } from '../lib/search/categoryGate';
 import { SmartBar } from '../components/smartbar/SmartBar';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
+import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
 import {
   canAutoSkip,
   isUnplayableYouTubeError,
@@ -193,7 +194,8 @@ type SearchVideoItem = {
   durationSeconds?: number;
   views?: number | string;
   publishedAt?: string;
-  sourceLabel: 'Base ATLAS (0 cuota)' | 'Catálogo Musical' | 'YouTube';
+  provider?: 'youtube' | 'dailymotion' | 'vimeo';
+  sourceLabel: 'Base ATLAS (0 cuota)' | 'Catálogo Musical' | 'YouTube' | 'Dailymotion' | 'Vimeo';
   tags?: string[];
 };
 
@@ -1284,6 +1286,121 @@ function saveVerticalCache() {
   }
 }
 
+async function searchDailymotionAndVimeo(rawQuery: string): Promise<SearchVideoItem[]> {
+  const clean = rawQuery.trim();
+  if (!clean || normText(clean) === 'todos') return [];
+
+  const out: SearchVideoItem[] = [];
+
+  // 1. Dailymotion API pública oficial (0 cuota, CORS nativo, funciona en celular y PC)
+  const dmPromise = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 4500);
+      const res = await fetch(
+        `https://api.dailymotion.com/videos?search=${encodeURIComponent(clean)}&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=8&flags=no_live`,
+        { signal: controller.signal }
+      );
+      window.clearTimeout(timer);
+      if (!res.ok) return [];
+      const json = await res.json();
+      const list = Array.isArray(json?.list) ? json.list : [];
+      const mapped: SearchVideoItem[] = [];
+      for (const item of list) {
+        const dmId = String(item?.id || '').trim();
+        const dur = Number(item?.duration || 0);
+        if (!dmId || (dur > 0 && dur <= 62)) continue;
+        const createdSec = Number(item?.created_time || 0);
+        mapped.push({
+          videoId: `dm_${dmId}`,
+          title: String(item?.title || 'Video en Dailymotion'),
+          channelName: String(item?.['owner.screenname'] || 'Dailymotion'),
+          thumbnail: String(item?.thumbnail_480_url || ''),
+          watchUrl: String(item?.url || `https://www.dailymotion.com/video/${dmId}`),
+          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
+          durationSeconds: dur > 0 ? dur : undefined,
+          views: typeof item?.views_total === 'number' && item.views_total > 0 ? item.views_total : undefined,
+          publishedAt: createdSec > 0 ? new Date(createdSec * 1000).toISOString() : undefined,
+          provider: 'dailymotion',
+          sourceLabel: 'Dailymotion',
+          tags: ['dailymotion']
+        });
+      }
+      return mapped;
+    } catch {
+      return [];
+    }
+  })();
+
+  // 2. Vimeo + Dailymotion desde nuestra propia base Supabase `youapp_index` (0 cuota)
+  const vimeoIndexPromise = (async () => {
+    try {
+      const safeTok = clean.replace(/[,%()]/g, '').slice(0, 60);
+      if (safeTok.length < 2) return [];
+      const { data } = await supabase
+        .from('youapp_index')
+        .select('video_id,provider_content_id,provider,title,creator_id,creator_name,url,thumbnail_url,thumbnail,duration_text,duration_seconds,views,published_at,tags')
+        .in('provider', ['vimeo', 'dailymotion'])
+        .or(`title.ilike.%${safeTok}%,creator_name.ilike.%${safeTok}%`)
+        .limit(8);
+      if (!Array.isArray(data)) return [];
+      const mapped: SearchVideoItem[] = [];
+      for (const r of data) {
+        const prov = r?.provider === 'vimeo' ? 'vimeo' : 'dailymotion';
+        const rawId = String(r?.provider_content_id || r?.video_id || '').trim();
+        if (!rawId) continue;
+        const dur = parseDurationToSeconds(r?.duration_text, r?.duration_seconds);
+        if (dur > 0 && dur <= 62) continue;
+        mapped.push({
+          videoId: prov === 'vimeo' ? `vm_${rawId}` : `dm_${rawId}`,
+          title: String(r?.title || (prov === 'vimeo' ? 'Video en Vimeo' : 'Video en Dailymotion')),
+          channelName: String(r?.creator_name || (prov === 'vimeo' ? 'Vimeo' : 'Dailymotion')),
+          channelId: r?.creator_id ? String(r.creator_id) : undefined,
+          thumbnail: String(r?.thumbnail_url || r?.thumbnail || ''),
+          watchUrl:
+            String(r?.url || '') ||
+            (prov === 'vimeo' ? `https://vimeo.com/${rawId}` : `https://www.dailymotion.com/video/${rawId}`),
+          duration: formatDurationLabel(r?.duration_text, r?.duration_seconds),
+          durationSeconds: dur > 0 ? dur : undefined,
+          views: typeof r?.views === 'number' && r.views > 0 ? r.views : undefined,
+          publishedAt: r?.published_at ? String(r.published_at) : undefined,
+          provider: prov,
+          sourceLabel: prov === 'vimeo' ? 'Vimeo' : 'Dailymotion',
+          tags: Array.isArray(r?.tags) ? r.tags.map(String) : [prov]
+        });
+      }
+      return mapped;
+    } catch {
+      return [];
+    }
+  })();
+
+  const [dmHits, vmHits] = await Promise.all([dmPromise, vimeoIndexPromise]);
+  const seen = new Set<string>();
+  for (const it of [...vmHits, ...dmHits]) {
+    if (!seen.has(it.videoId) && it.thumbnail) {
+      seen.add(it.videoId);
+      out.push(it);
+    }
+  }
+  return out.slice(0, 8);
+}
+
+function interleaveMultiProvider(primary: SearchVideoItem[], extra: SearchVideoItem[]): SearchVideoItem[] {
+  if (extra.length === 0) return primary;
+  if (primary.length === 0) return extra;
+  const out: SearchVideoItem[] = [];
+  let eIdx = 0;
+  for (let i = 0; i < primary.length; i += 1) {
+    out.push(primary[i]);
+    if ((i + 1) % 5 === 0 && eIdx < extra.length) {
+      out.push(extra[eIdx++]);
+    }
+  }
+  while (eIdx < extra.length) out.push(extra[eIdx++]);
+  return out;
+}
+
 export default function ChannelSearch() {
   const navigate = useNavigate();
   const { savedAlgorithms, activeAlgorithmId, setActiveAlgorithmId } = useStore();
@@ -1406,10 +1523,15 @@ export default function ChannelSearch() {
   const [previewVideoMeta, setPreviewVideoMeta] = useState<VideoPublicMeta | null>(null);
   const [detectedVerticalIds, setDetectedVerticalIds] = useState<Set<string>>(() => loadVerticalCache());
 
-  // Detector oEmbed real (0 cuota) para atrapar Shorts verticales sin tag ni duración
+  // Detector oEmbed real (0 cuota) para atrapar Shorts verticales sin tag ni duración (solo YouTube)
   useEffect(() => {
     const toCheck = results
-      .filter((it) => !isShortOrVerticalVideo(it) && !verticalOrientationCache.has(it.videoId))
+      .filter(
+        (it) =>
+          (!it.provider || it.provider === 'youtube') &&
+          !isShortOrVerticalVideo(it) &&
+          !verticalOrientationCache.has(it.videoId)
+      )
       .slice(0, 28);
     if (toCheck.length === 0) return;
 
@@ -1573,10 +1695,11 @@ export default function ChannelSearch() {
           .slice(0, 20)
           .map((x) => x.it);
 
-        // 1. Búsqueda instantánea semántica 0-cuota en base nube `youapp_index` + catálogo local
-        const [indexHits, localMusicHits] = await Promise.all([
+        // 1. Búsqueda instantánea semántica 0-cuota en base nube `youapp_index` + catálogo local + Dailymotion/Vimeo
+        const [indexHits, localMusicHits, multiProvHits] = await Promise.all([
           searchYouAppIndexDirect(normalizedQ, categoryTag, 0, userRegion).catch(() => []),
-          Promise.resolve(searchLocalAtlasMusic(normalizedQ, categoryTag))
+          Promise.resolve(searchLocalAtlasMusic(normalizedQ, categoryTag)),
+          searchDailymotionAndVimeo(normalizedQ).catch(() => [])
         ]);
 
         if (searchRaceRef.current !== raceId) return;
@@ -1609,8 +1732,11 @@ export default function ChannelSearch() {
           if (!mergedMap.has(item.videoId)) mergedMap.set(item.videoId, item);
         }
 
-        // Mostrar resultados instantáneos de la base ATLAS si realmente coinciden (hasta 50)
-        let mergedList = Array.from(mergedMap.values()).slice(0, 50);
+        // Mostrar resultados instantáneos de la base ATLAS intercalados con Dailymotion / Vimeo (hasta 50)
+        let mergedList = interleaveMultiProvider(
+          Array.from(mergedMap.values()),
+          multiProvHits
+        ).slice(0, 50);
         if (mergedList.length > 0) {
           setResults(mergedList);
           setStatus('done');
@@ -2656,14 +2782,29 @@ export default function ChannelSearch() {
               </div>
             ) : (
               <div className="ys-preview-video-wrap">
-                <iframe
-                  ref={previewIframeRef}
-                  key={previewVideo.videoId}
-                  src={`https://www.youtube.com/embed/${previewVideo.videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
-                  title={previewVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
+                {previewVideo.provider === 'dailymotion' ? (
+                  <DailymotionOfficialPlayer
+                    key={previewVideo.videoId}
+                    videoIdOrUrl={previewVideo.watchUrl || previewVideo.videoId.replace(/^dm_/, '')}
+                  />
+                ) : previewVideo.provider === 'vimeo' ? (
+                  <iframe
+                    key={previewVideo.videoId}
+                    src={`https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1`}
+                    title={previewVideo.title}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <iframe
+                    ref={previewIframeRef}
+                    key={previewVideo.videoId}
+                    src={`https://www.youtube.com/embed/${previewVideo.videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
+                    title={previewVideo.title}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                )}
               </div>
             )}
 
@@ -3002,6 +3143,11 @@ export default function ChannelSearch() {
                             {isPlayingCard && (
                               <span className="ys-live-pill">
                                 <span className="ys-live-dot" /> Sonando
+                              </span>
+                            )}
+                            {!isPlayingCard && item.provider && item.provider !== 'youtube' && (
+                              <span className="ys-provider-badge">
+                                {item.provider === 'dailymotion' ? 'Dailymotion' : 'Vimeo'}
                               </span>
                             )}
                             {item.duration && cardViewMode === 'cinema' && (
@@ -4475,6 +4621,20 @@ export default function ChannelSearch() {
           font-variant-numeric: tabular-nums;
         }
 
+        .ys-provider-badge {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          z-index: 4;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: rgba(10, 14, 24, 0.82);
+          border: 1px solid rgba(100, 210, 255, 0.45);
+          color: #64d2ff;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+        }
         .ys-float-dock {
           display: flex;
           align-items: center;

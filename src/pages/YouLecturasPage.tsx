@@ -1669,14 +1669,20 @@ export default function YouLecturasPage() {
         .yl-reader-modal {
           width: 100%;
           max-width: 720px;
-          max-height: 90dvh;
+          max-height: 92dvh;
           border-radius: 22px;
-          background: rgba(20, 24, 32, 0.96);
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+          background: #ffffff;
+          border: 1px solid rgba(15, 23, 42, 0.12);
+          box-shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
           display: flex;
           flex-direction: column;
           overflow: hidden;
+          color: #111827;
+        }
+        .yl-reader-modal.yl-compara-modal {
+          background: rgba(20, 24, 32, 0.96);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          color: #f8fafc;
         }
         .yl-reader-modal.is-embed {
           max-width: 1060px;
@@ -1689,6 +1695,10 @@ export default function YouLecturasPage() {
           gap: 10px;
           flex-wrap: wrap;
           padding: 12px 16px;
+          border-bottom: 1px solid #e5e7eb;
+          background: #f8fafc;
+        }
+        .yl-compara-modal .yl-reader-head {
           border-bottom: 1px solid rgba(255, 255, 255, 0.14);
           background: rgba(255, 255, 255, 0.05);
         }
@@ -1697,13 +1707,16 @@ export default function YouLecturasPage() {
           align-items: center;
           gap: 8px;
           font-size: 13px;
+          color: #0f172a;
+        }
+        .yl-compara-modal .yl-reader-source {
           color: #ffffff;
         }
         .yl-reader-topic {
           padding: 2px 8px;
           border-radius: 999px;
-          background: rgba(10, 132, 255, 0.24);
-          color: #64d2ff;
+          background: rgba(0, 113, 227, 0.1);
+          color: #0071e3;
           font-size: 10.5px;
           font-weight: 700;
         }
@@ -1718,9 +1731,9 @@ export default function YouLecturasPage() {
           gap: 5px;
           padding: 6px 12px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          background: rgba(255, 255, 255, 0.1);
-          color: #ffffff;
+          border: 1px solid #d1d5db;
+          background: #ffffff;
+          color: #111827;
           font-size: 12px;
           font-weight: 600;
           text-decoration: none;
@@ -1728,19 +1741,25 @@ export default function YouLecturasPage() {
         }
         .yl-reader-pill.primary {
           background: #0071e3;
-          border-color: #64d2ff;
+          border-color: #0071e3;
+          color: #ffffff;
         }
         .yl-reader-close {
           width: 32px;
           height: 32px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          background: rgba(255, 255, 255, 0.1);
-          color: #ffffff;
+          border: 1px solid #d1d5db;
+          background: #ffffff;
+          color: #111827;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           cursor: pointer;
+        }
+        .yl-compara-modal .yl-reader-close {
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
         }
         .yl-reader-iframe-wrap {
           flex: 1;
@@ -1754,18 +1773,19 @@ export default function YouLecturasPage() {
           display: block;
         }
         .yl-reader-sheet {
-          padding: 20px 22px 24px;
+          padding: 20px 22px 28px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
           gap: 14px;
+          background: #ffffff;
         }
         .yl-reader-hero-img {
           width: 100%;
           max-height: 320px;
           border-radius: 16px;
           overflow: hidden;
-          background: #0d1016;
+          background: #f1f5f9;
         }
         .yl-reader-hero-img img {
           width: 100%;
@@ -1775,50 +1795,51 @@ export default function YouLecturasPage() {
         }
         .yl-reader-sheet h2 {
           margin: 0;
-          font-size: 21px;
-          font-weight: 760;
-          line-height: 1.28;
-          color: #ffffff;
+          font-size: 22px;
+          font-weight: 800;
+          line-height: 1.25;
+          color: #0f172a;
         }
         .yl-reader-excerpt {
           margin: 0;
-          font-size: 14.5px;
-          line-height: 1.55;
-          color: rgba(245, 245, 247, 0.84);
+          font-size: 15px;
+          line-height: 1.58;
+          color: #475569;
+          font-weight: 500;
         }
         .yl-reader-loading {
           padding: 14px 16px;
           border-radius: 14px;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: rgba(245, 245, 247, 0.78);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          color: #475569;
           font-size: 13.5px;
         }
         .yl-reader-article-body {
           display: flex;
           flex-direction: column;
-          gap: 14px;
-          padding-top: 10px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          gap: 15px;
+          padding-top: 12px;
+          border-top: 1px solid #e5e7eb;
         }
         .yl-reader-article-body p {
           margin: 0;
-          font-size: 15.5px;
-          line-height: 1.72;
-          color: rgba(245, 245, 247, 0.92);
+          font-size: 16px;
+          line-height: 1.75;
+          color: #1f2937;
           letter-spacing: -0.005em;
         }
         .yl-reader-policy-note {
           padding: 14px 16px;
           border-radius: 16px;
-          background: rgba(255, 255, 255, 0.07);
-          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
           display: flex;
           flex-direction: column;
           align-items: flex-start;
           gap: 10px;
           font-size: 12.5px;
-          color: rgba(245, 245, 247, 0.78);
+          color: #475569;
         }
 
         /* --- ATLAS COMPARA V1 --- */

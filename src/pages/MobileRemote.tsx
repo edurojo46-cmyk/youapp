@@ -62,6 +62,8 @@ export default function MobileRemote() {
   const [showExtras, setShowExtras] = useState(false);
 
   const [lastAction, setLastAction] = useState<string>('Listo');
+  const [isTvConnected, setIsTvConnected] = useState(false);
+  const [castBanner, setCastBanner] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isQuadActive, setIsQuadActive] = useState(false);
@@ -102,11 +104,17 @@ export default function MobileRemote() {
     }
 
     const bridge = new RemoteBridge(activeSessionId, 'remote');
+    setIsTvConnected(false);
     bridge.notifyConnected();
     bridgeRef.current = bridge;
 
+    bridge.onConnected(() => {
+      setIsTvConnected(true);
+    });
+
     bridge.onAction((action, payload) => {
       if (action === 'SYNC_STATE' && payload?.channel) {
+        setIsTvConnected(true);
         setSyncedChannel(payload.channel);
         if (payload.activeIndex !== undefined) setChannelIdx(payload.activeIndex);
         if (payload.isQuadOpen !== undefined) setIsQuadActive(Boolean(payload.isQuadOpen));
@@ -201,7 +209,13 @@ export default function MobileRemote() {
       videoUrl: item.sourceUrl
     });
     setIsPlaying(true);
-    flashAction(`📺 Transmitiendo: ${item.title.slice(0, 22)}`);
+    flashAction(`📺 Transmitiendo`);
+    setCastBanner(
+      isTvConnected
+        ? `📺 Transmitiendo «${item.title.slice(0, 38)}» en TV #${activeSessionId}`
+        : `📡 Enviado al PIN #${activeSessionId} (abrí /mitv en tu TV/PC con ese PIN)`
+    );
+    window.setTimeout(() => setCastBanner(null), 3600);
   };
 
   const handleCastInputSubmit = async (e: React.FormEvent) => {
@@ -269,6 +283,11 @@ export default function MobileRemote() {
   };
 
   const handleQuickCastCurrent = () => {
+    if (!isTvConnected) {
+      // Si todavía no hay una TV/PC vinculada a este PIN, abre el modal de Transmitir / Chromecast / QR
+      setShowCastModal(true);
+      return;
+    }
     const ch = syncedChannel || channels[channelIdx];
     if (ch?.mitvItem) {
       castItemToTv(ch.mitvItem as MiTvItem);
@@ -351,7 +370,10 @@ export default function MobileRemote() {
               }}
               title="Cambiar PIN de vinculación TV"
             >
-              <span className="yr-live-dot" />
+              <span
+                className="yr-live-dot"
+                style={{ background: isTvConnected ? '#34d399' : '#f59e0b' }}
+              />
               PIN #{activeSessionId}
             </button>
             <button
@@ -393,6 +415,14 @@ export default function MobileRemote() {
         )}
 
         {/* VISOR "AHORA EN TU TV" */}
+        {castBanner && (
+          <div className="yr-cast-banner" role="status">
+            <span>{castBanner}</span>
+            <button type="button" onClick={() => setShowCastModal(true)}>
+              Chromecast / QR
+            </button>
+          </div>
+        )}
         <section className="yr-display">
           <div className="yr-display-top">
             <span className="yr-display-kicker">EN TU TELEVISOR</span>
@@ -1306,6 +1336,30 @@ export default function MobileRemote() {
         .yr-cast-primary-btn:hover {
           background: #0071e3 !important;
           color: #ffffff !important;
+        }
+        .yr-cast-banner {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 9px 12px;
+          border-radius: 14px;
+          background: rgba(0, 113, 227, 0.28);
+          border: 1px solid rgba(100, 210, 255, 0.55);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 650;
+        }
+        .yr-cast-banner button {
+          flex-shrink: 0;
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.14);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
         }
       `}</style>
     </div>

@@ -2410,23 +2410,19 @@ export default function ChannelSearch() {
           docPiP.window.close();
           return;
         }
-        const embedSrc =
-          previewVideo.provider === 'vimeo'
-            ? `https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1`
-            : previewVideo.provider === 'peertube' && previewVideo.embedUrl
-              ? previewVideo.embedUrl
-              : previewVideo.provider === 'archive'
-                ? previewVideo.embedUrl ||
-                  `https://archive.org/embed/${encodeURIComponent(previewVideo.videoId.replace(/^ar_/, ''))}?autoplay=1`
-                : previewVideo.provider === 'odysee' && previewVideo.embedUrl
-                  ? previewVideo.embedUrl
-                  : `https://www.youtube.com/embed/${encodeURIComponent(previewVideo.videoId)}?autoplay=1&rel=0&modestbranding=1`;
+        const pipParams = new URLSearchParams({
+          provider: previewVideo.provider || 'youtube',
+          id: previewVideo.videoId
+        });
+        if (previewVideo.embedUrl) pipParams.set('embed', previewVideo.embedUrl);
+        // Usar nuestro propio origen HTTPS (/pip-frame) para enviar Referer válido a YouTube (evita Error 153 en about:blank)
+        const pipFrameUrl = `${window.location.origin}/pip-frame?${pipParams.toString()}`;
 
         const pipWin: Window = await docPiP.requestWindow({ width: 420, height: 245 });
         pipWin.document.title = `${previewVideo.title} · YOUAPP`;
         pipWin.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden;width:100vw;height:100vh;';
         const ifr = pipWin.document.createElement('iframe');
-        ifr.src = embedSrc;
+        ifr.src = pipFrameUrl;
         ifr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
         ifr.allowFullscreen = true;
         ifr.style.cssText = 'border:0;width:100%;height:100%;display:block;';

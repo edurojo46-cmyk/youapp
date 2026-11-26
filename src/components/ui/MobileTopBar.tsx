@@ -24,6 +24,7 @@ const HIDDEN_PREFIXES = [
   '/login',
   '/share',
   '/embed/',
+  '/pip-frame',
   '/antena/',
   '/remote',
   '/tools/',

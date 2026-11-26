@@ -124,6 +124,41 @@ const MiTvPublicOrProtectedRoute = () => {
   );
 };
 
+// Frame ligero con origen HTTPS real (youapptv.com) para Document Picture-in-Picture sin Error 153 de YouTube
+const PipEmbedFrame = () => {
+  const [searchParams] = useSearchParams();
+  const provider = (searchParams.get('provider') || 'youtube').toLowerCase();
+  const id = (searchParams.get('id') || '').trim();
+  const embed = (searchParams.get('embed') || '').trim();
+
+  const src =
+    provider === 'vimeo' && id
+      ? `https://player.vimeo.com/video/${encodeURIComponent(id.replace(/^vm_/, ''))}?autoplay=1&dnt=1`
+      : (provider === 'peertube' || provider === 'odysee') && embed.startsWith('https://')
+        ? embed
+        : provider === 'archive' && id
+          ? embed.startsWith('https://')
+            ? embed
+            : `https://archive.org/embed/${encodeURIComponent(id.replace(/^ar_/, ''))}?autoplay=1`
+          : id
+            ? `https://www.youtube.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&modestbranding=1&playsinline=1`
+            : '';
+
+  if (!src) return null;
+  return (
+    <div style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', background: '#000', overflow: 'hidden' }}>
+      <iframe
+        src={src}
+        title="YOUAPP PiP"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        style={{ border: 0, width: '100%', height: '100%', display: 'block' }}
+      />
+    </div>
+  );
+};
+
 function App() {
   const { initAuth } = useStore();
 
@@ -159,6 +194,7 @@ function App() {
         {/* Rutas públicas para espectadores, control remoto y sitios web incrustados */}
         <Route path="/c/:idOrSlug" element={<PublicChannel />} />
         <Route path="/embed/:idOrSlug" element={<EmbedChannel />} />
+        <Route path="/pip-frame" element={<PipEmbedFrame />} />
         <Route path="/antena/:signalId" element={<DigitalAntennaEmbed />} />
         <Route path="/remote" element={<MobileRemote />} />
         <Route path="/remote/:sessionId" element={<MobileRemote />} />

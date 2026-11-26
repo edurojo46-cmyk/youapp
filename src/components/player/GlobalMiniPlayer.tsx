@@ -50,7 +50,7 @@ export function getGlobalMiniVideo(): GlobalMiniVideoItem | null {
   return currentGlobalMiniVideo;
 }
 
-const OWN_PLAYER_PREFIXES = ['/mitv', '/misenal', '/live', '/player', '/reels', '/youmusic', '/remote'];
+const OWN_PLAYER_PREFIXES = ['/mitv', '/misenal', '/live', '/player', '/reels', '/youmusic', '/remote', '/pip-frame'];
 
 function buildEmbedSrc(v: GlobalMiniVideoItem): string | null {
   if (v.provider === 'vimeo') {

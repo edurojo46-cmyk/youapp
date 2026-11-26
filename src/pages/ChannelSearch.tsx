@@ -1716,15 +1716,25 @@ export default function ChannelSearch() {
           return;
         }
         if (prov === 'peertube') {
-          const pt = peertubePlayerRef.current;
-          if (!pt) return;
-          if (func === 'playVideo') void pt.play().catch(() => {});
-          else if (func === 'pauseVideo') void pt.pause().catch(() => {});
-          else if (func === 'mute') void pt.setVolume(0).catch(() => {});
-          else if (func === 'unMute') void pt.setVolume(1).catch(() => {});
-          else if (func === 'seekTo' && typeof args[0] === 'number') {
-            void pt.seek(args[0]).catch(() => {});
+          let pt = peertubePlayerRef.current;
+          if (!pt && previewIframeRef.current) {
+            pt = new PeerTubePlayer(previewIframeRef.current);
+            peertubePlayerRef.current = pt;
           }
+          if (!pt) return;
+          const runPt = async () => {
+            try {
+              await pt!.ready;
+              if (func === 'playVideo') await pt!.play();
+              else if (func === 'pauseVideo') await pt!.pause();
+              else if (func === 'mute') await pt!.setVolume(0);
+              else if (func === 'unMute') await pt!.setVolume(1);
+              else if (func === 'seekTo' && typeof args[0] === 'number') await pt!.seek(args[0]);
+            } catch {
+              // ignore
+            }
+          };
+          void runPt();
           return;
         }
         win.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
@@ -2374,6 +2384,15 @@ export default function ChannelSearch() {
     setIsPreviewFrameReady(false);
     peertubePlayerRef.current = null;
     if (!previewVideo) return;
+    if (previewVideo.provider === 'peertube' && previewIframeRef.current) {
+      try {
+        const pt = new PeerTubePlayer(previewIframeRef.current);
+        peertubePlayerRef.current = pt;
+        void pt.ready.catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
     setGlobalMiniVideo({
       videoId: previewVideo.videoId,
       title: previewVideo.title,
@@ -3398,7 +3417,7 @@ export default function ChannelSearch() {
                     title={previewVideo.title}
                     onLoad={() => {
                       setIsPreviewFrameReady(true);
-                      if (previewIframeRef.current) {
+                      if (!peertubePlayerRef.current && previewIframeRef.current) {
                         try {
                           const pt = new PeerTubePlayer(previewIframeRef.current);
                           peertubePlayerRef.current = pt;

@@ -71,6 +71,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     private String pendingShareUrl = null;
     private boolean jsBridgeRegistered = false;
+    private boolean suppressNextPiP = false;
 
     public class YouAppNativeBridge {
         @JavascriptInterface
@@ -100,7 +101,8 @@ public class MainActivity extends BridgeActivity {
                 }
                 sendIntent.putExtra(Intent.EXTRA_TEXT, body.toString());
                 Intent chooser = Intent.createChooser(sendIntent, title != null && !title.trim().isEmpty() ? title : "Compartir");
-                chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                // No achicar la app a PiP al abrir la hoja nativa de Compartir
+                suppressNextPiP = true;
                 startActivity(chooser);
             });
         }
@@ -150,8 +152,18 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        suppressNextPiP = false;
+    }
+
+    @Override
     protected void onUserLeaveHint() {
         super.onUserLeaveHint();
+        if (suppressNextPiP) {
+            suppressNextPiP = false;
+            return;
+        }
         // Al salir de YOUAPP (ej. tocar Inicio o cambiar a Infobae/WhatsApp), entra automáticamente en Picture-in-Picture 16:9
         triggerNativePiP();
     }

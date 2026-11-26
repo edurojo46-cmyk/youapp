@@ -40,7 +40,8 @@ import {
   UserCheck,
   EyeOff,
   PictureInPicture2,
-  RotateCcw
+  RotateCcw,
+  Share2
 } from 'lucide-react';
 import { fetchYouTubeAutocomplete } from '../lib/search/queryEngine';
 import { searchYouTubeVideos } from '../lib/youtubeChannelSearch';
@@ -2452,6 +2453,32 @@ export default function ChannelSearch() {
     window.setTimeout(() => setCastNotice(null), 5000);
   }, [previewVideo]);
 
+  const handleSharePreviewVideo = useCallback(async () => {
+    if (!previewVideo) return;
+    const isYt = !previewVideo.provider || previewVideo.provider === 'youtube';
+    const shareUrl = isYt
+      ? `https://youapptv.com/?v=${encodeURIComponent(previewVideo.videoId)}`
+      : previewVideo.watchUrl || `https://youapptv.com/search`;
+    const title = `${previewVideo.title} · YOUAPP TV`;
+    const text = `Mirá «${previewVideo.title}» en YOUAPP TV`;
+    const androidBridge = (window as any).YouAppAndroidPiP;
+    try {
+      if (androidBridge && typeof androidBridge.share === 'function') {
+        androidBridge.share(title, text, shareUrl);
+        return;
+      }
+      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+        await navigator.share({ title, text, url: shareUrl });
+        return;
+      }
+    } catch {
+      // fallback portapapeles
+    }
+    await navigator.clipboard?.writeText(shareUrl).catch(() => {});
+    setCastNotice('Enlace del video copiado para compartir.');
+    window.setTimeout(() => setCastNotice(null), 3000);
+  }, [previewVideo]);
+
   const hiddenShortsCount = useMemo(
     () =>
       results.filter(
@@ -3432,6 +3459,15 @@ export default function ChannelSearch() {
                       </div>
 
                       <div className="ys-top-right-icons">
+                        <button
+                          type="button"
+                          className="ys-top-icon-btn"
+                          onClick={() => void handleSharePreviewVideo()}
+                          title="Compartir este video"
+                          aria-label="Compartir este video"
+                        >
+                          <Share2 size={14} />
+                        </button>
                         <button
                           type="button"
                           className={`ys-top-icon-btn ${isMiniPlayerManual ? 'is-subbed' : ''}`}

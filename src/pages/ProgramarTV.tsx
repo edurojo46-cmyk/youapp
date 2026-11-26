@@ -14,6 +14,7 @@ import {
   Maximize2,
   Minimize2,
   Pencil,
+  PictureInPicture2,
   Play,
   Plus,
   Radio,
@@ -2335,15 +2336,91 @@ export default function ProgramarTV() {
                           </button>
                         </div>
 
-                        <button
-                          type="button"
-                          className="mitv-top-icon-btn mitv-top-fs-btn"
-                          onClick={() => void handleToggleFullscreen()}
-                          title={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
-                          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
-                        >
-                          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+                          <button
+                            type="button"
+                            className="mitv-top-icon-btn"
+                            onClick={async () => {
+                              const isYt = currentItem.provider === 'youtube' && currentItem.providerId;
+                              const shareUrl = isYt
+                                ? `https://youapptv.com/?v=${encodeURIComponent(currentItem.providerId)}`
+                                : currentItem.sourceUrl || 'https://youapptv.com/mitv';
+                              const title = `${currentItem.title} · YOUAPP TV`;
+                              const text = `Mirá «${currentItem.title}» en MiTV (YOUAPP)`;
+                              const androidBridge = (window as any).YouAppAndroidPiP;
+                              try {
+                                if (androidBridge && typeof androidBridge.share === 'function') {
+                                  androidBridge.share(title, text, shareUrl);
+                                  return;
+                                }
+                                if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+                                  await navigator.share({ title, text, url: shareUrl });
+                                  return;
+                                }
+                              } catch {
+                                // fallback portapapeles
+                              }
+                              await navigator.clipboard?.writeText(shareUrl).catch(() => {});
+                              setCastNotice('Enlace del video copiado para compartir.');
+                              window.setTimeout(() => setCastNotice(null), 2800);
+                            }}
+                            title="Compartir este video"
+                            aria-label="Compartir este video"
+                          >
+                            <Share2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="mitv-top-icon-btn"
+                            onClick={async () => {
+                              const androidBridge = (window as any).YouAppAndroidPiP;
+                              if (androidBridge && typeof androidBridge.enterPiP === 'function') {
+                                androidBridge.enterPiP();
+                                return;
+                              }
+                              const docPiP = (window as any).documentPictureInPicture;
+                              if (docPiP && typeof docPiP.requestWindow === 'function' && currentItem.providerId) {
+                                try {
+                                  if (docPiP.window && !docPiP.window.closed) {
+                                    docPiP.window.close();
+                                    return;
+                                  }
+                                  const pipParams = new URLSearchParams({
+                                    provider: currentItem.provider || 'youtube',
+                                    id: currentItem.providerId
+                                  });
+                                  const pipWin: Window = await docPiP.requestWindow({ width: 420, height: 245 });
+                                  pipWin.document.title = `${currentItem.title} · YOUAPP`;
+                                  pipWin.document.body.style.cssText = 'margin:0;background:#000;overflow:hidden;width:100vw;height:100vh;';
+                                  const ifr = pipWin.document.createElement('iframe');
+                                  ifr.src = `${window.location.origin}/pip-frame?${pipParams.toString()}`;
+                                  ifr.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+                                  ifr.allowFullscreen = true;
+                                  ifr.style.cssText = 'border:0;width:100%;height:100%;display:block;';
+                                  pipWin.document.body.appendChild(ifr);
+                                  return;
+                                } catch {
+                                  // ignore
+                                }
+                              }
+                              setCastNotice('En el APK Android o en PC (Chrome/Edge) activa la ventana flotante del sistema.');
+                              window.setTimeout(() => setCastNotice(null), 3200);
+                            }}
+                            title="Ventana flotante (Picture-in-Picture)"
+                            aria-label="Ventana flotante (Picture-in-Picture)"
+                          >
+                            <PictureInPicture2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            className="mitv-top-icon-btn mitv-top-fs-btn"
+                            onClick={() => void handleToggleFullscreen()}
+                            title={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
+                            aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
+                          >
+                            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                          </button>
+                        </div>
                       </div>
                     );
                   })()}

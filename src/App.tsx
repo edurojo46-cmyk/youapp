@@ -96,8 +96,9 @@ const HomeOrSharedRoute = () => {
 const MiSenalPublicOrProtectedRoute = () => {
   const [searchParams] = useSearchParams();
   const isPublicInvite =
-    Boolean(searchParams.get('signal')) &&
-    (searchParams.get('sharedSignal') === '1' || searchParams.get('follow') === '1');
+    Boolean(searchParams.get('add')) ||
+    (Boolean(searchParams.get('signal')) &&
+      (searchParams.get('sharedSignal') === '1' || searchParams.get('follow') === '1'));
   if (isPublicInvite) {
     return <MiSenal1 />;
   }
@@ -108,11 +109,11 @@ const MiSenalPublicOrProtectedRoute = () => {
   );
 };
 
-// Permite abrir una programación compartida de MiTV (?shared=...) en modo invitado sin pedir login
+// Permite abrir una programación compartida de MiTV (?shared=...) o agregar desde Share (?add=...) sin pedir login
 const MiTvPublicOrProtectedRoute = () => {
   const [searchParams] = useSearchParams();
-  const isPublicSharedChannel = Boolean(searchParams.get('shared'));
-  if (isPublicSharedChannel) {
+  const isPublicOrShareAdd = Boolean(searchParams.get('shared') || searchParams.get('add'));
+  if (isPublicOrShareAdd) {
     return <ProgramarTV />;
   }
   return (
@@ -129,16 +130,14 @@ function App() {
     initAuth();
   }, [initAuth]);
 
-  // Interceptar URL compartida desde Web Share Target API
+  // Interceptar URL compartida desde Web Share Target API SOLO si no estamos ya en /share (evita bucle infinito de recarga)
   useEffect(() => {
+    if (window.location.pathname === '/share') return;
     if (window.location.search) {
       const params = new URLSearchParams(window.location.search);
       const sharedUrl = params.get('url') || params.get('text');
-      if (sharedUrl) {
-        // Redirigir a la ruta interna de share manteniendo los params
-        const newUrl = window.location.protocol + "//" + window.location.host + "/share" + window.location.search;
-        window.history.replaceState(null, '', newUrl);
-        window.location.reload(); // Forzar recarga limpia
+      if (sharedUrl && /https?:\/\//i.test(sharedUrl)) {
+        window.location.replace(`/share${window.location.search}`);
       }
     }
   }, []);

@@ -250,19 +250,28 @@ export async function fetchYouTubeVideoMeta(videoId: string): Promise<VideoPubli
   try {
     const { data: row } = await supabase
       .from('youapp_index')
-      .select('view_count, published_at, is_live')
+      .select('*')
       .or(`video_id.eq.${clean},provider_content_id.eq.${clean}`)
       .limit(1)
       .maybeSingle();
 
-    if (row && (typeof row.view_count === 'number' || typeof row.published_at === 'string')) {
+    if (row) {
+      const r = row as Record<string, any>;
+      const rawViews = Number(r.view_count ?? r.views ?? r.metadata?.viewCount ?? 0);
+      const rawDate =
+        (typeof r.published_at === 'string' && r.published_at) ||
+        (typeof r.metadata?.publishedAt === 'string' && r.metadata.publishedAt) ||
+        (typeof r.created_at === 'string' && r.created_at) ||
+        null;
       const meta: VideoPublicMeta = {
-        viewCount: typeof row.view_count === 'number' ? row.view_count : null,
-        publishedAt: typeof row.published_at === 'string' ? row.published_at : null,
-        isLive: Boolean(row.is_live)
+        viewCount: Number.isFinite(rawViews) && rawViews > 0 ? rawViews : null,
+        publishedAt: rawDate,
+        isLive: Boolean(r.is_live)
       };
-      clientMetaCache.set(clean, meta);
-      return meta;
+      if (meta.viewCount !== null || meta.publishedAt !== null) {
+        clientMetaCache.set(clean, meta);
+        return meta;
+      }
     }
   } catch {
     // continúa al fallback local

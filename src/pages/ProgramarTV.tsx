@@ -2356,7 +2356,9 @@ export default function ProgramarTV() {
                       currentVideoMeta?.viewCount,
                       currentVideoMeta?.isLive || currentItem.provider === 'youtube_live'
                     );
-                    const dateLabel = formatPublishedDateEs(currentVideoMeta?.publishedAt);
+                    const dateLabel = formatPublishedDateEs(
+                      currentVideoMeta?.publishedAt || currentItem.addedAt
+                    );
                     return (
                       <>
                         {viewsLabel ? ` · ${viewsLabel}` : ''}
@@ -2364,8 +2366,6 @@ export default function ProgramarTV() {
                       </>
                     );
                   })()}
-                  {` · Programa ${safeIndex + 1} de ${items.length}`}
-                  {nextItem ? ` · Sigue: ${nextItem.title}` : ''}
                 </span>
               </div>
 

@@ -35,7 +35,9 @@ import {
   Heart,
   Sparkles,
   Settings2,
-  List
+  List,
+  UserPlus,
+  UserCheck
 } from 'lucide-react';
 import { fetchYouTubeAutocomplete } from '../lib/search/queryEngine';
 import { searchYouTubeVideos } from '../lib/youtubeChannelSearch';
@@ -44,6 +46,18 @@ import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { CountrySelectorPill } from '../components/ui/CountrySelectorPill';
 import { getActiveCountryProfile } from '../lib/geo/userCountry';
+import {
+  SOCIAL_GRAPH_CHANGED_EVENT,
+  buildYouTubeSubscribeUrl,
+  fetchYouTubeVideoMeta,
+  formatCompactViews,
+  formatPublishedDateEs,
+  loadSocialGraph,
+  toggleFollowCreatorWithMeta,
+  toggleLikeVideoWithMeta,
+  type VideoPublicMeta,
+  type YouAppSocialGraph
+} from '../lib/tv/youappSocialStore';
 import { passesCategoryGate } from '../lib/search/categoryGate';
 import { SmartBar } from '../components/smartbar/SmartBar';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
@@ -1206,6 +1220,70 @@ async function fetchMyAlgorithmFeed(
   return out;
 }
 
+const SHORT_VERTICAL_TAGS = new Set([
+  'shorts',
+  'short',
+  'youtube-shorts',
+  'yt-shorts',
+  'reels',
+  'reel',
+  'tiktok',
+  'vertical',
+  '9:16'
+]);
+
+function isShortOrVerticalVideo(item: SearchVideoItem): boolean {
+  if (Array.isArray(item.tags)) {
+    for (const t of item.tags) {
+      if (SHORT_VERTICAL_TAGS.has(String(t).toLowerCase().trim())) return true;
+    }
+  }
+  if (/\/shorts\//i.test(item.watchUrl || '')) return true;
+  if (/(^|\s)(#shorts?|#reels?|#tiktok)\b|\((short|reel)\)|\[(short|reel)\]/i.test(item.title || '')) {
+    return true;
+  }
+  const sec = item.durationSeconds ?? parseDurationToSeconds(item.duration);
+  if (sec > 0 && sec <= 62) return true;
+  return false;
+}
+
+const VERTICAL_CACHE_KEY = 'youapp_yt_vertical_map_v1';
+const verticalOrientationCache = new Map<string, boolean>();
+
+function loadVerticalCache(): Set<string> {
+  const out = new Set<string>();
+  if (typeof window === 'undefined') return out;
+  try {
+    const raw = sessionStorage.getItem(VERTICAL_CACHE_KEY);
+    if (raw) {
+      const obj = JSON.parse(raw) as Record<string, boolean>;
+      for (const [k, v] of Object.entries(obj)) {
+        verticalOrientationCache.set(k, Boolean(v));
+        if (v) out.add(k);
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return out;
+}
+
+function saveVerticalCache() {
+  if (typeof window === 'undefined') return;
+  try {
+    const obj: Record<string, boolean> = {};
+    let count = 0;
+    for (const [k, v] of verticalOrientationCache.entries()) {
+      obj[k] = v;
+      count += 1;
+      if (count >= 400) break;
+    }
+    sessionStorage.setItem(VERTICAL_CACHE_KEY, JSON.stringify(obj));
+  } catch {
+    // ignore
+  }
+}
+
 export default function ChannelSearch() {
   const navigate = useNavigate();
   const { savedAlgorithms, activeAlgorithmId, setActiveAlgorithmId } = useStore();
@@ -1324,6 +1402,78 @@ export default function ChannelSearch() {
   const [previewVideo, setPreviewVideo] = useState<SearchVideoItem | null>(null);
   const [sortMode, setSortMode] = useState<'relevance' | 'views' | 'recent'>('relevance');
   const [isAlgoPanelOpen, setIsAlgoPanelOpen] = useState(false);
+  const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
+  const [previewVideoMeta, setPreviewVideoMeta] = useState<VideoPublicMeta | null>(null);
+  const [detectedVerticalIds, setDetectedVerticalIds] = useState<Set<string>>(() => loadVerticalCache());
+
+  // Detector oEmbed real (0 cuota) para atrapar Shorts verticales sin tag ni duración
+  useEffect(() => {
+    const toCheck = results
+      .filter((it) => !isShortOrVerticalVideo(it) && !verticalOrientationCache.has(it.videoId))
+      .slice(0, 28);
+    if (toCheck.length === 0) return;
+
+    let cancelled = false;
+    Promise.all(
+      toCheck.map(async (it) => {
+        try {
+          const res = await fetch(
+            `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${it.videoId}`)}&format=json`
+          );
+          if (!res.ok) return null;
+          const data = await res.json();
+          const w = Number(data?.width || 0);
+          const h = Number(data?.height || 0);
+          const isVert = w > 0 && h > 0 && h > w;
+          verticalOrientationCache.set(it.videoId, isVert);
+          return isVert ? it.videoId : null;
+        } catch {
+          return null;
+        }
+      })
+    )
+      .then((found) => {
+        if (cancelled) return;
+        saveVerticalCache();
+        const newlyVertical = found.filter((id): id is string => Boolean(id));
+        if (newlyVertical.length > 0) {
+          setDetectedVerticalIds((prev) => {
+            const next = new Set(prev);
+            for (const id of newlyVertical) next.add(id);
+            return next;
+          });
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [results]);
+
+  useEffect(() => {
+    const onSocialChange = () => setSocialGraph(loadSocialGraph());
+    window.addEventListener(SOCIAL_GRAPH_CHANGED_EVENT, onSocialChange);
+    return () => window.removeEventListener(SOCIAL_GRAPH_CHANGED_EVENT, onSocialChange);
+  }, []);
+
+  useEffect(() => {
+    const vid = previewVideo?.videoId;
+    if (!vid) {
+      setPreviewVideoMeta(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewVideoMeta(null);
+    fetchYouTubeVideoMeta(vid)
+      .then((meta) => {
+        if (!cancelled) setPreviewVideoMeta(meta);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [previewVideo?.videoId]);
   const [durationFilter, setDurationFilter] = useState<'all' | 'short' | 'medium' | 'long'>('all');
   const [activeChannelFilter, setActiveChannelFilter] = useState<{ name: string; channelId?: string } | null>(null);
   const [pageOffset, setPageOffset] = useState<number>(0);
@@ -1723,7 +1873,10 @@ export default function ChannelSearch() {
   }, [loadingMore, hasMore, activeCategory, activeChannelFilter, committed, pageOffset, userRegion]);
 
   const filteredResults = useMemo(() => {
-    let list = results;
+    // Excluir videos Shorts / verticales de Buscar (por tags, duración o geometría real oEmbed height > width)
+    let list = results.filter(
+      (item) => !isShortOrVerticalVideo(item) && !detectedVerticalIds.has(item.videoId)
+    );
     if (durationFilter !== 'all') {
       list = list.filter((item) => {
         const sec = item.durationSeconds ?? parseDurationToSeconds(item.duration);
@@ -1745,7 +1898,15 @@ export default function ChannelSearch() {
       });
     }
     return list;
-  }, [results, durationFilter, sortMode]);
+  }, [results, durationFilter, sortMode, detectedVerticalIds]);
+
+  const hiddenShortsCount = useMemo(
+    () =>
+      results.filter(
+        (item) => isShortOrVerticalVideo(item) || detectedVerticalIds.has(item.videoId)
+      ).length,
+    [results, detectedVerticalIds]
+  );
 
   const startVoiceSearch = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -1971,18 +2132,46 @@ export default function ChannelSearch() {
     }
   }, [isPreviewMuted, playerVolume, sendYtCommand]);
 
-  const handleToggleFullscreen = useCallback(async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-        setIsFullscreen(false);
-      } else if (previewRef.current?.requestFullscreen) {
-        await previewRef.current.requestFullscreen();
-        setIsFullscreen(true);
+  const handleToggleFullscreen = useCallback(() => {
+    setIsFullscreen((prev) => {
+      const next = !prev;
+      if (typeof document !== 'undefined') {
+        document.body.classList.toggle('mitv-is-fullscreen', next);
+        const el = previewRef.current as
+          | (HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void })
+          | null;
+        const doc = document as Document & {
+          webkitFullscreenElement?: Element | null;
+          webkitExitFullscreen?: () => Promise<void> | void;
+        };
+        try {
+          if (next && el && !document.fullscreenElement && !doc.webkitFullscreenElement) {
+            if (el.requestFullscreen) {
+              void el.requestFullscreen().catch(() => {});
+            } else if (el.webkitRequestFullscreen) {
+              void el.webkitRequestFullscreen();
+            }
+          } else if (!next && (document.fullscreenElement || doc.webkitFullscreenElement)) {
+            if (document.exitFullscreen) {
+              void document.exitFullscreen().catch(() => {});
+            } else if (doc.webkitExitFullscreen) {
+              void doc.webkitExitFullscreen();
+            }
+          }
+        } catch {
+          // fallback CSS 100vw x 100dvh
+        }
       }
-    } catch {
-      // ignore fullscreen errors
-    }
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('mitv-is-fullscreen');
+      }
+    };
   }, []);
 
   const handleToggleLike = useCallback((videoId: string) => {
@@ -2222,11 +2411,163 @@ export default function ChannelSearch() {
               <ChevronRight size={18} />
             </button>
           </div>
+
+          {/* DESPLEGABLE FINO "ALGORITMO" JUSTO ABAJO DEL CARRUSEL */}
+          <div className={`ys-algo-accordion ${isAlgoPanelOpen ? 'is-open' : ''}`}>
+            <button
+              type="button"
+              className="ys-algo-toggle"
+              onClick={() => setIsAlgoPanelOpen((v) => !v)}
+              aria-expanded={isAlgoPanelOpen}
+            >
+              <span className="ys-algo-toggle-left">
+                <Sparkles size={13} color="#64d2ff" />
+                <strong>Algoritmo</strong>
+                <span className="ys-algo-toggle-meta">
+                  {isAlgoFeed && activeAlgo ? activeAlgo.name : committed}
+                  {filteredResults.length > 0 ? ` · ${filteredResults.length}` : ''}
+                </span>
+              </span>
+              <span className="ys-algo-toggle-right">
+                {hiddenShortsCount > 0 && (
+                  <span
+                    role="link"
+                    tabIndex={0}
+                    className="ys-reels-redirect-pill"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/reels');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate('/reels');
+                      }
+                    }}
+                    title="Los Shorts verticales se muestran en Reels"
+                  >
+                    <Film size={11} /> Reels ({hiddenShortsCount})
+                  </span>
+                )}
+                <span>{isAlgoPanelOpen ? 'Ocultar' : 'Abrir'}</span>
+                <ChevronDown
+                  size={14}
+                  style={{
+                    transform: isAlgoPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.18s ease'
+                  }}
+                />
+              </span>
+            </button>
+
+            {isAlgoPanelOpen && (
+              <div className="ys-algo-drawer">
+                {/* FILA SUPERIOR: Perfiles (si aplica) + Ajustar */}
+                <div className="ys-algo-top-row" role="region" aria-label="Ajustar Mi Algoritmo">
+                  <div className="ys-algo-profiles">
+                    {isAlgoFeed && !activeChannelFilter && savedAlgorithms.map((algo) => (
+                      <button
+                        key={algo.id}
+                        type="button"
+                        className={`ys-algo-pill ${activeAlgo?.id === algo.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setActiveAlgorithmId(algo.id);
+                          void loadMyAlgorithmFeed(algo);
+                        }}
+                        title={algo.description}
+                      >
+                        {algo.name}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="ys-algo-edit-btn"
+                    onClick={() => navigate('/my-algorithm')}
+                    title="Ajustar pesos y reglas de Mi Algoritmo"
+                  >
+                    <Settings2 size={13} /> Ajustar
+                  </button>
+                </div>
+
+                {/* LAS 3 BARRAS ORDENADAS (1 barra limpia por fila) */}
+                {results.length > 0 && (
+                  <div className="ys-algo-3bars" aria-label="Ordenar y filtrar resultados">
+                    <div className="ys-algo-bar-row">
+                      <SlidersHorizontal size={12} className="ys-filter-ico" />
+                      {(
+                        [
+                          { id: 'relevance', label: 'Relevancia' },
+                          { id: 'views', label: 'Más vistos' },
+                          { id: 'recent', label: 'Más recientes' }
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={`ys-filter-pill ${sortMode === opt.id ? 'active' : ''}`}
+                          onClick={() => setSortMode(opt.id)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="ys-algo-bar-row">
+                      {(
+                        [
+                          { id: 'all', label: 'Todas' },
+                          { id: 'short', label: '< 4 min' },
+                          { id: 'medium', label: '4–20 min' },
+                          { id: 'long', label: '+20 min' }
+                        ] as const
+                      ).map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          className={`ys-filter-pill ${durationFilter === opt.id ? 'active' : ''}`}
+                          onClick={() => setDurationFilter(opt.id)}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="ys-algo-bar-row" aria-label="Estilo de tarjetas">
+                      <button
+                        type="button"
+                        className={`ys-filter-pill ${cardViewMode === 'cinema' ? 'active' : ''}`}
+                        onClick={() => handleSetCardViewMode('cinema')}
+                        title="Vista Grilla Cine (portadas limpias)"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      >
+                        <LayoutGrid size={12} /> Cine
+                      </button>
+                      <button
+                        type="button"
+                        className={`ys-filter-pill ${cardViewMode === 'capsule' ? 'active' : ''}`}
+                        onClick={() => handleSetCardViewMode('capsule')}
+                        title="Vista Cápsula Editorial (compacta estilo Mi Señal)"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                      >
+                        <List size={12} /> Cápsula
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </section>
 
-        {/* REPRODUCTOR ARRIBA (IDÉNTICO A MITV: 1 PANTALLA / MOMENTOS 4x / YOU4) */}
+        {/* REPRODUCTOR ARRIBA (IDÉNTICO A MITV: 1 PANTALLA / MOMENTOS 4x / YOU4 + BARRA APPLE 3 PUNTOS) */}
         {previewVideo && (
-          <section ref={previewRef} className="ys-preview-card" aria-label="Reproductor fijado arriba">
+          <section
+            ref={previewRef}
+            className={`ys-preview-card ${isFullscreen ? 'is-expanded' : ''}`}
+            aria-label="Reproductor fijado arriba"
+          >
             {isMomentsMosaic ? (
               (() => {
                 const dur = Math.max(
@@ -2326,203 +2667,253 @@ export default function ChannelSearch() {
               </div>
             )}
 
+            {isFullscreen && (
+              <button
+                type="button"
+                className="ys-fs-exit-btn"
+                onClick={() => void handleToggleFullscreen()}
+                title="Salir de pantalla completa"
+                aria-label="Salir de pantalla completa"
+              >
+                <Minimize2 size={15} />
+                <span>Salir</span>
+              </button>
+            )}
+
             {castNotice && <div className="ys-cast-toast">{castNotice}</div>}
 
-            <div className="ys-preview-bar">
+            {/* ENCABEZADO IDÉNTICO A MITV (EN PANTALLA · ❤️ · 👤+ · ⛶ · ✕ + Título + Canal · vistas · fecha) */}
+            <div className="ys-preview-bar ys-preview-bar--mitv">
+              <div className="ys-preview-top-meta">
+                <span className="ys-preview-live-pill">EN PANTALLA</span>
+                {(() => {
+                  const likeKey = `youtube:${previewVideo.videoId}`;
+                  const followKey = previewVideo.channelId
+                    ? `ch:${previewVideo.channelId}`
+                    : `ch:${previewVideo.channelName}`;
+                  const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
+                  const likeCount = Number(socialGraph.likeCounts?.[likeKey] ?? (isLiked ? 1 : 0));
+                  const isFollowed = socialGraph.followedSignalIds.includes(followKey);
+                  const ytSubUrl = buildYouTubeSubscribeUrl({
+                    channelId: previewVideo.channelId,
+                    sourceUrl: previewVideo.watchUrl
+                  });
+                  return (
+                    <div className="ys-top-social-row">
+                      <div className="ys-top-social-icons">
+                        <button
+                          type="button"
+                          className={`ys-top-icon-btn ${likeCount > 0 ? 'has-count' : ''} ${isLiked ? 'is-liked' : ''}`}
+                          onClick={() => {
+                            handleToggleLike(previewVideo.videoId);
+                            setSocialGraph((prev) => {
+                              const res = toggleLikeVideoWithMeta(prev, {
+                                key: likeKey,
+                                title: previewVideo.title,
+                                author: previewVideo.channelName,
+                                thumbnailUrl: previewVideo.thumbnail,
+                                sourceUrl: previewVideo.watchUrl
+                              });
+                              setCastNotice(
+                                res.active
+                                  ? `❤️ Me gusta (${res.count}) guardado en Mis Listas.`
+                                  : 'Me gusta quitado.'
+                              );
+                              window.setTimeout(() => setCastNotice(null), 2600);
+                              return res.graph;
+                            });
+                          }}
+                          title={isLiked ? `Te gusta (${likeCount})` : 'Me gusta en YOUAPP'}
+                          aria-label="Me gusta"
+                          aria-pressed={isLiked}
+                        >
+                          <Heart size={14} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
+                          {likeCount > 0 && (
+                            <span key={`slc-${likeCount}`} className="ys-like-count">
+                              {likeCount}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className={`ys-top-icon-btn ${isFollowed ? 'is-subbed' : ''}`}
+                          onClick={() => {
+                            const willSubscribe = !isFollowed;
+                            setSocialGraph((prev) =>
+                              toggleFollowCreatorWithMeta(prev, {
+                                key: followKey,
+                                name: previewVideo.channelName,
+                                provider: 'youtube',
+                                sourceUrl: previewVideo.watchUrl
+                              }).graph
+                            );
+                            if (willSubscribe && ytSubUrl) {
+                              window.open(
+                                ytSubUrl,
+                                'youapp_yt_sub',
+                                'width=540,height=660,noopener,noreferrer'
+                              );
+                              setCastNotice(
+                                `Siguiendo a «${previewVideo.channelName}» en YOUAPP · Confirmá también en YouTube.`
+                              );
+                            } else {
+                              setCastNotice(
+                                willSubscribe
+                                  ? `Siguiendo a «${previewVideo.channelName}» en YOUAPP.`
+                                  : `Dejaste de seguir a «${previewVideo.channelName}».`
+                              );
+                            }
+                            window.setTimeout(() => setCastNotice(null), 3000);
+                          }}
+                          title={isFollowed ? 'Siguiendo' : 'Suscribirse'}
+                          aria-label={isFollowed ? 'Siguiendo' : 'Suscribirse'}
+                          aria-pressed={isFollowed}
+                        >
+                          {isFollowed ? (
+                            <UserCheck size={15} strokeWidth={2.2} />
+                          ) : (
+                            <UserPlus size={15} strokeWidth={2.1} />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="ys-top-right-icons">
+                        <button
+                          type="button"
+                          className="ys-top-icon-btn"
+                          onClick={() => void handleToggleFullscreen()}
+                          title={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
+                          aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Agrandar pantalla'}
+                        >
+                          {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="ys-top-icon-btn"
+                          onClick={() => {
+                            setIsYou4Mode(false);
+                            setIsMomentsMosaic(false);
+                            setIsVolumeOpen(false);
+                            setIsCastOpen(false);
+                            setPreviewVideo(null);
+                          }}
+                          title="Cerrar reproductor"
+                          aria-label="Cerrar reproductor"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div className="ys-preview-meta">
                 <h3>{previewVideo.title}</h3>
-                <button
-                  type="button"
-                  className="ys-channel-inline-link"
-                  onClick={() => void openChannelVideos(previewVideo.channelName, previewVideo.channelId)}
-                  title="Ver todos los videos de este canal"
-                >
-                  {previewVideo.channelName}
-                </button>
-              </div>
-              <div className="ys-preview-actions">
-                <button
-                  type="button"
-                  className={`mitv-pill-btn ${isYou4Mode ? 'active-follow' : ''}`}
-                  onClick={() => {
-                    setIsMomentsMosaic(false);
-                    setIsYou4Mode((v) => !v);
-                    setYou4AudioSlot(0);
-                  }}
-                  title={isYou4Mode ? 'Volver a 1 pantalla' : 'YOU4: ver 4 videos a la vez'}
-                  aria-pressed={isYou4Mode}
-                >
-                  <LayoutGrid size={13} />
-                  <span>YOU4</span>
-                </button>
-
-                <div className="mitv-popover-anchor">
+                <div className="ys-preview-subline">
                   <button
                     type="button"
-                    className={`mitv-ctrl-btn ${isVolumeOpen ? 'active' : ''}`}
-                    onClick={() => {
-                      setIsCastOpen(false);
-                      setIsVolumeOpen((v) => !v);
-                    }}
-                    title="Volumen"
-                    aria-label="Abrir control de volumen"
+                    className="ys-channel-inline-link"
+                    onClick={() => void openChannelVideos(previewVideo.channelName, previewVideo.channelId)}
+                    title="Ver todos los videos de este canal"
                   >
-                    {isPreviewMuted || playerVolume === 0 ? <VolumeX size={15} /> : <Volume2 size={15} />}
+                    {previewVideo.channelName}
                   </button>
-                  {isVolumeOpen && (
-                    <div className="mitv-vol-popover" aria-label="Control de volumen">
-                      <button type="button" className="mitv-vol-btn" onClick={handleTogglePreviewMute}>
-                        {isPreviewMuted || playerVolume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                      </button>
-                      <button
-                        type="button"
-                        className="mitv-vol-btn"
-                        onClick={() => handleVolumeChange((isPreviewMuted ? 0 : playerVolume) - 10)}
-                      >
-                        −
-                      </button>
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={isPreviewMuted ? 0 : playerVolume}
-                        onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                        className="mitv-vol-slider"
-                        aria-label="Volumen"
-                      />
-                      <button
-                        type="button"
-                        className="mitv-vol-btn"
-                        onClick={() => handleVolumeChange((isPreviewMuted ? 0 : playerVolume) + 10)}
-                      >
-                        +
-                      </button>
-                      <span className="mitv-vol-pct">{isPreviewMuted ? 0 : playerVolume}%</span>
-                    </div>
-                  )}
+                  {(() => {
+                    const fallbackViewsNum = previewVideo.views
+                      ? parseViewsToNumber(previewVideo.views)
+                      : null;
+                    const vLabel = formatCompactViews(
+                      previewVideoMeta?.viewCount ??
+                        (fallbackViewsNum && fallbackViewsNum > 0 ? fallbackViewsNum : null),
+                      previewVideoMeta?.isLive
+                    );
+                    const dLabel = formatPublishedDateEs(
+                      previewVideoMeta?.publishedAt || previewVideo.publishedAt
+                    );
+                    return (
+                      <>
+                        {vLabel ? ` · ${vLabel}` : ''}
+                        {dLabel ? ` · ${dLabel}` : ''}
+                      </>
+                    );
+                  })()}
                 </div>
-
-                <div className="mitv-popover-anchor">
-                  <button
-                    type="button"
-                    className={`mitv-ctrl-btn ${isCastOpen ? 'active' : ''}`}
-                    onClick={() => {
-                      setIsVolumeOpen(false);
-                      setIsCastOpen((v) => !v);
-                    }}
-                    title="Transmitir a Smart TV / Chromecast"
-                    aria-label="Transmitir a dispositivo"
-                  >
-                    <Cast size={15} />
-                  </button>
-                  {isCastOpen && (
-                    <div className="mitv-cast-popover" role="dialog" aria-label="Transmitir YOUAPP">
-                      <div className="mitv-cast-head">Transmitir a dispositivo</div>
-                      <button
-                        type="button"
-                        className="mitv-ch-option"
-                        onClick={() => {
-                          setIsCastOpen(false);
-                          void handleCastVideo();
-                        }}
-                      >
-                        <Cast size={14} color="#64d2ff" />
-                        <span>Buscar TV / Chromecast (Chrome)</span>
-                      </button>
-                      <div className="mitv-cast-divider" />
-                      <form
-                        className="mitv-cast-code-form"
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const code = castCodeInput.trim();
-                          if (!code) return;
-                          setIsCastOpen(false);
-                          setCastNotice(`Conectando con TV código ${code}… Abrí /mitv en tu TV en Modo TV para emparejar.`);
-                          window.setTimeout(() => setCastNotice(null), 4500);
-                        }}
-                      >
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={6}
-                          value={castCodeInput}
-                          onChange={(e) => setCastCodeInput(e.target.value)}
-                          placeholder="Código de TV (ej. 4829)"
-                          aria-label="Código de TV"
-                        />
-                        <button type="submit" className="mitv-cast-connect-btn">
-                          Conectar
-                        </button>
-                      </form>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  className="mitv-ctrl-btn"
-                  onClick={() => void handleToggleFullscreen()}
-                  title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                  aria-label="Pantalla completa"
-                >
-                  {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                </button>
-
-                <button
-                  type="button"
-                  className={`mitv-pill-btn ${likedVideoIds.includes(previewVideo.videoId) ? 'active-like' : ''}`}
-                  onClick={() => handleToggleLike(previewVideo.videoId)}
-                  title="Me gusta en YOUAPP"
-                >
-                  <Heart
-                    size={13}
-                    fill={likedVideoIds.includes(previewVideo.videoId) ? '#ff375f' : 'none'}
-                  />
-                  <span>{likedVideoIds.includes(previewVideo.videoId) ? 'Te gusta' : 'Me gusta'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="mitv-pill-btn active-follow"
-                  onClick={() => handlePasteToMiSenal(previewVideo)}
-                >
-                  <Plus size={13} /> Mi Señal
-                </button>
-                <button
-                  type="button"
-                  className="mitv-pill-btn"
-                  onClick={() => handlePasteToYouMusic(previewVideo)}
-                >
-                  <Music size={13} /> YOU MUSIC
-                </button>
-                <button
-                  type="button"
-                  className="mitv-ctrl-btn"
-                  onClick={() => {
-                    setIsYou4Mode(false);
-                    setIsVolumeOpen(false);
-                    setIsCastOpen(false);
-                    setPreviewVideo(null);
-                  }}
-                  title="Cerrar reproductor"
-                  aria-label="Cerrar reproductor"
-                >
-                  <X size={15} />
-                </button>
               </div>
             </div>
-            {/* BARRA INTELIGENTE EXACTA DE MITV */}
-            <div className="mitv-smartbar-slot">
+
+            {/* BARRA INTELIGENTE UNIFICADA IDÉNTICA A MITV (Bocina en timeline + 3 puntos Apple + ⏮ ▶ ⏭ + ⋯) */}
+            <div className="mitv-smartbar-slot" style={{ position: 'relative' }}>
+              {isCastOpen && (
+                <div className="mitv-cast-popover" role="dialog" aria-label="Transmitir YOUAPP">
+                  <div className="mitv-cast-head">Transmitir a dispositivo</div>
+                  <button
+                    type="button"
+                    className="mitv-ch-option"
+                    onClick={() => {
+                      setIsCastOpen(false);
+                      void handleCastVideo();
+                    }}
+                  >
+                    <Cast size={14} color="#64d2ff" />
+                    <span>Buscar TV / Chromecast (Chrome)</span>
+                  </button>
+                  <div className="mitv-cast-divider" />
+                  <form
+                    className="mitv-cast-code-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const code = castCodeInput.trim();
+                      if (!code) return;
+                      setIsCastOpen(false);
+                      setCastNotice(`Conectando con TV código ${code}… Abrí /mitv en tu TV en Modo TV para emparejar.`);
+                      window.setTimeout(() => setCastNotice(null), 4500);
+                    }}
+                  >
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={castCodeInput}
+                      onChange={(e) => setCastCodeInput(e.target.value)}
+                      placeholder="Código de TV (ej. 4829)"
+                      aria-label="Código de TV"
+                    />
+                    <button type="submit" className="mitv-cast-connect-btn">
+                      Conectar
+                    </button>
+                  </form>
+                </div>
+              )}
+
               <SmartBar
+                unifiedAppleMode
                 isPlaying={previewIsPlaying}
                 onPlayPause={handleTogglePreviewPlay}
                 onSeek={handlePreviewSeek}
                 isMosaic={isMomentsMosaic}
                 onToggleMosaic={() => {
                   setIsYou4Mode(false);
-                  setIsMomentsMosaic((v) => !v);
+                  setIsMomentsMosaic((prev) => {
+                    const next = !prev;
+                    if (next && !isFullscreen) void handleToggleFullscreen();
+                    return next;
+                  });
                 }}
+                isYou4={isYou4Mode}
+                onToggleYou4={() => {
+                  setIsMomentsMosaic(false);
+                  setIsYou4Mode((prev) => {
+                    const next = !prev;
+                    setYou4AudioSlot(0);
+                    if (next && !isFullscreen) void handleToggleFullscreen();
+                    return next;
+                  });
+                }}
+                isCasting={isCastOpen}
+                onToggleCast={() => setIsCastOpen((v) => !v)}
+                isMutedExternal={isPreviewMuted || playerVolume === 0}
+                onToggleMuteExternal={handleTogglePreviewMute}
                 moments={previewMoments}
                 onSelectMoment={(moment) => handlePreviewSeek(moment.startSec)}
                 onNextBlock={filteredResults.length > 1 ? () => handlePreviewStep(1) : undefined}
@@ -2562,138 +2953,6 @@ export default function ChannelSearch() {
                 </span>
               </div>
             )}
-
-            {/* DESPLEGABLE FINO "ALGORITMO" CON LAS 3 BARRAS ADENTRO */}
-            <div className={`ys-algo-accordion ${isAlgoPanelOpen ? 'is-open' : ''}`}>
-              <button
-                type="button"
-                className="ys-algo-toggle"
-                onClick={() => setIsAlgoPanelOpen((v) => !v)}
-                aria-expanded={isAlgoPanelOpen}
-              >
-                <span className="ys-algo-toggle-left">
-                  <Sparkles size={13} color="#64d2ff" />
-                  <strong>Algoritmo</strong>
-                  <span className="ys-algo-toggle-meta">
-                    {isAlgoFeed && activeAlgo ? activeAlgo.name : committed}
-                    {filteredResults.length > 0 ? ` · ${filteredResults.length}` : ''}
-                  </span>
-                </span>
-                <span className="ys-algo-toggle-right">
-                  <span>{isAlgoPanelOpen ? 'Ocultar' : 'Abrir'}</span>
-                  <ChevronDown
-                    size={14}
-                    style={{
-                      transform: isAlgoPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.18s ease'
-                    }}
-                  />
-                </span>
-              </button>
-
-              {isAlgoPanelOpen && (
-                <div className="ys-algo-drawer">
-                  {/* BARRA 1: Perfiles de Mi Algoritmo + Ajustar */}
-                  {isAlgoFeed && !activeChannelFilter && (
-                    <div className="ys-algo-bar" role="region" aria-label="Control de Mi Algoritmo">
-                      <div className="ys-algo-left">
-                        <span className="ys-algo-badge">
-                          <Sparkles size={13} /> Mi Algoritmo
-                        </span>
-                        <div className="ys-algo-profiles">
-                          {savedAlgorithms.map((algo) => (
-                            <button
-                              key={algo.id}
-                              type="button"
-                              className={`ys-algo-pill ${activeAlgo?.id === algo.id ? 'active' : ''}`}
-                              onClick={() => {
-                                setActiveAlgorithmId(algo.id);
-                                void loadMyAlgorithmFeed(algo);
-                              }}
-                              title={algo.description}
-                            >
-                              {algo.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="ys-algo-edit-btn"
-                        onClick={() => navigate('/my-algorithm')}
-                        title="Ajustar pesos y reglas de Mi Algoritmo"
-                      >
-                        <Settings2 size={13} /> Ajustar
-                      </button>
-                    </div>
-                  )}
-
-                  {/* BARRA 2 y 3: Orden, Duración y Vista Cine/Cápsula */}
-                  {results.length > 0 && (
-                    <div className="ys-filter-toolbar" aria-label="Ordenar y filtrar resultados">
-                      <div className="ys-filter-group">
-                        <SlidersHorizontal size={13} className="ys-filter-ico" />
-                        {(
-                          [
-                            { id: 'relevance', label: 'Relevancia' },
-                            { id: 'views', label: 'Más vistos' },
-                            { id: 'recent', label: 'Más recientes' }
-                          ] as const
-                        ).map((opt) => (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            className={`ys-filter-pill ${sortMode === opt.id ? 'active' : ''}`}
-                            onClick={() => setSortMode(opt.id)}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="ys-filter-group">
-                        {(
-                          [
-                            { id: 'all', label: 'Todas' },
-                            { id: 'short', label: '< 4 min' },
-                            { id: 'medium', label: '4–20 min' },
-                            { id: 'long', label: '+20 min' }
-                          ] as const
-                        ).map((opt) => (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            className={`ys-filter-pill ${durationFilter === opt.id ? 'active' : ''}`}
-                            onClick={() => setDurationFilter(opt.id)}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="ys-filter-group" aria-label="Estilo de tarjetas">
-                        <button
-                          type="button"
-                          className={`ys-filter-pill ${cardViewMode === 'cinema' ? 'active' : ''}`}
-                          onClick={() => handleSetCardViewMode('cinema')}
-                          title="Vista Grilla Cine (portadas limpias)"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                        >
-                          <LayoutGrid size={12} /> Cine
-                        </button>
-                        <button
-                          type="button"
-                          className={`ys-filter-pill ${cardViewMode === 'capsule' ? 'active' : ''}`}
-                          onClick={() => handleSetCardViewMode('capsule')}
-                          title="Vista Cápsula Editorial (compacta estilo Mi Señal)"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                        >
-                          <List size={12} /> Cápsula
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
 
             {filteredResults.length === 0 ? (
               <div className="ys-empty">
@@ -2749,44 +3008,6 @@ export default function ChannelSearch() {
                               <span className="ys-duration">{item.duration}</span>
                             )}
                           </button>
-
-                          {cardViewMode === 'cinema' && (
-                            <div className="ys-float-dock" onClick={(e) => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                className="ys-dock-btn primary"
-                                onClick={() => handlePasteToMiSenal(item)}
-                                title="Sumar a Mi Señal"
-                              >
-                                <Plus size={12} /> Señal
-                              </button>
-                              <button
-                                type="button"
-                                className="ys-dock-btn"
-                                onClick={() => handlePasteToMiTv(item)}
-                                title="Programar en MiTV"
-                              >
-                                <Tv size={12} /> MiTV
-                              </button>
-                              <button
-                                type="button"
-                                className="ys-dock-btn"
-                                onClick={() => handlePasteToYouMusic(item)}
-                                title="Sumar a YOU MUSIC"
-                              >
-                                <Music size={12} />
-                              </button>
-                              <button
-                                type="button"
-                                className={`ys-dock-btn ${isLikedCard ? 'liked' : ''}`}
-                                onClick={() => handleToggleLike(item.videoId)}
-                                title={isLikedCard ? 'Quitar de favoritos' : 'Guardar en favoritos'}
-                                aria-label="Me gusta"
-                              >
-                                <Heart size={12} fill={isLikedCard ? '#ff453a' : 'none'} color={isLikedCard ? '#ff453a' : 'currentColor'} />
-                              </button>
-                            </div>
-                          )}
                         </div>
 
                         <div className="ys-card-body">
@@ -2858,6 +3079,44 @@ export default function ChannelSearch() {
                             </button>
                             {metaExtra && <span className="ys-card-meta-inline">· {metaExtra}</span>}
                           </div>
+
+                          {cardViewMode === 'cinema' && (
+                            <div className="ys-float-dock" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className="ys-dock-btn primary"
+                                onClick={() => handlePasteToMiSenal(item)}
+                                title="Sumar a Mi Señal"
+                              >
+                                <Plus size={12} /> Señal
+                              </button>
+                              <button
+                                type="button"
+                                className="ys-dock-btn"
+                                onClick={() => handlePasteToMiTv(item)}
+                                title="Programar en MiTV"
+                              >
+                                <Tv size={12} /> MiTV
+                              </button>
+                              <button
+                                type="button"
+                                className="ys-dock-btn"
+                                onClick={() => handlePasteToYouMusic(item)}
+                                title="Sumar a YOU MUSIC"
+                              >
+                                <Music size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                className={`ys-dock-btn ${isLikedCard ? 'liked' : ''}`}
+                                onClick={() => handleToggleLike(item.videoId)}
+                                title={isLikedCard ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                                aria-label="Me gusta"
+                              >
+                                <Heart size={12} fill={isLikedCard ? '#ff453a' : 'none'} color={isLikedCard ? '#ff453a' : 'currentColor'} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </article>
                     );
@@ -3148,6 +3407,129 @@ export default function ChannelSearch() {
           color: #ffffff;
         }
 
+        .ys-preview-bar--mitv {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 6px;
+          padding: 10px 12px 6px;
+        }
+        .ys-preview-top-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+        }
+        .ys-preview-live-pill {
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: rgba(10, 132, 255, 0.24);
+          color: #64d2ff;
+          border: 1px solid rgba(100, 210, 255, 0.36);
+          white-space: nowrap;
+        }
+        .ys-top-social-row {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .ys-top-social-icons,
+        .ys-top-right-icons {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .ys-top-icon-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.9);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.15s ease, transform 0.12s ease;
+        }
+        .ys-top-icon-btn.has-count {
+          width: auto;
+          padding: 0 9px;
+          gap: 4px;
+        }
+        .ys-top-icon-btn.is-liked {
+          color: #ff375f;
+          background: rgba(255, 55, 95, 0.2);
+          border-color: rgba(255, 55, 95, 0.48);
+        }
+        .ys-top-icon-btn.is-subbed {
+          color: #64d2ff;
+          background: rgba(10, 132, 255, 0.24);
+          border-color: rgba(100, 210, 255, 0.5);
+        }
+        .ys-like-count {
+          font-size: 11.5px;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+          line-height: 1;
+        }
+        .ys-preview-subline {
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.72);
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 3px;
+        }
+        .ys-preview-card.is-expanded {
+          position: fixed !important;
+          inset: 0 !important;
+          width: 100vw !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+          border: none !important;
+          z-index: 99999 !important;
+          background: #000000 !important;
+          display: flex;
+          flex-direction: column;
+        }
+        .ys-preview-card.is-expanded .ys-preview-video-wrap,
+        .ys-preview-card.is-expanded .ys-you4-grid {
+          flex: 1;
+          width: 100%;
+          height: 100%;
+          aspect-ratio: auto !important;
+          border-radius: 0 !important;
+        }
+        .ys-preview-card.is-expanded .ys-preview-bar,
+        .ys-preview-card.is-expanded .mitv-smartbar-slot {
+          display: none !important;
+        }
+        .ys-fs-exit-btn {
+          position: fixed;
+          top: max(12px, env(safe-area-inset-top));
+          right: 12px;
+          z-index: 100000;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 12px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          background: rgba(14, 16, 22, 0.78);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
         .ys-algo-accordion {
           border-radius: 14px;
           background: rgba(255, 255, 255, 0.06);
@@ -3197,21 +3579,77 @@ export default function ChannelSearch() {
         .ys-algo-toggle-right {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
           font-size: 11.5px;
           font-weight: 600;
           color: #64d2ff;
           flex-shrink: 0;
+        }
+        .ys-reels-redirect-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background: rgba(244, 63, 94, 0.2);
+          border: 1px solid rgba(251, 113, 133, 0.45);
+          color: #fda4af;
+          font-size: 10.5px;
+          font-weight: 700;
+          cursor: pointer;
         }
         .ys-algo-drawer {
           padding: 10px 12px 12px;
           border-top: 1px solid rgba(255, 255, 255, 0.1);
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 8px;
         }
-        .ys-algo-drawer .ys-algo-bar {
-          margin-bottom: 0;
+        .ys-algo-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          width: 100%;
+        }
+        .ys-algo-top-row .ys-algo-profiles {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          flex: 1;
+          min-width: 0;
+        }
+        .ys-algo-top-row .ys-algo-profiles::-webkit-scrollbar {
+          display: none;
+        }
+        .ys-algo-3bars {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          width: 100%;
+        }
+        .ys-algo-bar-row {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 6px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          overflow-x: auto;
+          scrollbar-width: none;
+          flex-wrap: nowrap;
+        }
+        .ys-algo-bar-row::-webkit-scrollbar {
+          display: none;
+        }
+        .ys-algo-bar-row .ys-filter-pill {
+          white-space: nowrap;
+          flex-shrink: 0;
+          padding: 5px 10px;
+          font-size: 11.5px;
         }
         .ys-algo-bar {
           display: flex;
@@ -3709,21 +4147,31 @@ export default function ChannelSearch() {
         }
         .ys-you4-grid {
           display: grid;
-          grid-template-columns: repeat(2, 1fr);
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-rows: repeat(2, minmax(0, 1fr));
           gap: 4px;
-          background: #000000;
+          padding: 4px;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          background: #05070a;
           border-radius: 18px 18px 0 0;
           overflow: hidden;
+          box-sizing: border-box;
         }
         .ys-you4-cell {
           position: relative;
-          aspect-ratio: 16 / 9;
-          max-height: 21vh;
-          background: #05070b;
-          border: 1.5px solid transparent;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+          border-radius: 10px;
+          overflow: hidden;
+          background: #0d1016;
+          border: 2px solid rgba(255, 255, 255, 0.12);
+          box-sizing: border-box;
         }
         .ys-you4-cell.active-audio {
           border-color: #64d2ff;
+          box-shadow: inset 0 0 0 1px rgba(100, 210, 255, 0.45), 0 0 16px rgba(10, 132, 255, 0.35);
         }
         .ys-you4-cell iframe {
           position: absolute;
@@ -3731,6 +4179,7 @@ export default function ChannelSearch() {
           width: 100%;
           height: 100%;
           border: 0;
+          display: block;
         }
         .ys-you4-audio-pill {
           position: absolute;
@@ -3771,11 +4220,47 @@ export default function ChannelSearch() {
         }
         .ys-preview-bar {
           display: flex;
-          flex-wrap: wrap;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 6px;
+          padding: 10px 12px 6px;
+        }
+        .ys-top-icon-btn {
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          flex-shrink: 0;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.12);
+          color: #ffffff;
+          display: inline-flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 10px;
-          padding: 10px 16px;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+        }
+        .ys-top-icon-btn:active {
+          transform: scale(0.92);
+        }
+        .ys-top-icon-btn.has-count {
+          width: auto;
+          padding: 0 9px;
+          gap: 4px;
+        }
+        .ys-top-icon-btn.is-liked {
+          color: #ff375f;
+          background: rgba(255, 55, 95, 0.22);
+          border-color: rgba(255, 55, 95, 0.55);
+        }
+        .ys-top-icon-btn.is-subbed {
+          color: #64d2ff;
+          background: rgba(10, 132, 255, 0.26);
+          border-color: rgba(100, 210, 255, 0.55);
+        }
+        body.mitv-is-fullscreen .ymtb-bar,
+        body.mitv-is-fullscreen .ys-topbar {
+          display: none !important;
         }
         .ys-preview-meta {
           min-width: 0;
@@ -3991,37 +4476,12 @@ export default function ChannelSearch() {
         }
 
         .ys-float-dock {
-          position: absolute;
-          left: 8px;
-          right: 8px;
-          bottom: 8px;
-          z-index: 5;
           display: flex;
           align-items: center;
-          gap: 5px;
-          padding: 5px;
-          border-radius: 999px;
-          background: rgba(14, 17, 24, 0.82);
-          backdrop-filter: blur(14px) saturate(160%);
-          -webkit-backdrop-filter: blur(14px) saturate(160%);
-          border: 1px solid rgba(255, 255, 255, 0.22);
-          opacity: 0;
-          transform: translateY(6px);
-          pointer-events: none;
-          transition: opacity 0.18s ease, transform 0.18s ease;
-        }
-        .ys-card.is-cinema:hover .ys-float-dock,
-        .ys-card.is-cinema:focus-within .ys-float-dock {
-          opacity: 1;
-          transform: translateY(0);
-          pointer-events: auto;
-        }
-        @media (hover: none) {
-          .ys-float-dock {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
-          }
+          gap: 6px;
+          margin-top: 6px;
+          padding-top: 6px;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
         .ys-dock-btn {
           display: inline-flex;

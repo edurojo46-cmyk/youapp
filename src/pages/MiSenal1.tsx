@@ -71,6 +71,7 @@ import { SignalStationHubDrawer } from '../components/tv/SignalStationHubDrawer'
 import { SignalEventCoverageDrawer } from '../components/tv/SignalEventCoverageDrawer';
 import { DigitalAntennaModal } from '../components/tv/DigitalAntennaModal';
 import { SignalInviteFollowersModal } from '../components/tv/SignalInviteFollowersModal';
+import { SignalLiveMapModal } from '../components/tv/SignalLiveMapModal';
 import { recordBridgeFollow, recordBridgeVisit } from '../lib/tv/audienceBridgeStore';
 import { supabase } from '../lib/supabase';
 import {
@@ -592,6 +593,7 @@ export default function MiSenal1() {
   const [isLiveVisible, setIsLiveVisible] = useState(false);
   const [liveCity, setLiveCity] = useState<string>(() => loadSavedLiveCity());
   const [liveCityPickerOpen, setLiveCityPickerOpen] = useState(false);
+  const [liveMapOpen, setLiveMapOpen] = useState(false);
   const [liveGreetings, setLiveGreetings] = useState<LiveGreetingEvent[]>([]);
   const liveClientRef = useRef<SignalLivePresenceClient | null>(null);
   const liveUserNameRef = useRef<string>('Espectador');
@@ -3631,6 +3633,14 @@ export default function MiSenal1() {
                     )}
 
                     <div className="ms-live-presence-actions">
+                      <button
+                        type="button"
+                        className="ms-live-btn"
+                        onClick={() => setLiveMapOpen(true)}
+                        title="Abrir mapa opcional de ciudades sintonizando ahora"
+                      >
+                        🗺️ Mapa
+                      </button>
                       {!isLiveVisible ? (
                         <button
                           type="button"
@@ -4687,6 +4697,19 @@ export default function MiSenal1() {
           <CuratedSignalsDiscoverSection />
         </div>
       </footer>
+
+      <SignalLiveMapModal
+        isOpen={liveMapOpen}
+        onClose={() => setLiveMapOpen(false)}
+        signalName={activeSignal?.name || 'Mi Señal'}
+        participants={liveParticipants}
+        isLiveVisible={isLiveVisible}
+        liveCity={liveCity}
+        onJoinWithCity={(city) => void handleJoinLivePresence(city)}
+        onGreetCity={(city) =>
+          handleSendLiveGreeting('👋', `¡Saludos para ${city} desde ${liveCity}!`)
+        }
+      />
 
       <style>{`
         .ms-container {

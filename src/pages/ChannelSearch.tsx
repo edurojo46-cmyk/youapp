@@ -190,12 +190,20 @@ type SearchVideoItem = {
   channelId?: string;
   thumbnail: string;
   watchUrl: string;
+  embedUrl?: string;
   duration?: string;
   durationSeconds?: number;
   views?: number | string;
   publishedAt?: string;
-  provider?: 'youtube' | 'dailymotion' | 'vimeo';
-  sourceLabel: 'Base ATLAS (0 cuota)' | 'Catálogo Musical' | 'YouTube' | 'Dailymotion' | 'Vimeo';
+  provider?: 'youtube' | 'dailymotion' | 'vimeo' | 'peertube' | 'archive';
+  sourceLabel:
+    | 'Base ATLAS (0 cuota)'
+    | 'Catálogo Musical'
+    | 'YouTube'
+    | 'Dailymotion'
+    | 'Vimeo'
+    | 'PeerTube'
+    | 'Archive';
   tags?: string[];
 };
 
@@ -1290,70 +1298,176 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
   const clean = rawQuery.trim();
   if (!trendingMode && (!clean || normText(clean) === 'todos')) return [];
 
-  // Vimeo API oficial vía Supabase Edge Function `vimeo-provider` (100% embebible en HD, 0 cuota YouTube)
-  // Nota: Dailymotion se excluye de /search porque bloquea embeds con HTTP 403 sin plan pago Edge/Studio Player ID.
-  try {
-    const vQuery = trendingMode ? 'short film documentary cinema' : clean;
-    if (vQuery.length < 2) return [];
-    const sbUrl =
-      ((import.meta as any)?.env?.VITE_SUPABASE_URL as string) ||
-      'https://jtnurafmngaxdwlzpvxv.supabase.co';
-    const sbAnon =
-      ((import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY as string) ||
-      'sb_publishable_IWSDC0aWUR8cvOPrwYSaqg_JU8aASm8';
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 7000);
-    const res = await fetch(`${sbUrl}/functions/v1/vimeo-provider`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: sbAnon,
-        Authorization: `Bearer ${sbAnon}`
-      },
-      body: JSON.stringify({
-        query: vQuery,
-        limit: 10,
-        sort: 'relevant',
-        ingest: true
-      }),
-      signal: controller.signal
-    });
-    window.clearTimeout(timer);
-    if (!res.ok) return [];
-    const data = await res.json();
-    if (!Array.isArray(data?.items)) return [];
-    const out: SearchVideoItem[] = [];
-    const seen = new Set<string>();
-    for (const r of data.items) {
-      const rawId = String(r?.providerContentId || r?.id || '').replace(/^vimeo_/, '').trim();
-      if (!rawId) continue;
-      const dur = Number(r?.durationSeconds || 0);
-      if (dur > 0 && dur <= 62) continue;
-      const thumb = String(r?.thumbnailUrl || r?.thumbnail || '');
-      if (!thumb) continue;
-      const vid = `vm_${rawId}`;
-      if (seen.has(vid)) continue;
-      seen.add(vid);
-      out.push({
-        videoId: vid,
-        title: String(r?.title || 'Video en Vimeo'),
-        channelName: String(r?.creatorName || r?.channelTitle || 'Vimeo'),
-        channelId: r?.creatorId ? String(r.creatorId) : undefined,
-        thumbnail: thumb,
-        watchUrl: String(r?.canonicalUrl || `https://vimeo.com/${rawId}`),
-        duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
-        durationSeconds: dur > 0 ? dur : undefined,
-        views: typeof r?.viewCount === 'number' && r.viewCount > 0 ? r.viewCount : undefined,
-        publishedAt: r?.publishedAt ? String(r.publishedAt) : undefined,
-        provider: 'vimeo',
-        sourceLabel: 'Vimeo',
-        tags: ['vimeo']
+  // 1. Vimeo (Supabase Edge Function `vimeo-provider`, 100% embebible HD, 0 cuota YouTube)
+  const vimeoPromise = (async (): Promise<SearchVideoItem[]> => {
+    try {
+      const vQuery = trendingMode ? 'short film documentary cinema' : clean;
+      if (vQuery.length < 2) return [];
+      const sbUrl =
+        ((import.meta as any)?.env?.VITE_SUPABASE_URL as string) ||
+        'https://jtnurafmngaxdwlzpvxv.supabase.co';
+      const sbAnon =
+        ((import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY as string) ||
+        'sb_publishable_IWSDC0aWUR8cvOPrwYSaqg_JU8aASm8';
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 7000);
+      const res = await fetch(`${sbUrl}/functions/v1/vimeo-provider`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: sbAnon,
+          Authorization: `Bearer ${sbAnon}`
+        },
+        body: JSON.stringify({
+          query: vQuery,
+          limit: 6,
+          sort: 'relevant',
+          ingest: true
+        }),
+        signal: controller.signal
       });
+      window.clearTimeout(timer);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data?.items)) return [];
+      const mapped: SearchVideoItem[] = [];
+      for (const r of data.items) {
+        const rawId = String(r?.providerContentId || r?.id || '').replace(/^vimeo_/, '').trim();
+        if (!rawId) continue;
+        const dur = Number(r?.durationSeconds || 0);
+        if (dur > 0 && dur <= 62) continue;
+        const thumb = String(r?.thumbnailUrl || r?.thumbnail || '');
+        if (!thumb) continue;
+        mapped.push({
+          videoId: `vm_${rawId}`,
+          title: String(r?.title || 'Video en Vimeo'),
+          channelName: String(r?.creatorName || r?.channelTitle || 'Vimeo'),
+          channelId: r?.creatorId ? String(r.creatorId) : undefined,
+          thumbnail: thumb,
+          watchUrl: String(r?.canonicalUrl || `https://vimeo.com/${rawId}`),
+          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
+          durationSeconds: dur > 0 ? dur : undefined,
+          views: typeof r?.viewCount === 'number' && r.viewCount > 0 ? r.viewCount : undefined,
+          publishedAt: r?.publishedAt ? String(r.publishedAt) : undefined,
+          provider: 'vimeo',
+          sourceLabel: 'Vimeo',
+          tags: ['vimeo']
+        });
+      }
+      return mapped;
+    } catch {
+      return [];
     }
-    return out.slice(0, 10);
-  } catch {
-    return [];
+  })();
+
+  // 2. PeerTube (SepiaSearch API pública oficial, 100% embebible sin anuncios, nsfw=false)
+  const peertubePromise = (async (): Promise<SearchVideoItem[]> => {
+    try {
+      const ptQuery = trendingMode ? 'documentary cinema music science' : clean;
+      if (ptQuery.length < 2) return [];
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 5500);
+      const ptUrl = `https://sepiasearch.org/api/v1/search/videos?search=${encodeURIComponent(ptQuery)}&count=6&nsfw=false&sort=${trendingMode ? '-views' : '-match'}`;
+      const res = await fetch(ptUrl, { signal: controller.signal });
+      window.clearTimeout(timer);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const list = Array.isArray(data?.data) ? data.data : [];
+      const mapped: SearchVideoItem[] = [];
+      for (const v of list) {
+        const uuid = String(v?.uuid || '').trim();
+        const rawUrl = String(v?.url || '').trim();
+        const embedPath = String(v?.embedPath || '').trim();
+        const thumb = String(v?.thumbnailUrl || v?.previewUrl || '').trim();
+        const dur = Number(v?.duration || 0);
+        if (!uuid || !rawUrl || !embedPath || !thumb) continue;
+        if (dur > 0 && dur <= 62) continue;
+        let origin = '';
+        try {
+          origin = new URL(rawUrl).origin;
+        } catch {
+          continue;
+        }
+        if (!origin.startsWith('https://')) continue;
+        mapped.push({
+          videoId: `pt_${uuid}`,
+          title: String(v?.name || 'Video en PeerTube'),
+          channelName: String(v?.channel?.displayName || v?.account?.displayName || 'PeerTube'),
+          thumbnail: thumb,
+          watchUrl: rawUrl,
+          embedUrl: `${origin}${embedPath}?autoplay=1&title=0&warningTitle=0`,
+          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
+          durationSeconds: dur > 0 ? dur : undefined,
+          views: typeof v?.views === 'number' && v.views > 0 ? v.views : undefined,
+          publishedAt: v?.publishedAt ? String(v.publishedAt) : undefined,
+          provider: 'peertube',
+          sourceLabel: 'PeerTube',
+          tags: ['peertube']
+        });
+      }
+      return mapped;
+    } catch {
+      return [];
+    }
+  })();
+
+  // 3. Internet Archive (archive.org API pública oficial, cine clásico, documentales e historia, 100% embebible)
+  const archivePromise = (async (): Promise<SearchVideoItem[]> => {
+    try {
+      const safeTerm = clean.replace(/["()\\/:]/g, ' ').trim();
+      const qExpr = trendingMode
+        ? 'mediatype:(movies) AND (collection:(feature_films) OR collection:(classic_tv) OR collection:(documentaries))'
+        : `mediatype:(movies) AND (${safeTerm})`;
+      if (!trendingMode && safeTerm.length < 2) return [];
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 5500);
+      const arUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(qExpr)}&fl[]=identifier,title,creator,downloads,publicdate&sort[]=downloads+desc&rows=6&output=json`;
+      const res = await fetch(arUrl, { signal: controller.signal });
+      window.clearTimeout(timer);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const docs = Array.isArray(data?.response?.docs) ? data.response.docs : [];
+      const mapped: SearchVideoItem[] = [];
+      for (const doc of docs) {
+        const id = String(doc?.identifier || '').trim();
+        const title = Array.isArray(doc?.title) ? String(doc.title[0] || '') : String(doc?.title || '');
+        if (!id || !title) continue;
+        const creator = Array.isArray(doc?.creator)
+          ? String(doc.creator[0] || 'Internet Archive')
+          : String(doc?.creator || 'Internet Archive');
+        mapped.push({
+          videoId: `ar_${id}`,
+          title,
+          channelName: creator,
+          thumbnail: `https://archive.org/services/img/${encodeURIComponent(id)}`,
+          watchUrl: `https://archive.org/details/${encodeURIComponent(id)}`,
+          embedUrl: `https://archive.org/embed/${encodeURIComponent(id)}?autoplay=1`,
+          views: typeof doc?.downloads === 'number' && doc.downloads > 0 ? doc.downloads : undefined,
+          publishedAt: doc?.publicdate ? String(doc.publicdate) : undefined,
+          provider: 'archive',
+          sourceLabel: 'Archive',
+          tags: ['archive']
+        });
+      }
+      return mapped;
+    } catch {
+      return [];
+    }
+  })();
+
+  const [vmHits, ptHits, arHits] = await Promise.all([vimeoPromise, peertubePromise, archivePromise]);
+  const out: SearchVideoItem[] = [];
+  const seen = new Set<string>();
+  const maxLen = Math.max(vmHits.length, ptHits.length, arHits.length);
+  for (let i = 0; i < maxLen; i += 1) {
+    for (const it of [vmHits[i], ptHits[i], arHits[i]]) {
+      if (it && !seen.has(it.videoId) && it.thumbnail) {
+        seen.add(it.videoId);
+        out.push(it);
+      }
+    }
   }
+  return out.slice(0, 12);
 }
 
 function interleaveMultiProvider(
@@ -2796,6 +2910,25 @@ export default function ChannelSearch() {
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />
+                ) : previewVideo.provider === 'peertube' && previewVideo.embedUrl ? (
+                  <iframe
+                    key={previewVideo.videoId}
+                    src={previewVideo.embedUrl}
+                    title={previewVideo.title}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : previewVideo.provider === 'archive' ? (
+                  <iframe
+                    key={previewVideo.videoId}
+                    src={
+                      previewVideo.embedUrl ||
+                      `https://archive.org/embed/${encodeURIComponent(previewVideo.videoId.replace(/^ar_/, ''))}?autoplay=1`
+                    }
+                    title={previewVideo.title}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
                 ) : (
                   <iframe
                     ref={previewIframeRef}
@@ -3226,14 +3359,28 @@ export default function ChannelSearch() {
                             <div className="ys-float-dock" onClick={(e) => e.stopPropagation()}>
                               <span
                                 className={`ys-dock-platform ys-dock-platform--${item.provider || 'youtube'}`}
-                                title={`Plataforma: ${item.provider === 'dailymotion' ? 'Dailymotion' : item.provider === 'vimeo' ? 'Vimeo' : 'YouTube'}`}
+                                title={`Plataforma: ${
+                                  item.provider === 'vimeo'
+                                    ? 'Vimeo'
+                                    : item.provider === 'peertube'
+                                      ? 'PeerTube'
+                                      : item.provider === 'archive'
+                                        ? 'Archive'
+                                        : item.provider === 'dailymotion'
+                                          ? 'Dailymotion'
+                                          : 'YouTube'
+                                }`}
                               >
                                 <span className="ys-dock-platform-dot" />
-                                {item.provider === 'dailymotion'
-                                  ? 'Dailymotion'
-                                  : item.provider === 'vimeo'
-                                    ? 'Vimeo'
-                                    : 'YouTube'}
+                                {item.provider === 'vimeo'
+                                  ? 'Vimeo'
+                                  : item.provider === 'peertube'
+                                    ? 'PeerTube'
+                                    : item.provider === 'archive'
+                                      ? 'Archive'
+                                      : item.provider === 'dailymotion'
+                                        ? 'Dailymotion'
+                                        : 'YouTube'}
                               </span>
                               <div className="ys-dock-icons">
                                 <button
@@ -4687,6 +4834,16 @@ export default function ChannelSearch() {
           background: rgba(34, 211, 238, 0.16);
           border: 1px solid rgba(34, 211, 238, 0.4);
           color: #67e8f9;
+        }
+        .ys-dock-platform--peertube {
+          background: rgba(251, 146, 60, 0.16);
+          border: 1px solid rgba(251, 146, 60, 0.42);
+          color: #fdba74;
+        }
+        .ys-dock-platform--archive {
+          background: rgba(250, 204, 21, 0.16);
+          border: 1px solid rgba(250, 204, 21, 0.42);
+          color: #fde047;
         }
         .ys-dock-icons {
           display: inline-flex;

@@ -22,12 +22,14 @@ import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { useSignalStore } from '../lib/tv/signalStore';
 import { addSignalNewsSource } from '../lib/tv/signalMediaSourcesStore';
 import {
+  fetchArticleReaderContent,
   loadLecturasFromCloud,
   loadLecturasWorkspace,
   resolveWebPointer,
   saveLecturasWorkspace,
   type LecturaItem,
-  type LecturasWorkspace
+  type LecturasWorkspace,
+  type ReaderArticleContent
 } from '../lib/tv/youLecturasStore';
 
 function formatShortDate(iso: string | null): string | null {
@@ -62,12 +64,38 @@ export default function YouLecturasPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [activeReaderItem, setActiveReaderItem] = useState<LecturaItem | null>(null);
+  const [readerContent, setReaderContent] = useState<ReaderArticleContent | null>(null);
+  const [readerLoading, setReaderLoading] = useState(false);
+  const [forceReaderMode, setForceReaderMode] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [compareLoading, setCompareLoading] = useState(false);
   const [compareError, setCompareError] = useState<string | null>(null);
   const [compareResult, setCompareResult] = useState<AtlasCompareResult | null>(null);
   const [compareTab, setCompareTab] = useState<'coincidencias' | 'enfoques' | 'fuentes'>('coincidencias');
   const [compareTopicInput, setCompareTopicInput] = useState('');
+
+  useEffect(() => {
+    if (!activeReaderItem) {
+      setReaderContent(null);
+      setReaderLoading(false);
+      setForceReaderMode(false);
+      return;
+    }
+    if (activeReaderItem.embeddable && !forceReaderMode) return;
+    let cancelled = false;
+    setReaderLoading(true);
+    setReaderContent(null);
+    fetchArticleReaderContent(activeReaderItem.url)
+      .then((res) => {
+        if (!cancelled) setReaderContent(res);
+      })
+      .finally(() => {
+        if (!cancelled) setReaderLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeReaderItem, forceReaderMode]);
 
   useEffect(() => {
     if (!activeReaderItem && !compareOpen) return;
@@ -763,6 +791,16 @@ export default function YouLecturasPage() {
                 <span className="yl-reader-topic">{activeReaderItem.topic}</span>
               </div>
               <div className="yl-reader-head-actions">
+                {activeReaderItem.embeddable && (
+                  <button
+                    type="button"
+                    className="yl-reader-pill"
+                    onClick={() => setForceReaderMode((v) => !v)}
+                  >
+                    <BookOpen size={13} color="#64d2ff" />
+                    <span>{forceReaderMode ? 'Vista web' : 'Modo lectura'}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="yl-reader-pill"
@@ -791,7 +829,7 @@ export default function YouLecturasPage() {
               </div>
             </div>
 
-            {activeReaderItem.embeddable ? (
+            {activeReaderItem.embeddable && !forceReaderMode ? (
               <div className="yl-reader-iframe-wrap">
                 <iframe
                   title={activeReaderItem.title}
@@ -806,13 +844,26 @@ export default function YouLecturasPage() {
                     <img src={activeReaderItem.thumbnailUrl} alt={activeReaderItem.title} referrerPolicy="no-referrer" />
                   </div>
                 )}
-                <h2>{activeReaderItem.title}</h2>
+                <h2>{readerContent?.title || activeReaderItem.title}</h2>
                 {activeReaderItem.description && (
                   <p className="yl-reader-excerpt">{activeReaderItem.description}</p>
                 )}
+
+                {readerLoading ? (
+                  <div className="yl-reader-loading">
+                    Cargando modo lectura de <strong>{activeReaderItem.sourceName}</strong>…
+                  </div>
+                ) : readerContent && readerContent.paragraphs.length > 0 ? (
+                  <div className="yl-reader-article-body">
+                    {readerContent.paragraphs.map((p, idx) => (
+                      <p key={`p-${idx}`}>{p}</p>
+                    ))}
+                  </div>
+                ) : null}
+
                 <div className="yl-reader-policy-note">
                   <span>
-                    <strong>{activeReaderItem.sourceName}</strong> bloquea la vista embebida por política del sitio (`X-Frame-Options`). YOUAPP respeta al medio sin copiar el texto completo.
+                    Fuente original: <strong>{activeReaderItem.sourceName}</strong>.
                   </span>
                   <a
                     href={activeReaderItem.url}
@@ -821,7 +872,7 @@ export default function YouLecturasPage() {
                     className="yl-btn-primary"
                     style={{ textDecoration: 'none' }}
                   >
-                    <span>Leer nota completa en {activeReaderItem.sourceName}</span>
+                    <span>Ver nota en {activeReaderItem.sourceName}</span>
                     <ExternalLink size={14} />
                   </a>
                 </div>
@@ -1734,6 +1785,28 @@ export default function YouLecturasPage() {
           font-size: 14.5px;
           line-height: 1.55;
           color: rgba(245, 245, 247, 0.84);
+        }
+        .yl-reader-loading {
+          padding: 14px 16px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: rgba(245, 245, 247, 0.78);
+          font-size: 13.5px;
+        }
+        .yl-reader-article-body {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          padding-top: 10px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .yl-reader-article-body p {
+          margin: 0;
+          font-size: 15.5px;
+          line-height: 1.72;
+          color: rgba(245, 245, 247, 0.92);
+          letter-spacing: -0.005em;
         }
         .yl-reader-policy-note {
           padding: 14px 16px;

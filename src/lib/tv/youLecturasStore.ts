@@ -237,6 +237,73 @@ export async function resolveWebPointer(
   };
 }
 
+export interface ReaderArticleContent {
+  title?: string;
+  paragraphs: string[];
+}
+
+const readerCache = new Map<string, ReaderArticleContent>();
+
+function cleanMarkdownToParagraphs(markdown: string): string[] {
+  if (!markdown) return [];
+  const rawBlocks = markdown
+    .replace(/\r\n/g, '\n')
+    // Eliminar imágenes markdown y bloques de código/HTML sueltos
+    .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/[*_`~>]+/g, '')
+    .split(/\n{2,}/);
+
+  const noiseRe =
+    /^(suscrib|iniciar sesi|registr|ingres|compartir|seguir|aceptar cookies|pol[ií]tica de privacidad|t[eé]rminos|publicidad|copyright|todos los derechos|ver m[aá]s|leer tambi[eé]n|te puede interesar|men[uú]|buscar|últimas noticias|newsletter|descarg[aá] la app)/i;
+
+  const out: string[] = [];
+  for (const block of rawBlocks) {
+    const line = block.replace(/\s+/g, ' ').trim();
+    if (line.length < 40) continue;
+    if (/^https?:\/\//i.test(line)) continue;
+    if (noiseRe.test(line)) continue;
+    // Descartar líneas que son solo listas de links/secciones separadas por | o •
+    if ((line.match(/[|•]/g) || []).length >= 3) continue;
+    out.push(line);
+    if (out.length >= 28) break;
+  }
+  return out;
+}
+
+/** Extrae el contenido editorial limpio para Modo Lectura en portales que bloquean iframe (Clarín, La Nación, BBC, etc.) */
+export async function fetchArticleReaderContent(url: string): Promise<ReaderArticleContent | null> {
+  const cleanUrl = normalizeWebUrl(url);
+  if (!cleanUrl) return null;
+  const cached = readerCache.get(cleanUrl);
+  if (cached) return cached;
+
+  try {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 9000);
+    const res = await fetch(`https://r.jina.ai/${cleanUrl}`, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal
+    });
+    window.clearTimeout(timer);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = json?.data;
+    const contentText = typeof data?.content === 'string' ? data.content : '';
+    const paragraphs = cleanMarkdownToParagraphs(contentText);
+    if (paragraphs.length === 0) return null;
+    const result: ReaderArticleContent = {
+      title: typeof data?.title === 'string' && data.title.trim() ? data.title.trim() : undefined,
+      paragraphs
+    };
+    readerCache.set(cleanUrl, result);
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 export function loadLecturasWorkspace(): LecturasWorkspace {
   if (typeof window === 'undefined') return defaultWorkspace();
   try {

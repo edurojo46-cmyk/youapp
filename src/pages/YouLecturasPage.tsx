@@ -129,6 +129,7 @@ export default function YouLecturasPage() {
 
   const bookmarkletRef = useRef<HTMLAnchorElement | null>(null);
   const handledAddRef = useRef<string | null>(null);
+  const hydratedIdsRef = useRef<Set<string>>(new Set());
 
   const updateWorkspace = (updater: (prev: LecturasWorkspace) => LecturasWorkspace) => {
     setWorkspace((prev) => saveLecturasWorkspace(updater(prev)));
@@ -158,6 +159,72 @@ export default function YouLecturasPage() {
       `javascript:(function(){window.open('${origin}/lecturas?add='+encodeURIComponent(location.href)+'&t='+encodeURIComponent(document.title),'youapp_lecturas');})();`
     );
   }, []);
+
+  // Auto-hidrata fotos, títulos y bajadas faltantes en artículos ya guardados (ej. diarios sin foto previa)
+  useEffect(() => {
+    const missing = workspace.items
+      .filter((it) => (!it.thumbnailUrl || !it.description) && !hydratedIdsRef.current.has(it.id))
+      .slice(0, 6);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    missing.forEach((it) => hydratedIdsRef.current.add(it.id));
+
+    Promise.all(
+      missing.map(async (it) => {
+        const res = await resolveWebPointer(it.url, it.topic, it.title);
+        if (!res.ok) return null;
+        return { id: it.id, resolved: res.item };
+      })
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const updates = new Map(
+          results
+            .filter((r): r is { id: string; resolved: LecturaItem } => Boolean(r))
+            .map((r) => [r.id, r.resolved])
+        );
+        if (updates.size === 0) return;
+
+        setWorkspace((prev) => {
+          let changed = false;
+          const nextItems = prev.items.map((it) => {
+            const up = updates.get(it.id);
+            if (!up) return it;
+            const nextThumb = it.thumbnailUrl || up.thumbnailUrl;
+            const nextDesc = it.description || up.description;
+            const nextTitle =
+              it.title.toLowerCase() === it.sourceName.toLowerCase() && up.title
+                ? up.title
+                : it.title;
+            const nextPub = it.publishedAt || up.publishedAt;
+            if (
+              nextThumb !== it.thumbnailUrl ||
+              nextDesc !== it.description ||
+              nextTitle !== it.title ||
+              nextPub !== it.publishedAt
+            ) {
+              changed = true;
+              return {
+                ...it,
+                thumbnailUrl: nextThumb,
+                description: nextDesc,
+                title: nextTitle,
+                publishedAt: nextPub
+              };
+            }
+            return it;
+          });
+          if (!changed) return prev;
+          return saveLecturasWorkspace({ ...prev, items: nextItems });
+        });
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace.items]);
 
   // Recepción automática /lecturas?add=<URL>&t=<Title>
   useEffect(() => {
@@ -562,7 +629,7 @@ export default function YouLecturasPage() {
                     aria-label={`Abrir vista rápida de ${item.title}`}
                   >
                     {item.thumbnailUrl ? (
-                      <img src={item.thumbnailUrl} alt={item.title} loading="lazy" />
+                      <img src={item.thumbnailUrl} alt={item.title} loading="lazy" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="yl-cover-fallback">
                         <img src={item.faviconUrl} alt="" className="yl-fallback-fav" />
@@ -733,7 +800,7 @@ export default function YouLecturasPage() {
               <div className="yl-reader-sheet">
                 {activeReaderItem.thumbnailUrl && (
                   <div className="yl-reader-hero-img">
-                    <img src={activeReaderItem.thumbnailUrl} alt={activeReaderItem.title} />
+                    <img src={activeReaderItem.thumbnailUrl} alt={activeReaderItem.title} referrerPolicy="no-referrer" />
                   </div>
                 )}
                 <h2>{activeReaderItem.title}</h2>

@@ -2396,12 +2396,24 @@ export default function ChannelSearch() {
     !isYou4Mode &&
     !isMomentsMosaic;
 
-  // Picture-in-Picture REAL del sistema (Document PiP en Chrome/Edge PC: flota encima de Infobae, otras pestañas y apps).
-  // En celular (donde el navegador no soporta Document PiP), activa el mini-reproductor flotante dentro de YOUAPP.
+  // Picture-in-Picture REAL del sistema:
+  // 1) En APK Android nativo (Capacitor): llama a window.YouAppAndroidPiP.enterPiP() para flotar encima de Infobae/WhatsApp.
+  // 2) En Chrome/Edge PC: usa Document PiP vía /pip-frame (flota encima de otras pestañas y programas).
+  // 3) En navegador web móvil: activa el mini-reproductor flotante dentro de YOUAPP (ej. /lecturas).
   const handleToggleMiniOrSystemPiP = useCallback(async () => {
     if (!previewVideo) return;
     setIsYou4Mode(false);
     setIsMomentsMosaic(false);
+
+    const androidPiP = (window as any).YouAppAndroidPiP;
+    if (androidPiP && typeof androidPiP.enterPiP === 'function') {
+      try {
+        androidPiP.enterPiP();
+        return;
+      } catch {
+        // fallback
+      }
+    }
 
     const docPiP = (window as any).documentPictureInPicture;
     if (docPiP && typeof docPiP.requestWindow === 'function') {

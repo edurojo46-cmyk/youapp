@@ -1,0 +1,22 @@
+{
+  "appId": "com.youapptv.app",
+  "appName": "YOUAPP TV",
+  "webDir": "dist",
+  "server": {
+    "url": "https://youapptv.com",
+    "cleartext": false,
+    "allowNavigation": [
+      "youapptv.com",
+      "*.youapptv.com",
+      "*.youtube.com",
+      "*.youtu.be",
+      "*.vimeo.com",
+      "*.odysee.com",
+      "*.archive.org"
+    ]
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#05070c"
+  }
+}

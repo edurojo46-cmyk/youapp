@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Globe2, MapPin, X } from 'lucide-react';
 import {
   QUICK_LIVE_CITIES,
@@ -16,52 +16,45 @@ interface SignalLiveMapModalProps {
   onGreetCity: (city: string) => void;
 }
 
-/** Coordenadas aproximadas a nivel ciudad/región (nunca GPS ni ubicación exacta) */
+/** Coordenadas reales a nivel ciudad/región (nunca GPS ni ubicación exacta) */
 const CITY_COORDS: Record<string, { lat: number; lon: number }> = {
-  'buenos aires': { lat: -34.6, lon: -58.4 },
-  'cordoba': { lat: -31.4, lon: -64.2 },
-  'córdoba': { lat: -31.4, lon: -64.2 },
-  'rosario': { lat: -32.95, lon: -60.65 },
-  'mendoza': { lat: -32.89, lon: -68.84 },
-  'mar del plata': { lat: -38.0, lon: -57.55 },
-  'tucuman': { lat: -26.82, lon: -65.22 },
-  'tucumán': { lat: -26.82, lon: -65.22 },
-  'salta': { lat: -24.78, lon: -65.41 },
-  'neuquen': { lat: -38.95, lon: -68.06 },
-  'neuquén': { lat: -38.95, lon: -68.06 },
-  'argentina': { lat: -34.6, lon: -63.6 },
-  'montevideo': { lat: -34.9, lon: -56.16 },
-  'uruguay': { lat: -33.0, lon: -56.0 },
-  'santiago': { lat: -33.45, lon: -70.66 },
-  'chile': { lat: -33.45, lon: -70.66 },
-  'asuncion': { lat: -25.26, lon: -57.57 },
-  'asunción': { lat: -25.26, lon: -57.57 },
-  'sao paulo': { lat: -23.55, lon: -46.63 },
-  'são paulo': { lat: -23.55, lon: -46.63 },
-  'rio de janeiro': { lat: -22.9, lon: -43.17 },
-  'lima': { lat: -12.04, lon: -77.04 },
-  'bogota': { lat: 4.71, lon: -74.07 },
-  'bogotá': { lat: 4.71, lon: -74.07 },
-  'ciudad de mexico': { lat: 19.43, lon: -99.13 },
-  'ciudad de méxico': { lat: 19.43, lon: -99.13 },
-  'mexico': { lat: 19.43, lon: -99.13 },
-  'méxico': { lat: 19.43, lon: -99.13 },
-  'miami': { lat: 25.76, lon: -80.19 },
-  'nueva york': { lat: 40.71, lon: -74.0 },
-  'madrid': { lat: 40.42, lon: -3.7 },
-  'barcelona': { lat: 41.39, lon: 2.17 },
-  'roma': { lat: 41.9, lon: 12.5 },
-  'paris': { lat: 48.85, lon: 2.35 },
-  'parís': { lat: 48.85, lon: 2.35 },
-  'londres': { lat: 51.5, lon: -0.12 }
+  'buenos aires': { lat: -34.6037, lon: -58.3816 },
+  'cordoba': { lat: -31.4201, lon: -64.1888 },
+  'córdoba': { lat: -31.4201, lon: -64.1888 },
+  'rosario': { lat: -32.9442, lon: -60.6505 },
+  'mendoza': { lat: -32.8895, lon: -68.8458 },
+  'mar del plata': { lat: -38.0055, lon: -57.5426 },
+  'tucuman': { lat: -26.8083, lon: -65.2176 },
+  'tucumán': { lat: -26.8083, lon: -65.2176 },
+  'salta': { lat: -24.7821, lon: -65.4232 },
+  'neuquen': { lat: -38.9516, lon: -68.0591 },
+  'neuquén': { lat: -38.9516, lon: -68.0591 },
+  'argentina': { lat: -34.6037, lon: -63.6167 },
+  'montevideo': { lat: -34.9011, lon: -56.1645 },
+  'uruguay': { lat: -32.5228, lon: -55.7658 },
+  'santiago': { lat: -33.4489, lon: -70.6693 },
+  'chile': { lat: -33.4489, lon: -70.6693 },
+  'asuncion': { lat: -25.2637, lon: -57.5759 },
+  'asunción': { lat: -25.2637, lon: -57.5759 },
+  'sao paulo': { lat: -23.5505, lon: -46.6333 },
+  'são paulo': { lat: -23.5505, lon: -46.6333 },
+  'rio de janeiro': { lat: -22.9068, lon: -43.1729 },
+  'lima': { lat: -12.0464, lon: -77.0428 },
+  'bogota': { lat: 4.711, lon: -74.0721 },
+  'bogotá': { lat: 4.711, lon: -74.0721 },
+  'ciudad de mexico': { lat: 19.4326, lon: -99.1332 },
+  'ciudad de méxico': { lat: 19.4326, lon: -99.1332 },
+  'mexico': { lat: 19.4326, lon: -99.1332 },
+  'méxico': { lat: 19.4326, lon: -99.1332 },
+  'miami': { lat: 25.7617, lon: -80.1918 },
+  'nueva york': { lat: 40.7128, lon: -74.006 },
+  'madrid': { lat: 40.4168, lon: -3.7038 },
+  'barcelona': { lat: 41.3874, lon: 2.1686 },
+  'roma': { lat: 41.9028, lon: 12.4964 },
+  'paris': { lat: 48.8566, lon: 2.3522 },
+  'parís': { lat: 48.8566, lon: 2.3522 },
+  'londres': { lat: 51.5072, lon: -0.1276 }
 };
-
-function projectToSvg(lat: number, lon: number): { x: number; y: number } {
-  // Proyección equirectangular sobre viewBox 0..720 x 0..360
-  const x = ((lon + 180) / 360) * 720;
-  const y = ((90 - lat) / 180) * 360;
-  return { x, y };
-}
 
 function resolveCityCoords(city: string): { lat: number; lon: number } {
   const norm = city.trim().toLowerCase();
@@ -69,6 +62,34 @@ function resolveCityCoords(city: string): { lat: number; lon: number } {
   const partial = Object.keys(CITY_COORDS).find((k) => norm.includes(k) || k.includes(norm));
   if (partial) return CITY_COORDS[partial];
   return CITY_COORDS['buenos aires'];
+}
+
+let leafletPromise: Promise<any> | null = null;
+
+function ensureLeafletLoaded(): Promise<any> {
+  if (typeof window === 'undefined') return Promise.resolve(null);
+  if ((window as any).L) return Promise.resolve((window as any).L);
+  if (leafletPromise) return leafletPromise;
+
+  leafletPromise = new Promise((resolve, reject) => {
+    if (!document.getElementById('youapp-leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'youapp-leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    const script = document.createElement('script');
+    script.id = 'youapp-leaflet-js';
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.async = true;
+    script.onload = () => resolve((window as any).L || null);
+    script.onerror = () => reject(new Error('No se pudo cargar el mapa interactivo.'));
+    document.head.appendChild(script);
+  });
+
+  return leafletPromise;
 }
 
 export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
@@ -82,9 +103,14 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
   onGreetCity
 }) => {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const mapHostRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersLayerRef = useRef<any>(null);
 
   const cityClusters = useMemo(() => {
-    const map = new Map<string, { city: string; x: number; y: number; people: LiveParticipant[] }>();
+    const map = new Map<string, { city: string; lat: number; lon: number; people: LiveParticipant[] }>();
     for (const p of participants) {
       const label = p.city?.trim() || 'Buenos Aires';
       const key = label.toLowerCase();
@@ -93,12 +119,94 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
         existing.people.push(p);
       } else {
         const coords = resolveCityCoords(label);
-        const pt = projectToSvg(coords.lat, coords.lon);
-        map.set(key, { city: label, x: pt.x, y: pt.y, people: [p] });
+        map.set(key, { city: label, lat: coords.lat, lon: coords.lon, people: [p] });
       }
     }
     return Array.from(map.values()).sort((a, b) => b.people.length - a.people.length);
   }, [participants]);
+
+  // Inicializa el mapa real Leaflet + CARTO Dark Matter (OpenStreetMap) solo cuando el modal está abierto
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setMapError(null);
+
+    ensureLeafletLoaded()
+      .then((L) => {
+        if (cancelled || !L || !mapHostRef.current) return;
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
+        }
+        const map = L.map(mapHostRef.current, {
+          center: [-34.6, -58.4],
+          zoom: 4,
+          minZoom: 2,
+          maxZoom: 12,
+          zoomControl: true,
+          attributionControl: true
+        });
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap &copy; CARTO',
+          subdomains: 'abcd',
+          maxZoom: 18
+        }).addTo(map);
+
+        markersLayerRef.current = L.layerGroup().addTo(map);
+        mapInstanceRef.current = map;
+        setMapReady(true);
+        window.setTimeout(() => map.invalidateSize(), 120);
+      })
+      .catch(() => {
+        if (!cancelled) setMapError('No se pudo cargar el mapa interactivo. Revisá tu conexión.');
+      });
+
+    return () => {
+      cancelled = true;
+      setMapReady(false);
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch {
+          // ignore
+        }
+        mapInstanceRef.current = null;
+        markersLayerRef.current = null;
+      }
+    };
+  }, [isOpen]);
+
+  // Actualiza los marcadores reales en vivo cuando cambian las ciudades sintonizando
+  useEffect(() => {
+    const L = (window as any).L;
+    const map = mapInstanceRef.current;
+    const layer = markersLayerRef.current;
+    if (!isOpen || !mapReady || !L || !map || !layer) return;
+
+    layer.clearLayers();
+    const bounds: Array<[number, number]> = [];
+
+    for (const cl of cityClusters) {
+      bounds.push([cl.lat, cl.lon]);
+      const icon = L.divIcon({
+        className: 'slm-live-marker-wrap',
+        html: `<div class="slm-live-pin"><span class="slm-live-pin-dot"></span><span class="slm-live-pin-lbl">${cl.city} (${cl.people.length})</span></div>`,
+        iconSize: [130, 28],
+        iconAnchor: [14, 14]
+      });
+      const marker = L.marker([cl.lat, cl.lon], { icon }).addTo(layer);
+      marker.on('click', () => {
+        setSelectedCity(cl.city);
+      });
+    }
+
+    if (bounds.length === 1) {
+      map.setView(bounds[0], 6, { animate: true });
+    } else if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [44, 44], maxZoom: 6 });
+    }
+  }, [isOpen, mapReady, cityClusters]);
 
   if (!isOpen) return null;
 
@@ -114,10 +222,10 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           <div className="slm-head-title">
             <Globe2 size={18} color="#34d399" />
             <div>
-              <h3>Mapa · {signalName}</h3>
+              <h3>Mapa en vivo · {signalName}</h3>
               <span>
                 {participants.length > 0
-                  ? `${participants.length} ${participants.length === 1 ? 'persona visible' : 'personas visibles'} en ${cityClusters.length} ${cityClusters.length === 1 ? 'región' : 'regiones'}`
+                  ? `${participants.length} ${participants.length === 1 ? 'persona visible' : 'personas visibles'} en ${cityClusters.length} ${cityClusters.length === 1 ? 'ciudad' : 'ciudades'}`
                   : 'Activá «Estoy aquí» para aparecer en tu ciudad aproximada'}
               </span>
             </div>
@@ -127,84 +235,15 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           </button>
         </div>
 
-        {/* MAPA VECTORIAL DARK GLASS (0 cuota · 100 % privacidad regional) */}
+        {/* MAPA REAL INTERACTIVO (OpenStreetMap / CARTO Dark Matter · zoom y arrastre real) */}
         <div className="slm-map-wrap">
-          <svg viewBox="0 0 720 360" className="slm-svg" role="img" aria-label="Mapa regional de espectadores">
-            <defs>
-              <radialGradient id="slmBgGlow" cx="50%" cy="55%" r="65%">
-                <stop offset="0%" stopColor="#12263a" />
-                <stop offset="100%" stopColor="#090e18" />
-              </radialGradient>
-              <radialGradient id="slmPinGlow">
-                <stop offset="0%" stopColor="rgba(52,211,153,0.9)" />
-                <stop offset="100%" stopColor="rgba(52,211,153,0)" />
-              </radialGradient>
-            </defs>
-
-            <rect x="0" y="0" width="720" height="360" fill="url(#slmBgGlow)" />
-
-            {/* Grilla sutil de meridianos y paralelos */}
-            <g stroke="rgba(100,210,255,0.09)" strokeWidth="0.7">
-              {[60, 120, 180, 240, 300].map((y) => (
-                <line key={`lat-${y}`} x1="0" y1={y} x2="720" y2={y} />
-              ))}
-              {[90, 180, 270, 360, 450, 540, 630].map((x) => (
-                <line key={`lon-${x}`} x1={x} y1="0" x2={x} y2="360" />
-              ))}
-            </g>
-
-            {/* Siluetas estilizadas de continentes */}
-            <g fill="rgba(148, 197, 255, 0.14)" stroke="rgba(148, 197, 255, 0.28)" strokeWidth="0.9">
-              {/* América del Norte y Central */}
-              <path d="M 76 58 L 155 48 L 210 64 L 222 104 L 195 128 L 176 154 L 188 170 L 166 176 L 146 154 L 122 126 L 94 102 Z" />
-              {/* América del Sur */}
-              <path d="M 196 184 L 238 190 L 278 214 L 284 246 L 254 294 L 230 330 L 214 326 L 204 282 L 192 232 Z" />
-              {/* Europa */}
-              <path d="M 332 68 L 382 58 L 418 72 L 410 104 L 372 110 L 340 102 Z" />
-              {/* África */}
-              <path d="M 334 122 L 392 122 L 430 162 L 418 228 L 386 270 L 362 260 L 348 202 L 324 166 Z" />
-              {/* Asia */}
-              <path d="M 418 62 L 548 56 L 614 86 L 594 148 L 542 178 L 488 172 L 436 142 Z" />
-              {/* Oceanía */}
-              <path d="M 576 234 L 640 232 L 656 276 L 618 294 L 574 274 Z" />
-            </g>
-
-            {/* Puntos luminosos por ciudad activa */}
-            {cityClusters.map((cl) => {
-              const isSelected = activeCluster?.city === cl.city;
-              return (
-                <g
-                  key={cl.city}
-                  className="slm-pin-group"
-                  onClick={() => setSelectedCity(cl.city)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <circle cx={cl.x} cy={cl.y} r={isSelected ? 22 : 16} fill="url(#slmPinGlow)" />
-                  <circle
-                    cx={cl.x}
-                    cy={cl.y}
-                    r={isSelected ? 6.5 : 5}
-                    fill="#34d399"
-                    stroke="#ffffff"
-                    strokeWidth="1.6"
-                  />
-                  <text
-                    x={cl.x + 9}
-                    y={cl.y + 4}
-                    fill="#ffffff"
-                    fontSize="11"
-                    fontWeight="700"
-                    style={{ textShadow: '0 1px 4px rgba(0,0,0,0.9)' }}
-                  >
-                    {cl.city} ({cl.people.length})
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
+          {mapError ? (
+            <div className="slm-map-loading">{mapError}</div>
+          ) : (
+            <div ref={mapHostRef} className="slm-leaflet-host" />
+          )}
         </div>
 
-        {/* DETALLE DE REGIÓN SELECCIONADA O INVITACIÓN OPT-IN */}
         {activeCluster ? (
           <div className="slm-region-box">
             <div className="slm-region-left">
@@ -232,7 +271,7 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
         ) : (
           <div className="slm-empty-box">
             <strong>Todavía no hay ciudades visibles en esta señal.</strong>
-            <span>Elegí tu ciudad aproximada abajo para encender el primer punto en el mapa:</span>
+            <span>Elegí tu ciudad aproximada abajo para encender el primer punto real en el mapa:</span>
           </div>
         )}
 
@@ -255,7 +294,7 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
         )}
 
         <p className="slm-privacy-note">
-          Privacidad: solo muestra ciudades aproximadas elegidas manualmente. Nunca GPS ni domicilio; usuarios ocultos o invitados no aparecen.
+          Privacidad: mapa geográfico real (OpenStreetMap / CARTO) que solo muestra ciudades aproximadas elegidas manualmente. Nunca GPS ni domicilio.
         </p>
       </div>
 
@@ -274,7 +313,7 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
         }
         .slm-modal {
           width: 100%;
-          max-width: 620px;
+          max-width: 660px;
           max-height: 90dvh;
           overflow-y: auto;
           border-radius: 22px;
@@ -324,15 +363,55 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
         }
         .slm-map-wrap {
           width: 100%;
+          height: 320px;
           border-radius: 16px;
           overflow: hidden;
-          border: 1px solid rgba(100, 210, 255, 0.22);
-          background: #090e18;
+          border: 1px solid rgba(100, 210, 255, 0.24);
+          background: #0b111c;
         }
-        .slm-svg {
+        .slm-leaflet-host {
           width: 100%;
-          height: auto;
-          display: block;
+          height: 100%;
+          z-index: 1;
+        }
+        .slm-map-loading {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 13px;
+          color: rgba(245, 245, 247, 0.72);
+          padding: 16px;
+          text-align: center;
+        }
+        .slm-live-marker-wrap {
+          background: transparent;
+          border: none;
+        }
+        .slm-live-pin {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 9px;
+          border-radius: 999px;
+          background: rgba(10, 16, 26, 0.9);
+          border: 1px solid rgba(52, 211, 153, 0.75);
+          box-shadow: 0 0 14px rgba(52, 211, 153, 0.5);
+          white-space: nowrap;
+        }
+        .slm-live-pin-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 999px;
+          background: #34d399;
+          box-shadow: 0 0 8px #34d399;
+          flex-shrink: 0;
+        }
+        .slm-live-pin-lbl {
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 750;
         }
         .slm-region-box {
           display: flex;

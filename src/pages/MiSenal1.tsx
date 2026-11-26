@@ -102,6 +102,15 @@ import {
   type SignalContribution
 } from '../lib/tv/signalCollabStore';
 import {
+  QUICK_LIVE_CITIES,
+  QUICK_LIVE_GREETINGS,
+  SignalLivePresenceClient,
+  loadSavedLiveCity,
+  saveLiveCity,
+  type LiveGreetingEvent,
+  type LiveParticipant
+} from '../lib/tv/signalLivePresence';
+import {
   loadCloudBranding,
   loadCloudSignalsForUser,
   loadPublicSignalById,
@@ -576,6 +585,102 @@ export default function MiSenal1() {
     }));
     setCollabConfig(nextCfg);
     setCuratedToast('Aporte rechazado.');
+  };
+
+  // SEÑAL VIVA V1 — Presencia voluntaria (Supabase Presence) + Saludos efímeros (Broadcast)
+  const [liveParticipants, setLiveParticipants] = useState<LiveParticipant[]>([]);
+  const [isLiveVisible, setIsLiveVisible] = useState(false);
+  const [liveCity, setLiveCity] = useState<string>(() => loadSavedLiveCity());
+  const [liveCityPickerOpen, setLiveCityPickerOpen] = useState(false);
+  const [liveGreetings, setLiveGreetings] = useState<LiveGreetingEvent[]>([]);
+  const liveClientRef = useRef<SignalLivePresenceClient | null>(null);
+  const liveUserNameRef = useRef<string>('Espectador');
+
+  useEffect(() => {
+    if (!activeSignal?.id || !collabConfig.liveEnabled) {
+      liveClientRef.current?.destroy();
+      liveClientRef.current = null;
+      setLiveParticipants([]);
+      setIsLiveVisible(false);
+      return;
+    }
+
+    const clientKey = `u-${Math.random().toString(36).slice(2, 10)}`;
+    const client = new SignalLivePresenceClient(activeSignal.id, clientKey);
+    liveClientRef.current = client;
+
+    client.onParticipants((list) => {
+      setLiveParticipants(list);
+    });
+
+    client.onGreeting((g) => {
+      setLiveGreetings((prev) => [...prev.slice(-2), g]);
+      window.setTimeout(() => {
+        setLiveGreetings((prev) => prev.filter((item) => item.id !== g.id));
+      }, 4500);
+    });
+
+    return () => {
+      client.destroy();
+      if (liveClientRef.current === client) liveClientRef.current = null;
+      setIsLiveVisible(false);
+      setLiveParticipants([]);
+    };
+  }, [activeSignal?.id, collabConfig.liveEnabled]);
+
+  const handleToggleLiveEnabled = () => {
+    if (!activeSignal?.id) return;
+    const next = saveSignalCollabConfig(activeSignal.id, (prev) => ({
+      ...prev,
+      liveEnabled: !prev.liveEnabled
+    }));
+    setCollabConfig(next);
+    setCuratedToast(
+      next.liveEnabled
+        ? 'Señal viva activada: quienes sintonizan pueden coincidir y saludarse.'
+        : 'Señal viva desactivada en esta señal.'
+    );
+  };
+
+  const handleJoinLivePresence = async (chosenCity: string) => {
+    const { data } = await supabase.auth.getUser();
+    const user = data?.user;
+    if (!user || user.is_anonymous) {
+      setCuratedToast('Iniciá sesión en YOUAPP para mostrarte en Señal viva.');
+      return;
+    }
+    const cleanCity = chosenCity.trim() || 'Argentina';
+    const userName =
+      (user.user_metadata as any)?.full_name ||
+      (user.user_metadata as any)?.name ||
+      (user.email ? user.email.split('@')[0] : 'Espectador');
+    liveUserNameRef.current = userName;
+    setLiveCity(cleanCity);
+    saveLiveCity(cleanCity);
+    setLiveCityPickerOpen(false);
+    setIsLiveVisible(true);
+    await liveClientRef.current?.setVisible({
+      key: user.id,
+      name: userName,
+      city: cleanCity,
+      joinedAt: new Date().toISOString()
+    });
+    setCuratedToast(`👋 Estás visible desde ${cleanCity}.`);
+  };
+
+  const handleLeaveLivePresence = async () => {
+    setIsLiveVisible(false);
+    await liveClientRef.current?.setVisible(null);
+    setCuratedToast('Ya no sos visible en esta señal.');
+  };
+
+  const handleSendLiveGreeting = (emoji: string, text: string) => {
+    if (!isLiveVisible) {
+      setLiveCityPickerOpen(true);
+      setCuratedToast('Primero elegí tu ciudad y tocá «Estoy aquí» para saludar.');
+      return;
+    }
+    liveClientRef.current?.sendGreeting(liveUserNameRef.current, liveCity, emoji, text);
   };
 
   const playbackState = usePlayerStore((state) => state.playbackState);
@@ -2685,6 +2790,18 @@ export default function MiSenal1() {
         <div className="ms-player-section">
           {/* Tarjeta unificada del reproductor (Video + Franja MiTV + SmartBar 3 puntos) */}
           <section className={`ms-player-card ${isStageExpanded ? 'is-expanded' : ''}`}>
+          {liveGreetings.length > 0 && (
+            <div className="ms-live-greetings-overlay" aria-live="polite">
+              {liveGreetings.map((g) => (
+                <div key={g.id} className="ms-live-greeting-pill">
+                  <span>{g.emoji}</span>
+                  <span>
+                    <strong>{g.from}:</strong> {g.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           <div
             className="you-tv-stage ms-stage-box"
             onMouseMove={revealStageControls}
@@ -3472,6 +3589,15 @@ export default function MiSenal1() {
                   </button>
                 )}
 
+                <button
+                  type="button"
+                  className={`ms-collab-chip ${collabConfig.liveEnabled ? 'is-live-on' : ''}`}
+                  onClick={handleToggleLiveEnabled}
+                  title="Activar o desactivar encuentros en vivo (presencia voluntaria y saludos)"
+                >
+                  <span>{collabConfig.liveEnabled ? '👋 Señal viva' : 'Señal viva: off'}</span>
+                </button>
+
                 {collabConfig.pending.length > 0 && (
                   <button
                     type="button"
@@ -3482,6 +3608,87 @@ export default function MiSenal1() {
                   </button>
                 )}
               </div>
+
+              {collabConfig.liveEnabled && (
+                <div className="ms-live-presence-strip" aria-label="Personas sintonizando ahora">
+                  <div className="ms-live-presence-top">
+                    {liveParticipants.length > 0 ? (
+                      <span className="ms-live-presence-info">
+                        <span className="ms-live-pulse-dot" />
+                        <strong>{liveParticipants.length}</strong>{' '}
+                        {liveParticipants.length === 1 ? 'sintonizando' : 'sintonizando ahora'}
+                        {(() => {
+                          const cities = Array.from(
+                            new Set(liveParticipants.map((p) => p.city).filter(Boolean))
+                          ).slice(0, 3);
+                          return cities.length > 0 ? ` · ${cities.join(' · ')}` : '';
+                        })()}
+                      </span>
+                    ) : (
+                      <span className="ms-live-presence-info">
+                        👋 Sintonizá en compañía y saludá sin chat
+                      </span>
+                    )}
+
+                    <div className="ms-live-presence-actions">
+                      {!isLiveVisible ? (
+                        <button
+                          type="button"
+                          className="ms-live-btn primary"
+                          onClick={() => setLiveCityPickerOpen((v) => !v)}
+                        >
+                          👋 Estoy aquí
+                        </button>
+                      ) : (
+                        <>
+                          {QUICK_LIVE_GREETINGS.map((gr) => (
+                            <button
+                              key={gr.emoji}
+                              type="button"
+                              className="ms-live-btn"
+                              onClick={() =>
+                                handleSendLiveGreeting(gr.emoji, gr.buildText(liveCity))
+                              }
+                              title={gr.label}
+                            >
+                              {gr.emoji}
+                              {gr.emoji === '👋' ? ' Saludar' : ''}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className="ms-live-btn subtle"
+                            onClick={() => void handleLeaveLivePresence()}
+                            title="Dejar de mostrarte en esta señal"
+                          >
+                            Ocultarme
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {liveCityPickerOpen && !isLiveVisible && (
+                    <div className="ms-live-city-picker">
+                      <span className="ms-live-city-hint">
+                        Elegí tu ciudad aproximada (opcional, nunca GPS):
+                      </span>
+                      <div className="ms-live-city-chips">
+                        {QUICK_LIVE_CITIES.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={`ms-live-city-chip ${liveCity === c ? 'active' : ''}`}
+                            onClick={() => void handleJoinLivePresence(c)}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {collabFormOpen && (
                 <form className="ms-collab-form" onSubmit={(e) => void handleSubmitContribution(e)}>
@@ -7445,6 +7652,122 @@ export default function MiSenal1() {
         }
         .ms-collab-pending-actions button.ok { background: rgba(48, 209, 88, 0.35); }
         .ms-collab-pending-actions button.no { background: rgba(239, 68, 68, 0.35); }
+        .ms-collab-chip.is-live-on {
+          background: rgba(16, 185, 129, 0.22);
+          border-color: rgba(52, 211, 153, 0.55);
+          color: #a7f3d0;
+        }
+        .ms-live-greetings-overlay {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          z-index: 45;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          pointer-events: none;
+          max-width: 78%;
+        }
+        .ms-live-greeting-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 11px;
+          border-radius: 999px;
+          background: rgba(14, 18, 28, 0.86);
+          border: 1px solid rgba(52, 211, 153, 0.55);
+          backdrop-filter: blur(12px);
+          color: #ffffff;
+          font-size: 12px;
+          box-shadow: 0 8px 22px rgba(0, 0, 0, 0.38);
+        }
+        .ms-live-presence-strip {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          padding: 7px 9px;
+          border-radius: 12px;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(52, 211, 153, 0.26);
+        }
+        .ms-live-presence-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .ms-live-presence-info {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11.5px;
+          color: rgba(235, 250, 245, 0.9);
+        }
+        .ms-live-pulse-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: #34d399;
+          box-shadow: 0 0 8px #34d399;
+          flex-shrink: 0;
+        }
+        .ms-live-presence-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          flex-wrap: wrap;
+        }
+        .ms-live-btn {
+          padding: 4px 9px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .ms-live-btn.primary {
+          background: rgba(16, 185, 129, 0.35);
+          border-color: rgba(52, 211, 153, 0.7);
+        }
+        .ms-live-btn.subtle {
+          background: transparent;
+          color: rgba(245, 245, 247, 0.65);
+        }
+        .ms-live-city-picker {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          padding-top: 4px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .ms-live-city-hint {
+          font-size: 10.5px;
+          color: rgba(245, 245, 247, 0.65);
+        }
+        .ms-live-city-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+        .ms-live-city-chip {
+          padding: 3px 9px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f5f7;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .ms-live-city-chip.active,
+        .ms-live-city-chip:hover {
+          background: #0071e3;
+          border-color: #64d2ff;
+          color: #ffffff;
+        }
         .ms-cast-popover {
           position: absolute;
           bottom: calc(100% + 8px);

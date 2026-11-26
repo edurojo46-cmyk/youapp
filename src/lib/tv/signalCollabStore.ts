@@ -34,6 +34,7 @@ export interface BlockCollabMeta {
 export interface SignalCollabConfig {
   mode: SignalCollabMode;
   moderation: SignalModerationMode;
+  liveEnabled: boolean;
   pending: SignalContribution[];
   blockMeta: Record<string, BlockCollabMeta>;
   /** Registro diario anti-spam: { "YYYY-MM-DD:<user>": count } */
@@ -47,6 +48,7 @@ function defaultConfig(): SignalCollabConfig {
   return {
     mode: 'closed',
     moderation: 'review',
+    liveEnabled: true,
     pending: [],
     blockMeta: {},
     dailyCounts: {}
@@ -80,6 +82,7 @@ export function loadSignalCollabConfig(signalId: string): SignalCollabConfig {
   return {
     mode: found.mode === 'open' ? 'open' : 'closed',
     moderation: found.moderation === 'direct' ? 'direct' : 'review',
+    liveEnabled: found.liveEnabled !== false,
     pending: Array.isArray(found.pending) ? found.pending : [],
     blockMeta: found.blockMeta && typeof found.blockMeta === 'object' ? found.blockMeta : {},
     dailyCounts: found.dailyCounts && typeof found.dailyCounts === 'object' ? found.dailyCounts : {}

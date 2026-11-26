@@ -150,15 +150,6 @@ export const DailymotionOfficialPlayer: React.FC<DailymotionOfficialPlayerProps>
         >
           ▶ Ver en Dailymotion ↗
         </a>
-        <span
-          style={{
-            fontSize: '11.5px',
-            color: 'rgba(235, 240, 255, 0.78)',
-            lineHeight: 1.35
-          }}
-        >
-          Dailymotion requiere un Player ID de Dailymotion Studio para reproducir embebido.
-        </span>
       </div>
     </div>
   );

@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Cast,
   Volume2,
   VolumeX,
@@ -1322,6 +1323,7 @@ export default function ChannelSearch() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
   const [previewVideo, setPreviewVideo] = useState<SearchVideoItem | null>(null);
   const [sortMode, setSortMode] = useState<'relevance' | 'views' | 'recent'>('relevance');
+  const [isAlgoPanelOpen, setIsAlgoPanelOpen] = useState(false);
   const [durationFilter, setDurationFilter] = useState<'all' | 'short' | 'medium' | 'long'>('all');
   const [activeChannelFilter, setActiveChannelFilter] = useState<{ name: string; channelId?: string } | null>(null);
   const [pageOffset, setPageOffset] = useState<number>(0);
@@ -2543,40 +2545,6 @@ export default function ChannelSearch() {
         {/* RESULTADOS TIPO YOUTUBE */}
         {status === 'done' && (
           <section className="ys-results-wrap">
-            {isAlgoFeed && !activeChannelFilter && (
-              <div className="ys-algo-bar" role="region" aria-label="Control de Mi Algoritmo">
-                <div className="ys-algo-left">
-                  <span className="ys-algo-badge">
-                    <Sparkles size={13} /> Mi Algoritmo
-                  </span>
-                  <div className="ys-algo-profiles">
-                    {savedAlgorithms.map((algo) => (
-                      <button
-                        key={algo.id}
-                        type="button"
-                        className={`ys-algo-pill ${activeAlgo?.id === algo.id ? 'active' : ''}`}
-                        onClick={() => {
-                          setActiveAlgorithmId(algo.id);
-                          void loadMyAlgorithmFeed(algo);
-                        }}
-                        title={algo.description}
-                      >
-                        {algo.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="ys-algo-edit-btn"
-                  onClick={() => navigate('/my-algorithm')}
-                  title="Ajustar pesos y reglas de Mi Algoritmo"
-                >
-                  <Settings2 size={13} /> Ajustar
-                </button>
-              </div>
-            )}
-
             {activeChannelFilter && (
               <div className="ys-channel-banner">
                 <button
@@ -2595,78 +2563,134 @@ export default function ChannelSearch() {
               </div>
             )}
 
-            <div className="ys-results-head">
-              <h2>
-                {filteredResults.length > 0
-                  ? `${filteredResults.length} resultados para «${committed}»`
-                  : `Sin resultados para «${committed}»`}
-                {activeCategory === 'noticias' && !activeChannelFilter && (
-                  <span className="ys-latency-badge" style={{ marginLeft: 10, verticalAlign: 'middle' }}>
-                    {REGION_LABELS[userRegion]}
+            {/* DESPLEGABLE FINO "ALGORITMO" CON LAS 3 BARRAS ADENTRO */}
+            <div className={`ys-algo-accordion ${isAlgoPanelOpen ? 'is-open' : ''}`}>
+              <button
+                type="button"
+                className="ys-algo-toggle"
+                onClick={() => setIsAlgoPanelOpen((v) => !v)}
+                aria-expanded={isAlgoPanelOpen}
+              >
+                <span className="ys-algo-toggle-left">
+                  <Sparkles size={13} color="#64d2ff" />
+                  <strong>Algoritmo</strong>
+                  <span className="ys-algo-toggle-meta">
+                    {isAlgoFeed && activeAlgo ? activeAlgo.name : committed}
+                    {filteredResults.length > 0 ? ` · ${filteredResults.length}` : ''}
                   </span>
-                )}
-              </h2>
+                </span>
+                <span className="ys-algo-toggle-right">
+                  <span>{isAlgoPanelOpen ? 'Ocultar' : 'Abrir'}</span>
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      transform: isAlgoPanelOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.18s ease'
+                    }}
+                  />
+                </span>
+              </button>
 
-              {results.length > 0 && (
-                <div className="ys-filter-toolbar" aria-label="Ordenar y filtrar resultados">
-                  <div className="ys-filter-group">
-                    <SlidersHorizontal size={13} className="ys-filter-ico" />
-                    {(
-                      [
-                        { id: 'relevance', label: 'Relevancia' },
-                        { id: 'views', label: 'Más vistos' },
-                        { id: 'recent', label: 'Más recientes' }
-                      ] as const
-                    ).map((opt) => (
+              {isAlgoPanelOpen && (
+                <div className="ys-algo-drawer">
+                  {/* BARRA 1: Perfiles de Mi Algoritmo + Ajustar */}
+                  {isAlgoFeed && !activeChannelFilter && (
+                    <div className="ys-algo-bar" role="region" aria-label="Control de Mi Algoritmo">
+                      <div className="ys-algo-left">
+                        <span className="ys-algo-badge">
+                          <Sparkles size={13} /> Mi Algoritmo
+                        </span>
+                        <div className="ys-algo-profiles">
+                          {savedAlgorithms.map((algo) => (
+                            <button
+                              key={algo.id}
+                              type="button"
+                              className={`ys-algo-pill ${activeAlgo?.id === algo.id ? 'active' : ''}`}
+                              onClick={() => {
+                                setActiveAlgorithmId(algo.id);
+                                void loadMyAlgorithmFeed(algo);
+                              }}
+                              title={algo.description}
+                            >
+                              {algo.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                       <button
-                        key={opt.id}
                         type="button"
-                        className={`ys-filter-pill ${sortMode === opt.id ? 'active' : ''}`}
-                        onClick={() => setSortMode(opt.id)}
+                        className="ys-algo-edit-btn"
+                        onClick={() => navigate('/my-algorithm')}
+                        title="Ajustar pesos y reglas de Mi Algoritmo"
                       >
-                        {opt.label}
+                        <Settings2 size={13} /> Ajustar
                       </button>
-                    ))}
-                  </div>
-                  <div className="ys-filter-group">
-                    {(
-                      [
-                        { id: 'all', label: 'Todas' },
-                        { id: 'short', label: '< 4 min' },
-                        { id: 'medium', label: '4–20 min' },
-                        { id: 'long', label: '+20 min' }
-                      ] as const
-                    ).map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        className={`ys-filter-pill ${durationFilter === opt.id ? 'active' : ''}`}
-                        onClick={() => setDurationFilter(opt.id)}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="ys-filter-group" aria-label="Estilo de tarjetas">
-                    <button
-                      type="button"
-                      className={`ys-filter-pill ${cardViewMode === 'cinema' ? 'active' : ''}`}
-                      onClick={() => handleSetCardViewMode('cinema')}
-                      title="Vista Grilla Cine (portadas limpias)"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                    >
-                      <LayoutGrid size={12} /> Cine
-                    </button>
-                    <button
-                      type="button"
-                      className={`ys-filter-pill ${cardViewMode === 'capsule' ? 'active' : ''}`}
-                      onClick={() => handleSetCardViewMode('capsule')}
-                      title="Vista Cápsula Editorial (compacta estilo Mi Señal)"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                    >
-                      <List size={12} /> Cápsula
-                    </button>
-                  </div>
+                    </div>
+                  )}
+
+                  {/* BARRA 2 y 3: Orden, Duración y Vista Cine/Cápsula */}
+                  {results.length > 0 && (
+                    <div className="ys-filter-toolbar" aria-label="Ordenar y filtrar resultados">
+                      <div className="ys-filter-group">
+                        <SlidersHorizontal size={13} className="ys-filter-ico" />
+                        {(
+                          [
+                            { id: 'relevance', label: 'Relevancia' },
+                            { id: 'views', label: 'Más vistos' },
+                            { id: 'recent', label: 'Más recientes' }
+                          ] as const
+                        ).map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className={`ys-filter-pill ${sortMode === opt.id ? 'active' : ''}`}
+                            onClick={() => setSortMode(opt.id)}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="ys-filter-group">
+                        {(
+                          [
+                            { id: 'all', label: 'Todas' },
+                            { id: 'short', label: '< 4 min' },
+                            { id: 'medium', label: '4–20 min' },
+                            { id: 'long', label: '+20 min' }
+                          ] as const
+                        ).map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className={`ys-filter-pill ${durationFilter === opt.id ? 'active' : ''}`}
+                            onClick={() => setDurationFilter(opt.id)}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="ys-filter-group" aria-label="Estilo de tarjetas">
+                        <button
+                          type="button"
+                          className={`ys-filter-pill ${cardViewMode === 'cinema' ? 'active' : ''}`}
+                          onClick={() => handleSetCardViewMode('cinema')}
+                          title="Vista Grilla Cine (portadas limpias)"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                        >
+                          <LayoutGrid size={12} /> Cine
+                        </button>
+                        <button
+                          type="button"
+                          className={`ys-filter-pill ${cardViewMode === 'capsule' ? 'active' : ''}`}
+                          onClick={() => handleSetCardViewMode('capsule')}
+                          title="Vista Cápsula Editorial (compacta estilo Mi Señal)"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                        >
+                          <List size={12} /> Cápsula
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -3124,6 +3148,71 @@ export default function ChannelSearch() {
           color: #ffffff;
         }
 
+        .ys-algo-accordion {
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          backdrop-filter: saturate(180%) blur(20px);
+          -webkit-backdrop-filter: saturate(180%) blur(20px);
+          margin-bottom: 12px;
+          overflow: hidden;
+        }
+        .ys-algo-toggle {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 8px 14px;
+          background: transparent;
+          border: none;
+          color: #ffffff;
+          cursor: pointer;
+          font-family: inherit;
+          text-align: left;
+        }
+        .ys-algo-toggle:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        .ys-algo-toggle-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        .ys-algo-toggle-left strong {
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          white-space: nowrap;
+        }
+        .ys-algo-toggle-meta {
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.62);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ys-algo-toggle-right {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11.5px;
+          font-weight: 600;
+          color: #64d2ff;
+          flex-shrink: 0;
+        }
+        .ys-algo-drawer {
+          padding: 10px 12px 12px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .ys-algo-drawer .ys-algo-bar {
+          margin-bottom: 0;
+        }
         .ys-algo-bar {
           display: flex;
           flex-wrap: wrap;

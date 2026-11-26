@@ -6721,13 +6721,19 @@ export default function MiSenal1() {
           padding: 0 14px 14px;
         }
         .ms-player-card .ms-smartbar-slot .bv-root {
-          background: rgba(16, 18, 24, 0.92) !important;
-          backdrop-filter: blur(18px) saturate(160%) !important;
-          -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+          background: rgba(255, 255, 255, 0.1) !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
           border: 1px solid rgba(255, 255, 255, 0.2) !important;
           box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.16),
-            0 8px 24px rgba(0, 0, 0, 0.32) !important;
+            inset 0 1px 0 rgba(255, 255, 255, 0.22),
+            0 8px 24px rgba(0, 0, 0, 0.18) !important;
+          color: #f5f5f7 !important;
+        }
+        @media (max-width: 640px) {
+          .ms-player-card .ms-smartbar-slot {
+            padding: 0 8px 8px;
+          }
         }
         .ms-fs-exit-btn {
           position: absolute;
@@ -6831,9 +6837,9 @@ export default function MiSenal1() {
           display: flex;
           flex-direction: column;
           gap: 5px;
-          padding: 9px 12px 7px;
-          background: rgba(16, 18, 24, 0.88);
-          border-top: 1px solid rgba(255, 255, 255, 0.12);
+          padding: 12px 16px 10px;
+          background: transparent;
+          border-top: none;
         }
         .ms-mitv-top-row {
           display: flex;

@@ -2744,9 +2744,10 @@ export default function ChannelSearch() {
             w.postMessage(JSON.stringify({ event: 'listening', id: 1 }), '*');
           }
         }
-        // Reloj suave de respaldo (1s): si el iframe aún no emitió tick real, avanza la barra al reproducir
+        // Reloj suave de respaldo (1s) SOLO para proveedores sin telemetría continua (PeerTube/Odysee/Archive)
+        const isNativeTelemetry = !previewVideo.provider || previewVideo.provider === 'youtube' || previewVideo.provider === 'vimeo';
         const st = usePlayerStore.getState();
-        if (st.isPlaying && Date.now() - lastRealTickAt > 1800) {
+        if (!isNativeTelemetry && st.isPlaying && Date.now() - lastRealTickAt > 1800) {
           const dur = st.duration > 0 ? st.duration : initialDur;
           if (dur > 0) {
             st.setProgress(Math.min(dur, st.currentTime + 1), dur);
@@ -3434,7 +3435,13 @@ export default function ChannelSearch() {
                     key={previewVideo.videoId}
                     src={`https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1&api=1`}
                     title={previewVideo.title}
-                    onLoad={() => setIsPreviewFrameReady(true)}
+                    onLoad={() => {
+                      setIsPreviewFrameReady(true);
+                      const w = previewIframeRef.current?.contentWindow;
+                      w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'timeupdate' }), '*');
+                      w?.postMessage(JSON.stringify({ method: 'addEventListener', value: 'playProgress' }), '*');
+                      w?.postMessage(JSON.stringify({ method: 'getDuration' }), '*');
+                    }}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />
@@ -3478,9 +3485,15 @@ export default function ChannelSearch() {
                   <iframe
                     ref={previewIframeRef}
                     key={previewVideo.videoId}
-                    src={`https://www.youtube.com/embed/${previewVideo.videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
+                    src={`https://www.youtube.com/embed/${previewVideo.videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://youapptv.com')}`}
                     title={previewVideo.title}
-                    onLoad={() => setIsPreviewFrameReady(true)}
+                    onLoad={() => {
+                      setIsPreviewFrameReady(true);
+                      previewIframeRef.current?.contentWindow?.postMessage(
+                        JSON.stringify({ event: 'listening', id: 1 }),
+                        '*'
+                      );
+                    }}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />

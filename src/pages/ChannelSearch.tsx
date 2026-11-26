@@ -1465,8 +1465,8 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
     try {
       const safeTerm = clean.replace(/["()\\/:]/g, ' ').trim();
       const qExpr = trendingMode
-        ? 'mediatype:(movies) AND (collection:(feature_films) OR collection:(classic_tv) OR collection:(documentaries))'
-        : `mediatype:(movies) AND (${safeTerm})`;
+        ? 'mediatype:(movies) AND format:(MPEG4 OR h.264) AND (collection:(feature_films) OR collection:(classic_tv) OR collection:(documentaries))'
+        : `mediatype:(movies) AND format:(MPEG4 OR h.264) AND (${safeTerm})`;
       if (!trendingMode && safeTerm.length < 2) return [];
       const controller = new AbortController();
       const timer = window.setTimeout(() => controller.abort(), 2400);
@@ -3365,8 +3365,11 @@ export default function ChannelSearch() {
                       `https://archive.org/embed/${encodeURIComponent(previewVideo.videoId.replace(/^ar_/, ''))}?autoplay=1`
                     }
                     title={previewVideo.title}
+                    frameBorder="0"
+                    referrerPolicy="no-referrer"
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
                   />
                 ) : (previewVideo.provider === 'odysee' || previewVideo.provider === 'twitch') && previewVideo.embedUrl ? (
                   <iframe

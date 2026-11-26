@@ -93,6 +93,15 @@ import {
   shareYouAppVideo
 } from '../lib/tv/youappShareHelper';
 import {
+  atlasSmartOrderSchedule,
+  buildBlockFromContribution,
+  loadSignalCollabConfig,
+  saveSignalCollabConfig,
+  validateAndBuildContribution,
+  type SignalCollabConfig,
+  type SignalContribution
+} from '../lib/tv/signalCollabStore';
+import {
   loadCloudBranding,
   loadCloudSignalsForUser,
   loadPublicSignalById,
@@ -390,6 +399,158 @@ export default function MiSenal1() {
   const isSharedSignalView = searchParams.get('sharedSignal') === '1';
   const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
   const [playingVideoMeta, setPlayingVideoMeta] = useState<VideoPublicMeta | null>(null);
+  const [collabConfig, setCollabConfig] = useState<SignalCollabConfig>(() =>
+    loadSignalCollabConfig(activeSignal?.id || '')
+  );
+  const [collabFormOpen, setCollabFormOpen] = useState(false);
+  const [collabPendingOpen, setCollabPendingOpen] = useState(false);
+  const [collabUrlInput, setCollabUrlInput] = useState('');
+  const [collabBusy, setCollabBusy] = useState(false);
+  const [collabError, setCollabError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!activeSignal?.id) return;
+    setCollabConfig(loadSignalCollabConfig(activeSignal.id));
+  }, [activeSignal?.id]);
+
+  const handleToggleCollabMode = () => {
+    if (!activeSignal?.id) return;
+    const next = saveSignalCollabConfig(activeSignal.id, (prev) => ({
+      ...prev,
+      mode: prev.mode === 'open' ? 'closed' : 'open'
+    }));
+    setCollabConfig(next);
+    setCuratedToast(
+      next.mode === 'open'
+        ? 'Señal abierta: la comunidad ya puede aportar videos según tus reglas.'
+        : 'Señal cerrada: solo vos podés sumar videos (se conservan todos los aceptados).'
+    );
+  };
+
+  const handleToggleCollabModeration = () => {
+    if (!activeSignal?.id) return;
+    const next = saveSignalCollabConfig(activeSignal.id, (prev) => ({
+      ...prev,
+      moderation: prev.moderation === 'review' ? 'direct' : 'review'
+    }));
+    setCollabConfig(next);
+    setCuratedToast(
+      next.moderation === 'direct'
+        ? 'Regla cambiada a Publicación directa.'
+        : 'Regla cambiada a Revisión previa (recomendado).'
+    );
+  };
+
+  const handleAtlasOrderSignal = () => {
+    if (!activeSignal || activeSignal.schedule.length < 2) {
+      setCuratedToast('Necesitás al menos 2 videos para que ATLAS ordene tu señal.');
+      return;
+    }
+    const { ordered, uniqueChannels, removedDuplicates } = atlasSmartOrderSchedule(
+      activeSignal.schedule,
+      collabConfig.blockMeta
+    );
+    const updated = {
+      ...activeSignal,
+      schedule: ordered,
+      updated_at: new Date().toISOString()
+    };
+    setSignal(updated);
+    void persistSignal(updated);
+    setCuratedToast(
+      `✨ ATLAS ordenó ${ordered.length} videos alternando ${uniqueChannels} canales` +
+        (removedDuplicates > 0 ? ` (${removedDuplicates} duplicados quitados).` : '.')
+    );
+  };
+
+  const handleSubmitContribution = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeSignal || !collabUrlInput.trim() || collabBusy) return;
+    setCollabError(null);
+    setCollabBusy(true);
+    try {
+      const { data } = await supabase.auth.getUser();
+      const user = data?.user;
+      if (!user || user.is_anonymous) {
+        setCollabError('Iniciá sesión en YOUAPP para aportar videos a esta señal.');
+        return;
+      }
+      const contributorName =
+        (user.user_metadata as any)?.full_name ||
+        (user.user_metadata as any)?.name ||
+        (user.email ? user.email.split('@')[0] : 'Colaborador');
+      const isOwner = !activeSignal.user_id || activeSignal.user_id === user.id;
+
+      const res = await validateAndBuildContribution({
+        signalId: activeSignal.id,
+        rawUrl: collabUrlInput,
+        contributorName,
+        existingSchedule: activeSignal.schedule,
+        config: collabConfig,
+        isOwner
+      });
+
+      if (!res.ok) {
+        setCollabError(res.error);
+        return;
+      }
+
+      const d = new Date();
+      const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}:${contributorName.toLowerCase().trim()}`;
+
+      if (collabConfig.moderation === 'direct' || isOwner) {
+        insert(res.block, activeSignal.schedule.length - 1);
+        const nextCfg = saveSignalCollabConfig(activeSignal.id, (prev) => ({
+          ...prev,
+          blockMeta: {
+            ...prev.blockMeta,
+            [res.block.id]: { by: contributorName, votes: 1, addedAt: new Date().toISOString() }
+          },
+          dailyCounts: { ...prev.dailyCounts, [dayKey]: (prev.dailyCounts[dayKey] || 0) + 1 }
+        }));
+        setCollabConfig(nextCfg);
+        setCuratedToast(`✅ Video sumado a la programación por ${contributorName}.`);
+      } else {
+        const nextCfg = saveSignalCollabConfig(activeSignal.id, (prev) => ({
+          ...prev,
+          pending: [res.contribution, ...prev.pending],
+          dailyCounts: { ...prev.dailyCounts, [dayKey]: (prev.dailyCounts[dayKey] || 0) + 1 }
+        }));
+        setCollabConfig(nextCfg);
+        setCuratedToast(`Aporte enviado a revisión: «${res.contribution.title.slice(0, 42)}».`);
+      }
+      setCollabUrlInput('');
+      setCollabFormOpen(false);
+    } finally {
+      setCollabBusy(false);
+    }
+  };
+
+  const handleApproveContribution = (c: SignalContribution) => {
+    if (!activeSignal) return;
+    const block = buildBlockFromContribution(c, activeSignal.schedule.length);
+    insert(block, activeSignal.schedule.length - 1);
+    const nextCfg = saveSignalCollabConfig(activeSignal.id, (prev) => ({
+      ...prev,
+      pending: prev.pending.filter((p) => p.id !== c.id),
+      blockMeta: {
+        ...prev.blockMeta,
+        [block.id]: { by: c.contributedBy, votes: 1, addedAt: c.contributedAt }
+      }
+    }));
+    setCollabConfig(nextCfg);
+    setCuratedToast(`✓ Aprobado en programación: «${c.title.slice(0, 40)}».`);
+  };
+
+  const handleRejectContribution = (id: string) => {
+    if (!activeSignal) return;
+    const nextCfg = saveSignalCollabConfig(activeSignal.id, (prev) => ({
+      ...prev,
+      pending: prev.pending.filter((p) => p.id !== id)
+    }));
+    setCollabConfig(nextCfg);
+    setCuratedToast('Aporte rechazado.');
+  };
 
   useEffect(() => {
     loadSocialGraphFromCloud()
@@ -3271,6 +3432,117 @@ export default function MiSenal1() {
                 <Repeat size={11} />
                 <span>{continuousChannelMode ? 'Emisión continua' : 'Manual'}</span>
               </button>
+            </div>
+
+            {/* BARRA SEÑAL ABIERTA / CERRADA + APORTAR VIDEO + ATLAS ORDENAR MI SEÑAL */}
+            <div className="ms-collab-bar">
+              <div className="ms-collab-chips">
+                <button
+                  type="button"
+                  className={`ms-collab-chip ${collabConfig.mode === 'open' ? 'is-open' : ''}`}
+                  onClick={handleToggleCollabMode}
+                  title="Cambiar entre Señal Abierta (comunidad aporta videos) y Señal Cerrada (solo propietario)"
+                >
+                  <span>{collabConfig.mode === 'open' ? '🟢 Señal abierta' : '🔒 Señal cerrada'}</span>
+                </button>
+
+                {collabConfig.mode === 'open' && (
+                  <button
+                    type="button"
+                    className="ms-collab-chip"
+                    onClick={handleToggleCollabModeration}
+                    title="Regla de publicación para aportes de la comunidad"
+                  >
+                    <span>
+                      {collabConfig.moderation === 'direct' ? '⚡ Directa' : '🛡️ Revisión previa'}
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="ms-collab-chip is-atlas"
+                  onClick={handleAtlasOrderSignal}
+                  title="ATLAS ordena tu señal alternando canales, quitando duplicados y priorizando aportes valorados"
+                >
+                  <Sparkles size={11} />
+                  <span>Ordenar mi señal</span>
+                </button>
+
+                {collabConfig.mode === 'open' && (
+                  <button
+                    type="button"
+                    className="ms-collab-chip is-add"
+                    onClick={() => {
+                      setCollabFormOpen((v) => !v);
+                      setCollabError(null);
+                    }}
+                  >
+                    <Plus size={11} />
+                    <span>Agregar video</span>
+                  </button>
+                )}
+
+                {collabConfig.pending.length > 0 && (
+                  <button
+                    type="button"
+                    className="ms-collab-chip is-pending"
+                    onClick={() => setCollabPendingOpen((v) => !v)}
+                  >
+                    <span>Pendientes ({collabConfig.pending.length})</span>
+                  </button>
+                )}
+              </div>
+
+              {collabFormOpen && (
+                <form className="ms-collab-form" onSubmit={(e) => void handleSubmitContribution(e)}>
+                  <input
+                    type="text"
+                    value={collabUrlInput}
+                    onChange={(e) => setCollabUrlInput(e.target.value)}
+                    placeholder="Pegá enlace de YouTube, Vimeo o MP4 (ATLAS valida y evita duplicados)…"
+                    aria-label="Enlace del video a aportar"
+                  />
+                  <button type="submit" disabled={collabBusy || !collabUrlInput.trim()}>
+                    {collabBusy ? 'Validando…' : 'Enviar'}
+                  </button>
+                  {collabError && <div className="ms-collab-error">{collabError}</div>}
+                </form>
+              )}
+
+              {collabPendingOpen && collabConfig.pending.length > 0 && (
+                <div className="ms-collab-pending-list">
+                  {collabConfig.pending.map((c) => (
+                    <div key={c.id} className="ms-collab-pending-row">
+                      {c.thumbnailUrl && <img src={c.thumbnailUrl} alt={c.title} />}
+                      <div className="ms-collab-pending-info">
+                        <strong>{c.title}</strong>
+                        <span>
+                          {c.author} · Aportado por {c.contributedBy}
+                        </span>
+                      </div>
+                      <div className="ms-collab-pending-actions">
+                        <button
+                          type="button"
+                          className="ok"
+                          onClick={() => handleApproveContribution(c)}
+                          title="Aprobar y sumar a la programación"
+                        >
+                          <Check size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="no"
+                          onClick={() => handleRejectContribution(c.id)}
+                          title="Rechazar aporte"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Pulso diario: Filtro Todos · En vivo · Nuevos */}
@@ -6971,6 +7243,138 @@ export default function MiSenal1() {
           font-size: 11.5px;
           color: rgba(245, 245, 247, 0.64);
         }
+        .ms-collab-bar {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 8px 12px;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .ms-collab-chips {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+        }
+        .ms-collab-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 9px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(245, 245, 247, 0.9);
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .ms-collab-chip.is-open {
+          background: rgba(48, 209, 88, 0.2);
+          border-color: rgba(48, 209, 88, 0.5);
+          color: #a7f3d0;
+        }
+        .ms-collab-chip.is-atlas {
+          background: rgba(10, 132, 255, 0.2);
+          border-color: rgba(100, 210, 255, 0.45);
+          color: #bfe9ff;
+        }
+        .ms-collab-chip.is-add {
+          background: #0071e3;
+          border-color: rgba(100, 210, 255, 0.6);
+          color: #ffffff;
+        }
+        .ms-collab-chip.is-pending {
+          background: rgba(245, 158, 11, 0.22);
+          border-color: rgba(252, 211, 77, 0.55);
+          color: #fde68a;
+        }
+        .ms-collab-form {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .ms-collab-form input {
+          flex: 1 1 180px;
+          min-width: 0;
+          padding: 7px 11px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(0, 0, 0, 0.34);
+          color: #ffffff;
+          font-size: 12px;
+          outline: none;
+        }
+        .ms-collab-form button {
+          padding: 7px 12px;
+          border-radius: 10px;
+          border: 1px solid rgba(100, 210, 255, 0.55);
+          background: #0071e3;
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .ms-collab-error {
+          width: 100%;
+          font-size: 11.5px;
+          color: #fca5a5;
+        }
+        .ms-collab-pending-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .ms-collab-pending-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+        .ms-collab-pending-row img {
+          width: 48px;
+          height: 32px;
+          border-radius: 6px;
+          object-fit: cover;
+          flex-shrink: 0;
+        }
+        .ms-collab-pending-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .ms-collab-pending-info strong {
+          font-size: 11.5px;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ms-collab-pending-info span {
+          font-size: 10.5px;
+          color: rgba(245, 245, 247, 0.65);
+        }
+        .ms-collab-pending-actions {
+          display: inline-flex;
+          gap: 4px;
+        }
+        .ms-collab-pending-actions button {
+          width: 26px;
+          height: 26px;
+          border-radius: 999px;
+          border: 0;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: #ffffff;
+        }
+        .ms-collab-pending-actions button.ok { background: rgba(48, 209, 88, 0.35); }
+        .ms-collab-pending-actions button.no { background: rgba(239, 68, 68, 0.35); }
         .ms-cast-popover {
           position: absolute;
           bottom: calc(100% + 8px);

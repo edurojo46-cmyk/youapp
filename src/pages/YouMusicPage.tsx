@@ -3090,7 +3090,101 @@ export default function YouMusicPage() {
           color: #93d5ff;
         }
         .ymv1-smartbar-slot {
-          padding: 0 10px 10px;
+          padding: 0 12px 12px;
+        }
+        /* Adaptación Apple Glass oscuro idéntica a MiTV */
+        .ymv1-smartbar-slot .bv-root {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 24px rgba(0, 0, 0, 0.18);
+          color: #f5f5f7;
+        }
+        .ymv1-smartbar-slot .bv-compact-btn,
+        .ymv1-smartbar-slot .bv-more-btn,
+        .ymv1-smartbar-slot .bv-native-ctrl-btn,
+        .ymv1-smartbar-slot .bv-step-btn,
+        .ymv1-smartbar-slot .bv-icon-btn,
+        .ymv1-smartbar-slot .bv-moment-chip,
+        .ymv1-smartbar-slot .bv-saved-toggle-btn,
+        .ymv1-smartbar-slot .bv-save-moment-btn,
+        .ymv1-smartbar-slot .bv-follow-btn {
+          background: rgba(255, 255, 255, 0.14);
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          color: #f5f5f7;
+        }
+        .ymv1-smartbar-slot .bv-compact-btn:hover,
+        .ymv1-smartbar-slot .bv-more-btn:hover,
+        .ymv1-smartbar-slot .bv-native-ctrl-btn:hover,
+        .ymv1-smartbar-slot .bv-step-btn:hover:not(:disabled),
+        .ymv1-smartbar-slot .bv-icon-btn:hover,
+        .ymv1-smartbar-slot .bv-moment-chip:hover,
+        .ymv1-smartbar-slot .bv-saved-toggle-btn:hover,
+        .ymv1-smartbar-slot .bv-save-moment-btn:hover,
+        .ymv1-smartbar-slot .bv-follow-btn:hover {
+          background: rgba(255, 255, 255, 0.24);
+          border-color: rgba(255, 255, 255, 0.42);
+          color: #ffffff;
+        }
+        .ymv1-smartbar-slot .bv-compact-btn.active,
+        .ymv1-smartbar-slot .bv-more-btn.active,
+        .ymv1-smartbar-slot .bv-saved-toggle-btn.open {
+          background: rgba(255, 255, 255, 0.92);
+          border-color: #ffffff;
+          color: #1d1d1f;
+        }
+        .ymv1-smartbar-slot .bv-compact-btn.primary {
+          background: #0071e3;
+          border-color: rgba(255, 255, 255, 0.25);
+          color: #ffffff;
+        }
+        .ymv1-smartbar-slot .bv-native-scrub-row {
+          border-bottom-color: rgba(255, 255, 255, 0.14);
+        }
+        .ymv1-smartbar-slot .bv-mono-time,
+        .ymv1-smartbar-slot .bv-tl-time,
+        .ymv1-smartbar-slot .bv-signal-line strong,
+        .ymv1-smartbar-slot .bv-saved-meta strong,
+        .ymv1-smartbar-slot .bv-saved-drawer-head {
+          color: #ffffff;
+        }
+        .ymv1-smartbar-slot .bv-mono-time.muted,
+        .ymv1-smartbar-slot .bv-signal-sub,
+        .ymv1-smartbar-slot .bv-saved-meta span,
+        .ymv1-smartbar-slot .bv-saved-drawer-sub,
+        .ymv1-smartbar-slot .bv-saved-empty,
+        .ymv1-smartbar-slot .bv-share-head,
+        .ymv1-smartbar-slot .bv-share-origin {
+          color: rgba(245, 245, 247, 0.74);
+        }
+        .ymv1-smartbar-slot .bv-share-menu,
+        .ymv1-smartbar-slot .bv-saved-drawer {
+          background: rgba(22, 24, 30, 0.86);
+          backdrop-filter: blur(26px) saturate(180%);
+          -webkit-backdrop-filter: blur(26px) saturate(180%);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
+          color: #f5f5f7;
+        }
+        .ymv1-smartbar-slot .bv-more-item,
+        .ymv1-smartbar-slot .bv-share-item {
+          color: #f5f5f7;
+        }
+        .ymv1-smartbar-slot .bv-more-item:hover,
+        .ymv1-smartbar-slot .bv-share-item:hover {
+          background: rgba(255, 255, 255, 0.14);
+          color: #64d2ff;
+        }
+        .ymv1-smartbar-slot .bv-share-divider {
+          background: rgba(255, 255, 255, 0.14);
+        }
+        .ymv1-smartbar-slot .bv-saved-item {
+          background: rgba(255, 255, 255, 0.09);
+          border-color: rgba(255, 255, 255, 0.16);
+        }
+        .ymv1-smartbar-slot .bv-signal-hairline {
+          background: rgba(255, 255, 255, 0.16);
         }
         .ymv1-cast-popover {
           position: absolute;

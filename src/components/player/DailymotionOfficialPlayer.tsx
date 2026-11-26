@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from 'react';
-import { ExternalLink, Play } from 'lucide-react';
 
 const CUSTOM_DM_PLAYER_ID: string =
   ((import.meta as any).env?.VITE_DAILYMOTION_PLAYER_ID || '').trim();
@@ -59,60 +58,7 @@ export const DailymotionOfficialPlayer: React.FC<DailymotionOfficialPlayerProps>
 
   if (!videoId) return null;
 
-  if (isLocalhost) {
-    const watchUrl = `https://www.dailymotion.com/video/${encodeURIComponent(videoId)}`;
-    const thumbUrl = `https://www.dailymotion.com/thumbnail/video/${encodeURIComponent(videoId)}`;
-    return (
-      <div
-        className={className}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          background: `linear-gradient(180deg, rgba(15,15,20,0.45) 0%, rgba(10,10,14,0.88) 100%), url(${thumbUrl}) center/cover no-repeat`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '10px',
-          padding: '16px',
-          textAlign: 'center',
-          color: '#ffffff',
-          boxSizing: 'border-box'
-        }}
-      >
-        <a
-          href={watchUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '10px 18px',
-            borderRadius: '999px',
-            background: '#0071e3',
-            color: '#ffffff',
-            fontSize: '13px',
-            fontWeight: 700,
-            textDecoration: 'none',
-            boxShadow: '0 8px 24px rgba(0, 113, 227, 0.35)'
-          }}
-        >
-          <Play size={14} fill="#ffffff" />
-          <span>Ver / Escuchar en Dailymotion</span>
-          <ExternalLink size={13} />
-        </a>
-        <span style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.82)', maxWidth: '340px' }}>
-          Dailymotion bloquea embeds en <code>localhost</code> (403); al publicar en tu dominio{' '}
-          <code>https://</code> reproduce integrado automáticamente.
-        </span>
-      </div>
-    );
-  }
-
-  if (playerId) {
+  if (playerId && !isLocalhost) {
     return (
       <div
         ref={hostRef}
@@ -132,10 +78,11 @@ export const DailymotionOfficialPlayer: React.FC<DailymotionOfficialPlayerProps>
     <iframe
       key={videoId}
       title={`Dailymotion · ${videoId}`}
-      src={`https://geo.dailymotion.com/player.html?video=${encodeURIComponent(videoId)}`}
+      src={`https://www.dailymotion.com/embed/video/${encodeURIComponent(videoId)}?autoplay=1&queue-enable=false`}
       className={className}
       frameBorder="0"
       allow="autoplay; fullscreen; picture-in-picture; web-share"
+      allowFullScreen
       style={{
         position: 'absolute',
         inset: 0,

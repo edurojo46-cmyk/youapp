@@ -1332,20 +1332,38 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
     }
   })();
 
-  // 2. Vimeo API oficial vía Supabase Edge Function `vimeo-provider` (0 cuota YouTube, ingestión automática)
+  // 2. Vimeo API oficial vía Supabase Edge Function `vimeo-provider` (fetch directo con anon key, inmune a sesiones expiradas)
   const vimeoLivePromise = (async () => {
     try {
       const vQuery = trendingMode ? 'short film documentary cinema' : clean;
       if (vQuery.length < 2) return [];
-      const { data, error } = await (supabase.functions as any).invoke('vimeo-provider', {
-        body: {
+      const sbUrl =
+        ((import.meta as any)?.env?.VITE_SUPABASE_URL as string) ||
+        'https://jtnurafmngaxdwlzpvxv.supabase.co';
+      const sbAnon =
+        ((import.meta as any)?.env?.VITE_SUPABASE_ANON_KEY as string) ||
+        'sb_publishable_IWSDC0aWUR8cvOPrwYSaqg_JU8aASm8';
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 7000);
+      const res = await fetch(`${sbUrl}/functions/v1/vimeo-provider`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: sbAnon,
+          Authorization: `Bearer ${sbAnon}`
+        },
+        body: JSON.stringify({
           query: vQuery,
           limit: 8,
           sort: 'relevant',
           ingest: true
-        }
+        }),
+        signal: controller.signal
       });
-      if (error || !Array.isArray(data?.items)) return [];
+      window.clearTimeout(timer);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data?.items)) return [];
       const mapped: SearchVideoItem[] = [];
       for (const r of data.items) {
         const rawId = String(r?.providerContentId || r?.id || '').replace(/^vimeo_/, '').trim();

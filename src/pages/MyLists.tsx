@@ -774,22 +774,24 @@ export default function MyLists() {
           position: fixed;
           inset: -16px;
           z-index: 0;
-          background-color: #141822;
-          background-image:
-            radial-gradient(ellipse 46% 48% at 18% 18%, rgba(100, 210, 255, 0.22) 0%, transparent 62%),
-            radial-gradient(ellipse 48% 46% at 82% 30%, rgba(139, 92, 246, 0.2) 0%, transparent 64%),
-            url('/my-lists-autumn-lake-bg.png');
+          background-color: #18140d;
+          background-image: url('/my-lists-autumn-lake-bg.png');
           background-size: cover;
           background-position: center;
-          filter: blur(18px) brightness(0.55) contrast(1.06);
-          transform: scale(1.05) translateZ(0);
+          filter: blur(10px) brightness(0.82) contrast(1.06);
+          transform: scale(1.04) translateZ(0);
           pointer-events: none;
         }
         .ml-stage-veil {
           position: fixed;
           inset: 0;
           z-index: 1;
-          background: linear-gradient(180deg, rgba(12, 15, 22, 0.55) 0%, rgba(12, 15, 22, 0.72) 100%);
+          background: linear-gradient(
+            180deg,
+            rgba(18, 14, 8, 0.18) 0%,
+            rgba(16, 14, 10, 0.14) 50%,
+            rgba(12, 10, 8, 0.38) 100%
+          );
           pointer-events: none;
         }
         .ml-topbar,
@@ -806,10 +808,10 @@ export default function MyLists() {
           justify-content: space-between;
           gap: 12px;
           padding: 10px 22px;
-          background: rgba(18, 22, 32, 0.62);
-          backdrop-filter: saturate(180%) blur(22px);
-          -webkit-backdrop-filter: saturate(180%) blur(22px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(24, 26, 30, 0.42);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.18);
         }
         .ml-topbar-left {
           display: flex;
@@ -872,13 +874,22 @@ export default function MyLists() {
           gap: 12px;
         }
 
-        /* BARRA DESPLEGABLE SUTIL ARRIBA */
+        /* BARRA DESPLEGABLE GLASEADA ARRIBA */
         .ml-tools-drawer {
-          border-radius: 14px;
-          background: rgba(16, 20, 30, 0.72);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
+          position: relative;
+          border-radius: 18px;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.16) 0%,
+            rgba(255, 255, 255, 0.06) 55%,
+            rgba(255, 255, 255, 0.11) 100%
+          );
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.45),
+            0 12px 32px rgba(0, 0, 0, 0.24);
+          backdrop-filter: blur(22px) saturate(150%);
+          -webkit-backdrop-filter: blur(22px) saturate(150%);
           overflow: hidden;
         }
         .ml-tools-toggle {
@@ -997,45 +1008,95 @@ export default function MyLists() {
           gap: 6px;
           flex-shrink: 0;
           white-space: nowrap;
-          padding: 6px 13px;
+          padding: 7px 14px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          background: rgba(255, 255, 255, 0.08);
-          color: rgba(245, 245, 247, 0.86);
+          border: 1px solid rgba(255, 255, 255, 0.26);
+          background: rgba(255, 255, 255, 0.12);
+          backdrop-filter: blur(18px) saturate(150%);
+          -webkit-backdrop-filter: blur(18px) saturate(150%);
+          box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.32);
+          color: rgba(255, 255, 255, 0.92);
           font-size: 12.5px;
-          font-weight: 650;
+          font-weight: 680;
           cursor: pointer;
         }
         .ml-filter-chip.active {
-          background: #0071e3;
-          border-color: #64d2ff;
+          background: rgba(0, 113, 227, 0.85);
+          border-color: rgba(140, 220, 255, 0.75);
           color: #ffffff;
+          box-shadow: 0 6px 18px rgba(0, 113, 227, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.45);
         }
         .ml-chip-count {
           font-size: 11px;
           font-weight: 750;
-          opacity: 0.78;
+          opacity: 0.82;
+        }
+
+        /* CONTENEDOR GLASEADO LIQUID GLASS */
+        .ml-vault-section {
+          position: relative;
+          border-radius: 24px;
+          padding: 16px;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.14) 0%,
+            rgba(255, 255, 255, 0.05) 55%,
+            rgba(255, 255, 255, 0.1) 100%
+          );
+          backdrop-filter: blur(24px) saturate(150%);
+          -webkit-backdrop-filter: blur(24px) saturate(150%);
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          box-shadow:
+            inset 0 1px 2px rgba(255, 255, 255, 0.48),
+            0 16px 40px rgba(0, 0, 0, 0.28);
+          overflow: hidden;
+        }
+        .ml-vault-section::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          padding: 1.5px;
+          background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.85) 0%,
+            rgba(255, 255, 255, 0.28) 22%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.28) 78%,
+            rgba(255, 255, 255, 0.85) 100%
+          );
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor;
+          mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+          pointer-events: none;
+        }
+        .ml-vault-section > * {
+          position: relative;
+          z-index: 1;
         }
 
         /* LISTA BÓVEDA UNIFICADA */
         .ml-vault-list {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 9px;
         }
         .ml-vault-row {
           display: flex;
           align-items: center;
           gap: 11px;
-          padding: 9px 11px;
-          border-radius: 15px;
-          background: rgba(22, 26, 36, 0.78);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          transition: border-color 0.15s ease, background 0.15s ease;
+          padding: 10px 12px;
+          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.09);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+          transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
         }
         .ml-vault-row:hover {
-          background: rgba(30, 36, 50, 0.86);
-          border-color: rgba(100, 210, 255, 0.36);
+          background: rgba(255, 255, 255, 0.16);
+          border-color: rgba(140, 220, 255, 0.52);
+          transform: translateY(-1px);
         }
         .ml-thumb-wrap {
           width: 78px;
@@ -1150,8 +1211,9 @@ export default function MyLists() {
         }
         .ml-signal-card {
           border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          background: rgba(22, 26, 36, 0.8);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.09);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
           color: #ffffff;
           padding: 0;
           overflow: hidden;
@@ -1235,8 +1297,8 @@ export default function MyLists() {
           gap: 10px;
           padding: 34px 18px;
           border-radius: 18px;
-          background: rgba(22, 26, 36, 0.76);
-          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.18);
           text-align: center;
         }
         .ml-empty-card strong {

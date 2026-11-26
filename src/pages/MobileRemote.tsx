@@ -16,7 +16,6 @@ import {
   Power,
   RotateCcw,
   RotateCw,
-  Search,
   Send,
   Sparkles,
   Tv,
@@ -269,6 +268,35 @@ export default function MobileRemote() {
     }
   };
 
+  const handleQuickCastCurrent = () => {
+    const ch = syncedChannel || channels[channelIdx];
+    if (ch?.mitvItem) {
+      castItemToTv(ch.mitvItem as MiTvItem);
+      return;
+    }
+    const ytId =
+      ch?.youtubeVideoId ||
+      ch?.videoId ||
+      extractYouTubeId(ch?.videoUrl || ch?.sourceUrl || '') ||
+      '';
+    if (ytId) {
+      castItemToTv({
+        id: `quick-cast-${ytId}`,
+        provider: 'youtube',
+        providerId: ytId,
+        title: ch?.currentVideoTitle || ch?.title || ch?.name || 'Video YOUAPP',
+        author: ch?.name || 'YOUAPP TV',
+        thumbnailUrl: ch?.thumbnail || `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`,
+        sourceUrl: `https://www.youtube.com/watch?v=${ytId}`,
+        slot: 'Ahora',
+        watched: false,
+        addedAt: new Date().toISOString()
+      });
+      return;
+    }
+    setShowCastModal(true);
+  };
+
   const handleCommitPin = (e: React.FormEvent) => {
     e.preventDefault();
     const cleaned = pinDraft.replace(/\D/g, '').slice(0, 6);
@@ -337,10 +365,10 @@ export default function MobileRemote() {
             </button>
             <button
               type="button"
-              className="yr-icon-btn"
-              onClick={() => setShowCastModal(true)}
-              title="Transmitir a Chromecast / Smart TV"
-              aria-label="Cast"
+              className="yr-icon-btn yr-cast-primary-btn"
+              onClick={handleQuickCastCurrent}
+              title="Transmitir este video a la TV vinculada"
+              aria-label="Transmitir video ahora"
             >
               <Cast size={15} />
             </button>
@@ -1267,6 +1295,15 @@ export default function MobileRemote() {
           justify-content: center;
           flex-shrink: 0;
           margin-left: auto;
+        }
+        .yr-cast-primary-btn {
+          background: rgba(0, 113, 227, 0.34) !important;
+          border-color: rgba(100, 210, 255, 0.65) !important;
+          color: #d8f3ff !important;
+        }
+        .yr-cast-primary-btn:hover {
+          background: #0071e3 !important;
+          color: #ffffff !important;
         }
       `}</style>
     </div>

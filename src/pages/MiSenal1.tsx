@@ -7153,11 +7153,72 @@ export default function MiSenal1() {
           flex-shrink: 0;
         }
         @media (max-width: 640px) {
-          .ms-en-pantalla-pill {
+          .ms-hero-shell {
+            padding: 8px 10px 0 !important;
+          }
+          .ms-hero-card {
+            border-radius: 18px !important;
+          }
+          .ms-hero-cover {
+            height: 76px !important;
+            border-radius: 17px 17px 0 0 !important;
+          }
+          .ms-hero-bar {
+            padding: 10px 12px 10px !important;
+            gap: 8px !important;
+          }
+          .ms-hero-left {
+            flex: 1 1 100% !important;
+            gap: 10px !important;
+          }
+          .ms-hero-avatar-btn,
+          .ms-hero-avatar-readonly {
+            width: 44px !important;
+            height: 44px !important;
+            margin-top: -22px !important;
+          }
+          .ms-hero-actions {
+            width: 100%;
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: center;
+            gap: 6px !important;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
+          }
+          .ms-hero-actions::-webkit-scrollbar {
             display: none;
           }
+          .ms-hero-actions > * {
+            flex-shrink: 0;
+          }
+          .ms-mitv-info-bar {
+            padding: 9px 10px 7px !important;
+          }
+          .ms-mitv-top-row {
+            gap: 6px !important;
+          }
+          .ms-mitv-social-left {
+            gap: 5px !important;
+            min-width: 0 !important;
+            flex: 1 1 auto !important;
+          }
+          .ms-mitv-actions-right {
+            gap: 4px !important;
+            flex-shrink: 0 !important;
+          }
           .ms-channel-profile-pill {
-            max-width: 115px;
+            max-width: 132px !important;
+            height: 28px !important;
+            padding: 0 8px 0 5px !important;
+            font-size: 11.5px !important;
+          }
+          .ms-top-icon-btn {
+            height: 28px !important;
+            min-width: 28px !important;
+            padding: 0 6px !important;
           }
         }
         .ms-top-icon-btn {

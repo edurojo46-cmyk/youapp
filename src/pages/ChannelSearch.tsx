@@ -1869,7 +1869,11 @@ export default function ChannelSearch() {
           const ytPrimary = await primaryPromise;
           if (searchRaceRef.current !== raceId) return;
           const addedPrimary = mapYtBatch(ytPrimary);
-          mergedList = Array.from(mergedMap.values()).slice(0, 50);
+          mergedList = interleaveMultiProvider(
+            Array.from(mergedMap.values()),
+            multiProvHits,
+            queryNorm
+          ).slice(0, 50);
           if (mergedList.length > 0) {
             setResults(mergedList);
             setHasMore(mergedList.length >= 16);
@@ -1884,7 +1888,11 @@ export default function ChannelSearch() {
           if (searchRaceRef.current !== raceId) return;
           const addedAlts = mapYtBatch([...ytAlt1, ...ytAlt2]);
           if (addedAlts.length > 0) {
-            mergedList = Array.from(mergedMap.values()).slice(0, 50);
+            mergedList = interleaveMultiProvider(
+              Array.from(mergedMap.values()),
+              multiProvHits,
+              queryNorm
+            ).slice(0, 50);
             void absorbYouTubePointersToAtlas(addedAlts, categoryTag);
           }
         }

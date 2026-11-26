@@ -2760,6 +2760,7 @@ export default function MiSenal1() {
                     />
                   ) : (
                     <YouAppPlayer
+                      key={`${currentBlock.id}-${currentBlock.contentItem.providerId || currentBlock.contentItem.id}`}
                       ref={playerRef}
                       item={{
                         blockId: currentBlock.id,

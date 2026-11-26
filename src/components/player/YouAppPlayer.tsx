@@ -245,7 +245,7 @@ export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
       }
 
       controllerRef.current?.load(item);
-    }, [item.blockId]);
+    }, [item.blockId, item.providerContentId, item.playbackUrl]);
 
     useEffect(() => {
       if (resumePromptSec === null) return;

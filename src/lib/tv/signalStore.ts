@@ -150,11 +150,9 @@ export const useSignalStore = create<SignalState>()(
 
       next: () => {
         const { activeSignal, currentBlockIndex } = get();
-        if (!activeSignal || currentBlockIndex >= activeSignal.schedule.length - 1) {
-          // Reached the end
-          return;
-        }
-        const newIndex = currentBlockIndex + 1;
+        const len = activeSignal?.schedule?.length || 0;
+        if (!activeSignal || len <= 1) return;
+        const newIndex = (currentBlockIndex + 1) % len;
         set({
           currentBlockIndex: newIndex,
           currentBlockId: activeSignal.schedule[newIndex].id
@@ -163,9 +161,9 @@ export const useSignalStore = create<SignalState>()(
 
       previous: () => {
         const { activeSignal, currentBlockIndex } = get();
-        if (!activeSignal || currentBlockIndex <= 0) return;
-        
-        const newIndex = currentBlockIndex - 1;
+        const len = activeSignal?.schedule?.length || 0;
+        if (!activeSignal || len <= 1) return;
+        const newIndex = (currentBlockIndex - 1 + len) % len;
         set({
           currentBlockIndex: newIndex,
           currentBlockId: activeSignal.schedule[newIndex].id

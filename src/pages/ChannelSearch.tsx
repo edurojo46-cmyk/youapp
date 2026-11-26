@@ -1455,65 +1455,25 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
     }
   })();
 
-  // 4. Dailymotion (API pública oficial, costo $0 — guarda referencia y abre directo en Dailymotion ↗)
-  const dmPromise = (async (): Promise<SearchVideoItem[]> => {
-    try {
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 5000);
-      const dmUrl = trendingMode
-        ? `https://api.dailymotion.com/videos?languages=es&sort=visited-month&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=6&flags=no_live`
-        : `https://api.dailymotion.com/videos?search=${encodeURIComponent(clean)}&sort=relevance&fields=id,title,owner.screenname,thumbnail_480_url,duration,views_total,created_time,url&limit=6&flags=no_live`;
-      const res = await fetch(dmUrl, { signal: controller.signal });
-      window.clearTimeout(timer);
-      if (!res.ok) return [];
-      const json = await res.json();
-      const list = Array.isArray(json?.list) ? json.list : [];
-      const mapped: SearchVideoItem[] = [];
-      for (const item of list) {
-        const dmId = String(item?.id || '').trim();
-        const dur = Number(item?.duration || 0);
-        const thumb = String(item?.thumbnail_480_url || '');
-        if (!dmId || !thumb || (dur > 0 && dur <= 62)) continue;
-        const createdSec = Number(item?.created_time || 0);
-        mapped.push({
-          videoId: `dm_${dmId}`,
-          title: String(item?.title || 'Video en Dailymotion'),
-          channelName: String(item?.['owner.screenname'] || 'Dailymotion'),
-          thumbnail: thumb,
-          watchUrl: String(item?.url || `https://www.dailymotion.com/video/${dmId}`),
-          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
-          durationSeconds: dur > 0 ? dur : undefined,
-          views: typeof item?.views_total === 'number' && item.views_total > 0 ? item.views_total : undefined,
-          publishedAt: createdSec > 0 ? new Date(createdSec * 1000).toISOString() : undefined,
-          provider: 'dailymotion',
-          sourceLabel: 'Dailymotion',
-          tags: ['dailymotion']
-        });
-      }
-      return mapped;
-    } catch {
-      return [];
-    }
-  })();
-
-  const [vmHits, ptHits, arHits, dmHits] = await Promise.all([
+  // Nota: Dailymotion queda en reserva en ATLAS (`youapp_index`) y no se muestra en /search
+  // para que el usuario nunca salga de YOUAPP (100% reproducción embebida in-app).
+  const [vmHits, ptHits, arHits] = await Promise.all([
     vimeoPromise,
     peertubePromise,
-    archivePromise,
-    dmPromise
+    archivePromise
   ]);
   const out: SearchVideoItem[] = [];
   const seen = new Set<string>();
-  const maxLen = Math.max(vmHits.length, ptHits.length, arHits.length, dmHits.length);
+  const maxLen = Math.max(vmHits.length, ptHits.length, arHits.length);
   for (let i = 0; i < maxLen; i += 1) {
-    for (const it of [vmHits[i], ptHits[i], arHits[i], dmHits[i]]) {
+    for (const it of [vmHits[i], ptHits[i], arHits[i]]) {
       if (it && !seen.has(it.videoId) && it.thumbnail) {
         seen.add(it.videoId);
         out.push(it);
       }
     }
   }
-  return out.slice(0, 14);
+  return out.slice(0, 12);
 }
 
 function interleaveMultiProvider(

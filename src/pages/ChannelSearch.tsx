@@ -1444,7 +1444,7 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
           channelName: String(v?.channel?.displayName || v?.account?.displayName || 'PeerTube'),
           thumbnail: thumb,
           watchUrl: rawUrl,
-          embedUrl: `${origin}${embedPath}?autoplay=1&title=0&warningTitle=0&p2p=0&peertubeLink=0`,
+          embedUrl: `${origin}${embedPath}?autoplay=1&title=0&warningTitle=0&p2p=0&peertubeLink=0&api=1`,
           duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
           durationSeconds: dur > 0 ? dur : undefined,
           views: typeof v?.views === 'number' && v.views > 0 ? v.views : undefined,
@@ -1697,16 +1697,39 @@ export default function ChannelSearch() {
     [navigate]
   );
 
-  const sendYtCommand = useCallback((func: string, args: unknown[] = []) => {
-    try {
-      previewIframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: 'command', func, args }),
-        '*'
-      );
-    } catch {
-      // ignore cross-origin postMessage errors
-    }
-  }, []);
+  const sendYtCommand = useCallback(
+    (func: string, args: unknown[] = []) => {
+      const win = previewIframeRef.current?.contentWindow;
+      if (!win) return;
+      const prov = previewVideo?.provider || 'youtube';
+      try {
+        if (prov === 'vimeo') {
+          if (func === 'playVideo') win.postMessage(JSON.stringify({ method: 'play' }), '*');
+          else if (func === 'pauseVideo') win.postMessage(JSON.stringify({ method: 'pause' }), '*');
+          else if (func === 'mute') win.postMessage(JSON.stringify({ method: 'setVolume', value: 0 }), '*');
+          else if (func === 'unMute') win.postMessage(JSON.stringify({ method: 'setVolume', value: 1 }), '*');
+          else if (func === 'seekTo' && typeof args[0] === 'number') {
+            win.postMessage(JSON.stringify({ method: 'setCurrentTime', value: args[0] }), '*');
+          }
+          return;
+        }
+        if (prov === 'peertube') {
+          if (func === 'playVideo') win.postMessage({ type: 'api', action: 'play' }, '*');
+          else if (func === 'pauseVideo') win.postMessage({ type: 'api', action: 'pause' }, '*');
+          else if (func === 'mute') win.postMessage({ type: 'api', action: 'setVolume', value: 0 }, '*');
+          else if (func === 'unMute') win.postMessage({ type: 'api', action: 'setVolume', value: 1 }, '*');
+          else if (func === 'seekTo' && typeof args[0] === 'number') {
+            win.postMessage({ type: 'api', action: 'seek', value: args[0] }, '*');
+          }
+          return;
+        }
+        win.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
+      } catch {
+        // ignore cross-origin postMessage errors
+      }
+    },
+    [previewVideo?.provider]
+  );
 
   const scrollCategories = (dir: 'left' | 'right') => {
     const el = catScrollRef.current;
@@ -3354,8 +3377,9 @@ export default function ChannelSearch() {
                   />
                 ) : previewVideo.provider === 'vimeo' ? (
                   <iframe
+                    ref={previewIframeRef}
                     key={previewVideo.videoId}
-                    src={`https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1`}
+                    src={`https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1&api=1`}
                     title={previewVideo.title}
                     onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"
@@ -3363,6 +3387,7 @@ export default function ChannelSearch() {
                   />
                 ) : previewVideo.provider === 'peertube' && previewVideo.embedUrl ? (
                   <iframe
+                    ref={previewIframeRef}
                     key={previewVideo.videoId}
                     src={previewVideo.embedUrl}
                     title={previewVideo.title}
@@ -3372,6 +3397,7 @@ export default function ChannelSearch() {
                   />
                 ) : previewVideo.provider === 'archive' ? (
                   <iframe
+                    ref={previewIframeRef}
                     key={previewVideo.videoId}
                     src={
                       previewVideo.embedUrl ||
@@ -3387,6 +3413,7 @@ export default function ChannelSearch() {
                   />
                 ) : (previewVideo.provider === 'odysee' || previewVideo.provider === 'twitch') && previewVideo.embedUrl ? (
                   <iframe
+                    ref={previewIframeRef}
                     key={previewVideo.videoId}
                     src={previewVideo.embedUrl}
                     title={previewVideo.title}

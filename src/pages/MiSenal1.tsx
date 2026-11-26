@@ -2531,191 +2531,9 @@ export default function MiSenal1() {
 
       {/* --- ESCENARIO PRINCIPAL (REPRODUCTOR + SMARTBAR + GRILLA VERTICAL) --- */}
       <main className="ms-main">
-        {/* COLUMNA IZQUIERDA: REPRODUCTOR IGUAL A PROGRAMARTV */}
+        {/* COLUMNA IZQUIERDA: REPRODUCTOR IDÉNTICO A MITV */}
         <div className="ms-player-section">
-          {currentBlock && (() => {
-            const playingChannelName =
-              currentBlock.contentItem.channelTitle ||
-              (currentBlock.contentItem as any).channelName ||
-              activeSignal?.name ||
-              'Canal';
-            const playingAvatar = resolveKnownChannelAvatar(
-              playingChannelName,
-              (currentBlock.contentItem as any).channelAvatarUrl
-            );
-            const playingInitial = (playingChannelName.trim()[0] || 'C').toUpperCase();
-            const playingMins = Math.max(1, Math.round((currentBlock.durationSec || 60) / 60));
-            const itemAny = currentBlock.contentItem as any;
-            const currentSignalKey = activeSignal?.id || 'default-signal';
-            const isSignalLiked = socialGraph.likedSignalIds.includes(currentSignalKey);
-            const isSignalFollowed = socialGraph.followedSignalIds.includes(currentSignalKey);
-            const currentVideoUrl =
-              itemAny.videoUrl ||
-              itemAny.originUrl ||
-              (itemAny.provider === 'youtube' && (itemAny.providerId || itemAny.id)
-                ? `https://www.youtube.com/watch?v=${itemAny.providerId || itemAny.id}`
-                : '');
-            const ytSubUrl = buildYouTubeSubscribeUrl({
-              channelId: itemAny.channelId,
-              sourceUrl: itemAny.originUrl || currentVideoUrl
-            });
-            return (
-              <div className="ms-now-playing-header">
-                <button
-                  type="button"
-                  className="ms-np-avatar-btn"
-                  onClick={() =>
-                    navigate(`/canal/${slugifyChannelName(playingChannelName)}`, {
-                      state: {
-                        channelName: playingChannelName,
-                        originUrl: itemAny.originUrl,
-                        avatarUrl: playingAvatar
-                      }
-                    })
-                  }
-                  title={`Ver canal ${playingChannelName} en YOUAPP`}
-                  aria-label={`Ver canal ${playingChannelName}`}
-                >
-                  {playingAvatar ? (
-                    <img src={playingAvatar} alt={playingChannelName} />
-                  ) : (
-                    <span>{playingInitial}</span>
-                  )}
-                </button>
-                <div className="ms-np-meta">
-                  <h1 className="ms-np-title">{currentBlock.contentItem.title}</h1>
-                  <div className="ms-np-sub">
-                    <button
-                      type="button"
-                      className="ms-np-channel-link"
-                      onClick={() =>
-                        navigate(`/canal/${slugifyChannelName(playingChannelName)}`, {
-                          state: {
-                            channelName: playingChannelName,
-                            originUrl: itemAny.originUrl,
-                            avatarUrl: playingAvatar
-                          }
-                        })
-                      }
-                    >
-                      {playingChannelName}
-                    </button>
-                    <span className="ms-np-sep">·</span>
-                    <span>{playingMins} min</span>
-                    {(() => {
-                      const rawViews =
-                        playingVideoMeta?.viewCount ??
-                        (typeof itemAny.viewCount === 'number'
-                          ? itemAny.viewCount
-                          : typeof itemAny.views === 'number'
-                            ? itemAny.views
-                            : null);
-                      const rawPub = playingVideoMeta?.publishedAt || itemAny.publishedAt || null;
-                      const viewsLabel = formatCompactViews(
-                        rawViews,
-                        playingVideoMeta?.isLive || Boolean(itemAny.isLive)
-                      );
-                      const dateLabel = formatPublishedDateEs(rawPub);
-                      return (
-                        <>
-                          {viewsLabel && (
-                            <>
-                              <span className="ms-np-sep">·</span>
-                              <span>{viewsLabel}</span>
-                            </>
-                          )}
-                          {dateLabel && (
-                            <>
-                              <span className="ms-np-sep">·</span>
-                              <span>Publicado el {dateLabel}</span>
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-
-                {/* Comunidad propia de YOUAPP (separada de YouTube) */}
-                <div className="ms-np-social" aria-label="Acciones en YOUAPP">
-                  <button
-                    type="button"
-                    className={`ms-np-pill ${isSignalLiked ? 'liked' : ''}`}
-                    onClick={() =>
-                      setSocialGraph((prev) => {
-                        const { next } = toggleInList(prev.likedSignalIds, currentSignalKey);
-                        return saveSocialGraph({ ...prev, likedSignalIds: next });
-                      })
-                    }
-                    title="Me gusta esta señal en YOUAPP"
-                  >
-                    <Heart size={13} fill={isSignalLiked ? '#ff2d55' : 'none'} />
-                    <span>{isSignalLiked ? 'Te gusta' : 'Me gusta'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`ms-np-pill ${isSignalFollowed ? 'following' : ''}`}
-                    onClick={() => {
-                      const willSubscribe = !isSignalFollowed;
-                      setSocialGraph((prev) => {
-                        const { next } = toggleInList(prev.followedSignalIds, currentSignalKey);
-                        return saveSocialGraph({ ...prev, followedSignalIds: next });
-                      });
-                      if (willSubscribe && ytSubUrl) {
-                        window.open(
-                          ytSubUrl,
-                          'youapp_yt_sub',
-                          'width=540,height=660,noopener,noreferrer'
-                        );
-                        setCuratedToast(
-                          `Suscripto a «${activeSignal?.name || 'Mi Señal'}» en YOUAPP · Confirmá también en YouTube.`
-                        );
-                      } else {
-                        setCuratedToast(
-                          willSubscribe
-                            ? `Suscripto a «${activeSignal?.name || 'Mi Señal'}» en YOUAPP.`
-                            : `Suscripción quitada de «${activeSignal?.name || 'Mi Señal'}».`
-                        );
-                      }
-                    }}
-                    title={
-                      ytSubUrl
-                        ? 'Suscripción universal: te suscribe en YOUAPP y abre la confirmación oficial en YouTube'
-                        : 'Suscribirse a esta señal en YOUAPP'
-                    }
-                  >
-                    {isSignalFollowed ? <UserCheck size={13} /> : <UserPlus size={13} />}
-                    <span>
-                      {isSignalFollowed
-                        ? 'Suscripto'
-                        : ytSubUrl
-                          ? 'Suscribirse'
-                          : 'Seguir'}
-                    </span>
-                  </button>
-                  {currentVideoUrl && (
-                    <button
-                      type="button"
-                      className="ms-np-pill mitv"
-                      onClick={() =>
-                        navigate(
-                          `/mitv?add=${encodeURIComponent(currentVideoUrl)}&t=${encodeURIComponent(
-                            currentBlock.contentItem.title || ''
-                          )}`
-                        )
-                      }
-                      title="Sumar este video a tu programación de MiTV"
-                    >
-                      <Plus size={13} />
-                      <span>Mi TV</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Tarjeta unificada del reproductor (Video + Botonera + SmartBar integrados como en MiTV) */}
+          {/* Tarjeta unificada del reproductor (Video + Franja MiTV + SmartBar 3 puntos) */}
           <section className={`ms-player-card ${isStageExpanded ? 'is-expanded' : ''}`}>
           <div
             className="you-tv-stage ms-stage-box"
@@ -3041,7 +2859,11 @@ export default function MiSenal1() {
             const likeCount = socialGraph?.videoLikeCounts?.[likeKey] ?? 0;
             const followKey = `creator:${authorName.toLowerCase()}`;
             const isFollowed = Boolean(socialGraph?.followedCreatorKeys?.includes(followKey));
-            const ytSubUrl = buildYouTubeSubscribeUrl(sourceUrl, authorName);
+            const ytSubUrl = buildYouTubeSubscribeUrl({
+              channelId: ci?.channelId,
+              sourceUrl: ci?.originUrl || sourceUrl
+            });
+            const channelAvatar = resolveKnownChannelAvatar(authorName, ci?.channelAvatarUrl);
             const viewsLabel = formatCompactViews(playingVideoMeta?.viewCount, Boolean(playingVideoMeta?.isLive));
             const dateLabel = formatPublishedDateEs(playingVideoMeta?.publishedAt || ci?.publishedAt);
 
@@ -3049,6 +2871,7 @@ export default function MiSenal1() {
               <div className="ms-mitv-info-bar">
                 <div className="ms-mitv-top-row">
                   <div className="ms-mitv-social-left">
+                    <span className="ms-en-pantalla-pill">EN PANTALLA</span>
                     <button
                       type="button"
                       className={`ms-top-icon-btn ${likeCount > 0 ? 'has-count' : ''} ${isLiked ? 'is-liked' : ''}`}
@@ -3108,10 +2931,25 @@ export default function MiSenal1() {
                     <button
                       type="button"
                       className="ms-channel-profile-pill"
-                      onClick={() => navigate(`/search?q=${encodeURIComponent(authorName)}`)}
-                      title={`Ver perfil y videos de ${authorName}`}
+                      onClick={() =>
+                        navigate(`/canal/${slugifyChannelName(authorName)}`, {
+                          state: {
+                            channelName: authorName,
+                            originUrl: ci?.originUrl || sourceUrl,
+                            avatarUrl: channelAvatar
+                          }
+                        })
+                      }
+                      title={`Ver perfil del canal ${authorName}`}
                     >
-                      <span>{authorName}</span>
+                      {channelAvatar && (
+                        <img
+                          src={channelAvatar}
+                          alt=""
+                          style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                        />
+                      )}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{authorName}</span>
                     </button>
                   </div>
 
@@ -7045,7 +6883,23 @@ export default function MiSenal1() {
           font-size: 11px;
           font-variant-numeric: tabular-nums;
         }
+        .ms-en-pantalla-pill {
+          display: inline-flex;
+          align-items: center;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: rgba(10, 132, 255, 0.22);
+          border: 1px solid rgba(100, 210, 255, 0.45);
+          color: #7dd3fc;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          flex-shrink: 0;
+        }
         .ms-channel-profile-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           max-width: 170px;
           height: 30px;
           padding: 0 11px;

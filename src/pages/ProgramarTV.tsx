@@ -2493,7 +2493,26 @@ export default function ProgramarTV() {
             <div className="mitv-smartbar-slot" style={{ position: 'relative' }} ref={castBoxRef}>
               {isCastOpen && (
                 <div className="mitv-cast-popover" role="dialog" aria-label="Transmitir YOUAPP">
-                  <div className="mitv-cast-head">Transmitir / Control Remoto</div>
+                  <div className="mitv-cast-head">Transmitir a tu TV</div>
+
+                  {typeof (window as any).YouAppAndroidPiP?.openCastSettings === 'function' && (
+                    <>
+                      <button
+                        type="button"
+                        className="mitv-ch-option"
+                        onClick={() => {
+                          setIsCastOpen(false);
+                          (window as any).YouAppAndroidPiP.openCastSettings();
+                        }}
+                      >
+                        <span className="mitv-ch-option-name">
+                          <Cast size={14} color="#30d158" />
+                          <span>Elegir mi TV / Chromecast ahora</span>
+                        </span>
+                      </button>
+                      <div className="mitv-cast-divider" />
+                    </>
+                  )}
 
                   <button
                     type="button"

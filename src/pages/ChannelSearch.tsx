@@ -69,7 +69,6 @@ import {
 import { passesCategoryGate } from '../lib/search/categoryGate';
 import { SmartBar } from '../components/smartbar/SmartBar';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
-import { PeerTubePlayer } from '@peertube/embed-api';
 import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
 import { setGlobalMiniVideo } from '../components/player/GlobalMiniPlayer';
 import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
@@ -1627,7 +1626,6 @@ export default function ChannelSearch() {
   const previewRef = useRef<HTMLElement>(null);
   const previewSentinelRef = useRef<HTMLDivElement>(null);
   const previewIframeRef = useRef<HTMLIFrameElement>(null);
-  const peertubePlayerRef = useRef<PeerTubePlayer | null>(null);
   const searchRaceRef = useRef(0);
 
   const [previewIsPlaying, setPreviewIsPlaying] = useState(true);
@@ -1716,25 +1714,14 @@ export default function ChannelSearch() {
           return;
         }
         if (prov === 'peertube') {
-          let pt = peertubePlayerRef.current;
-          if (!pt && previewIframeRef.current) {
-            pt = new PeerTubePlayer(previewIframeRef.current);
-            peertubePlayerRef.current = pt;
+          const id = Date.now() % 1000000;
+          if (func === 'playVideo') win.postMessage(JSON.stringify({ method: 'peertube::play', id }), '*');
+          else if (func === 'pauseVideo') win.postMessage(JSON.stringify({ method: 'peertube::pause', id }), '*');
+          else if (func === 'mute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 0, id }), '*');
+          else if (func === 'unMute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 1, id }), '*');
+          else if (func === 'seekTo' && typeof args[0] === 'number') {
+            win.postMessage(JSON.stringify({ method: 'peertube::seek', params: args[0], id }), '*');
           }
-          if (!pt) return;
-          const runPt = async () => {
-            try {
-              await pt!.ready;
-              if (func === 'playVideo') await pt!.play();
-              else if (func === 'pauseVideo') await pt!.pause();
-              else if (func === 'mute') await pt!.setVolume(0);
-              else if (func === 'unMute') await pt!.setVolume(1);
-              else if (func === 'seekTo' && typeof args[0] === 'number') await pt!.seek(args[0]);
-            } catch {
-              // ignore
-            }
-          };
-          void runPt();
           return;
         }
         win.postMessage(JSON.stringify({ event: 'command', func, args }), '*');
@@ -2382,17 +2369,7 @@ export default function ChannelSearch() {
   // Sincroniza el video activo con el Mini-reproductor Global para que te acompañe al ir a /lecturas u otras secciones
   useEffect(() => {
     setIsPreviewFrameReady(false);
-    peertubePlayerRef.current = null;
     if (!previewVideo) return;
-    if (previewVideo.provider === 'peertube' && previewIframeRef.current) {
-      try {
-        const pt = new PeerTubePlayer(previewIframeRef.current);
-        peertubePlayerRef.current = pt;
-        void pt.ready.catch(() => {});
-      } catch {
-        // ignore
-      }
-    }
     setGlobalMiniVideo({
       videoId: previewVideo.videoId,
       title: previewVideo.title,
@@ -3415,18 +3392,7 @@ export default function ChannelSearch() {
                     key={previewVideo.videoId}
                     src={previewVideo.embedUrl}
                     title={previewVideo.title}
-                    onLoad={() => {
-                      setIsPreviewFrameReady(true);
-                      if (!peertubePlayerRef.current && previewIframeRef.current) {
-                        try {
-                          const pt = new PeerTubePlayer(previewIframeRef.current);
-                          peertubePlayerRef.current = pt;
-                          void pt.ready.catch(() => {});
-                        } catch {
-                          // ignore
-                        }
-                      }
-                    }}
+                    onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />

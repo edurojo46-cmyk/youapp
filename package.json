@@ -12,7 +12,6 @@
   "dependencies": {
     "@google/genai": "^2.31.0",
     "@orama/orama": "^3.1.18",
-    "@peertube/embed-api": "^0.2.0",
     "@supabase/supabase-js": "^2.112.3",
     "@types/cheerio": "^0.22.35",
     "@types/cors": "^2.8.19",
@@ -25,7 +24,6 @@
     "fix-webm-duration": "^1.0.6",
     "hls.js": "^1.7.0",
     "idb": "^8.0.3",
-    "jschannel": "^1.0.2",
     "lucide-react": "^1.31.0",
     "maplibre-gl": "^6.15.0",
     "nostr-tools": "^2.25.2",

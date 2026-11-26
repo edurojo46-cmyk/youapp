@@ -1444,7 +1444,7 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
           channelName: String(v?.channel?.displayName || v?.account?.displayName || 'PeerTube'),
           thumbnail: thumb,
           watchUrl: rawUrl,
-          embedUrl: `${origin}${embedPath}?autoplay=1&title=0&warningTitle=0`,
+          embedUrl: `${origin}${embedPath}?autoplay=1&title=0&warningTitle=0&p2p=0&peertubeLink=0`,
           duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
           durationSeconds: dur > 0 ? dur : undefined,
           views: typeof v?.views === 'number' && v.views > 0 ? v.views : undefined,
@@ -1629,6 +1629,7 @@ export default function ChannelSearch() {
   const searchRaceRef = useRef(0);
 
   const [previewIsPlaying, setPreviewIsPlaying] = useState(true);
+  const [isPreviewFrameReady, setIsPreviewFrameReady] = useState(false);
   const [isMiniPlayerManual, setIsMiniPlayerManual] = useState(false);
   const [isScrolledPastPlayer, setIsScrolledPastPlayer] = useState(false);
   const [lockedSlotHeight, setLockedSlotHeight] = useState<number>(0);
@@ -2343,6 +2344,7 @@ export default function ChannelSearch() {
 
   // Sincroniza el video activo con el Mini-reproductor Global para que te acompañe al ir a /lecturas u otras secciones
   useEffect(() => {
+    setIsPreviewFrameReady(false);
     if (!previewVideo) return;
     setGlobalMiniVideo({
       videoId: previewVideo.videoId,
@@ -3334,6 +3336,15 @@ export default function ChannelSearch() {
               </div>
             ) : (
               <div className="ys-preview-video-wrap">
+                {!isPreviewFrameReady && previewVideo.thumbnail && (
+                  <div className="ys-preview-loading-poster" aria-hidden="true">
+                    <img src={previewVideo.thumbnail} alt="" />
+                    <div className="ys-preview-loading-pill">
+                      <Loader2 size={14} className="ys-spin" />
+                      <span>Cargando {previewVideo.sourceLabel || 'video'}…</span>
+                    </div>
+                  </div>
+                )}
                 {previewVideo.provider === 'dailymotion' ? (
                   <DailymotionOfficialPlayer
                     key={previewVideo.videoId}
@@ -3346,6 +3357,7 @@ export default function ChannelSearch() {
                     key={previewVideo.videoId}
                     src={`https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&dnt=1`}
                     title={previewVideo.title}
+                    onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />
@@ -3354,6 +3366,7 @@ export default function ChannelSearch() {
                     key={previewVideo.videoId}
                     src={previewVideo.embedUrl}
                     title={previewVideo.title}
+                    onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />
@@ -3367,6 +3380,7 @@ export default function ChannelSearch() {
                     title={previewVideo.title}
                     frameBorder="0"
                     referrerPolicy="no-referrer"
+                    onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
@@ -3376,6 +3390,7 @@ export default function ChannelSearch() {
                     key={previewVideo.videoId}
                     src={previewVideo.embedUrl}
                     title={previewVideo.title}
+                    onLoad={() => setIsPreviewFrameReady(true)}
                     allow="autoplay; fullscreen; picture-in-picture"
                     allowFullScreen
                   />
@@ -3385,6 +3400,7 @@ export default function ChannelSearch() {
                     key={previewVideo.videoId}
                     src={`https://www.youtube.com/embed/${previewVideo.videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1`}
                     title={previewVideo.title}
+                    onLoad={() => setIsPreviewFrameReady(true)}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                   />
@@ -4837,6 +4853,40 @@ export default function ChannelSearch() {
           background: #000000;
           border-radius: 18px 18px 0 0;
           overflow: hidden;
+        }
+        .ys-preview-loading-poster {
+          position: absolute;
+          inset: 0;
+          z-index: 3;
+          pointer-events: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #05070c;
+        }
+        .ys-preview-loading-poster img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          opacity: 0.48;
+          filter: blur(2px) scale(1.03);
+        }
+        .ys-preview-loading-pill {
+          position: relative;
+          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 7px 14px;
+          border-radius: 999px;
+          background: rgba(12, 16, 24, 0.85);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          color: #f5f5f7;
+          font-size: 12px;
+          font-weight: 650;
+          backdrop-filter: blur(10px);
         }
         .ys-preview-smartbar {
           padding: 0 12px 10px;

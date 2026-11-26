@@ -35,6 +35,7 @@ import {
   Cast,
   Maximize2,
   Minimize2,
+  PictureInPicture2,
   Tv,
   LayoutGrid,
   Bell,
@@ -62,6 +63,7 @@ import {
 import { usePlayerStore } from '../store/usePlayerStore';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
+import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { SignalAssociatedRepeatersRail } from '../components/tv/SignalAssociatedRepeatersRail';
 import { CuratedSignalsDiscoverSection } from '../components/tv/CuratedSignalsDiscoverSection';
 import { SignalPollsDrawer } from '../components/tv/SignalPollsDrawer';
@@ -79,7 +81,9 @@ import {
   loadSocialGraph,
   loadSocialGraphFromCloud,
   saveSocialGraph,
+  toggleFollowCreatorWithMeta,
   toggleInList,
+  toggleLikeVideoWithMeta,
   type VideoPublicMeta,
   type YouAppSocialGraph
 } from '../lib/tv/youappSocialStore';
@@ -3019,6 +3023,180 @@ export default function MiSenal1() {
               </div>
             )}
           </div>
+
+          {/* BARRA EDITORIAL + ACCIONES IDÉNTICA A MITV (❤️ Me gusta · 👤 Seguir / Perfil del canal · 📤 Compartir · 🪟 PiP · ⛶ Agrandar) */}
+          {currentBlock && (() => {
+            const ci = currentBlock.contentItem as any;
+            const ytId =
+              (ci?.providerId && /^[A-Za-z0-9_-]{11}$/.test(String(ci.providerId)) && String(ci.providerId)) ||
+              (ci?.id && /^[A-Za-z0-9_-]{11}$/.test(String(ci.id)) && String(ci.id)) ||
+              '';
+            const sourceUrl =
+              ci?.sourceUrl ||
+              ci?.url ||
+              (ytId ? `https://www.youtube.com/watch?v=${ytId}` : window.location.href);
+            const authorName = ci?.channelTitle || ci?.author || activeSignal?.name || 'YOUAPP';
+            const likeKey = ytId ? `yt:${ytId}` : `ms:${ci?.id || currentBlock.id}`;
+            const isLiked = socialGraph.likedVideoKeys.includes(likeKey);
+            const likeCount = (socialGraph.videoLikeCounts?.[likeKey] ?? 0) + (isLiked ? 0 : 0);
+            const followKey = `creator:${authorName.toLowerCase()}`;
+            const isFollowed = socialGraph.followedCreatorKeys.includes(followKey);
+            const ytSubUrl = buildYouTubeSubscribeUrl(sourceUrl, authorName);
+            const viewsLabel = formatCompactViews(playingVideoMeta?.viewCount, Boolean(playingVideoMeta?.isLive));
+            const dateLabel = formatPublishedDateEs(playingVideoMeta?.publishedAt || ci?.publishedAt);
+
+            return (
+              <div className="ms-mitv-info-bar">
+                <div className="ms-mitv-top-row">
+                  <div className="ms-mitv-social-left">
+                    <button
+                      type="button"
+                      className={`ms-top-icon-btn ${likeCount > 0 ? 'has-count' : ''} ${isLiked ? 'is-liked' : ''}`}
+                      onClick={() => {
+                        setSocialGraph((prev) => {
+                          const res = toggleLikeVideoWithMeta(prev, {
+                            key: likeKey,
+                            title: ci?.title || 'Video',
+                            author: authorName,
+                            thumbnailUrl:
+                              ci?.thumbnail ||
+                              ci?.thumbnailUrl ||
+                              (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : ''),
+                            sourceUrl
+                          });
+                          setCuratedToast(res.active ? `❤️ Te gusta (${res.count})` : 'Me gusta quitado.');
+                          return res.graph;
+                        });
+                      }}
+                      title={isLiked ? `Te gusta (${likeCount})` : 'Me gusta'}
+                      aria-label="Me gusta"
+                      aria-pressed={isLiked}
+                    >
+                      <Heart size={14} fill={isLiked ? '#ff375f' : 'none'} strokeWidth={2.1} />
+                      {likeCount > 0 && <span className="ms-like-count">{likeCount}</span>}
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`ms-top-icon-btn ${isFollowed ? 'is-subbed' : ''}`}
+                      onClick={() => {
+                        const willSub = !isFollowed;
+                        setSocialGraph((prev) =>
+                          toggleFollowCreatorWithMeta(prev, {
+                            key: followKey,
+                            name: authorName,
+                            provider: ci?.provider || 'youtube',
+                            sourceUrl
+                          }).graph
+                        );
+                        if (willSub && ytSubUrl) {
+                          window.open(ytSubUrl, 'youapp_yt_sub', 'width=540,height=660,noopener,noreferrer');
+                          setCuratedToast(`Siguiendo a «${authorName}» en YOUAPP y YouTube.`);
+                        } else {
+                          setCuratedToast(
+                            willSub ? `Siguiendo a «${authorName}».` : `Dejaste de seguir a «${authorName}».`
+                          );
+                        }
+                      }}
+                      title={isFollowed ? 'Siguiendo canal' : 'Seguir / Suscribirse al canal'}
+                      aria-label={isFollowed ? 'Siguiendo canal' : 'Seguir canal'}
+                      aria-pressed={isFollowed}
+                    >
+                      {isFollowed ? <UserCheck size={15} strokeWidth={2.2} /> : <UserPlus size={15} strokeWidth={2.1} />}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ms-channel-profile-pill"
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(authorName)}`)}
+                      title={`Ver perfil y videos de ${authorName}`}
+                    >
+                      <span>{authorName}</span>
+                    </button>
+                  </div>
+
+                  <div className="ms-mitv-actions-right">
+                    <button
+                      type="button"
+                      className="ms-top-icon-btn"
+                      onClick={async () => {
+                        const shareUrl = ytId
+                          ? `https://youapptv.com/mitv?add=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`
+                          : window.location.href;
+                        await shareContentUniversal({
+                          title: `${ci?.title || activeSignal?.name || 'Mi Señal'} · YOUAPP`,
+                          text: `Mirá «${ci?.title || activeSignal?.name}» en YOUAPP`,
+                          url: shareUrl
+                        });
+                      }}
+                      title="Compartir este video"
+                      aria-label="Compartir"
+                    >
+                      <Share2 size={14} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ms-top-icon-btn"
+                      onClick={async () => {
+                        const androidBridge = (window as any).YouAppAndroidPiP;
+                        if (androidBridge && typeof androidBridge.enterPiP === 'function') {
+                          androidBridge.enterPiP();
+                          return;
+                        }
+                        const docPiP = (window as any).documentPictureInPicture;
+                        if (docPiP && typeof docPiP.requestWindow === 'function' && ytId) {
+                          try {
+                            if (docPiP.window && !docPiP.window.closed) {
+                              docPiP.window.close();
+                              return;
+                            }
+                            const pipParams = new URLSearchParams({ provider: 'youtube', id: ytId });
+                            const pipWin: Window = await docPiP.requestWindow({ width: 420, height: 245 });
+                            pipWin.document.title = `${ci?.title || 'YOUAPP'} · YOUAPP`;
+                            pipWin.document.body.style.cssText =
+                              'margin:0;background:#000;overflow:hidden;width:100vw;height:100vh;';
+                            const ifr = pipWin.document.createElement('iframe');
+                            ifr.src = `${window.location.origin}/pip-frame?${pipParams.toString()}`;
+                            ifr.allow =
+                              'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+                            ifr.allowFullscreen = true;
+                            ifr.style.cssText = 'border:0;width:100%;height:100%;display:block;';
+                            pipWin.document.body.appendChild(ifr);
+                            return;
+                          } catch {
+                            // ignore
+                          }
+                        }
+                        setCuratedToast('En la APK Android o PC Chrome/Edge abre la ventana flotante PiP.');
+                      }}
+                      title="Ventana flotante (Picture-in-Picture)"
+                      aria-label="Ventana flotante PiP"
+                    >
+                      <PictureInPicture2 size={14} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ms-top-icon-btn"
+                      onClick={() => setIsStageExpanded((v) => !v)}
+                      title={isStageExpanded ? 'Salir de pantalla ampliada' : 'Agrandar pantalla'}
+                      aria-label={isStageExpanded ? 'Salir de pantalla ampliada' : 'Agrandar pantalla'}
+                    >
+                      {isStageExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <strong className="ms-mitv-title">{ci?.title || activeSignal?.name}</strong>
+                {(viewsLabel || dateLabel) && (
+                  <span className="ms-mitv-meta">
+                    {[viewsLabel, dateLabel].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
 
           {/* BARRA INTELIGENTE UNIFICADA ESTILO MITV (3 puntos: 🟠 Momentos · 🔵 YOU4 · 🟢 Transmitir + Controles) */}
           <div className="ms-smartbar-slot" style={{ position: 'relative' }} ref={castBoxRef}>
@@ -6810,6 +6988,96 @@ export default function MiSenal1() {
         .ms-popover-anchor {
           position: relative;
           display: inline-flex;
+        }
+        .ms-mitv-info-bar {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding: 10px 12px 8px;
+          background: rgba(16, 18, 24, 0.72);
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .ms-mitv-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .ms-mitv-social-left,
+        .ms-mitv-actions-right {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 0;
+        }
+        .ms-top-icon-btn {
+          height: 30px;
+          min-width: 30px;
+          padding: 0 8px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.08);
+          color: #f5f5f7;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          font-size: 11.5px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .ms-top-icon-btn:hover {
+          background: rgba(255, 255, 255, 0.16);
+          border-color: rgba(100, 210, 255, 0.45);
+        }
+        .ms-top-icon-btn.is-liked {
+          background: rgba(255, 55, 95, 0.2);
+          border-color: rgba(255, 55, 95, 0.55);
+          color: #ff6b8a;
+        }
+        .ms-top-icon-btn.is-subbed {
+          background: rgba(10, 132, 255, 0.24);
+          border-color: rgba(100, 210, 255, 0.6);
+          color: #7dd3fc;
+        }
+        .ms-like-count {
+          font-size: 11px;
+          font-variant-numeric: tabular-nums;
+        }
+        .ms-channel-profile-pill {
+          max-width: 170px;
+          height: 30px;
+          padding: 0 11px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.08);
+          color: #e6f4ff;
+          font-size: 12px;
+          font-weight: 650;
+          cursor: pointer;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ms-channel-profile-pill:hover {
+          background: rgba(10, 132, 255, 0.24);
+          border-color: rgba(100, 210, 255, 0.55);
+          color: #ffffff;
+        }
+        .ms-mitv-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: #ffffff;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .ms-mitv-meta {
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.64);
         }
         .ms-cast-popover {
           position: absolute;

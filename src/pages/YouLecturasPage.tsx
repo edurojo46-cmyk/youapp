@@ -160,10 +160,10 @@ export default function YouLecturasPage() {
     );
   }, []);
 
-  // Auto-hidrata fotos, títulos y bajadas faltantes en artículos ya guardados (ej. diarios sin foto previa)
+  // Auto-hidrata fotos, bajadas y soporte iframe (embeddable) en artículos ya guardados
   useEffect(() => {
     const missing = workspace.items
-      .filter((it) => (!it.thumbnailUrl || !it.description) && !hydratedIdsRef.current.has(it.id))
+      .filter((it) => (!it.thumbnailUrl || !it.description || !it.embeddable) && !hydratedIdsRef.current.has(it.id))
       .slice(0, 6);
     if (missing.length === 0) return;
 
@@ -198,11 +198,13 @@ export default function YouLecturasPage() {
                 ? up.title
                 : it.title;
             const nextPub = it.publishedAt || up.publishedAt;
+            const nextEmbed = it.embeddable || up.embeddable;
             if (
               nextThumb !== it.thumbnailUrl ||
               nextDesc !== it.description ||
               nextTitle !== it.title ||
-              nextPub !== it.publishedAt
+              nextPub !== it.publishedAt ||
+              nextEmbed !== it.embeddable
             ) {
               changed = true;
               return {
@@ -210,7 +212,8 @@ export default function YouLecturasPage() {
                 thumbnailUrl: nextThumb,
                 description: nextDesc,
                 title: nextTitle,
-                publishedAt: nextPub
+                publishedAt: nextPub,
+                embeddable: nextEmbed
               };
             }
             return it;

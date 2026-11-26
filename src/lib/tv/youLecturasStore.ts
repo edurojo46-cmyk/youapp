@@ -179,6 +179,18 @@ export async function resolveWebPointer(
             publishedAt = d.date.trim();
           }
         }
+        // Verifica encabezados reales de Microlink para saber si el diario permite vista embebida en iframe
+        const hdrs = mlJson?.headers && typeof mlJson.headers === 'object' ? mlJson.headers : null;
+        if (hdrs) {
+          const xfo = String(hdrs['x-frame-options'] || hdrs['X-Frame-Options'] || '').toLowerCase();
+          const csp = String(hdrs['content-security-policy'] || hdrs['Content-Security-Policy'] || '').toLowerCase();
+          const faMatch = csp.match(/frame-ancestors\s+([^;]+)/i);
+          const blocksFrame =
+            xfo.includes('deny') ||
+            xfo.includes('sameorigin') ||
+            Boolean(faMatch && !faMatch[1].includes('*'));
+          embeddable = !blocksFrame;
+        }
       }
     } catch {
       // fallback silencioso

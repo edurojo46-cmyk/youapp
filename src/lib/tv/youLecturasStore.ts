@@ -407,3 +407,245 @@ export async function loadLecturasFromCloud(): Promise<LecturasWorkspace | null>
     return null;
   }
 }
+
+export interface PortalLatestGroup {
+  portalId: string;
+  portalName: string;
+  domain: string;
+  homeUrl: string;
+  items: LecturaItem[];
+}
+
+export const PORTAL_FEED_DEFS: Array<{
+  id: string;
+  name: string;
+  domain: string;
+  homeUrl: string;
+  rssUrl: string;
+  fallbackRssUrl?: string;
+}> = [
+  {
+    id: 'infobae',
+    name: 'Infobae',
+    domain: 'infobae.com',
+    homeUrl: 'https://www.infobae.com/',
+    rssUrl: 'https://www.infobae.com/arc/outboundfeeds/rss/'
+  },
+  {
+    id: 'clarin',
+    name: 'Clarín',
+    domain: 'clarin.com',
+    homeUrl: 'https://www.clarin.com/',
+    rssUrl: 'https://www.clarin.com/rss/lo-ultimo/'
+  },
+  {
+    id: 'lanacion',
+    name: 'La Nación',
+    domain: 'lanacion.com.ar',
+    homeUrl: 'https://www.lanacion.com.ar/',
+    rssUrl: 'https://www.lanacion.com.ar/arc/outboundfeeds/rss/'
+  },
+  {
+    id: 'tn',
+    name: 'TN',
+    domain: 'tn.com.ar',
+    homeUrl: 'https://tn.com.ar/',
+    rssUrl: 'https://news.google.com/rss/search?q=site:tn.com.ar&hl=es-419&gl=AR&ceid=AR:es-419',
+    fallbackRssUrl: 'https://tn.com.ar/arc/outboundfeeds/rss/'
+  },
+  {
+    id: 'bbc',
+    name: 'BBC Mundo',
+    domain: 'bbc.com',
+    homeUrl: 'https://www.bbc.com/mundo',
+    rssUrl: 'https://feeds.bbci.co.uk/mundo/rss.xml'
+  },
+  {
+    id: 'elpais',
+    name: 'El País',
+    domain: 'elpais.com',
+    homeUrl: 'https://elpais.com/',
+    rssUrl: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada'
+  }
+];
+
+const PORTALS_CACHE_KEY = 'youapp_lecturas_portals_v1';
+const PORTALS_CACHE_TTL_MS = 12 * 60 * 1000;
+
+function stripHtmlText(raw: string): string {
+  return String(raw || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function loadCachedPortalsLatest(): PortalLatestGroup[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(PORTALS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.groups)) return null;
+    if (typeof parsed.expiresAt === 'number' && parsed.expiresAt > Date.now()) {
+      return parsed.groups as PortalLatestGroup[];
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedPortalsLatest(groups: PortalLatestGroup[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(
+      PORTALS_CACHE_KEY,
+      JSON.stringify({
+        groups,
+        expiresAt: Date.now() + PORTALS_CACHE_TTL_MS
+      })
+    );
+  } catch {
+    // ignore quota
+  }
+}
+
+async function fetchPortalViaRss2Json(
+  def: (typeof PORTAL_FEED_DEFS)[number],
+  perPortal: number
+): Promise<LecturaItem[]> {
+  const urlsToTry = [def.rssUrl, ...(def.fallbackRssUrl ? [def.fallbackRssUrl] : [])];
+  const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(def.domain)}&sz=64`;
+  for (const rssUrl of urlsToTry) {
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 5500);
+      const res = await fetch(
+        `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`,
+        { signal: controller.signal }
+      );
+      window.clearTimeout(timer);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data?.status !== 'ok' || !Array.isArray(data?.items) || data.items.length === 0) continue;
+      const nowIso = new Date().toISOString();
+      return data.items.slice(0, perPortal).map((it: any, idx: number): LecturaItem => {
+        const thumb =
+          (typeof it?.thumbnail === 'string' && /^https?:\/\//i.test(it.thumbnail) && it.thumbnail) ||
+          (typeof it?.enclosure?.link === 'string' &&
+            /^https?:\/\//i.test(it.enclosure.link) &&
+            it.enclosure.link) ||
+          '';
+        return {
+          id: `portal-${def.id}-${idx}-${String(it?.link || '').slice(-12)}`,
+          url: String(it?.link || def.homeUrl),
+          title: stripHtmlText(it?.title || def.name).slice(0, 160),
+          description: stripHtmlText(it?.description || '').slice(0, 220),
+          sourceName: def.name,
+          domain: def.domain,
+          thumbnailUrl: thumb,
+          faviconUrl,
+          publishedAt: typeof it?.pubDate === 'string' ? it.pubDate : null,
+          topic: 'Actualidad',
+          read: false,
+          favorite: false,
+          embeddable: false,
+          addedAt: nowIso
+        };
+      });
+    } catch {
+      // try next url
+    }
+  }
+  return [];
+}
+
+/** Obtiene las 3 últimas notas en vivo de cada portal (caché 12 min · local Vite API o fallback CORS público) */
+export async function fetchPortalsLatest(perPortal = 3, forceRefresh = false): Promise<PortalLatestGroup[]> {
+  if (!forceRefresh) {
+    const cached = loadCachedPortalsLatest();
+    if (cached && cached.some((g) => g.items.length > 0)) {
+      return cached;
+    }
+  }
+
+  // 1. Middleware local Vite (localhost / LAN Wi-Fi) — ultra rápido y sin límites CORS
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      /^192\.168\./.test(window.location.hostname))
+  ) {
+    try {
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), 6500);
+      const res = await fetch(`/api/lecturas/portals-latest?perPortal=${perPortal}`, {
+        signal: controller.signal
+      });
+      window.clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.ok && Array.isArray(data.sections) && data.sections.length > 0) {
+          const nowIso = new Date().toISOString();
+          const groups: PortalLatestGroup[] = data.sections.map((sec: any) => {
+            const faviconUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(sec.domain)}&sz=64`;
+            return {
+              portalId: sec.portalId,
+              portalName: sec.portalName,
+              domain: sec.domain,
+              homeUrl: sec.homeUrl,
+              items: (Array.isArray(sec.items) ? sec.items : []).slice(0, perPortal).map(
+                (it: any, idx: number): LecturaItem => ({
+                  id: `portal-${sec.portalId}-${idx}-${String(it.url || '').slice(-12)}`,
+                  url: String(it.url || sec.homeUrl),
+                  title: String(it.title || sec.portalName).slice(0, 160),
+                  description: String(it.description || '').slice(0, 220),
+                  sourceName: sec.portalName,
+                  domain: sec.domain,
+                  thumbnailUrl: typeof it.thumbnailUrl === 'string' ? it.thumbnailUrl : '',
+                  faviconUrl,
+                  publishedAt: typeof it.publishedAt === 'string' ? it.publishedAt : null,
+                  topic: 'Actualidad',
+                  read: false,
+                  favorite: false,
+                  embeddable: false,
+                  addedAt: nowIso
+                })
+              )
+            };
+          });
+          if (groups.some((g) => g.items.length > 0)) {
+            saveCachedPortalsLatest(groups);
+            return groups;
+          }
+        }
+      }
+    } catch {
+      // cae al fallback CORS público
+    }
+  }
+
+  // 2. Fallback público CORS-friendly (youapptv.com / APK Android) en tandas de 2 para evitar 429
+  const groups: PortalLatestGroup[] = [];
+  for (let i = 0; i < PORTAL_FEED_DEFS.length; i += 2) {
+    const batch = PORTAL_FEED_DEFS.slice(i, i + 2);
+    const results = await Promise.all(
+      batch.map(async (def) => ({
+        portalId: def.id,
+        portalName: def.name,
+        domain: def.domain,
+        homeUrl: def.homeUrl,
+        items: await fetchPortalViaRss2Json(def, perPortal)
+      }))
+    );
+    groups.push(...results);
+  }
+  if (groups.some((g) => g.items.length > 0)) {
+    saveCachedPortalsLatest(groups);
+  }
+  return groups;
+}

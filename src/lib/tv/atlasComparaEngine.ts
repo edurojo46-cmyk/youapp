@@ -369,3 +369,64 @@ export async function compareNewsAcrossFeeds(params: {
       'Comparación basada exclusivamente en titulares, bajadas y metadatos RSS públicos. No copia notas completas ni declara veracidad automática: verificá siempre en cada fuente original.'
   };
 }
+
+export interface PortalLatestSection {
+  portalId: string;
+  portalName: string;
+  domain: string;
+  homeUrl: string;
+  items: RssNewsItem[];
+}
+
+const DEFAULT_PORTAL_IDS = ['infobae', 'clarin', 'lanacion', 'tn', 'bbc', 'elpais'];
+const PORTAL_HOME_URLS: Record<string, string> = {
+  infobae: 'https://www.infobae.com/',
+  clarin: 'https://www.clarin.com/',
+  lanacion: 'https://www.lanacion.com.ar/',
+  tn: 'https://tn.com.ar/',
+  bbc: 'https://www.bbc.com/mundo',
+  elpais: 'https://elpais.com/'
+};
+
+export async function getLatestFromPortals(
+  perPortal = 3,
+  portalIds: string[] = DEFAULT_PORTAL_IDS
+): Promise<{ ok: true; perPortal: number; sections: PortalLatestSection[]; updatedAt: string }> {
+  const limit = Math.max(1, Math.min(8, Math.round(perPortal || 3)));
+  const wanted = portalIds
+    .map((id) => ATLAS_COMPARA_RSS_FEEDS.find((f) => f.id === id))
+    .filter((f): f is RssFeedDef => Boolean(f));
+
+  const sections = await Promise.all(
+    wanted.map(async (feed) => {
+      let list = await fetchSingleFeed(feed);
+      if (list.length === 0) {
+        const fallbackFeed: RssFeedDef = {
+          ...feed,
+          id: `${feed.id}-gnews`,
+          rssUrl: `https://news.google.com/rss/search?q=site:${encodeURIComponent(feed.domain)}&hl=es-419&gl=AR&ceid=AR:es-419`
+        };
+        list = await fetchSingleFeed(fallbackFeed);
+      }
+      return {
+        portalId: feed.id,
+        portalName: feed.name,
+        domain: feed.domain,
+        homeUrl: PORTAL_HOME_URLS[feed.id] || `https://${feed.domain}/`,
+        items: list.slice(0, limit).map((it) => ({
+          ...it,
+          outletId: feed.id,
+          outletName: feed.name,
+          domain: feed.domain
+        }))
+      };
+    })
+  );
+
+  return {
+    ok: true,
+    perPortal: limit,
+    sections,
+    updatedAt: new Date().toISOString()
+  };
+}

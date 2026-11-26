@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   BookOpen,
+  Bookmark,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -10,6 +11,7 @@ import {
   Heart,
   Plus,
   Radio,
+  RefreshCw,
   Scale,
   Search,
   Share2,
@@ -27,12 +29,16 @@ import { useSignalStore } from '../lib/tv/signalStore';
 import { addSignalNewsSource } from '../lib/tv/signalMediaSourcesStore';
 import {
   fetchArticleReaderContent,
+  fetchPortalsLatest,
+  loadCachedPortalsLatest,
   loadLecturasFromCloud,
   loadLecturasWorkspace,
+  PORTAL_FEED_DEFS,
   resolveWebPointer,
   saveLecturasWorkspace,
   type LecturaItem,
   type LecturasWorkspace,
+  type PortalLatestGroup,
   type ReaderArticleContent
 } from '../lib/tv/youLecturasStore';
 
@@ -51,23 +57,17 @@ function formatShortDate(iso: string | null): string | null {
   }
 }
 
-const QUICK_NEWS_PORTALS: Array<{ name: string; url: string; domain: string }> = [
-  { name: 'Infobae', url: 'https://www.infobae.com/', domain: 'infobae.com' },
-  { name: 'Clarín', url: 'https://www.clarin.com/', domain: 'clarin.com' },
-  { name: 'La Nación', url: 'https://www.lanacion.com.ar/', domain: 'lanacion.com.ar' },
-  { name: 'TN', url: 'https://tn.com.ar/', domain: 'tn.com.ar' },
-  { name: 'BBC Mundo', url: 'https://www.bbc.com/mundo', domain: 'bbc.com' },
-  { name: 'El País', url: 'https://elpais.com/', domain: 'elpais.com' }
-];
-
 export default function YouLecturasPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSignal = useSignalStore((s) => s.activeSignal);
 
   const [workspace, setWorkspace] = useState<LecturasWorkspace>(() => loadLecturasWorkspace());
+  const [portalGroups, setPortalGroups] = useState<PortalLatestGroup[]>(() => loadCachedPortalsLatest() || []);
+  const [portalsLoading, setPortalsLoading] = useState<boolean>(() => !loadCachedPortalsLatest());
+  const [selectedPortalId, setSelectedPortalId] = useState<string>('all');
   const [urlInput, setUrlInput] = useState('');
-  const [selectedTopic, setSelectedTopic] = useState<string>('Todas');
+  const [selectedTopic, setSelectedTopic] = useState<string>('Portales');
   const [saveTopic, setSaveTopic] = useState<string>('Actualidad');
   const [statusFilter, setStatusFilter] = useState<'all' | 'unread' | 'read' | 'favorites'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -229,6 +229,57 @@ export default function YouLecturasPage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const cached = loadCachedPortalsLatest();
+    if (cached && cached.some((g) => g.items.length > 0)) {
+      setPortalGroups(cached);
+      setPortalsLoading(false);
+      return;
+    }
+    setPortalsLoading(true);
+    fetchPortalsLatest(3)
+      .then((groups) => {
+        if (!cancelled) setPortalGroups(groups);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setPortalsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleRefreshPortals = async () => {
+    setPortalsLoading(true);
+    try {
+      const fresh = await fetchPortalsLatest(3, true);
+      setPortalGroups(fresh);
+      setToast('Últimas 3 notas por portal actualizadas.');
+    } finally {
+      setPortalsLoading(false);
+    }
+  };
+
+  const handleSavePortalItem = (item: LecturaItem) => {
+    const exists = workspace.items.some((x) => x.url === item.url);
+    if (exists) {
+      setToast('Esta nota ya está en Mis Guardadas.');
+      return;
+    }
+    const savedItem: LecturaItem = {
+      ...item,
+      id: `lec-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      addedAt: new Date().toISOString()
+    };
+    updateWorkspace((prev) => ({
+      ...prev,
+      items: [savedItem, ...prev.items]
+    }));
+    setToast(`Guardada en Mis Lecturas: ${item.title.slice(0, 48)}…`);
+  };
+
+  useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(t);
@@ -356,7 +407,7 @@ export default function YouLecturasPage() {
     setErrorMsg(null);
     setIsAdding(true);
     try {
-      const targetTopic = selectedTopic === 'Todas' ? saveTopic : selectedTopic;
+      const targetTopic = selectedTopic === 'Todas' || selectedTopic === 'Portales' ? saveTopic : selectedTopic;
       const res = await resolveWebPointer(urlInput, targetTopic);
       if (!res.ok) {
         setErrorMsg(res.error);
@@ -435,10 +486,12 @@ export default function YouLecturasPage() {
     });
   };
 
+  const savedUrlSet = useMemo(() => new Set(workspace.items.map((it) => it.url)), [workspace.items]);
+
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return workspace.items.filter((it) => {
-      if (selectedTopic !== 'Todas' && it.topic !== selectedTopic) return false;
+      if (selectedTopic !== 'Todas' && selectedTopic !== 'Portales' && it.topic !== selectedTopic) return false;
       if (statusFilter === 'unread' && it.read) return false;
       if (statusFilter === 'read' && !it.read) return false;
       if (statusFilter === 'favorites' && !it.favorite) return false;
@@ -450,7 +503,25 @@ export default function YouLecturasPage() {
     });
   }, [workspace.items, selectedTopic, statusFilter, searchQuery]);
 
-  const ambientThumb = filteredItems.find((i) => i.thumbnailUrl)?.thumbnailUrl || '';
+  const visiblePortalGroups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return portalGroups
+      .filter((g) => selectedPortalId === 'all' || g.portalId === selectedPortalId)
+      .map((g) => ({
+        ...g,
+        items: q
+          ? g.items.filter((it) =>
+              `${it.title} ${it.description} ${it.sourceName}`.toLowerCase().includes(q)
+            )
+          : g.items
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [portalGroups, selectedPortalId, searchQuery]);
+
+  const ambientThumb =
+    visiblePortalGroups.flatMap((g) => g.items).find((i) => i.thumbnailUrl)?.thumbnailUrl ||
+    filteredItems.find((i) => i.thumbnailUrl)?.thumbnailUrl ||
+    '';
   const unreadCount = workspace.items.filter((i) => !i.read).length;
 
   return (
@@ -566,10 +637,10 @@ export default function YouLecturasPage() {
                   aria-label="Pegar enlace del artículo"
                 />
                 <select
-                  value={selectedTopic === 'Todas' ? saveTopic : selectedTopic}
+                  value={selectedTopic === 'Todas' || selectedTopic === 'Portales' ? saveTopic : selectedTopic}
                   onChange={(e) => {
                     setSaveTopic(e.target.value);
-                    if (selectedTopic !== 'Todas') setSelectedTopic(e.target.value);
+                    if (selectedTopic !== 'Todas' && selectedTopic !== 'Portales') setSelectedTopic(e.target.value);
                   }}
                   aria-label="Tema del artículo"
                   className="yl-topic-select"
@@ -641,33 +712,51 @@ export default function YouLecturasPage() {
         {/* 2. CARRUSELES HORIZONTALES DE 1 FILA (Portales en vivo + Temas) */}
         <section className="yl-carousels-stack">
           <div className="yl-quick-portals" aria-label="Portales de noticias rápidos">
-            {QUICK_NEWS_PORTALS.map((portal) => (
+            <button
+              type="button"
+              className={`yl-portal-chip ${selectedTopic === 'Portales' && selectedPortalId === 'all' ? 'active' : ''}`}
+              onClick={() => {
+                setSelectedTopic('Portales');
+                setSelectedPortalId('all');
+              }}
+            >
+              Todos (3 c/u)
+            </button>
+            {PORTAL_FEED_DEFS.map((portal) => (
               <button
-                key={portal.domain}
+                key={portal.id}
                 type="button"
-                className="yl-portal-chip"
+                className={`yl-portal-chip ${selectedTopic === 'Portales' && selectedPortalId === portal.id ? 'active' : ''}`}
                 onClick={() => {
-                  const quickItem: LecturaItem = {
-                    id: `quick-${portal.domain}`,
-                    url: portal.url,
-                    domain: portal.domain,
-                    title: `${portal.name} — Portada en vivo`,
-                    description: `Lectura rápida de ${portal.name} dentro de YOUAPP`,
-                    sourceName: portal.name,
-                    topic: 'Noticias',
-                    status: 'pendiente',
-                    embeddable: false,
-                    savedAt: new Date().toISOString()
-                  };
-                  setActiveReaderItem(quickItem);
+                  setSelectedTopic('Portales');
+                  setSelectedPortalId(portal.id);
                 }}
               >
                 {portal.name}
               </button>
             ))}
+            <button
+              type="button"
+              className="yl-portal-chip yl-portal-refresh"
+              onClick={() => void handleRefreshPortals()}
+              disabled={portalsLoading}
+              title="Actualizar las 3 últimas notas de cada portal"
+              aria-label="Actualizar portales"
+            >
+              <RefreshCw size={12} className={portalsLoading ? 'yl-spin' : ''} />
+            </button>
           </div>
 
           <div className="yl-topics-row" role="tablist" aria-label="Temas de lectura">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedTopic === 'Portales'}
+              className={`yl-topic-chip ${selectedTopic === 'Portales' ? 'active' : ''}`}
+              onClick={() => setSelectedTopic('Portales')}
+            >
+              Últimas por portal
+            </button>
             <button
               type="button"
               role="tab"
@@ -675,7 +764,7 @@ export default function YouLecturasPage() {
               className={`yl-topic-chip ${selectedTopic === 'Todas' ? 'active' : ''}`}
               onClick={() => setSelectedTopic('Todas')}
             >
-              Todas ({workspace.items.length})
+              Mis Guardadas ({workspace.items.length})
             </button>
             {workspace.topics.map((t) => {
               const cnt = workspace.items.filter((i) => i.topic === t).length;
@@ -728,8 +817,182 @@ export default function YouLecturasPage() {
           </div>
         </section>
 
-        {/* 3. GRILLA DE ARTÍCULOS GUARDADOS (SIN backdrop-filter en filas/tarjetas para fluidez GPU) */}
-        {filteredItems.length === 0 ? (
+        {/* 3. VISTA POR DEFECTO: 3 ÚLTIMAS NOTAS DE CADA PORTAL | O BIBLIOTECA GUARDADA */}
+        {selectedTopic === 'Portales' ? (
+          portalsLoading && visiblePortalGroups.length === 0 ? (
+            <section className="yl-card yl-empty">
+              <RefreshCw size={28} color="#64d2ff" className="yl-spin" />
+              <strong>Cargando las 3 últimas notas de cada portal…</strong>
+              <span>Infobae · Clarín · La Nación · TN · BBC Mundo · El País</span>
+            </section>
+          ) : visiblePortalGroups.length === 0 ? (
+            <section className="yl-card yl-empty">
+              <BookOpen size={30} color="#64d2ff" />
+              <strong>No se encontraron titulares en este momento.</strong>
+              <button
+                type="button"
+                className="yl-btn-primary"
+                onClick={() => void handleRefreshPortals()}
+              >
+                <RefreshCw size={13} />
+                <span>Reintentar</span>
+              </button>
+            </section>
+          ) : (
+            <div className="yl-portals-feed">
+              {visiblePortalGroups.map((group) => (
+                <section key={group.portalId} className="yl-portal-section" aria-label={group.portalName}>
+                  <div className="yl-portal-section-head">
+                    <div className="yl-portal-section-title">
+                      <img
+                        src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(group.domain)}&sz=64`}
+                        alt=""
+                        className="yl-favicon"
+                      />
+                      <h2>{group.portalName}</h2>
+                      <span className="yl-portal-count">{group.items.length} últimas</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="yl-portal-home-btn"
+                      onClick={() =>
+                        setActiveReaderItem({
+                          id: `quick-${group.domain}`,
+                          url: group.homeUrl,
+                          domain: group.domain,
+                          title: `${group.portalName} — Portada en vivo`,
+                          description: `Portada completa de ${group.portalName}`,
+                          sourceName: group.portalName,
+                          thumbnailUrl: '',
+                          faviconUrl: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(group.domain)}&sz=64`,
+                          publishedAt: null,
+                          topic: 'Actualidad',
+                          read: false,
+                          favorite: false,
+                          embeddable: false,
+                          addedAt: new Date().toISOString()
+                        })
+                      }
+                    >
+                      <span>Portada</span>
+                      <ExternalLink size={11} />
+                    </button>
+                  </div>
+
+                  <div className="yl-grid yl-portal-grid">
+                    {group.items.map((item) => {
+                      const dateLabel = formatShortDate(item.publishedAt || item.addedAt);
+                      const isSaved = savedUrlSet.has(item.url);
+                      return (
+                        <article key={item.id} className="yl-article-card">
+                          <button
+                            type="button"
+                            className="yl-cover-link"
+                            onClick={() => setActiveReaderItem(item)}
+                            aria-label={`Leer ${item.title}`}
+                          >
+                            {item.thumbnailUrl ? (
+                              <img
+                                src={item.thumbnailUrl}
+                                alt={item.title}
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <div className="yl-cover-fallback">
+                                <img src={item.faviconUrl} alt="" className="yl-fallback-fav" />
+                                <span>{item.sourceName}</span>
+                              </div>
+                            )}
+                          </button>
+
+                          <div className="yl-article-body">
+                            <div className="yl-source-line">
+                              <img src={item.faviconUrl} alt="" className="yl-favicon" />
+                              <span className="yl-source-name">{item.sourceName}</span>
+                              {dateLabel && (
+                                <>
+                                  <span>·</span>
+                                  <span>{dateLabel}</span>
+                                </>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="yl-article-title"
+                              onClick={() => setActiveReaderItem(item)}
+                            >
+                              {item.title}
+                            </button>
+
+                            {item.description && <p className="yl-article-desc">{item.description}</p>}
+
+                            <div className="yl-article-actions">
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <button
+                                  type="button"
+                                  className="yl-read-original-btn"
+                                  onClick={() => setActiveReaderItem(item)}
+                                >
+                                  <BookOpen size={12} />
+                                  <span>Leer</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="yl-compare-pill-btn"
+                                  onClick={() =>
+                                    void runAtlasCompare({
+                                      title: item.title,
+                                      description: item.description,
+                                      url: item.url,
+                                      sourceName: item.sourceName
+                                    })
+                                  }
+                                  title="Comparar cómo cubren este mismo acontecimiento 10 diarios"
+                                >
+                                  <Scale size={12} />
+                                  <span>Comparar</span>
+                                </button>
+                              </div>
+
+                              <div className="yl-icon-actions">
+                                <button
+                                  type="button"
+                                  className={`yl-ico-btn ${isSaved ? 'active-green' : ''}`}
+                                  onClick={() => handleSavePortalItem(item)}
+                                  title={isSaved ? 'Guardada en Mis Lecturas' : 'Guardar en Mis Lecturas'}
+                                >
+                                  <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="yl-ico-btn"
+                                  onClick={() => handleSendToMiSenal(item)}
+                                  title="Enviar este artículo a Mi Señal"
+                                >
+                                  <Radio size={14} color="#64d2ff" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="yl-ico-btn"
+                                  onClick={() => void handleShareItem(item)}
+                                  title="Compartir nota"
+                                >
+                                  <Share2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )
+        ) : filteredItems.length === 0 ? (
           <section className="yl-card yl-empty">
             <BookOpen size={34} color="#64d2ff" />
             <strong>Tu biblioteca de lecturas está lista.</strong>
@@ -2391,33 +2654,115 @@ export default function YouLecturasPage() {
         .yl-reader-sheet.yl-theme-night .yl-reader-excerpt {
           color: rgba(230, 232, 238, 0.72) !important;
         }
+        .yl-portal-chip.active {
+          background: #0071e3;
+          border-color: #64d2ff;
+          color: #ffffff;
+        }
+        .yl-portal-refresh {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 5px 9px;
+        }
+        @keyframes ylSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .yl-spin {
+          animation: ylSpin 0.9s linear infinite;
+        }
+        .yl-portals-feed {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        .yl-portal-section {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .yl-portal-section-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 2px 2px 0;
+        }
+        .yl-portal-section-title {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .yl-portal-section-title h2 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 760;
+          letter-spacing: -0.015em;
+          color: #ffffff;
+        }
+        .yl-portal-count {
+          font-size: 11px;
+          font-weight: 650;
+          color: rgba(235, 240, 255, 0.56);
+          background: rgba(255, 255, 255, 0.08);
+          padding: 2px 8px;
+          border-radius: 999px;
+        }
+        .yl-portal-home-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.07);
+          color: rgba(245, 245, 247, 0.85);
+          font-size: 11.5px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .yl-portal-home-btn:hover {
+          background: rgba(10, 132, 255, 0.24);
+          border-color: rgba(100, 210, 255, 0.5);
+          color: #ffffff;
+        }
+        .yl-portal-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        @media (max-width: 960px) {
+          .yl-portal-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
         @media (max-width: 640px) {
-          .yl-grid {
+          .yl-grid,
+          .yl-portal-grid {
             grid-template-columns: 1fr !important;
             gap: 10px !important;
           }
           /* Tarjetas 2+ en formato revista móvil compacto: texto izquierda + foto cuadrada derecha */
-          .yl-grid .yl-item-card:not(:first-child) {
+          .yl-grid .yl-article-card:not(:first-child) {
             flex-direction: row-reverse !important;
             align-items: center;
             padding: 10px !important;
             gap: 10px;
           }
-          .yl-grid .yl-item-card:not(:first-child) .yl-thumb-btn {
+          .yl-grid .yl-article-card:not(:first-child) .yl-cover-link {
             width: 86px !important;
             height: 86px !important;
             aspect-ratio: 1 / 1 !important;
             border-radius: 12px !important;
             flex-shrink: 0;
           }
-          .yl-grid .yl-item-card:not(:first-child) .yl-item-body {
+          .yl-grid .yl-article-card:not(:first-child) .yl-article-body {
             padding: 0 !important;
             min-width: 0;
           }
-          .yl-grid .yl-item-card:not(:first-child) .yl-item-desc {
+          .yl-grid .yl-article-card:not(:first-child) .yl-article-desc {
             display: none !important;
           }
-          .yl-grid .yl-item-card:not(:first-child) .yl-item-title {
+          .yl-grid .yl-article-card:not(:first-child) .yl-article-title {
             font-size: 13.5px !important;
             -webkit-line-clamp: 2 !important;
           }

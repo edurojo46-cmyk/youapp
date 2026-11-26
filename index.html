@@ -64,15 +64,19 @@
     </script>
     <script>
       window.process = window.process || { env: { NODE_ENV: 'development' } };
-      if (typeof navigator !== 'undefined' && !navigator.share) {
-        navigator.share = function(data) {
-          if (window.YouAppAndroidPiP && typeof window.YouAppAndroidPiP.share === 'function') {
+      (function() {
+        if (typeof navigator !== 'undefined' && window.YouAppAndroidPiP && typeof window.YouAppAndroidPiP.share === 'function') {
+          var nativeShare = function(data) {
             window.YouAppAndroidPiP.share((data && data.title) || '', (data && data.text) || '', (data && data.url) || '');
             return Promise.resolve();
+          };
+          try {
+            Object.defineProperty(navigator, 'share', { value: nativeShare, configurable: true, writable: true });
+          } catch (e) {
+            try { navigator.share = nativeShare; } catch (_) {}
           }
-          return Promise.reject(new Error('Share API unavailable'));
-        };
-      }
+        }
+      })();
     </script>
 
     <!-- PWA & Fullscreen sin barra de URL en móvil -->

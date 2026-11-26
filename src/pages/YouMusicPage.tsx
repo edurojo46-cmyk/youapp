@@ -1002,15 +1002,18 @@ export default function YouMusicPage() {
   };
 
   const handleShare = async (kind: 'song' | 'playlist') => {
+    const androidBridge = (window as any).YouAppAndroidPiP;
     if (kind === 'song' && currentItem) {
       const url = buildSingleSongShareUrl(currentItem);
+      const title = `${currentItem.title} · YOU MUSIC`;
+      const text = `Escuchá «${currentItem.title}» en YOU MUSIC`;
       try {
+        if (androidBridge && typeof androidBridge.share === 'function') {
+          androidBridge.share(title, text, url);
+          return;
+        }
         if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-          await navigator.share({
-            title: `${currentItem.title} · YOU MUSIC`,
-            text: `Escuchá «${currentItem.title}» en YOU MUSIC`,
-            url
-          });
+          await navigator.share({ title, text, url });
           return;
         }
       } catch {
@@ -1023,13 +1026,15 @@ export default function YouMusicPage() {
 
     if (kind === 'playlist' && displayedPlaylist && displayedPlaylist.items.length > 0) {
       const url = buildPlaylistShareUrl(displayedPlaylist);
+      const title = `${displayedPlaylist.name} · YOU MUSIC`;
+      const text = `Escuchá mi playlist «${displayedPlaylist.name}» en YOU MUSIC`;
       try {
+        if (androidBridge && typeof androidBridge.share === 'function') {
+          androidBridge.share(title, text, url);
+          return;
+        }
         if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-          await navigator.share({
-            title: `${displayedPlaylist.name} · YOU MUSIC`,
-            text: `Escuchá mi playlist «${displayedPlaylist.name}» en YOU MUSIC`,
-            url
-          });
+          await navigator.share({ title, text, url });
           return;
         }
       } catch {

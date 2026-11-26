@@ -7155,13 +7155,32 @@ export default function MiSenal1() {
             padding: 10px 12px 10px !important;
             gap: 8px !important;
             flex-wrap: nowrap !important;
-            align-items: center !important;
+            align-items: flex-end !important;
             justify-content: space-between !important;
           }
           .ms-hero-left {
             flex: 1 1 auto !important;
             min-width: 0 !important;
             gap: 10px !important;
+            align-items: flex-end !important;
+          }
+          .ms-hero-sub-cta-row {
+            margin-top: 4px !important;
+          }
+          .ms-hero-subscribe-btn {
+            height: 26px !important;
+            padding: 0 10px !important;
+            font-size: 11px !important;
+            gap: 4px !important;
+            line-height: 1 !important;
+          }
+          .ms-hero-actions .ms-hero-pill-btn {
+            height: 26px !important;
+            min-height: 26px !important;
+            padding: 0 8px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
           }
           .ms-hero-avatar-btn,
           .ms-hero-avatar-readonly {

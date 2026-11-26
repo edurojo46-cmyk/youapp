@@ -3371,6 +3371,57 @@ export default function ChannelSearch() {
                     channelTitle: previewVideo.channelName
                   } as any
                 };
+                const isNonYoutube = Boolean(previewVideo.provider && previewVideo.provider !== 'youtube');
+                if (isNonYoutube) {
+                  const fmtSec = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+                  return (
+                    <div className="ys-you4-grid">
+                      {quadMoments.map((m) => {
+                        const vimeoMomentSrc =
+                          previewVideo.provider === 'vimeo'
+                            ? `https://player.vimeo.com/video/${encodeURIComponent(previewVideo.videoId.replace(/^vm_/, ''))}?autoplay=1&muted=1&dnt=1#t=${m.startSec}s`
+                            : null;
+                        return (
+                          <div
+                            key={m.id}
+                            className="ys-you4-cell"
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                              setIsMomentsMosaic(false);
+                              window.setTimeout(() => handlePreviewSeek(m.startSec), 350);
+                            }}
+                          >
+                            {vimeoMomentSrc ? (
+                              <iframe
+                                src={vimeoMomentSrc}
+                                title={m.title}
+                                allow="autoplay; fullscreen; picture-in-picture"
+                                style={{ pointerEvents: 'none' }}
+                              />
+                            ) : (
+                              <img
+                                src={previewVideo.thumbnail}
+                                alt={m.title}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.72 }}
+                              />
+                            )}
+                            <button
+                              type="button"
+                              className="ys-you4-audio-pill"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsMomentsMosaic(false);
+                                window.setTimeout(() => handlePreviewSeek(m.startSec), 350);
+                              }}
+                            >
+                              <span>{m.title} · {fmtSec(m.startSec)}</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                }
                 return (
                   <div className="ys-preview-video-wrap">
                     <MosaicPlayerGrid
@@ -3388,31 +3439,44 @@ export default function ChannelSearch() {
               })()
             ) : isYou4Mode && you4Videos.length > 1 ? (
               <div className="ys-you4-grid">
-                {you4Videos.map((vid, idx) => (
-                  <div
-                    key={vid.videoId}
-                    className={`ys-you4-cell ${you4AudioSlot === idx ? 'active-audio' : ''}`}
-                  >
-                    <iframe
-                      ref={(el) => {
-                        you4IframesRef.current[idx] = el;
-                      }}
-                      src={`https://www.youtube.com/embed/${vid.videoId}?autoplay=1&mute=${idx === you4AudioSlot ? 0 : 1}&rel=0&modestbranding=1&enablejsapi=1`}
-                      title={vid.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                    />
-                    <button
-                      type="button"
-                      className="ys-you4-audio-pill"
-                      onClick={() => handleSelectYou4Audio(idx)}
-                      title={you4AudioSlot === idx ? 'Audio activo en esta pantalla' : 'Activar audio aquí'}
+                {you4Videos.map((vid, idx) => {
+                  const isMutedCell = idx !== you4AudioSlot;
+                  const cellSrc =
+                    vid.provider === 'vimeo'
+                      ? `https://player.vimeo.com/video/${encodeURIComponent(vid.videoId.replace(/^vm_/, ''))}?autoplay=1&muted=${isMutedCell ? 1 : 0}&dnt=1&api=1`
+                      : vid.provider === 'peertube' && vid.embedUrl
+                        ? `${vid.embedUrl}${isMutedCell ? '&muted=1' : ''}`
+                        : vid.provider === 'odysee' && vid.embedUrl
+                          ? vid.embedUrl
+                          : vid.provider === 'archive'
+                            ? vid.embedUrl || `https://archive.org/embed/${encodeURIComponent(vid.videoId.replace(/^ar_/, ''))}?autoplay=1`
+                            : `https://www.youtube.com/embed/${vid.videoId}?autoplay=1&mute=${isMutedCell ? 1 : 0}&rel=0&modestbranding=1&enablejsapi=1`;
+                  return (
+                    <div
+                      key={vid.videoId}
+                      className={`ys-you4-cell ${you4AudioSlot === idx ? 'active-audio' : ''}`}
                     >
-                      {you4AudioSlot === idx ? <Volume2 size={12} /> : <VolumeX size={12} />}
-                      <span>{vid.channelName.slice(0, 18)}</span>
-                    </button>
-                  </div>
-                ))}
+                      <iframe
+                        ref={(el) => {
+                          you4IframesRef.current[idx] = el;
+                        }}
+                        src={cellSrc}
+                        title={vid.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                      <button
+                        type="button"
+                        className="ys-you4-audio-pill"
+                        onClick={() => handleSelectYou4Audio(idx)}
+                        title={you4AudioSlot === idx ? 'Audio activo en esta pantalla' : 'Activar audio aquí'}
+                      >
+                        {you4AudioSlot === idx ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                        <span>{vid.channelName.slice(0, 18)}</span>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="ys-preview-video-wrap">

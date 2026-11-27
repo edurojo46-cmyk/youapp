@@ -71,7 +71,7 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
             aria-label={saved ? 'Guardado en Mis Listas (tocar para quitar)' : 'Guardar en Mis Listas con ATLAS'}
             title={saved ? 'Guardado en Mis Listas' : 'Guardar en Mis Listas (ATLAS organiza solo)'}
           >
-            <Bookmark size={12} fill={saved ? '#ffffff' : 'none'} strokeWidth={2.2} />
+            <Bookmark size={15} fill={saved ? '#ffffff' : 'none'} strokeWidth={2.1} />
             {atlasToast && <span className="yapp-pcd-toast-txt">{atlasToast}</span>}
           </button>
         )}
@@ -145,36 +145,28 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
         }
         .yapp-pcd-save-btn {
           position: absolute;
-          right: 10px;
+          right: 12px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
           gap: 5px;
-          height: 24px;
-          min-width: 28px;
-          padding: 0 8px;
-          border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.36);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.14) 100%);
-          backdrop-filter: blur(16px) saturate(180%);
-          -webkit-backdrop-filter: blur(16px) saturate(180%);
-          color: rgba(255, 255, 255, 0.95);
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.48),
-            0 4px 14px rgba(0, 0, 0, 0.24);
+          height: 26px;
+          padding: 0 4px;
+          border: none;
+          background: transparent;
+          color: rgba(255, 255, 255, 0.88);
           cursor: pointer;
-          transition: transform 0.14s ease, border-color 0.18s ease, background 0.18s ease;
+          transition: transform 0.14s ease, color 0.16s ease, opacity 0.16s ease;
         }
         .yapp-pcd-save-btn:hover {
           transform: translateY(-1px);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.2) 100%);
+          color: #ffffff;
         }
         .yapp-pcd-save-btn:active {
-          transform: scale(0.93);
+          transform: scale(0.92);
         }
         .yapp-pcd-save-btn.is-saved {
-          border-color: rgba(255, 255, 255, 0.65);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.22) 100%);
+          color: #ffffff;
         }
         .yapp-pcd-toast-txt {
           font-size: 10.5px;

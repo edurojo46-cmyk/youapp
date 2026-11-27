@@ -105,7 +105,102 @@ const ATLAS_MUSIC_CHANNELS: AtlasMusicChannel[] = Array.isArray(atlasMusicCatalo
   : [];
 const ATLAS_GENRES = ['Todos', 'Rock', 'Pop', 'Jazz', 'Latino', 'Clásica'] as const;
 
+class YouMusicErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; errorMessage: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMessage: '' };
+  }
+
+  static getDerivedStateFromError(error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error || 'Error inesperado');
+    return { hasError: true, errorMessage: msg };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error('[YouMusicErrorBoundary]', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            minHeight: '100vh',
+            background: '#0b0e15',
+            color: '#f5f5f7',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px',
+            textAlign: 'center',
+            gap: '12px',
+            fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif'
+          }}
+        >
+          <strong style={{ fontSize: '16px' }}>YOU MUSIC se reinició para recuperarse</strong>
+          <span style={{ fontSize: '12px', color: 'rgba(245,245,247,0.72)', maxWidth: '340px', wordBreak: 'break-word' }}>
+            {this.state.errorMessage || 'Error de renderizado'}
+          </span>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => this.setState({ hasError: false, errorMessage: '' })}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '999px',
+                border: '1px solid rgba(100,210,255,0.5)',
+                background: '#0071e3',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Reintentar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.removeItem('youapp_youmusic_playlists_v1');
+                  localStorage.removeItem('youapp_youmusic_alarm_v1');
+                } catch {
+                  // ignore
+                }
+                window.location.reload();
+              }}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '999px',
+                border: '1px solid rgba(255,255,255,0.22)',
+                background: 'rgba(255,255,255,0.1)',
+                color: '#fff',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Limpiar caché local
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function YouMusicPage() {
+  return (
+    <YouMusicErrorBoundary>
+      <YouMusicPageInner />
+    </YouMusicErrorBoundary>
+  );
+}
+
+function YouMusicPageInner() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const setSignal = useSignalStore((s) => s.setSignal);

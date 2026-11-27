@@ -110,16 +110,57 @@ export async function resolveYouTubePointer(
   };
 }
 
+function sanitizePointerItem(raw: unknown): YouMusicPointerItem | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  const videoId = typeof obj.videoId === 'string' ? obj.videoId.trim() : '';
+  if (!videoId) return null;
+  return {
+    id: typeof obj.id === 'string' && obj.id.trim() ? obj.id : `ytp-${videoId}`,
+    videoId,
+    title: typeof obj.title === 'string' && obj.title.trim() ? obj.title : `Canción (${videoId})`,
+    author: typeof obj.author === 'string' && obj.author.trim() ? obj.author : 'YouTube Oficial',
+    thumbnailUrl:
+      typeof obj.thumbnailUrl === 'string' && obj.thumbnailUrl.trim()
+        ? obj.thumbnailUrl
+        : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    sourceUrl:
+      typeof obj.sourceUrl === 'string' && obj.sourceUrl.trim()
+        ? obj.sourceUrl
+        : `https://www.youtube.com/watch?v=${videoId}`,
+    addedAt: typeof obj.addedAt === 'string' && obj.addedAt ? obj.addedAt : new Date().toISOString()
+  };
+}
+
+function sanitizePlaylist(raw: unknown): YouMusicPlaylist | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  const id = typeof obj.id === 'string' && obj.id.trim() ? obj.id.trim() : '';
+  if (!id) return null;
+  const items = Array.isArray(obj.items)
+    ? obj.items.map(sanitizePointerItem).filter((it): it is YouMusicPointerItem => Boolean(it))
+    : [];
+  return {
+    id,
+    name: typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : 'Mi playlist',
+    items,
+    savedInMusicalSignal: Boolean(obj.savedInMusicalSignal),
+    updatedAt:
+      typeof obj.updatedAt === 'string' && obj.updatedAt ? obj.updatedAt : new Date().toISOString()
+  };
+}
+
 export function loadYouMusicWorkspace(): YouMusicWorkspace {
   if (typeof window === 'undefined') return defaultWorkspace();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultWorkspace();
     const parsed = JSON.parse(raw);
+    const sanitized = Array.isArray(parsed?.playlists)
+      ? parsed.playlists.map(sanitizePlaylist).filter((p: YouMusicPlaylist | null): p is YouMusicPlaylist => Boolean(p))
+      : [];
     const playlists: YouMusicPlaylist[] =
-      Array.isArray(parsed?.playlists) && parsed.playlists.length > 0
-        ? parsed.playlists
-        : defaultWorkspace().playlists;
+      sanitized.length > 0 ? sanitized : defaultWorkspace().playlists;
     const activePlaylistId =
       typeof parsed?.activePlaylistId === 'string' &&
       playlists.some((p) => p.id === parsed.activePlaylistId)
@@ -184,8 +225,9 @@ export async function loadYouMusicWorkspaceFromCloud(): Promise<YouMusicWorkspac
     const local = loadYouMusicWorkspace();
     const byId = new Map<string, YouMusicPlaylist>();
     for (const pl of local.playlists) byId.set(pl.id, pl);
-    for (const cpl of cloudPlaylists as YouMusicPlaylist[]) {
-      if (!cpl?.id || !Array.isArray(cpl.items)) continue;
+    for (const rawPl of cloudPlaylists) {
+      const cpl = sanitizePlaylist(rawPl);
+      if (!cpl) continue;
       const existing = byId.get(cpl.id);
       const cloudTs = Date.parse(cpl.updatedAt || '') || 0;
       const localTs = Date.parse(existing?.updatedAt || '') || 0;

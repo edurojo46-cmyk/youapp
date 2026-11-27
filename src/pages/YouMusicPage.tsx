@@ -2420,15 +2420,11 @@ export default function YouMusicPage() {
             <div className="ymv1-atlas-head">
               <div>
                 <div className="ymv1-atlas-eyebrow">
-                  <Sparkles size={12} /> ATLAS · BASE NUBE `youapp_index` (
-                  {cloudAtlasTotalVideos > 0
-                    ? `${cloudAtlasTotalVideos.toLocaleString('es-AR')} videos 100 % YouTube · 10.000 canales`
-                    : `${ATLAS_MUSIC_CHANNELS.length} canales locales`}
-                  )
+                  <Sparkles size={12} /> CATÁLOGO MUSICAL YOUAPP
                 </div>
-                <h2>Canales musicales en YOUAPP</h2>
+                <h2>Canales musicales</h2>
                 <p>
-                  Conectado en vivo a tu base nube <strong>youapp_index</strong> (punteros compactados 100 % YouTube, 0 cuota). Buscá cualquier artista, filtrá por género y sumalos a tus <strong>Señales Musicales</strong>.
+                  Explorá artistas por género y sumalos a tu <strong>Señal Musical</strong> en un toque.
                 </p>
               </div>
               <div className="ymv1-atlas-genres" role="tablist" aria-label="Filtrar por género musical">
@@ -2555,10 +2551,10 @@ export default function YouMusicPage() {
                   }}
                 >
                   {cloudAtlasLoading
-                    ? 'Cargando desde youapp_index…'
+                    ? 'Cargando más artistas…'
                     : cloudAtlasChannels.length > 0
-                    ? `Cargar más canales desde la nube (${visibleAtlasChannels.length} cargados · ${cloudAtlasTotalVideos.toLocaleString('es-AR')} videos disponibles)`
-                    : `Cargar más canales (${visibleAtlasChannels.length} de ${filteredAtlasChannels.length})`}
+                    ? `Ver más artistas (${visibleAtlasChannels.length})`
+                    : `Ver más artistas (${visibleAtlasChannels.length} de ${filteredAtlasChannels.length})`}
                 </button>
               </div>
             )}

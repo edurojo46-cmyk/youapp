@@ -3856,26 +3856,38 @@ function YouMusicPageInner() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 8px;
-          flex-wrap: wrap;
+          gap: 6px;
+          width: 100%;
         }
         .ymv1-pl-tabs {
           display: flex;
           align-items: center;
-          gap: 6px;
-          flex-wrap: wrap;
+          gap: 5px;
+          flex-wrap: nowrap;
+          width: 100%;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding: 1px 0;
+        }
+        .ymv1-pl-tabs::-webkit-scrollbar {
+          display: none;
         }
         .ymv1-pl-tab {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 6px 12px;
+          gap: 5px;
+          padding: 4.5px 9px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.34);
+          border: 1px solid rgba(255, 255, 255, 0.32);
           background: rgba(255, 255, 255, 0.14);
           color: rgba(255, 255, 255, 0.88);
-          font-size: 12.5px;
+          font-size: 11px;
           font-weight: 620;
+          line-height: 1.2;
+          white-space: nowrap;
+          flex-shrink: 0;
           cursor: pointer;
         }
         .ymv1-pl-tab.active {
@@ -3886,34 +3898,39 @@ function YouMusicPageInner() {
         .ymv1-pl-tab em {
           font-style: normal;
           opacity: 0.75;
-          font-size: 11px;
+          font-size: 10px;
         }
         .ymv1-pl-new-btn {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 6px 11px;
+          gap: 3px;
+          padding: 4.5px 8px;
           border-radius: 999px;
-          border: 1px dashed rgba(255, 255, 255, 0.55);
+          border: 1px dashed rgba(255, 255, 255, 0.52);
           background: rgba(255, 255, 255, 0.1);
           color: #ffffff;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 650;
+          line-height: 1.2;
+          white-space: nowrap;
+          flex-shrink: 0;
           cursor: pointer;
         }
         .ymv1-radios-link-btn {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          padding: 5px 10px;
+          gap: 4px;
+          padding: 4.5px 8px;
           border-radius: 999px;
           border: 1px solid rgba(52, 211, 153, 0.45);
           background: rgba(16, 185, 129, 0.16);
           color: #a7f3d0;
-          font-size: 11.5px;
+          font-size: 11px;
           font-weight: 700;
+          line-height: 1.2;
           cursor: pointer;
           white-space: nowrap;
+          flex-shrink: 0;
           transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
         }
         .ymv1-radios-link-btn:hover {
@@ -3922,8 +3939,8 @@ function YouMusicPageInner() {
           color: #ffffff;
         }
         .ymv1-radios-link-btn .ymv1-radio-dot {
-          width: 6px;
-          height: 6px;
+          width: 5px;
+          height: 5px;
         }
         .ymv1-new-pl-form {
           display: flex;

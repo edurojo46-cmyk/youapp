@@ -35,6 +35,7 @@ import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { PlayerControlsDrawer } from '../components/player/PlayerControlsDrawer';
 import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import {
@@ -1774,7 +1775,8 @@ export default function YouMusicPage() {
               </button>
             )}
 
-            {/* ENCABEZADO IDÉNTICO A MITV: EN PANTALLA · ❤️ · 👤+ · Compartir · PiP · ⛶ */}
+            {/* ENCABEZADO + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO */}
+            <PlayerControlsDrawer>
             <div className="ymv1-now-bar ymv1-now-bar--mitv">
               {(() => {
                 const likeKey = `youtube:${currentItem.videoId}`;
@@ -1989,6 +1991,7 @@ export default function YouMusicPage() {
                 totalItems={items.length}
               />
             </div>
+            </PlayerControlsDrawer>
           </section>
         )}
 

@@ -68,6 +68,7 @@ import {
 } from '../lib/tv/youappSocialStore';
 import { passesCategoryGate } from '../lib/search/categoryGate';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { PlayerControlsDrawer } from '../components/player/PlayerControlsDrawer';
 import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
@@ -3566,7 +3567,8 @@ export default function ChannelSearch() {
 
             {castNotice && <div className="ys-cast-toast">{castNotice}</div>}
 
-            {/* ENCABEZADO IDÉNTICO A MITV (EN PANTALLA · ❤️ · 👤+ · ⛶ · ✕ + Título + Canal · vistas · fecha) */}
+            {/* ENCABEZADO + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO */}
+            <PlayerControlsDrawer>
             <div className="ys-preview-bar ys-preview-bar--mitv">
               <div className="ys-preview-top-meta">
                 <span className="ys-preview-live-pill">EN PANTALLA</span>
@@ -3825,6 +3827,7 @@ export default function ChannelSearch() {
                 totalItems={filteredResults.length}
               />
             </div>
+            </PlayerControlsDrawer>
           </section>
           </div>
         )}
@@ -4509,7 +4512,11 @@ export default function ChannelSearch() {
             border-radius: 0 !important;
           }
           .ys-has-mobile-player .ys-main {
-            padding-top: calc(56.25vw + 136px) !important;
+            padding-top: calc(56.25vw + 44px) !important;
+            transition: padding-top 0.18s ease;
+          }
+          .ys-has-mobile-player:has(.yapp-pcd-root.is-open) .ys-main {
+            padding-top: calc(56.25vw + 158px) !important;
           }
         }
         .ys-preview-card.is-mini-floating {

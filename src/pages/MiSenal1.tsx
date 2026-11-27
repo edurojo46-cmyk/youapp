@@ -52,6 +52,7 @@ import {
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { YouRing } from '../components/player/YouRing';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { PlayerControlsDrawer } from '../components/player/PlayerControlsDrawer';
 import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import { EpistemicBadge } from '../components/epistemic/EpistemicBadge';
 import { evaluateEpistemicNature } from '../lib/field/epistemicGuard';
@@ -3139,7 +3140,8 @@ export default function MiSenal1() {
             )}
           </div>
 
-          {/* BARRA EDITORIAL + ACCIONES IDÉNTICA A MITV (❤️ Me gusta · 👤 Seguir / Perfil del canal · 📤 Compartir · 🪟 PiP · ⛶ Agrandar) */}
+          {/* BARRA EDITORIAL + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO */}
+          <PlayerControlsDrawer>
           {currentBlock && (() => {
             const ci = currentBlock.contentItem as any;
             const ytId =
@@ -3510,6 +3512,7 @@ export default function MiSenal1() {
               }
             />
           </div>
+          </PlayerControlsDrawer>
           </section>
 
           {/* SELECTOR TÁCTIL SOLO EN CELULAR / TABLET (< 1024px) */}

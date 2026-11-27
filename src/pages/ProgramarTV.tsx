@@ -38,6 +38,7 @@ import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { XOfficialTweetEmbed } from '../components/player/XOfficialTweetEmbed';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { PlayerControlsDrawer } from '../components/player/PlayerControlsDrawer';
 import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import RemoteConnectModal from '../components/RemoteConnectModal';
 import { RemoteBridge, resolveAccountTvPin } from '../utils/remoteBridge';
@@ -2259,6 +2260,7 @@ export default function ProgramarTV() {
               )}
             </div>
 
+            <PlayerControlsDrawer>
             <div className="mitv-now-bar">
               <div className="mitv-now-meta">
                 <div className="mitv-now-top-meta">
@@ -2638,6 +2640,7 @@ export default function ProgramarTV() {
                 }
               />
             </div>
+            </PlayerControlsDrawer>
           </section>
         )}
 

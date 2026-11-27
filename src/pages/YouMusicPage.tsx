@@ -877,6 +877,8 @@ export default function YouMusicPage() {
 
     const params = new URLSearchParams({
       autoplay: '1',
+      controls: '0',
+      iv_load_policy: '3',
       rel: '0',
       modestbranding: '1',
       playsinline: '1',
@@ -1707,7 +1709,7 @@ export default function YouMusicPage() {
                       ref={(el) => {
                         you4IframesRef.current[idx] = el;
                       }}
-                      src={`https://www.youtube.com/embed/${vid.videoId}?autoplay=1&mute=${idx === you4AudioSlot ? 0 : 1}&rel=0&modestbranding=1&enablejsapi=1`}
+                      src={`https://www.youtube.com/embed/${vid.videoId}?autoplay=1&mute=${idx === you4AudioSlot ? 0 : 1}&controls=0&iv_load_policy=3&rel=0&modestbranding=1&playsinline=1&enablejsapi=1`}
                       title={vid.title}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen

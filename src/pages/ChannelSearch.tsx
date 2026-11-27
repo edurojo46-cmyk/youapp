@@ -3574,7 +3574,7 @@ export default function ChannelSearch() {
                   <iframe
                     ref={previewIframeRef}
                     key={previewVideo.videoId}
-                    src={`https://www.youtube.com/embed/${previewVideo.videoId}?autoplay=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://youapptv.com')}`}
+                    src={`https://www.youtube.com/embed/${previewVideo.videoId}?autoplay=1&controls=0&iv_load_policy=3&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : 'https://youapptv.com')}`}
                     title={previewVideo.title}
                     onLoad={() => {
                       setIsPreviewFrameReady(true);

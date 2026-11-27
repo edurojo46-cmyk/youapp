@@ -297,13 +297,14 @@ async function generateAnimatedStoryVideoBlob(
 
   const stream = canvas.captureStream(24);
   const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2_200_000 });
+  const baseMime = mime.split(';')[0];
   const chunks: BlobPart[] = [];
   recorder.ondataavailable = (ev) => {
     if (ev.data && ev.data.size > 0) chunks.push(ev.data);
   };
 
   const donePromise = new Promise<Blob>((resolve) => {
-    recorder.onstop = () => resolve(new Blob(chunks, { type: mime }));
+    recorder.onstop = () => resolve(new Blob(chunks, { type: baseMime }));
   });
 
   recorder.start();
@@ -325,7 +326,7 @@ async function generateAnimatedStoryVideoBlob(
   recorder.stop();
   stream.getTracks().forEach((t) => t.stop());
   const blob = await donePromise;
-  return { blob, ext, mime };
+  return { blob, ext, mime: baseMime };
 }
 
 export const GlobalShareSheet: React.FC = () => {

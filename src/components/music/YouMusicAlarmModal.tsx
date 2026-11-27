@@ -41,7 +41,7 @@ export interface AtlasVoiceProfile {
 const ATLAS_VOICE_PROFILES: AtlasVoiceProfile[] = [
   {
     id: 'daniela',
-    name: 'Daniela (Argentina)',
+    name: 'Daniela (ATLAS Mujer · AR)',
     subtitle: 'Femenina · cálida rioplatense',
     preferredLangs: ['es-AR', 'es-419', 'es-US', 'es'],
     preferredGender: 'female',
@@ -131,7 +131,7 @@ const DEFAULT_ALARM: YouMusicAlarmConfig = {
   gentleWake: true,
   voiceBriefingEnabled: true,
   atlasBriefingEnabled: false,
-  voiceProfileId: 'davefx',
+  voiceProfileId: 'daniela',
   deviceVoiceName: '',
   userName: '',
   cityKey: 'cordoba',
@@ -179,7 +179,7 @@ export function loadYouMusicAlarm(): YouMusicAlarmConfig {
         parsed.voiceProfileId === 'sharvard' ||
         parsed.voiceProfileId === 'claude'
           ? parsed.voiceProfileId
-          : 'davefx',
+          : 'daniela',
       deviceVoiceName: typeof parsed.deviceVoiceName === 'string' ? parsed.deviceVoiceName : '',
       userName: typeof parsed.userName === 'string' ? parsed.userName : '',
       cityKey: validCity,

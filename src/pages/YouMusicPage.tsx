@@ -13,7 +13,9 @@ import {
   ListMusic,
   Maximize2,
   Minimize2,
+  Moon,
   Music,
+  Pause,
   Pencil,
   PictureInPicture2,
   Play,
@@ -21,6 +23,8 @@ import {
   Radio,
   Search,
   Share2,
+  SkipBack,
+  SkipForward,
   Smartphone,
   Sparkles,
   Trash2,
@@ -121,6 +125,13 @@ export default function YouMusicPage() {
     if (activeRadioUrl === streamUrl) {
       audio.pause();
       setActiveRadioUrl(null);
+      if ('mediaSession' in navigator) {
+        try {
+          navigator.mediaSession.playbackState = 'paused';
+        } catch {
+          // ignore
+        }
+      }
       return;
     }
     audio.src = streamUrl;
@@ -128,7 +139,26 @@ export default function YouMusicPage() {
       .play()
       .then(() => {
         setActiveRadioUrl(streamUrl);
-        setToast(`📻 Escuchando en vivo: ${label}`);
+        setToast(`📻 Escuchando en vivo: ${label} (sigue sonando con pantalla apagada)`);
+        if ('mediaSession' in navigator) {
+          try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+              title: label,
+              artist: 'YOU MUSIC · Radio en vivo',
+              album: 'YOUAPP TV'
+            });
+            navigator.mediaSession.playbackState = 'playing';
+            navigator.mediaSession.setActionHandler('play', () => {
+              void audio.play();
+            });
+            navigator.mediaSession.setActionHandler('pause', () => {
+              audio.pause();
+              setActiveRadioUrl(null);
+            });
+          } catch {
+            // ignore
+          }
+        }
       })
       .catch(() => {
         setToast(`No se pudo conectar el stream de ${label}.`);
@@ -915,7 +945,20 @@ export default function YouMusicPage() {
   const [you4AudioSlot, setYou4AudioSlot] = useState(0);
   const [isCastOpen, setIsCastOpen] = useState(false);
   const [isAlarmOpen, setIsAlarmOpen] = useState(false);
+  const [isOledListenMode, setIsOledListenMode] = useState(false);
   const [alarmState, setAlarmState] = useState<YouMusicAlarmConfig>(() => loadYouMusicAlarm());
+
+  const handleToggleOledListenMode = () => {
+    setIsOledListenMode((prev) => {
+      const next = !prev;
+      if (next) {
+        void requestWakeLock();
+      } else {
+        void releaseWakeLock();
+      }
+      return next;
+    });
+  };
   const [castCodeInput, setCastCodeInput] = useState('');
   const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
   const [currentVideoMeta, setCurrentVideoMeta] = useState<VideoPublicMeta | null>(null);
@@ -1662,8 +1705,25 @@ export default function YouMusicPage() {
         {currentItem && (
           <section
             ref={playerCardRef}
-            className={`ymv1-player-card ${isFullscreen ? 'is-expanded' : ''}`}
+            className={`ymv1-player-card ${isFullscreen ? 'is-expanded' : ''} ${
+              isOledListenMode ? 'is-oled-listen' : ''
+            }`}
           >
+            {isOledListenMode && (
+              <div className="ymv1-oled-top">
+                <span className="ymv1-oled-status">
+                  <span className={`ymv1-oled-dot ${wakeLockActive ? 'is-live' : ''}`} />
+                  {wakeLockActive ? 'Modo OLED · Pantalla activa' : 'Modo OLED · Ahorro de batería'}
+                </span>
+                <button
+                  type="button"
+                  className="ymv1-oled-exit"
+                  onClick={handleToggleOledListenMode}
+                >
+                  <X size={14} /> Salir
+                </button>
+              </div>
+            )}
             {isMomentsMosaic ? (
               (() => {
                 const dur = Math.max(60, usePlayerStore.getState().duration || 240);
@@ -1854,6 +1914,15 @@ export default function YouMusicPage() {
                       <div className="ymv1-top-right-icons">
                         <button
                           type="button"
+                          className={`ymv1-top-icon-btn ${isOledListenMode ? 'is-subbed' : ''}`}
+                          onClick={handleToggleOledListenMode}
+                          title="Modo OLED (pantalla negra de bajo consumo mientras escuchás)"
+                          aria-label="Modo OLED ahorro de pantalla"
+                        >
+                          <Moon size={14} />
+                        </button>
+                        <button
+                          type="button"
                           className={`ymv1-top-icon-btn ${alarmState.enabled ? 'is-subbed' : ''}`}
                           onClick={() => setIsAlarmOpen(true)}
                           title={
@@ -1998,6 +2067,45 @@ export default function YouMusicPage() {
               />
             </div>
             </PlayerControlsDrawer>
+
+            {isOledListenMode && (
+              <div className="ymv1-oled-bottom">
+                <div className="ymv1-oled-track">
+                  <strong>{currentItem.title}</strong>
+                  <span>{currentItem.author}</span>
+                </div>
+                <div className="ymv1-oled-controls">
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      className="ymv1-oled-ctrl-btn"
+                      onClick={() => setCurrentIndex((prev) => (prev - 1 + items.length) % items.length)}
+                      aria-label="Anterior"
+                    >
+                      <SkipBack size={18} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="ymv1-oled-ctrl-btn is-main"
+                    onClick={handleTogglePlay}
+                    aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+                  >
+                    {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+                  </button>
+                  {items.length > 1 && (
+                    <button
+                      type="button"
+                      className="ymv1-oled-ctrl-btn"
+                      onClick={() => setCurrentIndex((prev) => (prev + 1) % items.length)}
+                      aria-label="Siguiente"
+                    >
+                      <SkipForward size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
@@ -3113,6 +3221,122 @@ export default function YouMusicPage() {
         .ymv1-player-card.is-expanded .ymv1-now-bar,
         .ymv1-player-card.is-expanded .ymv1-smartbar-slot {
           display: none !important;
+        }
+        .ymv1-player-card.is-oled-listen {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 12500 !important;
+          margin: 0 !important;
+          border-radius: 0 !important;
+          border: none !important;
+          background: #000000 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: space-between !important;
+          align-items: center !important;
+          padding: max(18px, env(safe-area-inset-top)) 18px max(26px, env(safe-area-inset-bottom)) !important;
+        }
+        .ymv1-player-card.is-oled-listen .yapp-pcd-root {
+          display: none !important;
+        }
+        .ymv1-player-card.is-oled-listen .ymv1-video-wrap {
+          width: min(100%, 380px) !important;
+          min-height: 214px !important;
+          border-radius: 16px !important;
+          overflow: hidden !important;
+          opacity: 0.42 !important;
+          border: 1px solid rgba(255, 255, 255, 0.08) !important;
+          transition: opacity 0.2s ease;
+        }
+        .ymv1-player-card.is-oled-listen .ymv1-video-wrap:active {
+          opacity: 0.9 !important;
+        }
+        .ymv1-oled-top {
+          width: 100%;
+          max-width: 440px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .ymv1-oled-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 12px;
+          color: rgba(226, 232, 240, 0.55);
+        }
+        .ymv1-oled-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: #64748b;
+        }
+        .ymv1-oled-dot.is-live {
+          background: #22c55e;
+          box-shadow: 0 0 8px #22c55e;
+        }
+        .ymv1-oled-exit {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 13px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.06);
+          color: rgba(248, 250, 252, 0.78);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .ymv1-oled-bottom {
+          width: 100%;
+          max-width: 420px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          text-align: center;
+        }
+        .ymv1-oled-track {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          max-width: 100%;
+        }
+        .ymv1-oled-track strong {
+          font-size: 15px;
+          font-weight: 700;
+          color: rgba(248, 250, 252, 0.72);
+        }
+        .ymv1-oled-track span {
+          font-size: 12.5px;
+          color: rgba(148, 163, 184, 0.6);
+        }
+        .ymv1-oled-controls {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 18px;
+        }
+        .ymv1-oled-ctrl-btn {
+          width: 46px;
+          height: 46px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(255, 255, 255, 0.05);
+          color: rgba(248, 250, 252, 0.78);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .ymv1-oled-ctrl-btn.is-main {
+          width: 56px;
+          height: 56px;
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.25);
+          color: #ffffff;
         }
         .ymv1-fs-exit-btn {
           position: fixed;

@@ -1339,8 +1339,11 @@ export default function YouMusicPage() {
       const url = buildSingleSongShareUrl(currentItem);
       await shareContentUniversal({
         title: `${currentItem.title} · YOU MUSIC`,
-        text: `Escuchá «${currentItem.title}» en YOU MUSIC`,
-        url
+        text: `🎵 Escuchá «${currentItem.title}» en YOU MUSIC`,
+        url,
+        thumbnailUrl: currentItem.thumbnailUrl,
+        subtitle: currentItem.author,
+        badge: 'YOU MUSIC'
       });
       return;
     }
@@ -1349,8 +1352,11 @@ export default function YouMusicPage() {
       const url = buildPlaylistShareUrl(displayedPlaylist);
       await shareContentUniversal({
         title: `${displayedPlaylist.name} · YOU MUSIC`,
-        text: `Escuchá mi playlist «${displayedPlaylist.name}» en YOU MUSIC`,
-        url
+        text: `🎵 Escuchá mi playlist «${displayedPlaylist.name}» en YOU MUSIC`,
+        url,
+        thumbnailUrl: displayedPlaylist.items[0]?.thumbnailUrl,
+        subtitle: `${displayedPlaylist.items.length} canciones`,
+        badge: 'PLAYLIST YOU MUSIC'
       });
     }
   };

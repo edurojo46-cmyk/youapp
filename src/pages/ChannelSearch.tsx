@@ -2517,8 +2517,11 @@ export default function ChannelSearch() {
     const shareUrl = `https://youapptv.com/search?${sp.toString()}`;
     await shareContentUniversal({
       title: `${previewVideo.title} · YOUAPP TV`,
-      text: `Mirá «${previewVideo.title}» en YOUAPP TV`,
-      url: shareUrl
+      text: `📺 Mirá «${previewVideo.title}» en YOUAPP TV`,
+      url: shareUrl,
+      thumbnailUrl: previewVideo.thumbnail,
+      subtitle: previewVideo.channelName,
+      badge: 'YOUAPP BUSCAR'
     });
   }, [previewVideo]);
 

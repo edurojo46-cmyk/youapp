@@ -2384,8 +2384,11 @@ export default function ProgramarTV() {
                                 : 'https://youapptv.com/mitv';
                               await shareContentUniversal({
                                 title: `${currentItem.title} · YOUAPP TV`,
-                                text: `Mirá «${currentItem.title}» en MiTV (YOUAPP)`,
-                                url: shareUrl
+                                text: `📺 Mirá «${currentItem.title}» en MiTV (YOUAPP)`,
+                                url: shareUrl,
+                                thumbnailUrl: currentItem.thumbnailUrl,
+                                subtitle: displayedChannel?.name || currentItem.author || 'MiTV',
+                                badge: 'MITV'
                               });
                             }}
                             title="Compartir este video"

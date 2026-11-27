@@ -1344,7 +1344,7 @@ export default function MiSenal1() {
     });
   }, [currentBlock?.id, currentBlock?.contentItem?.id, currentBlock?.contentItem?.providerId]);
 
-  // Auto-ocultamiento suave de controles sobre el video mientras reproduce (1 segundo)
+  // Auto-ocultamiento rápido del aro sobre el video mientras reproduce (< 1 segundo)
   const revealStageControls = useCallback(() => {
     setControlsVisible(true);
     if (hideTimerRef.current) {
@@ -1353,7 +1353,7 @@ export default function MiSenal1() {
     if (isPlaying && viewMode === 'single') {
       hideTimerRef.current = window.setTimeout(() => {
         setControlsVisible(false);
-      }, 1000);
+      }, 650);
     }
   }, [isPlaying, viewMode]);
 
@@ -1365,7 +1365,7 @@ export default function MiSenal1() {
     }
     hideTimerRef.current = window.setTimeout(() => {
       setControlsVisible(false);
-    }, 1000);
+    }, 650);
     return () => {
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
     };
@@ -5628,11 +5628,12 @@ export default function MiSenal1() {
           position: absolute;
           inset: 0;
           pointer-events: none;
-          transition: opacity 0.35s ease;
+          transition: opacity 0.22s ease;
         }
         .ms-stage-hud.visible { opacity: 1; }
         .ms-stage-hud.hidden-hud { opacity: 0; }
         .ms-stage-hud > * { pointer-events: auto; }
+        .ms-stage-hud.hidden-hud > * { pointer-events: none; }
 
         .ms-stage-caption {
           position: absolute;

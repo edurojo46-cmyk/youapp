@@ -1416,8 +1416,8 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
       const ptQuery = trendingMode ? 'documentary cinema music science' : clean;
       if (ptQuery.length < 2) return [];
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 2400);
-      const ptUrl = `https://sepiasearch.org/api/v1/search/videos?search=${encodeURIComponent(ptQuery)}&count=6&nsfw=false&sort=${trendingMode ? '-views' : '-match'}`;
+      const timer = window.setTimeout(() => controller.abort(), 2800);
+      const ptUrl = `https://sepiasearch.org/api/v1/search/videos?search=${encodeURIComponent(ptQuery)}&count=6&nsfw=false&hasHLSFiles=true&sort=${trendingMode ? '-views' : '-match'}`;
       const res = await fetch(ptUrl, { signal: controller.signal });
       window.clearTimeout(timer);
       if (!res.ok) return [];
@@ -1465,12 +1465,14 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
   const archivePromise = (async (): Promise<SearchVideoItem[]> => {
     try {
       const safeTerm = clean.replace(/["()\\/:]/g, ' ').trim();
+      const sfwExclude =
+        'AND NOT (title:(sex OR adult OR nude OR erotic OR xxx OR porn) OR subject:(adult OR erotica OR nudity))';
       const qExpr = trendingMode
-        ? 'mediatype:(movies) AND format:(MPEG4 OR h.264) AND (collection:(feature_films) OR collection:(classic_tv) OR collection:(documentaries))'
-        : `mediatype:(movies) AND format:(MPEG4 OR h.264) AND (${safeTerm})`;
+        ? `mediatype:(movies) AND format:(MPEG4 OR h.264) AND (collection:(feature_films) OR collection:(classic_tv) OR collection:(documentaries)) ${sfwExclude}`
+        : `mediatype:(movies) AND format:(MPEG4 OR h.264) AND (${safeTerm}) ${sfwExclude}`;
       if (!trendingMode && safeTerm.length < 2) return [];
       const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 2400);
+      const timer = window.setTimeout(() => controller.abort(), 3500);
       const arUrl = `https://archive.org/advancedsearch.php?q=${encodeURIComponent(qExpr)}&fl[]=identifier,title,creator,downloads,publicdate&sort[]=downloads+desc&rows=6&output=json`;
       const res = await fetch(arUrl, { signal: controller.signal });
       window.clearTimeout(timer);
@@ -1482,6 +1484,7 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
         const id = String(doc?.identifier || '').trim();
         const title = Array.isArray(doc?.title) ? String(doc.title[0] || '') : String(doc?.title || '');
         if (!id || !title) continue;
+        if (/\b(sex|nude|nudity|erotic|erotica|xxx|porn|adult)\b/i.test(`${id} ${title}`)) continue;
         const creator = Array.isArray(doc?.creator)
           ? String(doc.creator[0] || 'Internet Archive')
           : String(doc?.creator || 'Internet Archive');
@@ -1505,56 +1508,15 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
     }
   })();
 
-  // 4. Odysee (Lighthouse API pública oficial, 100% embebible sin anuncios, nsfw=false, 0 cuota)
-  const odyseePromise = (async (): Promise<SearchVideoItem[]> => {
-    try {
-      const odQuery = trendingMode ? 'music documentary cinema science' : clean;
-      if (odQuery.length < 2) return [];
-      const controller = new AbortController();
-      const timer = window.setTimeout(() => controller.abort(), 2400);
-      const odUrl = `https://lighthouse.odysee.tv/search?s=${encodeURIComponent(odQuery)}&size=6&mediaType=video&nsfw=false&include=title,thumbnail_url,duration,channel,release_time`;
-      const res = await fetch(odUrl, { signal: controller.signal });
-      window.clearTimeout(timer);
-      if (!res.ok) return [];
-      const list = await res.json();
-      if (!Array.isArray(list)) return [];
-      const mapped: SearchVideoItem[] = [];
-      for (const v of list) {
-        const claimId = String(v?.claimId || '').trim();
-        const name = String(v?.name || '').trim();
-        const title = String(v?.title || name || '').trim();
-        const thumb = String(v?.thumbnail_url || '').trim();
-        const dur = Number(v?.duration || 0);
-        if (!claimId || !name || !title || !thumb) continue;
-        if (dur > 0 && dur <= 62) continue;
-        mapped.push({
-          videoId: `od_${claimId}`,
-          title,
-          channelName: String(v?.channel || 'Odysee').replace(/^@/, ''),
-          thumbnail: thumb,
-          watchUrl: `https://odysee.com/${encodeURIComponent(name)}:${encodeURIComponent(claimId)}`,
-          embedUrl: `https://odysee.com/$/embed/${encodeURIComponent(name)}/${encodeURIComponent(claimId)}`,
-          duration: dur > 0 ? formatDurationLabel('', dur) : undefined,
-          durationSeconds: dur > 0 ? dur : undefined,
-          publishedAt: v?.release_time ? String(v.release_time) : undefined,
-          provider: 'odysee',
-          sourceLabel: 'Odysee',
-          tags: ['odysee']
-        });
-      }
-      return mapped;
-    } catch {
-      return [];
-    }
-  })();
-
-  // Nota: Dailymotion y Twitch se excluyen de /search (Dailymotion exige Player ID pago; Twitch muestra "Offline / Ver en Twitch" cuando el canal no transmite o sin HTTPS).
-  // Quedan 5 plataformas 100% on-demand y embebidas in-app: YouTube, Vimeo, Odysee, PeerTube y Archive.
-  const [vmHits, ptHits, arHits, odHits] = await Promise.all([
+  // Nota: Odysee, Dailymotion y Twitch se excluyen de /search:
+  // - Odysee: su backend da timeouts >10s y su iframe carga un SPA pesado sin control SmartBar.
+  // - Dailymotion: exige Player ID en Dailymotion Studio (sin ID devuelve HTTP 403).
+  // - Twitch: solo en vivo y exige parent= exacto.
+  // Quedan 4 plataformas rápidas y 100% embebidas in-app: YouTube, Vimeo, PeerTube (HLS) y Internet Archive (SFW).
+  const [vmHits, ptHits, arHits] = await Promise.all([
     vimeoPromise,
     peertubePromise,
-    archivePromise,
-    odyseePromise
+    archivePromise
   ]);
   const out: SearchVideoItem[] = [];
   const seen = new Set<string>();
@@ -1564,12 +1526,11 @@ async function searchDailymotionAndVimeo(rawQuery: string, trendingMode = false)
       : list.filter((it) => matchesStrictExternalQuery(it.title, it.channelName, clean));
 
   const cleanVm = filterStrict(vmHits);
-  const cleanOd = filterStrict(odHits);
   const cleanPt = filterStrict(ptHits);
   const cleanAr = filterStrict(arHits);
-  const maxLen = Math.max(cleanVm.length, cleanPt.length, cleanAr.length, cleanOd.length);
+  const maxLen = Math.max(cleanVm.length, cleanPt.length, cleanAr.length);
   for (let i = 0; i < maxLen; i += 1) {
-    for (const it of [cleanVm[i], cleanOd[i], cleanPt[i], cleanAr[i]]) {
+    for (const it of [cleanVm[i], cleanPt[i], cleanAr[i]]) {
       if (it && !seen.has(it.videoId) && it.thumbnail) {
         seen.add(it.videoId);
         out.push(it);
@@ -1720,12 +1681,12 @@ export default function ChannelSearch() {
         }
         if (prov === 'peertube') {
           const id = Date.now() % 1000000;
-          if (func === 'playVideo') win.postMessage(JSON.stringify({ method: 'peertube::play', id }), '*');
-          else if (func === 'pauseVideo') win.postMessage(JSON.stringify({ method: 'peertube::pause', id }), '*');
-          else if (func === 'mute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 0, id }), '*');
-          else if (func === 'unMute') win.postMessage(JSON.stringify({ method: 'peertube::setVolume', params: 1, id }), '*');
+          if (func === 'playVideo') win.postMessage({ type: 'peertube', method: 'play', id }, '*');
+          else if (func === 'pauseVideo') win.postMessage({ type: 'peertube', method: 'pause', id }, '*');
+          else if (func === 'mute') win.postMessage({ type: 'peertube', method: 'setVolume', params: [0], id }, '*');
+          else if (func === 'unMute') win.postMessage({ type: 'peertube', method: 'setVolume', params: [1], id }, '*');
           else if (func === 'seekTo' && typeof args[0] === 'number') {
-            win.postMessage(JSON.stringify({ method: 'peertube::seek', params: args[0], id }), '*');
+            win.postMessage({ type: 'peertube', method: 'seek', params: [args[0]], id }, '*');
           }
           return;
         }

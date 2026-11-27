@@ -1,6 +1,9 @@
 // Cloudflare Worker: youapp-share (Plan Free · 100.000 req/día · US$ 0)
-// Devuelve HTML real con og:image y og:title exactos de cada video/señal para WhatsApp, Telegram y X,
-// y redirige al instante a visitantes humanos hacia https://youapptv.com/...
+// Soporta enlaces ultra-cortos:
+//   /v/<ytId> -> Buscar en YOUAPP TV
+//   /m/<ytId> -> MiTV / Mi Señal en YOUAPP TV
+//   /y/<ytId> -> YouMusic en YOUAPP TV
+// + compatibilidad con ?to=...&t=...&d=...&v=...&img=...
 
 function escapeHtml(value) {
   return String(value || '')
@@ -38,13 +41,58 @@ function sanitizeImage(rawImg, ytId) {
   return 'https://youapptv.com/home-tech-hud-bg.jpg';
 }
 
+async function fetchYouTubeOEmbedMeta(ytId) {
+  try {
+    const res = await fetch(
+      `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${encodeURIComponent(ytId)}&format=json`,
+      { cf: { cacheTtl: 3600 } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return {
+      title: typeof data?.title === 'string' ? data.title.trim() : '',
+      author: typeof data?.author_name === 'string' ? data.author_name.trim() : ''
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default {
   async fetch(request) {
     const reqUrl = new URL(request.url);
-    const targetUrl = sanitizeTarget(reqUrl.searchParams.get('to'));
-    const title = (reqUrl.searchParams.get('t') || 'YOUAPP TV · Señal en vivo').trim().slice(0, 140);
-    const desc = (reqUrl.searchParams.get('d') || 'Mirá este video y armá tu propia señal en YOUAPP TV.').trim().slice(0, 220);
-    const ytId = (reqUrl.searchParams.get('v') || '').trim();
+    const shortMatch = reqUrl.pathname.match(/^\/([vmy])\/([A-Za-z0-9_-]{11})\/?$/);
+
+    let targetUrl = sanitizeTarget(reqUrl.searchParams.get('to'));
+    let ytId = (reqUrl.searchParams.get('v') || '').trim();
+    let title = (reqUrl.searchParams.get('t') || '').trim().slice(0, 140);
+    let desc = (reqUrl.searchParams.get('d') || '').trim().slice(0, 220);
+
+    if (shortMatch) {
+      const mode = shortMatch[1];
+      ytId = shortMatch[2];
+      if (mode === 'm') {
+        targetUrl = `https://youapptv.com/mitv?add=${encodeURIComponent(`https://www.youtube.com/watch?v=${ytId}`)}`;
+      } else if (mode === 'y') {
+        targetUrl = `https://youapptv.com/youmusic?v=${encodeURIComponent(ytId)}`;
+      } else {
+        targetUrl = `https://youapptv.com/search?v=${encodeURIComponent(ytId)}`;
+      }
+      if (!title) {
+        const meta = await fetchYouTubeOEmbedMeta(ytId);
+        if (meta?.title) {
+          title = `${meta.title.slice(0, 110)} · YOUAPP TV`;
+          if (!desc) {
+            desc = meta.author
+              ? `${meta.author} · Miralo en YOUAPP TV`
+              : 'Miralo gratis en YOUAPP TV';
+          }
+        }
+      }
+    }
+
+    if (!title) title = 'YOUAPP TV · Señal en vivo';
+    if (!desc) desc = 'Mirá este video y armá tu propia señal en YOUAPP TV.';
     const imgUrl = sanitizeImage((reqUrl.searchParams.get('img') || '').trim(), ytId);
 
     const safeTitle = escapeHtml(title);
@@ -89,7 +137,7 @@ export default {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',
-        'cache-control': 'public, max-age=300'
+        'cache-control': 'public, max-age=600'
       }
     });
   }

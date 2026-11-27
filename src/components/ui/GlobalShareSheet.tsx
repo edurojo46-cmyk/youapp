@@ -48,6 +48,17 @@ function buildDynamicPreviewShareUrl(payload: ShareSheetPayload): string {
       parsed.hostname === 'youapp.tv';
     if (!isYouAppHost) return payload.url;
 
+    const ytId = extractYtIdFromThumbOrUrl(payload.thumbnailUrl, payload.url);
+    // Enlace ultra-corto y limpio (/v/<ID>, /m/<ID>, /y/<ID>) sin choclo de parámetros
+    if (ytId) {
+      const mode = parsed.pathname.startsWith('/mitv') || parsed.pathname.startsWith('/misenal1')
+        ? 'm'
+        : parsed.pathname.startsWith('/youmusic')
+        ? 'y'
+        : 'v';
+      return `${DYNAMIC_OG_SHARE_BASE}${mode}/${ytId}`;
+    }
+
     const sp = new URLSearchParams();
     sp.set('to', payload.url);
     const cleanTitle = payload.title.replace(/\s*·\s*(YOUAPP TV|YOUAPP|YOU MUSIC)\s*$/i, '').trim();
@@ -56,10 +67,7 @@ function buildDynamicPreviewShareUrl(payload: ShareSheetPayload): string {
       ? `${payload.subtitle.slice(0, 70)} · Miralo gratis en YOUAPP TV`
       : 'Miralo gratis en YOUAPP TV';
     sp.set('d', desc);
-    const ytId = extractYtIdFromThumbOrUrl(payload.thumbnailUrl, payload.url);
-    if (ytId) {
-      sp.set('v', ytId);
-    } else if (payload.thumbnailUrl && /^https?:\/\//i.test(payload.thumbnailUrl)) {
+    if (payload.thumbnailUrl && /^https?:\/\//i.test(payload.thumbnailUrl)) {
       sp.set('img', payload.thumbnailUrl);
     }
     return `${DYNAMIC_OG_SHARE_BASE}?${sp.toString()}`;
@@ -275,8 +283,8 @@ export const GlobalShareSheet: React.FC = () => {
 
   const cleanTitle = payload.title.replace(/\s*·\s*(YOUAPP TV|YOUAPP|YOU MUSIC)\s*$/i, '').trim();
   const richShareUrl = buildDynamicPreviewShareUrl(payload);
-  const fullText = `${payload.text} ${richShareUrl}`.trim();
-  const waHref = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
+  // Mensaje limpio y breve para WhatsApp (la tarjeta ya muestra foto y título)
+  const waHref = `https://wa.me/?text=${encodeURIComponent(richShareUrl)}`;
   const tgHref = `https://t.me/share/url?url=${encodeURIComponent(richShareUrl)}&text=${encodeURIComponent(payload.text)}`;
   const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(payload.text)}&url=${encodeURIComponent(richShareUrl)}`;
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(payload.url)}`;

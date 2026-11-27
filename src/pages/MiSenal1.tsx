@@ -29,6 +29,7 @@ import {
   UserPlus,
   UserCheck,
   MoreHorizontal,
+  Sliders,
   SkipBack,
   SkipForward,
   Volume2,

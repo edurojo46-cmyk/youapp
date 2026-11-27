@@ -22,10 +22,11 @@ interface YouAppPlayerProps {
   onError: (err: any) => void;
   onReady?: (duration: number) => void;
   onPlaybackStateChange?: (state: PlaybackStateType) => void;
+  hideResumePrompt?: boolean;
 }
 
 export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
-  ({ item, onEnded, onError, onReady, onPlaybackStateChange }, ref) => {
+  ({ item, onEnded, onError, onReady, onPlaybackStateChange, hideResumePrompt = false }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const controllerRef = useRef<PlayerController | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -270,7 +271,7 @@ export const YouAppPlayer = forwardRef<YouAppPlayerHandle, YouAppPlayerProps>(
           style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
         />
 
-        {resumePromptSec !== null && !error && (
+        {!hideResumePrompt && resumePromptSec !== null && !error && (
           <div
             style={{
               position: 'absolute',

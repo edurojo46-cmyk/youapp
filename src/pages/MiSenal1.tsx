@@ -3104,21 +3104,8 @@ export default function MiSenal1() {
                           void fetchMoments(duration);
                         }
                       }}
+                      hideResumePrompt
                     />
-                  )}
-
-                  {/* Píldora flotante siempre visible mientras esté silenciado */}
-                  {isMuted && (
-                    <button
-                      type="button"
-                      className="ms-unmute-pill"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void playerRef.current?.unmute();
-                      }}
-                    >
-                      <VolumeX size={15} /> Activar sonido
-                    </button>
                   )}
 
                   {/* Capa sutil que se atenúa sola mientras reproduce (video limpio sin textos superpuestos) */}

@@ -4,7 +4,7 @@ import {
   AlarmClock,
   ArrowDown,
   ArrowUp,
-  BookmarkCheck,
+  Bookmark,
   Cast,
   Check,
   ChevronDown,
@@ -2159,16 +2159,30 @@ export default function YouMusicPage() {
                 {!sharedPlaylist && (
                   <button
                     type="button"
-                    className="ymv1-btn-primary"
-                    style={{ padding: '7px 13px', fontSize: '12px', borderRadius: '999px' }}
+                    className="ymv1-icon-btn"
                     onClick={handleSaveToMiSenalMusical}
-                  >
-                    <BookmarkCheck size={13} />
-                    <span>
-                      {activeOwnPlaylist?.savedInMusicalSignal
+                    title={
+                      activeOwnPlaylist?.savedInMusicalSignal
                         ? 'Actualizar en Mi Señal Musical'
-                        : 'Guardar en Mi Señal Musical'}
-                    </span>
+                        : 'Guardar en Mi Señal Musical'
+                    }
+                    aria-label={
+                      activeOwnPlaylist?.savedInMusicalSignal
+                        ? 'Actualizar en Mi Señal Musical'
+                        : 'Guardar en Mi Señal Musical'
+                    }
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: '999px',
+                      color: '#ffffff'
+                    }}
+                  >
+                    <Bookmark
+                      size={15}
+                      fill={activeOwnPlaylist?.savedInMusicalSignal ? '#ffffff' : 'none'}
+                      strokeWidth={2.1}
+                    />
                   </button>
                 )}
                 <button

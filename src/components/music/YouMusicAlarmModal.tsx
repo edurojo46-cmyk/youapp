@@ -300,10 +300,23 @@ function buildSmartBriefingText(
   return parts.join(' ');
 }
 
+function isHighQualityVoice(v: SpeechSynthesisVoice): boolean {
+  return /(natural|neural|online|google|enhanced|premium|siri)/i.test(v.name);
+}
+
 function getSpanishDeviceVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
   const voices = window.speechSynthesis.getVoices() || [];
-  return voices.filter((v) => v.lang.toLowerCase().startsWith('es'));
+  return voices
+    .filter((v) => v.lang.toLowerCase().startsWith('es'))
+    .sort((a, b) => {
+      const qa = isHighQualityVoice(a) ? 1 : 0;
+      const qb = isHighQualityVoice(b) ? 1 : 0;
+      if (qb !== qa) return qb - qa;
+      const aAr = a.lang.toLowerCase().startsWith('es-ar') ? 1 : 0;
+      const bAr = b.lang.toLowerCase().startsWith('es-ar') ? 1 : 0;
+      return bAr - aAr;
+    });
 }
 
 function pickVoiceForProfile(
@@ -316,17 +329,39 @@ function pickVoiceForProfile(
     const exact = spanish.find((v) => v.name === explicitVoiceName);
     if (exact) return exact;
   }
-  const maleHints = /(tomas|tomás|jorge|pablo|alvaro|álvaro|diego|raul|raúl|carlos|enrique|male|hombre|man|david|antonio)/i;
-  const femaleHints = /(elena|daniela|paulina|monica|mónica|sabina|laura|sofia|sofía|helena|lucia|lucía|female|mujer|woman|maria|maría|paloma|carmen)/i;
+  const maleHints = /(tomas|tomás|jorge|pablo|alvaro|álvaro|diego|raul|raúl|carlos|enrique|male|hombre|man|david|antonio|alonso)/i;
+  const femaleHints = /(elena|daniela|paulina|monica|mónica|sabina|laura|sofia|sofía|helena|lucia|lucía|female|mujer|woman|maria|maría|paloma|carmen|dalia)/i;
+  const legacyRoboticHints = /(sabina|helena|laura|pablo)/i;
   const genderMatcher = profile.preferredGender === 'male' ? maleHints : femaleHints;
 
-  for (const langPrefix of profile.preferredLangs) {
-    const langMatches = spanish.filter((v) => v.lang.toLowerCase().startsWith(langPrefix.toLowerCase()));
-    const gendered = langMatches.find((v) => genderMatcher.test(v.name));
-    if (gendered) return gendered;
-    if (langMatches.length > 0) return langMatches[0];
+  const scoreVoice = (v: SpeechSynthesisVoice): number => {
+    let score = 0;
+    const name = v.name || '';
+    const lang = (v.lang || '').toLowerCase();
+
+    if (/(natural|neural|online)/i.test(name)) score += 120;
+    else if (/google/i.test(name)) score += 100;
+    else if (/(enhanced|premium|siri)/i.test(name)) score += 90;
+    else if (legacyRoboticHints.test(name)) score -= 40;
+
+    const langIdx = profile.preferredLangs.findIndex((p) => lang.startsWith(p.toLowerCase()));
+    if (langIdx >= 0) score += Math.max(8, 36 - langIdx * 8);
+
+    if (genderMatcher.test(name)) score += 26;
+    if (!v.localService) score += 12; // Voces cloud del navegador suelen ser neuronales
+    return score;
+  };
+
+  let best = spanish[0];
+  let bestScore = scoreVoice(best);
+  for (let i = 1; i < spanish.length; i += 1) {
+    const sc = scoreVoice(spanish[i]);
+    if (sc > bestScore) {
+      best = spanish[i];
+      bestScore = sc;
+    }
   }
-  return spanish.find((v) => genderMatcher.test(v.name)) || spanish[0];
+  return best;
 }
 
 function speakSpanishBriefing(
@@ -946,10 +981,11 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
                         }}
                         aria-label="Voz del dispositivo en español"
                       >
-                        <option value="">Motor automático según perfil ATLAS elegido</option>
+                        <option value="">Automático (prioriza Natural / Google HD)</option>
                         {spanishVoices.map((v) => (
                           <option key={`${v.name}-${v.lang}`} value={v.name}>
-                            Voz del equipo: {v.name} ({v.lang})
+                            {isHighQualityVoice(v) ? '★ HD · ' : ''}
+                            {v.name} ({v.lang})
                           </option>
                         ))}
                       </select>

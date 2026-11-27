@@ -8,8 +8,10 @@ import {
   Mic,
   Moon,
   Music,
+  Newspaper,
   Play,
   Plus,
+  Sparkles,
   Sun,
   Trash2,
   Volume2,
@@ -21,8 +23,68 @@ import {
   type ArgentinaCityKey,
   type ArgentinaLiveData
 } from '../../lib/tv/signalStationExtrasStore';
+import { fetchPortalsLatest } from '../../lib/tv/youLecturasStore';
 
 export type AlarmRepeatMode = 'once' | 'weekdays' | 'daily';
+export type AtlasVoiceProfileId = 'daniela' | 'davefx' | 'ald' | 'sharvard' | 'claude';
+
+export interface AtlasVoiceProfile {
+  id: AtlasVoiceProfileId;
+  name: string;
+  subtitle: string;
+  preferredLangs: string[];
+  preferredGender: 'female' | 'male';
+  rate: number;
+  pitch: number;
+}
+
+const ATLAS_VOICE_PROFILES: AtlasVoiceProfile[] = [
+  {
+    id: 'daniela',
+    name: 'Daniela (Argentina)',
+    subtitle: 'Femenina · cálida rioplatense',
+    preferredLangs: ['es-AR', 'es-419', 'es-US', 'es'],
+    preferredGender: 'female',
+    rate: 0.96,
+    pitch: 1.04
+  },
+  {
+    id: 'davefx',
+    name: 'DaveFX (ATLAS Oficial)',
+    subtitle: 'Masculina · documental pausada',
+    preferredLangs: ['es-ES', 'es-AR', 'es-419', 'es'],
+    preferredGender: 'male',
+    rate: 0.9,
+    pitch: 0.85
+  },
+  {
+    id: 'ald',
+    name: 'Ald (Latinoamérica)',
+    subtitle: 'Masculina · dinámica y clara',
+    preferredLangs: ['es-MX', 'es-419', 'es-US', 'es'],
+    preferredGender: 'male',
+    rate: 1.02,
+    pitch: 0.97
+  },
+  {
+    id: 'sharvard',
+    name: 'Sharvard (Elocuente)',
+    subtitle: 'Femenina · dicción precisa',
+    preferredLangs: ['es-ES', 'es-419', 'es'],
+    preferredGender: 'female',
+    rate: 0.95,
+    pitch: 1.08
+  },
+  {
+    id: 'claude',
+    name: 'Claude (Radiofónica)',
+    subtitle: 'Masculina · cálida tipo radio',
+    preferredLangs: ['es-MX', 'es-US', 'es-AR', 'es'],
+    preferredGender: 'male',
+    rate: 0.94,
+    pitch: 0.9
+  }
+];
 
 export interface YouMusicAlarmTrack {
   videoId: string;
@@ -46,6 +108,9 @@ export interface YouMusicAlarmConfig {
   author: string;
   gentleWake: boolean;
   voiceBriefingEnabled: boolean;
+  atlasBriefingEnabled: boolean;
+  voiceProfileId: AtlasVoiceProfileId;
+  deviceVoiceName: string;
   userName: string;
   cityKey: ArgentinaCityKey;
   includeWeather: boolean;
@@ -65,6 +130,9 @@ const DEFAULT_ALARM: YouMusicAlarmConfig = {
   author: '',
   gentleWake: true,
   voiceBriefingEnabled: true,
+  atlasBriefingEnabled: false,
+  voiceProfileId: 'davefx',
+  deviceVoiceName: '',
   userName: '',
   cityKey: 'cordoba',
   includeWeather: true,
@@ -103,6 +171,16 @@ export function loadYouMusicAlarm(): YouMusicAlarmConfig {
       author: typeof parsed.author === 'string' ? parsed.author : '',
       gentleWake: parsed.gentleWake !== false,
       voiceBriefingEnabled: parsed.voiceBriefingEnabled !== false,
+      atlasBriefingEnabled: Boolean(parsed.atlasBriefingEnabled),
+      voiceProfileId:
+        parsed.voiceProfileId === 'daniela' ||
+        parsed.voiceProfileId === 'davefx' ||
+        parsed.voiceProfileId === 'ald' ||
+        parsed.voiceProfileId === 'sharvard' ||
+        parsed.voiceProfileId === 'claude'
+          ? parsed.voiceProfileId
+          : 'davefx',
+      deviceVoiceName: typeof parsed.deviceVoiceName === 'string' ? parsed.deviceVoiceName : '',
       userName: typeof parsed.userName === 'string' ? parsed.userName : '',
       cityKey: validCity,
       includeWeather: parsed.includeWeather !== false,
@@ -178,12 +256,17 @@ function getGreetingByHour(hour: number): string {
 function buildSmartBriefingText(
   cfg: YouMusicAlarmConfig,
   nowDate: Date,
-  weather: ArgentinaLiveData | null
+  weather: ArgentinaLiveData | null,
+  atlasHeadlines: string[] = []
 ): string {
   const parts: string[] = [];
   const greeting = getGreetingByHour(nowDate.getHours());
   const cleanName = cfg.userName.trim();
-  parts.push(cleanName ? `${greeting}, ${cleanName}.` : `${greeting}.`);
+  if (cfg.atlasBriefingEnabled) {
+    parts.push(cleanName ? `${greeting}, ${cleanName}, soy ATLAS.` : `${greeting}, soy ATLAS.`);
+  } else {
+    parts.push(cleanName ? `${greeting}, ${cleanName}.` : `${greeting}.`);
+  }
 
   const dateText = formatDateEs(nowDate);
   parts.push(`Son las ${formatSpokenTime(nowDate)}${dateText ? ` del ${dateText}` : ''}.`);
@@ -202,6 +285,11 @@ function buildSmartBriefingText(
     parts.push(`Tu agenda para hoy: ${agendaSpoken}.`);
   }
 
+  if (cfg.atlasBriefingEnabled && atlasHeadlines.length > 0) {
+    const newsJoined = atlasHeadlines.slice(0, 2).join('. ');
+    parts.push(`En los titulares de hoy: ${newsJoined}.`);
+  }
+
   const custom = cfg.customMessage.trim();
   if (custom) {
     parts.push(custom.endsWith('.') ? custom : `${custom}.`);
@@ -212,32 +300,58 @@ function buildSmartBriefingText(
   return parts.join(' ');
 }
 
-function pickBestSpanishVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+function getSpanishDeviceVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
   const voices = window.speechSynthesis.getVoices() || [];
-  if (!voices.length) return null;
-  const preferOrder = ['es-AR', 'es-419', 'es-MX', 'es-US', 'es-ES', 'es'];
-  for (const langPrefix of preferOrder) {
-    const found = voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix.toLowerCase()));
-    if (found) return found;
-  }
-  return null;
+  return voices.filter((v) => v.lang.toLowerCase().startsWith('es'));
 }
 
-function speakSpanishBriefing(text: string, onDone?: () => void): boolean {
+function pickVoiceForProfile(
+  profile: AtlasVoiceProfile,
+  explicitVoiceName?: string
+): SpeechSynthesisVoice | null {
+  const spanish = getSpanishDeviceVoices();
+  if (!spanish.length) return null;
+  if (explicitVoiceName) {
+    const exact = spanish.find((v) => v.name === explicitVoiceName);
+    if (exact) return exact;
+  }
+  const maleHints = /(tomas|tomás|jorge|pablo|alvaro|álvaro|diego|raul|raúl|carlos|enrique|male|hombre|man|david|antonio)/i;
+  const femaleHints = /(elena|daniela|paulina|monica|mónica|sabina|laura|sofia|sofía|helena|lucia|lucía|female|mujer|woman|maria|maría|paloma|carmen)/i;
+  const genderMatcher = profile.preferredGender === 'male' ? maleHints : femaleHints;
+
+  for (const langPrefix of profile.preferredLangs) {
+    const langMatches = spanish.filter((v) => v.lang.toLowerCase().startsWith(langPrefix.toLowerCase()));
+    const gendered = langMatches.find((v) => genderMatcher.test(v.name));
+    if (gendered) return gendered;
+    if (langMatches.length > 0) return langMatches[0];
+  }
+  return spanish.find((v) => genderMatcher.test(v.name)) || spanish[0];
+}
+
+function speakSpanishBriefing(
+  text: string,
+  profileId: AtlasVoiceProfileId,
+  explicitVoiceName?: string,
+  onDone?: () => void
+): boolean {
   if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text.trim()) {
     onDone?.();
     return false;
   }
   try {
     window.speechSynthesis.cancel();
+    const profile = ATLAS_VOICE_PROFILES.find((p) => p.id === profileId) || ATLAS_VOICE_PROFILES[0];
     const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = 'es-AR';
-    utter.rate = 0.98;
-    utter.pitch = 1.0;
+    utter.lang = profile.preferredLangs[0] || 'es-AR';
+    utter.rate = profile.rate;
+    utter.pitch = profile.pitch;
     utter.volume = 1.0;
-    const voice = pickBestSpanishVoice();
-    if (voice) utter.voice = voice;
+    const voice = pickVoiceForProfile(profile, explicitVoiceName);
+    if (voice) {
+      utter.voice = voice;
+      utter.lang = voice.lang;
+    }
     let finished = false;
     const finishOnce = () => {
       if (finished) return;
@@ -246,13 +360,29 @@ function speakSpanishBriefing(text: string, onDone?: () => void): boolean {
     };
     utter.onend = finishOnce;
     utter.onerror = finishOnce;
-    // Salvaguarda por si el navegador no dispara onend
-    window.setTimeout(finishOnce, Math.max(8000, Math.min(45000, text.length * 95)));
+    window.setTimeout(finishOnce, Math.max(8000, Math.min(50000, text.length * 98)));
     window.speechSynthesis.speak(utter);
     return true;
   } catch {
     onDone?.();
     return false;
+  }
+}
+
+async function fetchTopAtlasHeadlines(): Promise<string[]> {
+  try {
+    const groups = await fetchPortalsLatest(1, false);
+    const titles: string[] = [];
+    for (const g of groups) {
+      const first = g.items?.[0];
+      if (first?.title) {
+        titles.push(`${g.portalName}: ${first.title.replace(/\s+/g, ' ').trim()}`);
+      }
+      if (titles.length >= 2) break;
+    }
+    return titles;
+  } catch {
+    return [];
   }
 }
 
@@ -336,8 +466,10 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
   const [now, setNow] = useState<Date>(() => new Date());
   const [testCountdown, setTestCountdown] = useState<number | null>(null);
 
-  // Clima vivo + editor rápido de agenda
+  // Clima vivo + titulares ATLAS opcionales + voces instaladas + editor rápido de agenda
   const [liveWeather, setLiveWeather] = useState<ArgentinaLiveData | null>(null);
+  const [atlasHeadlines, setAtlasHeadlines] = useState<string[]>([]);
+  const [spanishVoices, setSpanishVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [newAgendaTime, setNewAgendaTime] = useState('09:00');
   const [newAgendaText, setNewAgendaText] = useState('');
 
@@ -360,9 +492,15 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
 
   // Precargar voces de SpeechSynthesis y clima de la ciudad elegida
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.getVoices();
-    }
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const syncVoices = () => setSpanishVoices(getSpanishDeviceVoices());
+    syncVoices();
+    window.speechSynthesis.onvoiceschanged = syncVoices;
+    return () => {
+      if (window.speechSynthesis.onvoiceschanged === syncVoices) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -470,25 +608,23 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
         const duckId = window.setTimeout(() => onSetVolume(14), 250);
         volumeTimersRef.current.push(duckId);
         const startVoiceId = window.setTimeout(() => {
-          const runVoice = (weatherData: ArgentinaLiveData | null) => {
-            const script = buildSmartBriefingText(sourceCfg, new Date(), weatherData);
+          const weatherPromise = sourceCfg.includeWeather
+            ? fetchArgentinaLiveData(sourceCfg.cityKey, false).catch(() => weatherRef.current)
+            : Promise.resolve(null);
+          const newsPromise = sourceCfg.atlasBriefingEnabled
+            ? fetchTopAtlasHeadlines().catch(() => [])
+            : Promise.resolve([]);
+
+          void Promise.all([weatherPromise, newsPromise]).then(([w, headlines]) => {
+            if (w) setLiveWeather(w);
+            setAtlasHeadlines(headlines);
+            const script = buildSmartBriefingText(sourceCfg, new Date(), w, headlines);
             setIsSpeakingNow(true);
-            speakSpanishBriefing(script, () => {
+            speakSpanishBriefing(script, sourceCfg.voiceProfileId, sourceCfg.deviceVoiceName, () => {
               setIsSpeakingNow(false);
               rampMusicVolume(sourceCfg.gentleWake);
             });
-          };
-
-          if (sourceCfg.includeWeather) {
-            fetchArgentinaLiveData(sourceCfg.cityKey, false)
-              .then((w) => {
-                setLiveWeather(w);
-                runVoice(w);
-              })
-              .catch(() => runVoice(weatherRef.current));
-          } else {
-            runVoice(null);
-          }
+          });
         }, 1200);
         volumeTimersRef.current.push(startVoiceId);
       } else {
@@ -616,23 +752,35 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
     });
   };
 
-  const handlePreviewVoice = () => {
+  const handlePreviewVoice = (overrideProfileId?: AtlasVoiceProfileId, overrideDeviceVoice?: string) => {
     unlockAudio();
-    const speakNow = (w: ArgentinaLiveData | null) => {
-      const text = buildSmartBriefingText(alarm, new Date(), w);
+    const profId = overrideProfileId || alarm.voiceProfileId;
+    const devVoice = overrideDeviceVoice !== undefined ? overrideDeviceVoice : alarm.deviceVoiceName;
+    const weatherPromise = alarm.includeWeather
+      ? fetchArgentinaLiveData(alarm.cityKey).catch(() => liveWeather)
+      : Promise.resolve(null);
+    const newsPromise = alarm.atlasBriefingEnabled
+      ? fetchTopAtlasHeadlines().catch(() => [])
+      : Promise.resolve([]);
+
+    void Promise.all([weatherPromise, newsPromise]).then(([w, headlines]) => {
+      if (w) setLiveWeather(w);
+      setAtlasHeadlines(headlines);
+      const previewCfg = { ...alarm, voiceProfileId: profId, deviceVoiceName: devVoice };
+      const text = buildSmartBriefingText(previewCfg, new Date(), w, headlines);
       setIsSpeakingNow(true);
-      speakSpanishBriefing(text, () => setIsSpeakingNow(false));
-    };
-    if (alarm.includeWeather) {
-      fetchArgentinaLiveData(alarm.cityKey)
-        .then((w) => {
-          setLiveWeather(w);
-          speakNow(w);
-        })
-        .catch(() => speakNow(liveWeather));
-    } else {
-      speakNow(null);
-    }
+      speakSpanishBriefing(text, profId, devVoice, () => setIsSpeakingNow(false));
+    });
+  };
+
+  const handleAuditionProfile = (profile: AtlasVoiceProfile) => {
+    unlockAudio();
+    updateAlarm({ ...alarm, voiceProfileId: profile.id, deviceVoiceName: '' });
+    const sample = alarm.atlasBriefingEnabled
+      ? `Buenos días${alarm.userName.trim() ? `, ${alarm.userName.trim()}` : ''}, soy ATLAS con voz ${profile.name.split(' ')[0]}. Así sonará tu despertador.`
+      : `Buenos días${alarm.userName.trim() ? `, ${alarm.userName.trim()}` : ''}. Así suena la voz ${profile.name.split(' ')[0]} para tu despertador.`;
+    setIsSpeakingNow(true);
+    speakSpanishBriefing(sample, profile.id, '', () => setIsSpeakingNow(false));
   };
 
   const uniqueTracks: YouMusicAlarmTrack[] = [];
@@ -741,7 +889,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
                   <button
                     type="button"
                     className="ymalarm-use-current"
-                    onClick={handlePreviewVoice}
+                    onClick={() => handlePreviewVoice()}
                     title="Escuchar cómo sonará tu mensaje de voz ahora"
                   >
                     <Volume2 size={12} /> {isSpeakingNow ? 'Hablando…' : 'Escuchar'}
@@ -751,6 +899,63 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
 
               {alarm.voiceBriefingEnabled && (
                 <div className="ymalarm-voice-fields">
+                  {/* OPCIÓN NO AUTOMÁTICA: SUMAR RESUMEN DE ATLAS */}
+                  <label className="ymalarm-check-row ymalarm-atlas-opt">
+                    <input
+                      type="checkbox"
+                      checked={alarm.atlasBriefingEnabled}
+                      onChange={(e) => updateAlarm({ ...alarm, atlasBriefingEnabled: e.target.checked })}
+                    />
+                    <Sparkles size={15} color="#a78bfa" />
+                    <span>
+                      <strong>Agregar resumen de ATLAS</strong> (se presenta como ATLAS y lee 2 titulares de /lecturas)
+                    </span>
+                  </label>
+
+                  {/* SELECTOR DE VOCES ATLAS VIDEO */}
+                  <div className="ymalarm-agenda-block">
+                    <div className="ymalarm-label">Elegí tu voz (estilos ATLAS Video)</div>
+                    <div className="ymalarm-voice-grid">
+                      {ATLAS_VOICE_PROFILES.map((vp) => {
+                        const active = alarm.voiceProfileId === vp.id && !alarm.deviceVoiceName;
+                        return (
+                          <button
+                            key={vp.id}
+                            type="button"
+                            className={`ymalarm-voice-chip ${active ? 'is-active' : ''}`}
+                            onClick={() => handleAuditionProfile(vp)}
+                            title={`Seleccionar y probar voz ${vp.name}`}
+                          >
+                            <div className="ymalarm-voice-chip-txt">
+                              <strong>{vp.name}</strong>
+                              <span>{vp.subtitle}</span>
+                            </div>
+                            <Play size={12} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {spanishVoices.length > 1 && (
+                      <select
+                        className="ymalarm-select"
+                        value={alarm.deviceVoiceName}
+                        onChange={(e) => {
+                          const nextName = e.target.value;
+                          updateAlarm({ ...alarm, deviceVoiceName: nextName });
+                          if (nextName) handlePreviewVoice(alarm.voiceProfileId, nextName);
+                        }}
+                        aria-label="Voz del dispositivo en español"
+                      >
+                        <option value="">Motor automático según perfil ATLAS elegido</option>
+                        {spanishVoices.map((v) => (
+                          <option key={`${v.name}-${v.lang}`} value={v.name}>
+                            Voz del equipo: {v.name} ({v.lang})
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
                   <div className="ymalarm-inline-grid">
                     <input
                       type="text"
@@ -1044,6 +1249,16 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
                     ))}
                   </div>
                 )}
+                {alarm.atlasBriefingEnabled && atlasHeadlines.length > 0 && (
+                  <div className="ymalarm-ring-agenda">
+                    {atlasHeadlines.slice(0, 2).map((h, i) => (
+                      <div key={`hl-${i}`} className="ymalarm-ring-ag-item">
+                        <Newspaper size={13} color="#a78bfa" style={{ flexShrink: 0 }} />
+                        <span>{h}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -1236,6 +1451,55 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           display: flex;
           flex-direction: column;
           gap: 9px;
+        }
+        .ymalarm-atlas-opt {
+          padding: 8px 10px;
+          border-radius: 11px;
+          background: rgba(167, 139, 250, 0.1);
+          border: 1px solid rgba(167, 139, 250, 0.28);
+        }
+        .ymalarm-voice-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
+        }
+        .ymalarm-voice-chip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          padding: 7px 9px;
+          border-radius: 11px;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(8, 12, 22, 0.65);
+          color: #e2e8f0;
+          text-align: left;
+          cursor: pointer;
+        }
+        .ymalarm-voice-chip.is-active {
+          border-color: rgba(245, 158, 11, 0.65);
+          background: rgba(245, 158, 11, 0.16);
+          color: #fef3c7;
+        }
+        .ymalarm-voice-chip-txt {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+        .ymalarm-voice-chip-txt strong {
+          font-size: 11.5px;
+          font-weight: 700;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymalarm-voice-chip-txt span {
+          font-size: 10px;
+          color: #94a3b8;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .ymalarm-inline-grid {
           display: grid;

@@ -2383,12 +2383,12 @@ export default function ProgramarTV() {
                                 ? `https://youapptv.com/mitv?add=${encodeURIComponent(targetWatchUrl)}`
                                 : 'https://youapptv.com/mitv';
                               await shareContentUniversal({
-                                title: `${currentItem.title} · YOUAPP TV`,
-                                text: `📺 Mirá «${currentItem.title}» en MiTV (YOUAPP)`,
+                                title: `${currentItem.title} · Tu señal de TV`,
+                                text: 'Tu señal de TV',
                                 url: shareUrl,
                                 thumbnailUrl: currentItem.thumbnailUrl,
                                 subtitle: displayedChannel?.name || currentItem.author || 'MiTV',
-                                badge: 'MITV'
+                                badge: 'TU SEÑAL DE TV'
                               });
                             }}
                             title="Compartir este video"

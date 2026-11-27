@@ -3279,7 +3279,7 @@ export default function MiSenal1() {
                           : window.location.href;
                         await shareContentUniversal({
                           title: `${ci?.title || activeSignal?.name || 'Mi Señal'} · YOUAPP`,
-                          text: `📺 Mirá «${ci?.title || activeSignal?.name}» en mi señal de YOUAPP TV`,
+                          text: 'Mi señal en YOUAPP',
                           url: shareUrl,
                           thumbnailUrl: ci?.thumbnailUrl || (ytId ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : undefined),
                           subtitle: `${activeSignal?.name || 'Mi Señal'} · ${authorName}`,

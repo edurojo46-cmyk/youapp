@@ -346,9 +346,8 @@ export const GlobalShareSheet: React.FC = () => {
     (Boolean((window as unknown as { YouAppAndroidPiP?: unknown }).YouAppAndroidPiP) ||
       /;\s*wv\)/i.test(navigator.userAgent || ''));
   const richShareUrl = buildDynamicPreviewShareUrl(payload);
-  const isMusicShare =
-    payload.url.includes('/youmusic') || (payload.badge || '').toUpperCase().includes('MUSICAL');
-  const waMessage = isMusicShare ? `Tu señal musical\n${richShareUrl}` : richShareUrl;
+  const cleanLabel = payload.text?.trim() || 'YOUAPP TV';
+  const waMessage = `${cleanLabel}\n${richShareUrl}`;
   const waHref = `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
   const tgHref = `https://t.me/share/url?url=${encodeURIComponent(richShareUrl)}&text=${encodeURIComponent(payload.text)}`;
   const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(payload.text)}&url=${encodeURIComponent(richShareUrl)}`;

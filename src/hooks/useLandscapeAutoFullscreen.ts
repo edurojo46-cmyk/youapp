@@ -15,7 +15,7 @@ export function useLandscapeAutoFullscreen(
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
 
-    const mq = window.matchMedia('(orientation: landscape) and (max-height: 540px)');
+    const mq = window.matchMedia('(orientation: landscape) and (max-height: 600px)');
 
     const applyOrientation = (isPhoneLandscape: boolean) => {
       if (isPhoneLandscape && hasActiveVideo) {
@@ -43,26 +43,32 @@ export function useLandscapeAutoFullscreen(
       }
     };
 
+    const checkNow = () => {
+      const isLandscape =
+        mq.matches || (window.innerWidth > window.innerHeight && window.innerHeight <= 600);
+      applyOrientation(isLandscape);
+    };
+
     // Evalúa inmediatamente por si el usuario ya tenía el celular acostado al tocar un video
-    if (mq.matches && hasActiveVideo) {
-      applyOrientation(true);
+    if (hasActiveVideo) {
+      checkNow();
     }
 
-    const onChange = (e: MediaQueryListEvent) => applyOrientation(e.matches);
-    const onResize = () => applyOrientation(mq.matches);
+    const onChange = () => checkNow();
+    const onResize = () => checkNow();
 
     if (typeof mq.addEventListener === 'function') {
       mq.addEventListener('change', onChange);
-    } else {
-      window.addEventListener('resize', onResize);
     }
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
 
     return () => {
       if (typeof mq.removeEventListener === 'function') {
         mq.removeEventListener('change', onChange);
-      } else {
-        window.removeEventListener('resize', onResize);
       }
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
       document.body.classList.remove('youapp-landscape-fs');
     };
   }, [hasActiveVideo, setFullscreen]);

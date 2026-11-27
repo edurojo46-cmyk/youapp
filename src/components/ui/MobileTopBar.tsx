@@ -140,8 +140,15 @@ export function MobileTopBar() {
         .ymtb-drawer-backdrop {
           display: none;
         }
-        body.youapp-landscape-fs .ymtb-bar {
+        body.youapp-landscape-fs .ymtb-bar,
+        body.youapp-landscape-fs header.ys-topbar,
+        body.youapp-landscape-fs header.mitv-header,
+        body.youapp-landscape-fs nav.ms-topnav,
+        body.youapp-landscape-fs header.ymv1-header {
           display: none !important;
+        }
+        body.youapp-landscape-fs {
+          padding-top: 0 !important;
         }
 
         @media (max-width: 768px) {

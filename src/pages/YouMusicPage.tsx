@@ -77,6 +77,20 @@ import {
   type YouMusicWorkspace
 } from '../lib/tv/youMusicPlaylistStore';
 import atlasMusicCatalog from '../data/atlasMusicChannels.json';
+import { STARTER_AUDIO_PRESETS } from '../lib/tv/signalMediaSourcesStore';
+import { searchRadioBrowserStations, type YouMusicTrack } from '../lib/tv/youMusicStore';
+
+const RADIO_CATEGORIES = [
+  'Argentina',
+  'Rock',
+  'Tango',
+  'Folklore',
+  'Jazz',
+  'Clásica',
+  'Noticias',
+  'Pop',
+  'Internacional'
+] as const;
 
 type AtlasMusicVideo = {
   videoId: string;
@@ -210,6 +224,13 @@ function YouMusicPageInner() {
   const [isAdding, setIsAdding] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [isRadiosView, setIsRadiosView] = useState(false);
+  const [radioCategory, setRadioCategory] = useState<(typeof RADIO_CATEGORIES)[number]>('Argentina');
+  const [radioSearchQuery, setRadioSearchQuery] = useState('');
+  const [radioStations, setRadioStations] = useState<YouMusicTrack[]>([]);
+  const [radiosLoading, setRadiosLoading] = useState(false);
+  const [activeRadio, setActiveRadio] = useState<{ url: string; title: string; subtitle: string } | null>(null);
+  const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
@@ -788,6 +809,39 @@ function YouMusicPageInner() {
     return () => window.clearTimeout(t);
   }, [toast]);
 
+  // Cargar listas de radios online (Radio Browser · +40.000 radios US$0) al abrir la pestaña Radios
+  useEffect(() => {
+    if (!isRadiosView) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setRadiosLoading(true);
+      const q = radioSearchQuery.trim();
+      const queryArg =
+        q ||
+        (radioCategory === 'Argentina' || radioCategory === 'Internacional'
+          ? ''
+          : radioCategory
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase());
+      const countryArg = radioCategory === 'Argentina' ? 'AR' : '';
+      searchRadioBrowserStations(queryArg, countryArg)
+        .then((list) => {
+          if (!cancelled) setRadioStations(list);
+        })
+        .catch(() => {
+          if (!cancelled) setRadioStations([]);
+        })
+        .finally(() => {
+          if (!cancelled) setRadiosLoading(false);
+        });
+    }, radioSearchQuery.trim() ? 280 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isRadiosView, radioCategory, radioSearchQuery]);
+
   const activeOwnPlaylist = useMemo(
     () =>
       workspace.playlists.find((p) => p.id === workspace.activePlaylistId) ||
@@ -1078,6 +1132,60 @@ function YouMusicPageInner() {
       return next;
     });
   }, [postYouTubeCommand]);
+
+  const handleToggleOnlineRadio = useCallback(
+    (streamUrl: string, title: string, subtitle: string) => {
+      const audio = liveRadioAudioRef.current;
+      if (!audio) return;
+      if (activeRadio?.url === streamUrl) {
+        audio.pause();
+        setActiveRadio(null);
+        if ('mediaSession' in navigator) {
+          try {
+            navigator.mediaSession.playbackState = 'paused';
+          } catch {
+            // ignore
+          }
+        }
+        return;
+      }
+      // Pausar YouTube para que no se superponga el audio con la radio
+      postYouTubeCommand('pauseVideo');
+      setIsPlaying(false);
+      usePlayerStore.getState().setIsPlaying(false);
+
+      audio.src = streamUrl;
+      audio
+        .play()
+        .then(() => {
+          setActiveRadio({ url: streamUrl, title, subtitle });
+          setToast(`📻 En vivo: ${title}`);
+          if ('mediaSession' in navigator) {
+            try {
+              navigator.mediaSession.metadata = new MediaMetadata({
+                title,
+                artist: subtitle || 'YOU MUSIC · Radio en vivo',
+                album: 'YOUAPP TV'
+              });
+              navigator.mediaSession.playbackState = 'playing';
+              navigator.mediaSession.setActionHandler('play', () => {
+                void audio.play();
+              });
+              navigator.mediaSession.setActionHandler('pause', () => {
+                audio.pause();
+                setActiveRadio(null);
+              });
+            } catch {
+              // ignore
+            }
+          }
+        })
+        .catch(() => {
+          setToast(`No se pudo conectar el stream de «${title}». Probá otra emisora.`);
+        });
+    },
+    [activeRadio?.url, postYouTubeCommand]
+  );
 
   const handleSeekMusic = useCallback(
     (sec: number) => {
@@ -1515,6 +1623,7 @@ function YouMusicPageInner() {
       </header>
 
       <main className="ymv1-main">
+        <audio ref={liveRadioAudioRef} preload="none" style={{ display: 'none' }} />
         {toast && (
           <div className="ymv1-toast" role="status">
             <Check size={14} />
@@ -2153,13 +2262,14 @@ function YouMusicPageInner() {
           <div className="ymv1-pl-top">
             <div className="ymv1-pl-tabs" role="tablist" aria-label="Mis playlists">
               {workspace.playlists.map((pl) => {
-                const isSelected = !sharedPlaylist && pl.id === activeOwnPlaylist?.id;
+                const isSelected = !isRadiosView && !sharedPlaylist && pl.id === activeOwnPlaylist?.id;
                 return (
                   <button
                     key={pl.id}
                     type="button"
                     className={`ymv1-pl-tab ${isSelected ? 'active' : ''}`}
                     onClick={() => {
+                      setIsRadiosView(false);
                       setSharedPlaylist(null);
                       setSearchParams({}, { replace: true });
                       updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
@@ -2176,16 +2286,23 @@ function YouMusicPageInner() {
               <button
                 type="button"
                 className="ymv1-pl-new-btn"
-                onClick={() => setIsCreatingPlaylist((v) => !v)}
+                onClick={() => {
+                  setIsRadiosView(false);
+                  setIsCreatingPlaylist((v) => !v);
+                }}
               >
                 <Plus size={13} /> Nueva lista
               </button>
 
               <button
                 type="button"
-                className="ymv1-radios-link-btn"
-                onClick={() => navigate('/dial')}
-                title="Abrir radios FM/AM en vivo (YouDial)"
+                className={`ymv1-radios-link-btn ${isRadiosView ? 'active' : ''}`}
+                onClick={() => {
+                  setIsCreatingPlaylist(false);
+                  setIsRadiosView((v) => !v);
+                }}
+                aria-pressed={isRadiosView}
+                title={isRadiosView ? 'Volver a tus playlists' : 'Abrir listas de radios online en vivo'}
               >
                 <span className="ymv1-radio-dot" />
                 <Radio size={12} />
@@ -2209,6 +2326,166 @@ function YouMusicPageInner() {
             </form>
           )}
 
+          {isRadiosView ? (
+            <div className="ymv1-radios-panel">
+              <div className="ymv1-pl-header" style={{ paddingTop: 2 }}>
+                <div className="ymv1-pl-title-wrap">
+                  <Radio size={15} color="#34d399" />
+                  <h2>Radios online</h2>
+                </div>
+                <span>
+                  {radiosLoading
+                    ? 'Cargando…'
+                    : `${
+                        (radioCategory === 'Argentina' && !radioSearchQuery.trim()
+                          ? STARTER_AUDIO_PRESETS.length
+                          : 0) + radioStations.length
+                      } emisoras`}
+                </span>
+              </div>
+
+              <div className="ymv1-radio-cats" role="tablist" aria-label="Categorías de radios online">
+                {RADIO_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    role="tab"
+                    aria-selected={radioCategory === cat}
+                    className={`ymv1-radio-cat-btn ${radioCategory === cat ? 'active' : ''}`}
+                    onClick={() => setRadioCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              <div className="ymv1-radio-search-wrap">
+                <Search size={13} style={{ opacity: 0.65, flexShrink: 0 }} />
+                <input
+                  type="search"
+                  value={radioSearchQuery}
+                  onChange={(e) => setRadioSearchQuery(e.target.value)}
+                  placeholder="Buscar radio online (ej. Mitre, Aspen, Rock & Pop, Tango…)"
+                  aria-label="Buscar radio online"
+                />
+                {radioSearchQuery && (
+                  <button
+                    type="button"
+                    className="ymv1-icon-btn"
+                    onClick={() => setRadioSearchQuery('')}
+                    title="Limpiar búsqueda"
+                    style={{ width: 24, height: 24 }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {activeRadio && (
+                <div className="ymv1-radio-now">
+                  <div className="ymv1-radio-now-meta">
+                    <span className="ymv1-radio-dot" />
+                    <div>
+                      <strong>{activeRadio.title}</strong>
+                      <span>{activeRadio.subtitle} · En vivo</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="ymv1-radio-stop-btn"
+                    onClick={() =>
+                      handleToggleOnlineRadio(activeRadio.url, activeRadio.title, activeRadio.subtitle)
+                    }
+                  >
+                    <Pause size={12} /> Detener
+                  </button>
+                </div>
+              )}
+
+              <div className="ymv1-list">
+                {radioCategory === 'Argentina' &&
+                  !radioSearchQuery.trim() &&
+                  STARTER_AUDIO_PRESETS.map((r) => {
+                    const isLiveThis = activeRadio?.url === r.streamUrl;
+                    return (
+                      <div key={r.streamUrl} className={`ymv1-row ymv1-radio-row ${isLiveThis ? 'active' : ''}`}>
+                        <button
+                          type="button"
+                          className="ymv1-radio-play-circle"
+                          onClick={() => handleToggleOnlineRadio(r.streamUrl, r.author, r.title)}
+                          aria-label={isLiveThis ? `Detener ${r.author}` : `Escuchar ${r.author}`}
+                        >
+                          {isLiveThis ? (
+                            <Pause size={14} fill="#ffffff" color="#ffffff" />
+                          ) : (
+                            <Play size={14} fill="#ffffff" color="#ffffff" />
+                          )}
+                        </button>
+                        <div
+                          className="ymv1-row-meta"
+                          onClick={() => handleToggleOnlineRadio(r.streamUrl, r.author, r.title)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <strong>{r.author}</strong>
+                          <span>{r.title}</span>
+                        </div>
+                        <span className={`ymv1-radio-badge ${isLiveThis ? 'is-live' : ''}`}>
+                          {isLiveThis ? 'EN VIVO' : 'AR'}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                {radioStations.map((st) => {
+                  const isLiveThis = activeRadio?.url === st.sourceUrl;
+                  return (
+                    <div key={st.id} className={`ymv1-row ymv1-radio-row ${isLiveThis ? 'active' : ''}`}>
+                      <button
+                        type="button"
+                        className="ymv1-radio-play-circle"
+                        onClick={() =>
+                          handleToggleOnlineRadio(st.sourceUrl, st.title, `${st.artist} · ${st.genre}`)
+                        }
+                        aria-label={isLiveThis ? `Detener ${st.title}` : `Escuchar ${st.title}`}
+                      >
+                        {isLiveThis ? (
+                          <Pause size={14} fill="#ffffff" color="#ffffff" />
+                        ) : (
+                          <Play size={14} fill="#ffffff" color="#ffffff" />
+                        )}
+                      </button>
+                      <div
+                        className="ymv1-row-meta"
+                        onClick={() =>
+                          handleToggleOnlineRadio(st.sourceUrl, st.title, `${st.artist} · ${st.genre}`)
+                        }
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <strong>{st.title}</strong>
+                        <span>
+                          {st.artist} · {st.genre}
+                        </span>
+                      </div>
+                      <span className={`ymv1-radio-badge ${isLiveThis ? 'is-live' : ''}`}>
+                        {isLiveThis ? 'EN VIVO' : 'FM/AM'}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {!radiosLoading &&
+                  radioStations.length === 0 &&
+                  !(radioCategory === 'Argentina' && !radioSearchQuery.trim()) && (
+                    <div className="ymv1-empty" style={{ padding: '20px 14px' }}>
+                      <Radio size={22} color="#34d399" />
+                      <strong>No encontramos radios con ese filtro.</strong>
+                      <span>Probá con otra palabra clave o elegí otra categoría arriba.</span>
+                    </div>
+                  )}
+              </div>
+            </div>
+          ) : (
+            <>
           <div className="ymv1-pl-header">
             {isRenamingPlaylist && !sharedPlaylist ? (
               <form className="ymv1-inline-rename" onSubmit={handleRenamePlaylist}>
@@ -2440,6 +2717,8 @@ function YouMusicPageInner() {
                 </div>
               )}
             </div>
+          )}
+            </>
           )}
         </section>
 
@@ -3938,9 +4217,153 @@ function YouMusicPageInner() {
           border-color: rgba(52, 211, 153, 0.8);
           color: #ffffff;
         }
+        .ymv1-radios-link-btn.active {
+          background: rgba(16, 185, 129, 0.88);
+          border-color: rgba(110, 231, 183, 0.95);
+          color: #06281c;
+          box-shadow: 0 2px 10px rgba(16, 185, 129, 0.32);
+        }
         .ymv1-radios-link-btn .ymv1-radio-dot {
           width: 5px;
           height: 5px;
+        }
+        .ymv1-radios-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .ymv1-radio-cats {
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 5px;
+          width: 100%;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding: 1px 0 2px;
+        }
+        .ymv1-radio-cats::-webkit-scrollbar {
+          display: none;
+        }
+        .ymv1-radio-cat-btn {
+          padding: 4px 9px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(245, 245, 247, 0.84);
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1.2;
+          white-space: nowrap;
+          flex-shrink: 0;
+          cursor: pointer;
+        }
+        .ymv1-radio-cat-btn.active {
+          background: rgba(52, 211, 153, 0.92);
+          border-color: #6ee7b7;
+          color: #06281c;
+        }
+        .ymv1-radio-search-wrap {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+        .ymv1-radio-search-wrap input {
+          flex: 1;
+          min-width: 0;
+          border: 0;
+          background: transparent;
+          color: #ffffff;
+          font-size: 12px;
+          outline: none;
+        }
+        .ymv1-radio-search-wrap input::placeholder {
+          color: rgba(245, 245, 247, 0.55);
+        }
+        .ymv1-radio-now {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 8px 11px;
+          border-radius: 12px;
+          background: rgba(16, 185, 129, 0.18);
+          border: 1px solid rgba(52, 211, 153, 0.45);
+        }
+        .ymv1-radio-now-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+        }
+        .ymv1-radio-now-meta div {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        .ymv1-radio-now-meta strong {
+          font-size: 12.5px;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymv1-radio-now-meta span {
+          font-size: 11px;
+          color: #a7f3d0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ymv1-radio-stop-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.25);
+          background: rgba(0, 0, 0, 0.35);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .ymv1-radio-play-circle {
+          width: 34px;
+          height: 34px;
+          border-radius: 999px;
+          border: 1px solid rgba(52, 211, 153, 0.42);
+          background: rgba(16, 185, 129, 0.24);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .ymv1-radio-row.active .ymv1-radio-play-circle {
+          background: #10b981;
+          border-color: #6ee7b7;
+        }
+        .ymv1-radio-badge {
+          font-size: 10px;
+          font-weight: 700;
+          padding: 3px 7px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.1);
+          color: rgba(245, 245, 247, 0.72);
+          flex-shrink: 0;
+        }
+        .ymv1-radio-badge.is-live {
+          background: rgba(16, 185, 129, 0.28);
+          color: #6ee7b7;
+          border: 1px solid rgba(52, 211, 153, 0.5);
         }
         .ymv1-new-pl-form {
           display: flex;

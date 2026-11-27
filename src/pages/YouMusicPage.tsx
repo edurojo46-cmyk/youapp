@@ -2173,10 +2173,13 @@ export default function YouMusicPage() {
                 )}
                 <button
                   type="button"
-                  className="ymv1-pill-btn"
+                  className="ymv1-icon-btn"
                   onClick={() => void handleShare('playlist')}
+                  title="Compartir playlist"
+                  aria-label="Compartir playlist"
+                  style={{ width: 32, height: 32, borderRadius: '999px' }}
                 >
-                  <Share2 size={13} /> Compartir playlist
+                  <Share2 size={14} />
                 </button>
               </div>
             )}

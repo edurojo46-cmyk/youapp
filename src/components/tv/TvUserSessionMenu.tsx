@@ -18,7 +18,8 @@ import {
   Sliders,
   Check,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Search
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAtlasAuthStore } from '../../store/atlas/atlasAuthStore';
@@ -34,7 +35,6 @@ import {
   type TvThemeMode,
   type TvPreferredQuality
 } from '../../lib/tv/tvPreferencesStore';
-import { NotificationBellPopover } from '../ui/NotificationBellPopover';
 
 export function goYouAppRoute(navigate: (to: string) => void, path: string) {
   const tvOnlyOn5173 =
@@ -380,7 +380,33 @@ export function TvUserSessionMenu({ compact = false, variant = 'light' }: TvUser
 
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', position: 'relative', zIndex: 90 }}>
-      <NotificationBellPopover variant={variant} />
+      <button
+        type="button"
+        onClick={() => goYouAppRoute(navigate, '/search')}
+        title="Buscar en YOUAPP"
+        aria-label="Buscar en YOUAPP"
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: '999px',
+          border:
+            variant === 'light'
+              ? '1px solid rgba(15, 23, 42, 0.14)'
+              : '1px solid rgba(255, 255, 255, 0.2)',
+          background:
+            variant === 'light'
+              ? 'rgba(15, 23, 42, 0.06)'
+              : 'rgba(255, 255, 255, 0.1)',
+          color: variant === 'light' ? '#0f172a' : '#f5f5f7',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          flexShrink: 0
+        }}
+      >
+        <Search size={16} strokeWidth={2.2} />
+      </button>
       <div ref={containerRef} style={{ position: 'relative' }}>
       <input
         ref={fileInputRef}

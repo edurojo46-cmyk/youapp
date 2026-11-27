@@ -23,7 +23,50 @@ export interface ShareSheetPayload {
 }
 
 const SHARE_SHEET_EVENT = 'youapp:open-share-sheet';
+const DYNAMIC_OG_SHARE_BASE = 'https://fancy-snow-28a0youapp-share.edurojo46.workers.dev/';
 let pendingPayload: ShareSheetPayload | null = null;
+
+function extractYtIdFromThumbOrUrl(thumb?: string, url?: string): string | null {
+  const thumbMatch = thumb?.match(/\/vi\/([A-Za-z0-9_-]{11})\//);
+  if (thumbMatch?.[1]) return thumbMatch[1];
+  const urlMatch = url?.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  if (urlMatch?.[1]) return urlMatch[1];
+  return null;
+}
+
+/**
+ * Construye el enlace dinámico con Open Graph real (Cloudflare Worker text/html)
+ * para que WhatsApp, Telegram y X muestren la miniatura y el título exactos del video/señal
+ * y al tocarlo abran directo youapptv.com.
+ */
+function buildDynamicPreviewShareUrl(payload: ShareSheetPayload): string {
+  try {
+    const parsed = new URL(payload.url);
+    const isYouAppHost =
+      parsed.hostname === 'youapptv.com' ||
+      parsed.hostname === 'www.youapptv.com' ||
+      parsed.hostname === 'youapp.tv';
+    if (!isYouAppHost) return payload.url;
+
+    const sp = new URLSearchParams();
+    sp.set('to', payload.url);
+    const cleanTitle = payload.title.replace(/\s*·\s*(YOUAPP TV|YOUAPP|YOU MUSIC)\s*$/i, '').trim();
+    if (cleanTitle) sp.set('t', `${cleanTitle.slice(0, 95)} · YOUAPP TV`);
+    const desc = payload.subtitle
+      ? `${payload.subtitle.slice(0, 70)} · Miralo gratis en YOUAPP TV`
+      : 'Miralo gratis en YOUAPP TV';
+    sp.set('d', desc);
+    const ytId = extractYtIdFromThumbOrUrl(payload.thumbnailUrl, payload.url);
+    if (ytId) {
+      sp.set('v', ytId);
+    } else if (payload.thumbnailUrl && /^https?:\/\//i.test(payload.thumbnailUrl)) {
+      sp.set('img', payload.thumbnailUrl);
+    }
+    return `${DYNAMIC_OG_SHARE_BASE}?${sp.toString()}`;
+  } catch {
+    return payload.url;
+  }
+}
 
 /**
  * Abre siempre la Tarjeta Moderna de Compartir YOUAPP (Liquid Glass)
@@ -231,15 +274,16 @@ export const GlobalShareSheet: React.FC = () => {
   if (!payload) return null;
 
   const cleanTitle = payload.title.replace(/\s*·\s*(YOUAPP TV|YOUAPP|YOU MUSIC)\s*$/i, '').trim();
-  const fullText = `${payload.text} ${payload.url}`.trim();
+  const richShareUrl = buildDynamicPreviewShareUrl(payload);
+  const fullText = `${payload.text} ${richShareUrl}`.trim();
   const waHref = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
-  const tgHref = `https://t.me/share/url?url=${encodeURIComponent(payload.url)}&text=${encodeURIComponent(payload.text)}`;
-  const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(payload.text)}&url=${encodeURIComponent(payload.url)}`;
+  const tgHref = `https://t.me/share/url?url=${encodeURIComponent(richShareUrl)}&text=${encodeURIComponent(payload.text)}`;
+  const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(payload.text)}&url=${encodeURIComponent(richShareUrl)}`;
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(payload.url)}`;
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard?.writeText(payload.url);
+      await navigator.clipboard?.writeText(richShareUrl);
     } catch {
       // ignore
     }
@@ -253,7 +297,7 @@ export const GlobalShareSheet: React.FC = () => {
     }).YouAppAndroidPiP;
     if (androidBridge && typeof androidBridge.share === 'function') {
       try {
-        androidBridge.share(payload.title, payload.text, payload.url);
+        androidBridge.share(payload.title, payload.text, richShareUrl);
         setPayload(null);
         return;
       } catch {
@@ -265,7 +309,7 @@ export const GlobalShareSheet: React.FC = () => {
         await navigator.share({
           title: payload.title,
           text: payload.text,
-          url: payload.url
+          url: richShareUrl
         });
         setPayload(null);
         return;

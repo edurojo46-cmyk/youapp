@@ -917,6 +917,47 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
               </button>
             </div>
 
+            {(() => {
+              const bridge = getAndroidBridge();
+              const hasNativeAlarm = Boolean(bridge && typeof bridge.scheduleAlarm === 'function');
+              const hasNativeVoice = Boolean(bridge && typeof bridge.speak === 'function');
+              if (hasNativeAlarm && hasNativeVoice) {
+                return (
+                  <div
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      color: '#86efac',
+                      background: 'rgba(34, 197, 94, 0.12)',
+                      border: '1px solid rgba(34, 197, 94, 0.35)',
+                      borderRadius: 10,
+                      padding: '7px 10px'
+                    }}
+                  >
+                    ✓ APK Nuevo activo: voz HD nativa de Android + alarma con pantalla apagada.
+                  </div>
+                );
+              }
+              if (bridge) {
+                return (
+                  <div
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      color: '#fde68a',
+                      background: 'rgba(245, 158, 11, 0.14)',
+                      border: '1px solid rgba(245, 158, 11, 0.4)',
+                      borderRadius: 10,
+                      padding: '7px 10px'
+                    }}
+                  >
+                    ⚠ Estás en el APK anterior (sin voz nativa ni alarma en segundo plano). Reinstalá el APK nuevo.
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             <div className="ymalarm-time-row">
               <input
                 type="time"

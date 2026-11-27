@@ -1914,7 +1914,8 @@ export default function YouMusicPage() {
                                 sourceUrl: currentItem.sourceUrl
                               }).graph
                             );
-                            if (willSub && ytSubUrl) {
+                            const isApk = Boolean((window as unknown as { YouAppAndroidPiP?: unknown }).YouAppAndroidPiP) || /;\s*wv\)/i.test(navigator.userAgent || '');
+                            if (willSub && ytSubUrl && !isApk) {
                               window.open(ytSubUrl, 'youapp_yt_sub', 'width=540,height=660,noopener,noreferrer');
                               setToast(`Siguiendo a «${currentItem.author}» en YOUAPP.`);
                             } else {

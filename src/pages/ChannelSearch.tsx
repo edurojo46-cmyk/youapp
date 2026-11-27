@@ -3645,7 +3645,8 @@ export default function ChannelSearch() {
                                 sourceUrl: previewVideo.watchUrl
                               }).graph
                             );
-                            if (willSubscribe && ytSubUrl) {
+                            const isApk = Boolean((window as unknown as { YouAppAndroidPiP?: unknown }).YouAppAndroidPiP) || /;\s*wv\)/i.test(navigator.userAgent || '');
+                            if (willSubscribe && ytSubUrl && !isApk) {
                               window.open(
                                 ytSubUrl,
                                 'youapp_yt_sub',

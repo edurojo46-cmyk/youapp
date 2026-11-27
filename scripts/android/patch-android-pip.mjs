@@ -544,6 +544,7 @@ public class MainActivity extends BridgeActivity {
         WebView webView = this.bridge.getWebView();
         WebSettings settings = webView.getSettings();
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setSupportMultipleWindows(false);
         webView.addJavascriptInterface(new YouAppNativeBridge(), "YouAppAndroidPiP");
         jsBridgeRegistered = true;
     }

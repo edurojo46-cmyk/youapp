@@ -2348,7 +2348,8 @@ export default function ProgramarTV() {
                                 });
                                 return res.graph;
                               });
-                              if (willSubscribe && ytSubUrl) {
+                              const isApk = Boolean((window as unknown as { YouAppAndroidPiP?: unknown }).YouAppAndroidPiP) || /;\s*wv\)/i.test(navigator.userAgent || '');
+                              if (willSubscribe && ytSubUrl && !isApk) {
                                 window.open(
                                   ytSubUrl,
                                   'youapp_yt_sub',

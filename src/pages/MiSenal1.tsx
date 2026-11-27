@@ -3273,7 +3273,8 @@ export default function MiSenal1() {
                             sourceUrl
                           }).graph
                         );
-                        if (willSub && ytSubUrl) {
+                        const isApk = Boolean((window as unknown as { YouAppAndroidPiP?: unknown }).YouAppAndroidPiP) || /;\s*wv\)/i.test(navigator.userAgent || '');
+                        if (willSub && ytSubUrl && !isApk) {
                           window.open(ytSubUrl, 'youapp_yt_sub', 'width=540,height=660,noopener,noreferrer');
                           setCuratedToast(`Siguiendo a «${authorName}» en YOUAPP y YouTube.`);
                         } else {

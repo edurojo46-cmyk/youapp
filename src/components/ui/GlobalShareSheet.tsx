@@ -4,6 +4,7 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Film,
   MessageCircle,
   QrCode,
   Send,
@@ -133,16 +134,16 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
-async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob | null> {
+async function drawStoryCardFrame(
+  ctx: CanvasRenderingContext2D,
+  payload: ShareSheetPayload,
+  loadedImg: HTMLImageElement | null,
+  progress: number
+): Promise<void> {
   const W = 1080;
   const H = 1350;
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
 
-  // 1. Fondo degradado Apple oscuro con brillo sutil
+  // 1. Fondo degradado Apple oscuro con brillo dinámico
   const bgGrad = ctx.createLinearGradient(0, 0, W, H);
   bgGrad.addColorStop(0, '#0a0f1d');
   bgGrad.addColorStop(0.5, '#111827');
@@ -150,14 +151,15 @@ async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob |
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  const glow1 = ctx.createRadialGradient(W * 0.25, H * 0.2, 40, W * 0.25, H * 0.2, 520);
-  glow1.addColorStop(0, 'rgba(56, 189, 248, 0.28)');
+  const shiftX = Math.sin(progress * Math.PI * 2) * 70;
+  const glow1 = ctx.createRadialGradient(W * 0.25 + shiftX, H * 0.2, 40, W * 0.25 + shiftX, H * 0.2, 520);
+  glow1.addColorStop(0, 'rgba(56, 189, 248, 0.3)');
   glow1.addColorStop(1, 'rgba(56, 189, 248, 0)');
   ctx.fillStyle = glow1;
   ctx.fillRect(0, 0, W, H);
 
-  const glow2 = ctx.createRadialGradient(W * 0.8, H * 0.82, 40, W * 0.8, H * 0.82, 520);
-  glow2.addColorStop(0, 'rgba(139, 92, 246, 0.24)');
+  const glow2 = ctx.createRadialGradient(W * 0.8 - shiftX, H * 0.82, 40, W * 0.8 - shiftX, H * 0.82, 520);
+  glow2.addColorStop(0, 'rgba(139, 92, 246, 0.26)');
   glow2.addColorStop(1, 'rgba(139, 92, 246, 0)');
   ctx.fillStyle = glow2;
   ctx.fillRect(0, 0, W, H);
@@ -190,7 +192,7 @@ async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob |
   ctx.fillStyle = '#7dd3fc';
   ctx.fillText(badgeText, cardX + 80, cardY + 89);
 
-  // 4. Miniatura 16:9 dentro de la tarjeta (con fallback elegante si CORS impide pintarla)
+  // 4. Miniatura 16:9 con movimiento suave (Ken Burns zoom + paneo)
   const thumbX = cardX + 52;
   const thumbY = cardY + 140;
   const thumbW = cardW - 104;
@@ -205,27 +207,19 @@ async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob |
   ctx.fillStyle = thumbGrad;
   ctx.fillRect(thumbX, thumbY, thumbW, thumbH);
 
-  if (payload.thumbnailUrl) {
-    try {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const el = new Image();
-        el.crossOrigin = 'anonymous';
-        el.onload = () => resolve(el);
-        el.onerror = reject;
-        el.src = payload.thumbnailUrl as string;
-      });
-      const scale = Math.max(thumbW / img.width, thumbH / img.height);
-      const dw = img.width * scale;
-      const dh = img.height * scale;
-      ctx.drawImage(img, thumbX + (thumbW - dw) / 2, thumbY + (thumbH - dh) / 2, dw, dh);
-    } catch {
-      // Fallback visual limpio si el host de la miniatura no permite CORS en canvas
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-      ctx.font = '800 72px system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('YOUAPP TV', thumbX + thumbW / 2, thumbY + thumbH / 2 + 24);
-      ctx.textAlign = 'left';
-    }
+  if (loadedImg) {
+    const zoom = 1.0 + progress * 0.14;
+    const baseScale = Math.max(thumbW / loadedImg.width, thumbH / loadedImg.height) * zoom;
+    const dw = loadedImg.width * baseScale;
+    const dh = loadedImg.height * baseScale;
+    const panX = (progress - 0.5) * 32;
+    ctx.drawImage(loadedImg, thumbX + (thumbW - dw) / 2 - panX, thumbY + (thumbH - dh) / 2, dw, dh);
+  } else {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+    ctx.font = '800 72px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('YOUAPP TV', thumbX + thumbW / 2, thumbY + thumbH / 2 + 24);
+    ctx.textAlign = 'left';
   }
   ctx.restore();
 
@@ -257,8 +251,81 @@ async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob |
   ctx.textAlign = 'right';
   ctx.fillText('youapptv.com', thumbX + thumbW, cardY + cardH - 64);
   ctx.textAlign = 'left';
+}
 
+async function loadThumbImage(url?: string): Promise<HTMLImageElement | null> {
+  if (!url) return null;
+  try {
+    return await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.crossOrigin = 'anonymous';
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = url;
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob | null> {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const img = await loadThumbImage(payload.thumbnailUrl);
+  await drawStoryCardFrame(ctx, payload, img, 0.35);
   return new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
+}
+
+async function generateAnimatedStoryVideoBlob(
+  payload: ShareSheetPayload
+): Promise<{ blob: Blob; ext: string; mime: string } | null> {
+  if (typeof MediaRecorder === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = 720;
+  canvas.height = 900;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.scale(720 / 1080, 900 / 1350);
+
+  const img = await loadThumbImage(payload.thumbnailUrl);
+  const candidates = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+  const mime = candidates.find((m) => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+  const ext = mime.includes('mp4') ? 'mp4' : 'webm';
+
+  const stream = canvas.captureStream(24);
+  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2_200_000 });
+  const chunks: BlobPart[] = [];
+  recorder.ondataavailable = (ev) => {
+    if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+  };
+
+  const donePromise = new Promise<Blob>((resolve) => {
+    recorder.onstop = () => resolve(new Blob(chunks, { type: mime }));
+  });
+
+  recorder.start();
+  const durationMs = 3600;
+  const startedAt = performance.now();
+  await new Promise<void>((resolve) => {
+    const step = (ts: number) => {
+      const p = Math.min(1, (ts - startedAt) / durationMs);
+      void drawStoryCardFrame(ctx, payload, img, p);
+      if (p < 1) {
+        window.requestAnimationFrame(step);
+      } else {
+        resolve();
+      }
+    };
+    window.requestAnimationFrame(step);
+  });
+
+  recorder.stop();
+  stream.getTracks().forEach((t) => t.stop());
+  const blob = await donePromise;
+  return { blob, ext, mime };
 }
 
 export const GlobalShareSheet: React.FC = () => {
@@ -266,6 +333,7 @@ export const GlobalShareSheet: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [savingCard, setSavingCard] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
   const [cardNotice, setCardNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -372,6 +440,49 @@ export const GlobalShareSheet: React.FC = () => {
     }
   };
 
+  const handleDownloadAnimatedVideo = async () => {
+    setSavingVideo(true);
+    setCardNotice(null);
+    try {
+      const result = await generateAnimatedStoryVideoBlob(payload);
+      if (!result) throw new Error('mediarecorder');
+      const file = new File([result.blob], `youapp-tarjeta.${result.ext}`, { type: result.mime });
+
+      if (
+        typeof navigator !== 'undefined' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [file] }) &&
+        typeof navigator.share === 'function'
+      ) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: payload.title,
+            text: richShareUrl
+          });
+          setSavingVideo(false);
+          return;
+        } catch {
+          // fallback a descarga
+        }
+      }
+
+      const blobUrl = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `youapp-tarjeta.${result.ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+      setCardNotice('✓ Video animado (4 s) listo para compartir en WhatsApp / Historias.');
+    } catch {
+      setCardNotice('Tu navegador no admite grabar video; usá «Imagen para Historia».');
+    } finally {
+      setSavingVideo(false);
+    }
+  };
+
   return (
     <div
       className="ya-share-backdrop"
@@ -421,12 +532,14 @@ export const GlobalShareSheet: React.FC = () => {
             ) : (
               <div className="ya-share-card-media-row">
                 {payload.thumbnailUrl && (
-                  <img
-                    src={payload.thumbnailUrl}
-                    alt=""
-                    className="ya-share-thumb"
-                    loading="lazy"
-                  />
+                  <div className="ya-share-thumb-frame">
+                    <img
+                      src={payload.thumbnailUrl}
+                      alt=""
+                      className="ya-share-thumb"
+                      loading="lazy"
+                    />
+                  </div>
                 )}
                 <div className="ya-share-card-meta">
                   <strong>{cleanTitle || payload.title}</strong>
@@ -514,16 +627,27 @@ export const GlobalShareSheet: React.FC = () => {
           </button>
         </div>
 
-        {/* BOTÓN TARJETA PARA HISTORIA (PNG) */}
-        <button
-          type="button"
-          className="ya-share-story-btn"
-          onClick={() => void handleDownloadStoryCard()}
-          disabled={savingCard}
-        >
-          <Download size={15} />
-          <span>{savingCard ? 'Generando tarjeta…' : 'Imagen para Historia (WhatsApp / IG)'}</span>
-        </button>
+        {/* BOTONES TARJETA ANIMADA (4 s) + IMAGEN PNG */}
+        <div className="ya-share-export-row">
+          <button
+            type="button"
+            className="ya-share-story-btn"
+            onClick={() => void handleDownloadAnimatedVideo()}
+            disabled={savingVideo || savingCard}
+          >
+            <Film size={15} />
+            <span>{savingVideo ? 'Animando (4 s)…' : 'Tarjeta animada'}</span>
+          </button>
+          <button
+            type="button"
+            className="ya-share-story-btn"
+            onClick={() => void handleDownloadStoryCard()}
+            disabled={savingCard || savingVideo}
+          >
+            <Download size={15} />
+            <span>{savingCard ? 'Generando…' : 'Imagen PNG'}</span>
+          </button>
+        </div>
 
         {cardNotice && <div className="ya-share-notice">{cardNotice}</div>}
       </div>
@@ -617,6 +741,11 @@ export const GlobalShareSheet: React.FC = () => {
           filter: blur(26px) saturate(160%);
           opacity: 0.38;
           pointer-events: none;
+          animation: yaShareGlow 9s ease-in-out infinite alternate;
+        }
+        @keyframes yaShareGlow {
+          0% { transform: scale(1) translate3d(-4px, -2px, 0); opacity: 0.34; }
+          100% { transform: scale(1.12) translate3d(5px, 4px, 0); opacity: 0.48; }
         }
         .ya-share-card-inner {
           position: relative;
@@ -649,14 +778,30 @@ export const GlobalShareSheet: React.FC = () => {
           align-items: center;
           gap: 12px;
         }
-        .ya-share-thumb {
-          width: 86px;
-          height: 52px;
+        .ya-share-thumb-frame {
+          width: 92px;
+          height: 54px;
           border-radius: 10px;
-          object-fit: cover;
+          overflow: hidden;
           flex-shrink: 0;
-          border: 1px solid rgba(255, 255, 255, 0.18);
+          border: 1px solid rgba(255, 255, 255, 0.22);
           box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+        .ya-share-thumb {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          animation: yaShareThumbMotion 7s ease-in-out infinite alternate;
+        }
+        @keyframes yaShareThumbMotion {
+          0% { transform: scale(1.0) translate3d(0, 0, 0); }
+          100% { transform: scale(1.16) translate3d(-4px, -2px, 0); }
+        }
+        .ya-share-export-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
         }
         .ya-share-card-meta {
           min-width: 0;

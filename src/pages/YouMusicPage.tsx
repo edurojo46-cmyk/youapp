@@ -1408,7 +1408,13 @@ export default function YouMusicPage() {
     currentItem?.thumbnailUrl || savedMusicalSignalPlaylists[0]?.items[0]?.thumbnailUrl || '';
 
   return (
-    <div className="ymv1-page">
+    <div
+      className={`ymv1-page ${
+        currentItem && !isFullscreen && !isOledListenMode && !isYou4Mode && !isMomentsMosaic
+          ? 'ymv1-has-mobile-player'
+          : ''
+      }`}
+    >
       {/* Fondo atmosférico difuminado estilo cristal Apple */}
       <div
         className="ymv1-ambient-bg"
@@ -4113,6 +4119,33 @@ export default function YouMusicPage() {
         .ymv1-radio-state {
           font-size: 10px;
           opacity: 0.8;
+        }
+        @media (max-width: 768px) {
+          .ymv1-has-mobile-player .ymv1-player-card:not(.is-expanded):not(.is-oled-listen) {
+            position: fixed;
+            top: calc(48px + env(safe-area-inset-top));
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 75;
+            margin: 0;
+            border-radius: 0 0 14px 14px !important;
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            background: #0e1118 !important;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.78);
+          }
+          .ymv1-has-mobile-player .ymv1-player-card:not(.is-expanded):not(.is-oled-listen) .ymv1-video-wrap {
+            border-radius: 0 !important;
+          }
+          .ymv1-has-mobile-player .ymv1-main {
+            padding-top: calc(56.25vw + 44px) !important;
+            transition: padding-top 0.18s ease;
+          }
+          .ymv1-has-mobile-player:has(.yapp-pcd-root.is-open) .ymv1-main {
+            padding-top: calc(56.25vw + 158px) !important;
+          }
         }
         @media (max-width: 680px) {
           .ymv1-nav {

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Bookmark, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   isAtlasQuickSaved,
   toggleAtlasQuickSave,
@@ -65,13 +65,13 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
         {quickSaveItem && (
           <button
             type="button"
-            className={`yapp-pcd-reddot-btn ${saved ? 'is-saved' : ''}`}
+            className={`yapp-pcd-save-btn ${saved ? 'is-saved' : ''}`}
             onClick={handleQuickSaveClick}
             aria-pressed={saved}
             aria-label={saved ? 'Guardado en Mis Listas (tocar para quitar)' : 'Guardar en Mis Listas con ATLAS'}
             title={saved ? 'Guardado en Mis Listas' : 'Guardar en Mis Listas (ATLAS organiza solo)'}
           >
-            <span className="yapp-pcd-reddot" aria-hidden="true" />
+            <Bookmark size={12} fill={saved ? '#ffffff' : 'none'} strokeWidth={2.2} />
             {atlasToast && <span className="yapp-pcd-toast-txt">{atlasToast}</span>}
           </button>
         )}
@@ -98,12 +98,13 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
           }
         }
         .yapp-pcd-bar {
+          position: relative;
           width: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
-          padding: 5px 0 6px;
+          padding: 5px 10px 6px;
+          box-sizing: border-box;
         }
         .yapp-pcd-white-btn {
           display: inline-flex;
@@ -142,53 +143,44 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
           background: rgba(255, 255, 255, 0.88);
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
         }
-        .yapp-pcd-reddot-btn {
+        .yapp-pcd-save-btn {
+          position: absolute;
+          right: 10px;
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 6px;
+          gap: 5px;
           height: 24px;
-          min-width: 24px;
-          padding: 0 7px;
+          min-width: 28px;
+          padding: 0 8px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.32);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.12) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.36);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.14) 100%);
           backdrop-filter: blur(16px) saturate(180%);
           -webkit-backdrop-filter: blur(16px) saturate(180%);
+          color: rgba(255, 255, 255, 0.95);
           box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.44),
+            inset 0 1px 0 rgba(255, 255, 255, 0.48),
             0 4px 14px rgba(0, 0, 0, 0.24);
           cursor: pointer;
           transition: transform 0.14s ease, border-color 0.18s ease, background 0.18s ease;
         }
-        .yapp-pcd-reddot-btn:hover {
+        .yapp-pcd-save-btn:hover {
           transform: translateY(-1px);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.18) 100%);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.2) 100%);
         }
-        .yapp-pcd-reddot-btn:active {
-          transform: scale(0.92);
+        .yapp-pcd-save-btn:active {
+          transform: scale(0.93);
         }
-        .yapp-pcd-reddot-btn.is-saved {
-          border-color: rgba(255, 59, 48, 0.65);
-          background: linear-gradient(180deg, rgba(255, 59, 48, 0.26) 0%, rgba(255, 59, 48, 0.12) 100%);
-        }
-        .yapp-pcd-reddot {
-          width: 9px;
-          height: 9px;
-          border-radius: 999px;
-          background: #ff3b30;
-          box-shadow: 0 0 8px rgba(255, 59, 48, 0.72);
-          flex-shrink: 0;
-        }
-        .yapp-pcd-reddot-btn.is-saved .yapp-pcd-reddot {
-          box-shadow: 0 0 12px rgba(255, 59, 48, 0.95);
+        .yapp-pcd-save-btn.is-saved {
+          border-color: rgba(255, 255, 255, 0.65);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.22) 100%);
         }
         .yapp-pcd-toast-txt {
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 700;
           color: #ffffff;
           white-space: nowrap;
-          padding-right: 2px;
         }
         .is-expanded .yapp-pcd-root,
         .is-mini-floating .yapp-pcd-root {

@@ -193,16 +193,28 @@ export function loadYouMusicAlarm(): YouMusicAlarmConfig {
   }
 }
 
+interface YouAppAndroidBridge {
+  scheduleAlarm?: (json: string) => void;
+  cancelAlarm?: () => void;
+  hasNativeTts?: () => boolean;
+  speak?: (text: string, langTag: string, rate: number, pitch: number) => void;
+  stopSpeak?: () => void;
+}
+
+function getAndroidBridge(): YouAppAndroidBridge | null {
+  if (typeof window === 'undefined') return null;
+  return ((window as unknown as { YouAppAndroidPiP?: YouAppAndroidBridge }).YouAppAndroidPiP || null);
+}
+
 function saveYouMusicAlarm(cfg: YouMusicAlarmConfig): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
   } catch {
     // ignore storage quota errors
   }
-  // Hook listo para Paso 2 (APK Android AlarmManager nativo)
+  // Sincronización nativa con AlarmManager del APK Android (funciona con pantalla apagada)
   try {
-    const bridge = (window as unknown as { YouAppAndroidPiP?: { scheduleAlarm?: (json: string) => void } })
-      .YouAppAndroidPiP;
+    const bridge = getAndroidBridge();
     if (bridge && typeof bridge.scheduleAlarm === 'function') {
       bridge.scheduleAlarm(JSON.stringify(cfg));
     }
@@ -370,13 +382,39 @@ function speakSpanishBriefing(
   explicitVoiceName?: string,
   onDone?: () => void
 ): boolean {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text.trim()) {
+  if (typeof window === 'undefined' || !text.trim()) {
+    onDone?.();
+    return false;
+  }
+  const profile = ATLAS_VOICE_PROFILES.find((p) => p.id === profileId) || ATLAS_VOICE_PROFILES[0];
+
+  // 1. Dentro del APK Android usar motor nativo android.speech.tts.TextToSpeech (voz Google Español HD)
+  const androidBridge = getAndroidBridge();
+  if (androidBridge && typeof androidBridge.speak === 'function') {
+    let finished = false;
+    const finishOnce = () => {
+      if (finished) return;
+      finished = true;
+      window.removeEventListener('youapp-native-tts-done', finishOnce);
+      onDone?.();
+    };
+    window.addEventListener('youapp-native-tts-done', finishOnce);
+    window.setTimeout(finishOnce, Math.max(9000, Math.min(55000, text.length * 105)));
+    try {
+      androidBridge.speak(text, profile.preferredLangs[0] || 'es-AR', profile.rate, profile.pitch);
+      return true;
+    } catch {
+      window.removeEventListener('youapp-native-tts-done', finishOnce);
+    }
+  }
+
+  // 2. Navegador web estándar (Chrome / Safari / Edge)
+  if (!('speechSynthesis' in window)) {
     onDone?.();
     return false;
   }
   try {
     window.speechSynthesis.cancel();
-    const profile = ATLAS_VOICE_PROFILES.find((p) => p.id === profileId) || ATLAS_VOICE_PROFILES[0];
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = profile.preferredLangs[0] || 'es-AR';
     utter.rate = profile.rate;
@@ -422,6 +460,11 @@ async function fetchTopAtlasHeadlines(): Promise<string[]> {
 }
 
 function stopSpeechBriefing(): void {
+  try {
+    getAndroidBridge()?.stopSpeak?.();
+  } catch {
+    // ignore
+  }
   try {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -700,6 +743,27 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
     }, 1000);
     return () => window.clearInterval(tick);
   }, [fireAlarmNow, isRinging, snoozeUntilMs]);
+
+  // Disparo automático cuando Android AlarmManager despierta el APK (?alarmTrigger=1)
+  const nativeTriggerHandledRef = useRef(false);
+  useEffect(() => {
+    if (nativeTriggerHandledRef.current || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('alarmTrigger') !== '1') return;
+    nativeTriggerHandledRef.current = true;
+    try {
+      params.delete('alarmTrigger');
+      const nextQuery = params.toString();
+      const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+    } catch {
+      // ignore
+    }
+    const t = window.setTimeout(() => {
+      fireAlarmNow(alarmRef.current, false);
+    }, 450);
+    return () => window.clearTimeout(t);
+  }, [fireAlarmNow]);
 
   // Countdown de prueba (5 s)
   useEffect(() => {

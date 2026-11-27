@@ -43,10 +43,10 @@ jobs:
           npm run build
           echo "{\"version\":\"${GITHUB_SHA}\",\"builtAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > dist/version.json
           cp dist/index.html dist/404.html
-          mkdir -p dist/recomendados
-          cp dist/index.html dist/recomendados/index.html
-          mkdir -p dist/productos-recomendados
-          cp dist/index.html dist/productos-recomendados/index.html
+          for route in recomendados productos-recomendados mitv misenal1 search youmusic lecturas reels my-lists share tv r; do
+            mkdir -p "dist/${route}"
+            cp dist/index.html "dist/${route}/index.html"
+          done
           [ -f public/CNAME ] && cp public/CNAME dist/CNAME || true
 
       - name: Setup Pages

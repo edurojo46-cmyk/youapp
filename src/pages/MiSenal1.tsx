@@ -694,22 +694,6 @@ export default function MiSenal1() {
     });
   };
 
-  // Si ya estás visible en Señal viva, al cambiar de video (ej. Tango, Rock) actualiza automáticamente qué estás viendo en el mapa
-  useEffect(() => {
-    if (!isLiveVisible || !liveClientRef.current || !liveUserIdRef.current) return;
-    const watchingTitle = currentBlock?.contentItem?.title || activeSignal?.name || undefined;
-    void liveClientRef.current.setVisible({
-      key: liveUserIdRef.current,
-      name: liveUserNameRef.current,
-      city: liveCity,
-      watchingTitle,
-      approxLat: liveApproxCoordsRef.current?.approxLat,
-      approxLon: liveApproxCoordsRef.current?.approxLon,
-      radiusKm: 7,
-      joinedAt: new Date().toISOString()
-    });
-  }, [isLiveVisible, currentBlock?.contentItem?.title, activeSignal?.name, liveCity]);
-
   const handleLeaveLivePresence = async () => {
     setIsLiveVisible(false);
     await liveClientRef.current?.setVisible(null);
@@ -1304,6 +1288,22 @@ export default function MiSenal1() {
   const [moments, setMoments] = useState<VideoMoment[]>([]);
   const [signalMemberships, setSignalMemberships] = useState<SignalMembershipItem[]>([]);
   const currentBlock = activeSignal?.schedule[currentBlockIndex] || null;
+
+  // Si ya estás visible en Señal viva, al cambiar de video (ej. Tango, Rock) actualiza automáticamente qué estás viendo en el mapa
+  useEffect(() => {
+    if (!isLiveVisible || !liveClientRef.current || !liveUserIdRef.current) return;
+    const watchingTitle = currentBlock?.contentItem?.title || activeSignal?.name || undefined;
+    void liveClientRef.current.setVisible({
+      key: liveUserIdRef.current,
+      name: liveUserNameRef.current,
+      city: liveCity,
+      watchingTitle,
+      approxLat: liveApproxCoordsRef.current?.approxLat,
+      approxLon: liveApproxCoordsRef.current?.approxLon,
+      radiusKm: 7,
+      joinedAt: new Date().toISOString()
+    });
+  }, [isLiveVisible, currentBlock?.contentItem?.title, activeSignal?.name, liveCity]);
 
   useEffect(() => {
     const ci = currentBlock?.contentItem as any;

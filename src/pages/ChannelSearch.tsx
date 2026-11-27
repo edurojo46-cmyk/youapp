@@ -1648,7 +1648,6 @@ export default function ChannelSearch() {
   const [isCastOpen, setIsCastOpen] = useState(false);
   const [castCodeInput, setCastCodeInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  useLandscapeAutoFullscreen(Boolean(previewVideo), setIsFullscreen);
   const [likedVideoIds, setLikedVideoIds] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem('youapp_search_likes_v1');
@@ -1701,6 +1700,7 @@ export default function ChannelSearch() {
   );
 
   const [previewVideo, setPreviewVideo] = useState<SearchVideoItem | null>(null);
+  useLandscapeAutoFullscreen(Boolean(previewVideo), setIsFullscreen);
 
   const sendYtCommand = useCallback(
     (func: string, args: unknown[] = []) => {

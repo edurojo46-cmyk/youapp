@@ -3715,73 +3715,78 @@ export default function MiSenal1() {
             </div>
             )}
 
-            {/* Barra de controles de grilla: Ordenar mi señal · Señal viva · Señal cerrada/abierta */}
-            <div className="ms-collab-chips" style={{ marginBottom: 10 }}>
+            {/* Barra integrada neutra: Ordenar · Señal viva · Señal cerrada/abierta */}
+            <div className="ms-pulse-filter" role="group" aria-label="Controles de la señal">
               <button
                 type="button"
-                className="ms-collab-chip is-atlas"
+                className="ms-pulse-tab"
                 onClick={handleAtlasOrderSignal}
                 title="ATLAS ordena tu señal alternando canales, quitando duplicados y priorizando aportes valorados"
               >
-                <Sparkles size={11} />
-                <span>Ordenar mi señal</span>
+                <span>Ordenar</span>
               </button>
 
               <button
                 type="button"
-                className={`ms-collab-chip ${collabConfig.liveEnabled ? 'is-live-on' : ''}`}
+                className={`ms-pulse-tab ${collabConfig.liveEnabled ? 'active' : ''}`}
                 onClick={handleToggleLiveEnabled}
+                aria-pressed={collabConfig.liveEnabled}
                 title="Activar o desactivar encuentros en vivo (presencia voluntaria y saludos)"
               >
-                <span>{collabConfig.liveEnabled ? '👋 Señal viva' : 'Señal viva: off'}</span>
+                <span>Señal viva</span>
               </button>
 
               <button
                 type="button"
-                className={`ms-collab-chip ${collabConfig.mode === 'open' ? 'is-open' : ''}`}
+                className={`ms-pulse-tab ${collabConfig.mode === 'open' ? 'active' : ''}`}
                 onClick={handleToggleCollabMode}
+                aria-pressed={collabConfig.mode === 'open'}
                 title="Cambiar entre Señal Abierta (comunidad aporta videos) y Señal Cerrada (solo propietario)"
               >
-                <span>{collabConfig.mode === 'open' ? '🟢 Señal abierta' : '🔒 Señal cerrada'}</span>
+                <span>{collabConfig.mode === 'open' ? 'Señal abierta' : 'Señal cerrada'}</span>
               </button>
-
-              {collabConfig.mode === 'open' && (
-                <button
-                  type="button"
-                  className="ms-collab-chip"
-                  onClick={handleToggleCollabModeration}
-                  title="Regla de publicación para aportes de la comunidad"
-                >
-                  <span>
-                    {collabConfig.moderation === 'direct' ? '⚡ Directa' : '🛡️ Revisión previa'}
-                  </span>
-                </button>
-              )}
-
-              {collabConfig.mode === 'open' && (
-                <button
-                  type="button"
-                  className="ms-collab-chip is-add"
-                  onClick={() => {
-                    setCollabFormOpen((v) => !v);
-                    setCollabError(null);
-                  }}
-                >
-                  <Plus size={11} />
-                  <span>Agregar video</span>
-                </button>
-              )}
-
-              {collabConfig.pending.length > 0 && (
-                <button
-                  type="button"
-                  className="ms-collab-chip is-pending"
-                  onClick={() => setCollabPendingOpen((v) => !v)}
-                >
-                  <span>Pendientes ({collabConfig.pending.length})</span>
-                </button>
-              )}
             </div>
+
+            {(collabConfig.mode === 'open' || collabConfig.pending.length > 0) && (
+              <div className="ms-pulse-filter" style={{ marginTop: 6 }}>
+                {collabConfig.mode === 'open' && (
+                  <button
+                    type="button"
+                    className="ms-pulse-tab"
+                    onClick={handleToggleCollabModeration}
+                    title="Regla de publicación para aportes de la comunidad"
+                  >
+                    <span>
+                      {collabConfig.moderation === 'direct' ? 'Directa' : 'Revisión previa'}
+                    </span>
+                  </button>
+                )}
+
+                {collabConfig.mode === 'open' && (
+                  <button
+                    type="button"
+                    className={`ms-pulse-tab ${collabFormOpen ? 'active' : ''}`}
+                    onClick={() => {
+                      setCollabFormOpen((v) => !v);
+                      setCollabError(null);
+                    }}
+                  >
+                    <Plus size={11} />
+                    <span>Agregar video</span>
+                  </button>
+                )}
+
+                {collabConfig.pending.length > 0 && (
+                  <button
+                    type="button"
+                    className={`ms-pulse-tab ${collabPendingOpen ? 'active' : ''}`}
+                    onClick={() => setCollabPendingOpen((v) => !v)}
+                  >
+                    <span>Pendientes ({collabConfig.pending.length})</span>
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Sector rápido Apple minimalista: Agregar URL de video o canal (solo en señales propias) */}
             {!curatedActiveDef && (

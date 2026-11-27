@@ -3119,19 +3119,8 @@ export default function MiSenal1() {
                     </button>
                   )}
 
-                  {/* Capa sutil que se atenúa sola mientras reproduce */}
+                  {/* Capa sutil que se atenúa sola mientras reproduce (video limpio sin textos superpuestos) */}
                   <div className={`ms-stage-hud ${controlsVisible ? 'visible' : 'hidden-hud'}`}>
-                    <div className="ms-stage-caption">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                        <span className="ms-now-label">AHORA EN TU SEÑAL</span>
-                        <EpistemicBadge nature={currentAssessment.nature} size="sm" />
-                      </div>
-                      <h2 className="ms-stage-topic">{currentBlock.topic}</h2>
-                      <div className="ms-stage-sub">
-                        {Math.max(1, Math.round(currentBlock.durationSec / 60))} MIN • {currentBlock.contentItem.title}
-                      </div>
-                    </div>
-
                     <YouRing
                       playing={isPlaying}
                       signalProgress={signalProgress}

@@ -2468,38 +2468,7 @@ export default function ProgramarTV() {
           </section>
         )}
 
-        {/* 3. BARRA DISIMULADA: SUMAR VIDEO POR URL */}
-        <section className="mitv-add-card" aria-label="Agregar video por URL">
-          <form className="mitv-add-form" onSubmit={handleAddUrl}>
-            <input
-              type="text"
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="+ Pegá una URL (YouTube, TikTok, Instagram, Facebook, Twitch, X, Vimeo o MP4)…"
-              aria-label="Pegar URL del video"
-            />
-            <button type="submit" className="mitv-add-submit" disabled={isAdding}>
-              <Plus size={14} />
-              <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
-            </button>
-            <a
-              ref={bookmarkletRef}
-              href="#mitv-bookmarklet"
-              className="mitv-bookmarklet-pill"
-              onClick={(e) => {
-                e.preventDefault();
-                setToast('Arrastrá «+ Mi TV» a tu barra de marcadores para enviar videos en 1 clic desde YouTube.');
-              }}
-              title="Arrastrá este botón a tu barra de marcadores para sumar videos desde YouTube en 1 clic"
-            >
-              <Plus size={12} /> Mi TV
-            </a>
-          </form>
-
-          {errorMsg && <div className="mitv-error">{errorMsg}</div>}
-        </section>
-
-        {/* 4. GRILLA DE PROGRAMACIÓN */}
+        {/* 3. GRILLA DE PROGRAMACIÓN (con barra de URL integrada) */}
         <section id="mitv-grid" className="mitv-card mitv-grid-card">
           <div className="mitv-grid-header">
             <div className="mitv-grid-top-row">
@@ -2618,6 +2587,37 @@ export default function ProgramarTV() {
                   </button>
                 </>
               )}
+            </div>
+
+            {/* BARRA PARA SUMAR VIDEO POR URL */}
+            <div className="mitv-add-card" aria-label="Agregar video por URL">
+              <form className="mitv-add-form" onSubmit={handleAddUrl}>
+                <input
+                  type="text"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder="+ Pegá una URL (YouTube, TikTok, Instagram, Facebook, Twitch, X, Vimeo o MP4)…"
+                  aria-label="Pegar URL del video"
+                />
+                <button type="submit" className="mitv-add-submit" disabled={isAdding}>
+                  <Plus size={14} />
+                  <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
+                </button>
+                <a
+                  ref={bookmarkletRef}
+                  href="#mitv-bookmarklet"
+                  className="mitv-bookmarklet-pill"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setToast('Arrastrá «+ Mi TV» a tu barra de marcadores para enviar videos en 1 clic desde YouTube.');
+                  }}
+                  title="Arrastrá este botón a tu barra de marcadores para sumar videos desde YouTube en 1 clic"
+                >
+                  <Plus size={12} /> Mi TV
+                </a>
+              </form>
+
+              {errorMsg && <div className="mitv-error">{errorMsg}</div>}
             </div>
           </div>
 

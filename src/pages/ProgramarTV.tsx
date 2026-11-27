@@ -2260,7 +2260,17 @@ export default function ProgramarTV() {
               )}
             </div>
 
-            <PlayerControlsDrawer>
+            <PlayerControlsDrawer
+              quickSaveItem={{
+                id: currentItem.id || currentItem.providerId,
+                videoId: currentItem.providerId,
+                title: currentItem.title,
+                author: displayedChannel?.name || currentItem.author,
+                thumbnailUrl: currentItem.thumbnailUrl,
+                sourceUrl: currentItem.sourceUrl,
+                provider: currentItem.provider || 'youtube'
+              }}
+            >
             <div className="mitv-now-bar">
               <div className="mitv-now-meta">
                 <div className="mitv-now-top-meta">

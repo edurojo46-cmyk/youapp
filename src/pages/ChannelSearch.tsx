@@ -3569,8 +3569,18 @@ export default function ChannelSearch() {
 
             {castNotice && <div className="ys-cast-toast">{castNotice}</div>}
 
-            {/* ENCABEZADO + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO */}
-            <PlayerControlsDrawer>
+            {/* ENCABEZADO + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO + PUNTO ROJO ATLAS */}
+            <PlayerControlsDrawer
+              quickSaveItem={{
+                id: previewVideo.videoId,
+                videoId: previewVideo.videoId,
+                title: previewVideo.title,
+                author: previewVideo.channelName,
+                thumbnailUrl: previewVideo.thumbnail,
+                sourceUrl: previewVideo.watchUrl,
+                provider: previewVideo.provider || 'youtube'
+              }}
+            >
             <div className="ys-preview-bar ys-preview-bar--mitv">
               <div className="ys-preview-top-meta">
                 <span className="ys-preview-live-pill">EN PANTALLA</span>

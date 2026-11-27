@@ -3140,8 +3140,26 @@ export default function MiSenal1() {
             )}
           </div>
 
-          {/* BARRA EDITORIAL + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO */}
-          <PlayerControlsDrawer>
+          {/* BARRA EDITORIAL + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO + PUNTO ROJO ATLAS */}
+          <PlayerControlsDrawer
+            quickSaveItem={
+              currentBlock
+                ? {
+                    id: currentBlock.contentItem?.id || currentBlock.id,
+                    videoId: (currentBlock.contentItem as { providerId?: string })?.providerId,
+                    title: currentBlock.contentItem?.title || activeSignal?.name || 'Video',
+                    author:
+                      (currentBlock.contentItem as { channelTitle?: string; author?: string })?.channelTitle ||
+                      (currentBlock.contentItem as { author?: string })?.author ||
+                      activeSignal?.name,
+                    thumbnailUrl: currentBlock.contentItem?.thumbnailUrl,
+                    sourceUrl: (currentBlock.contentItem as { sourceUrl?: string; url?: string })?.sourceUrl ||
+                      (currentBlock.contentItem as { url?: string })?.url,
+                    provider: currentBlock.contentItem?.provider || 'youtube'
+                  }
+                : null
+            }
+          >
           {currentBlock && (() => {
             const ci = currentBlock.contentItem as any;
             const ytId =

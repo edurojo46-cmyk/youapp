@@ -1841,8 +1841,19 @@ export default function YouMusicPage() {
               </button>
             )}
 
-            {/* ENCABEZADO + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO */}
-            <PlayerControlsDrawer>
+            {/* ENCABEZADO + SMARTBAR DESPLEGABLES CON BOTÓN BLANCO + PUNTO ROJO ATLAS */}
+            <PlayerControlsDrawer
+              quickSaveItem={{
+                id: currentItem.id || currentItem.videoId,
+                videoId: currentItem.videoId,
+                title: currentItem.title,
+                author: currentItem.author,
+                thumbnailUrl: currentItem.thumbnailUrl,
+                sourceUrl: currentItem.sourceUrl,
+                provider: 'youtube',
+                sourceHint: 'music'
+              }}
+            >
             <div className="ymv1-now-bar ymv1-now-bar--mitv">
               {(() => {
                 const likeKey = `youtube:${currentItem.videoId}`;

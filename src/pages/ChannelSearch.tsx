@@ -1743,15 +1743,17 @@ export default function ChannelSearch() {
   };
 
   const playVideoInline = useCallback((item: SearchVideoItem) => {
+    setIsScrolledPastPlayer(false);
     setPreviewVideo(item);
     setPreviewIsPlaying(true);
-    window.requestAnimationFrame(() => {
-      if (previewRef.current) {
-        previewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => {
+      if (previewSentinelRef.current) {
+        const y = previewSentinelRef.current.getBoundingClientRect().top + window.scrollY - 70;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
       } else {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
-    });
+    }, 60);
   }, []);
 
   const [query, setQuery] = useState('');

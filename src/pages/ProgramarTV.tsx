@@ -1687,118 +1687,6 @@ export default function ProgramarTV() {
           </div>
         )}
 
-        {/* 1. BARRA COMPACTA DE CANALES: TV EN VIVO · MIS CANALES · + NUEVO */}
-        <section
-          className="mitv-card mitv-channels-card"
-          aria-label="Canales de MiTV"
-          style={{ padding: '6px 8px' }}
-        >
-          <div className="mitv-tabs" role="tablist" aria-label="Canales de MiTV" style={{ margin: 0 }}>
-            <button
-              type="button"
-              className={`mitv-tab mitv-tab-live ${!sharedChannel && isViewingOfficialLive ? 'active' : ''}`}
-              onClick={() => {
-                setSharedChannel(null);
-                setSearchParams({}, { replace: true });
-                setIsViewingOfficialLive(true);
-                setIsChannelMenuOpen(false);
-                setCurrentIndex(0);
-              }}
-            >
-              <span className="mitv-live-dot" />
-              <span>TV en Vivo</span>
-              <em>{OFFICIAL_LIVE_TV_CHANNEL.items.length}</em>
-            </button>
-
-            <div className="mitv-ch-dropdown" ref={channelMenuRef}>
-              <button
-                type="button"
-                className={`mitv-tab mitv-ch-trigger ${!sharedChannel && !isViewingOfficialLive ? 'active' : ''}`}
-                onClick={() => setIsChannelMenuOpen((v) => !v)}
-                aria-expanded={isChannelMenuOpen}
-                aria-haspopup="listbox"
-              >
-                <Tv size={13} />
-                <span>{activeOwnChannel?.name || 'Mis canales'}</span>
-                <em>{activeOwnChannel?.items.length ?? 0}</em>
-                <ChevronDown
-                  size={14}
-                  style={{
-                    transform: isChannelMenuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.16s ease'
-                  }}
-                />
-              </button>
-
-              {isChannelMenuOpen && (
-                <div className="mitv-ch-menu" role="listbox" aria-label="Mis canales de MiTV">
-                  <div className="mitv-ch-menu-head">
-                    Mis canales ({workspace.channels.length})
-                  </div>
-                  {workspace.channels.map((ch) => {
-                    const isSelected =
-                      !sharedChannel && !isViewingOfficialLive && ch.id === activeOwnChannel?.id;
-                    return (
-                      <button
-                        key={ch.id}
-                        type="button"
-                        role="option"
-                        aria-selected={isSelected}
-                        className={`mitv-ch-option ${isSelected ? 'selected' : ''}`}
-                        onClick={() => {
-                          setSharedChannel(null);
-                          setIsViewingOfficialLive(false);
-                          setSearchParams({}, { replace: true });
-                          updateWorkspace((prev) => ({ ...prev, activeChannelId: ch.id }));
-                          setCurrentIndex(0);
-                          setIsChannelMenuOpen(false);
-                        }}
-                      >
-                        <span className="mitv-ch-option-name">
-                          <Tv size={13} />
-                          <span>{ch.name}</span>
-                        </span>
-                        <span className="mitv-ch-option-right">
-                          <em>{ch.items.length}</em>
-                          {isSelected && <Check size={13} color="#64d2ff" />}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              className="mitv-tab-new"
-              onClick={() => {
-                setIsChannelMenuOpen(false);
-                setIsCreatingChannel((v) => !v);
-              }}
-              title="Crear nuevo canal"
-              aria-label="Crear nuevo canal"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-
-          {isCreatingChannel && (
-            <form className="mitv-new-form" onSubmit={handleCreateChannel} style={{ marginTop: 8 }}>
-              <input
-                type="text"
-                value={newChannelName}
-                onChange={(e) => setNewChannelName(e.target.value)}
-                placeholder="Nombre del canal (ej. Noticias Mañana, Documentales, Cine…)"
-                autoFocus
-              />
-              <button type="submit" className="mitv-btn-primary">
-                Crear
-              </button>
-            </form>
-          )}
-        </section>
-
         {/* 2. REPRODUCTOR MiTV (MULTIFUENTE CONTINUO) */}
         {currentItem && (
           <section
@@ -2614,67 +2502,89 @@ export default function ProgramarTV() {
         {/* 4. GRILLA DE PROGRAMACIÓN */}
         <section id="mitv-grid" className="mitv-card mitv-grid-card">
           <div className="mitv-grid-header">
-            {isRenamingChannel && !isReadOnlyChannel ? (
-              <form className="mitv-inline-rename" onSubmit={handleRenameChannel}>
-                <input
-                  type="text"
-                  value={renameChannelDraft}
-                  onChange={(e) => setRenameChannelDraft(e.target.value)}
-                  placeholder="Nombre del canal…"
-                  autoFocus
-                />
-                <button type="submit" className="mitv-icon-btn" title="Guardar nombre">
-                  <Check size={15} color="#64d2ff" />
-                </button>
-                <button
-                  type="button"
-                  className="mitv-icon-btn"
-                  onClick={() => setIsRenamingChannel(false)}
-                  title="Cancelar"
-                >
-                  <X size={15} />
-                </button>
-              </form>
-            ) : (
-              <div className="mitv-grid-title-wrap">
-                <h2
-                  onClick={() => {
-                    if (isReadOnlyChannel) return;
-                    setRenameChannelDraft(displayedChannel?.name || 'Para ver hoy');
-                    setIsRenamingChannel(true);
-                  }}
-                  style={{ cursor: isReadOnlyChannel ? 'default' : 'pointer' }}
-                  title={isReadOnlyChannel ? undefined : 'Clic para renombrar este canal'}
-                >
-                  {displayedChannel?.name || 'Para ver hoy'}
-                </h2>
-                {!isReadOnlyChannel && (
-                  <>
-                    <button
-                      type="button"
-                      className="mitv-icon-btn"
-                      onClick={() => {
-                        setRenameChannelDraft(displayedChannel?.name || 'Para ver hoy');
-                        setIsRenamingChannel(true);
-                      }}
-                      title="Renombrar canal"
-                    >
-                      <Pencil size={13} />
-                    </button>
-                    {workspace.channels.length > 1 && (
+            <div className="mitv-grid-top-row">
+              {isRenamingChannel && !isReadOnlyChannel ? (
+                <form className="mitv-inline-rename" onSubmit={handleRenameChannel}>
+                  <input
+                    type="text"
+                    value={renameChannelDraft}
+                    onChange={(e) => setRenameChannelDraft(e.target.value)}
+                    placeholder="Nombre del canal…"
+                    autoFocus
+                  />
+                  <button type="submit" className="mitv-icon-btn" title="Guardar nombre">
+                    <Check size={15} color="#64d2ff" />
+                  </button>
+                  <button
+                    type="button"
+                    className="mitv-icon-btn"
+                    onClick={() => setIsRenamingChannel(false)}
+                    title="Cancelar"
+                  >
+                    <X size={15} />
+                  </button>
+                </form>
+              ) : (
+                <div className="mitv-grid-title-wrap">
+                  <h2
+                    onClick={() => {
+                      if (isReadOnlyChannel) return;
+                      setRenameChannelDraft(displayedChannel?.name || 'Para ver hoy');
+                      setIsRenamingChannel(true);
+                    }}
+                    style={{ cursor: isReadOnlyChannel ? 'default' : 'pointer' }}
+                    title={isReadOnlyChannel ? undefined : 'Clic para renombrar este canal'}
+                  >
+                    {displayedChannel?.name || 'Para ver hoy'}
+                  </h2>
+                  {!isReadOnlyChannel && (
+                    <>
                       <button
                         type="button"
                         className="mitv-icon-btn"
-                        onClick={handleDeleteActiveChannel}
-                        title="Eliminar canal"
+                        onClick={() => {
+                          setRenameChannelDraft(displayedChannel?.name || 'Para ver hoy');
+                          setIsRenamingChannel(true);
+                        }}
+                        title="Renombrar canal"
                       >
-                        <Trash2 size={13} />
+                        <Pencil size={13} />
                       </button>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
+                      {workspace.channels.length > 1 && (
+                        <button
+                          type="button"
+                          className="mitv-icon-btn"
+                          onClick={handleDeleteActiveChannel}
+                          title="Eliminar canal"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={`mitv-live-mini-btn ${!sharedChannel && isViewingOfficialLive ? 'active' : ''}`}
+                onClick={() => {
+                  setSharedChannel(null);
+                  setSearchParams({}, { replace: true });
+                  setIsViewingOfficialLive((prev) => !prev);
+                  setCurrentIndex(0);
+                }}
+                aria-pressed={!sharedChannel && isViewingOfficialLive}
+                title={
+                  !sharedChannel && isViewingOfficialLive
+                    ? 'Volver a Para ver hoy'
+                    : 'Ver canales de TV en Vivo'
+                }
+              >
+                <span className="mitv-live-dot" />
+                <span>En vivo</span>
+              </button>
+            </div>
 
             <div className="mitv-grid-filters">
               {isViewingOfficialLive ? (
@@ -4107,10 +4017,50 @@ export default function ProgramarTV() {
         }
         .mitv-grid-header {
           display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 10px;
+        }
+        .mitv-grid-top-row {
+          display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
-          flex-wrap: wrap;
+          gap: 8px;
+          width: 100%;
+        }
+        .mitv-live-mini-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 69, 58, 0.42);
+          background: rgba(255, 69, 58, 0.14);
+          color: #ffb8b2;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.14s ease;
+        }
+        .mitv-live-mini-btn:hover {
+          background: rgba(255, 69, 58, 0.24);
+          color: #ffffff;
+        }
+        .mitv-live-mini-btn:active {
+          transform: scale(0.96);
+        }
+        .mitv-live-mini-btn.active {
+          background: rgba(255, 59, 48, 0.88);
+          border-color: rgba(255, 138, 128, 0.9);
+          color: #ffffff;
+          box-shadow: 0 2px 10px rgba(255, 59, 48, 0.32);
+        }
+        .mitv-live-mini-btn .mitv-live-dot {
+          width: 6px;
+          height: 6px;
         }
         .mitv-grid-title-wrap, .mitv-inline-rename {
           display: inline-flex;

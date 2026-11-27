@@ -1381,12 +1381,12 @@ export default function YouMusicPage() {
     if (kind === 'song' && currentItem) {
       const url = buildSingleSongShareUrl(currentItem);
       await shareContentUniversal({
-        title: `${currentItem.title} · YOU MUSIC`,
-        text: `🎵 Escuchá «${currentItem.title}» en YOU MUSIC`,
+        title: `${currentItem.title} · Tu señal musical`,
+        text: 'Tu señal musical',
         url,
         thumbnailUrl: currentItem.thumbnailUrl,
         subtitle: currentItem.author,
-        badge: 'YOU MUSIC'
+        badge: 'TU SEÑAL MUSICAL'
       });
       return;
     }
@@ -1394,12 +1394,12 @@ export default function YouMusicPage() {
     if (kind === 'playlist' && displayedPlaylist && displayedPlaylist.items.length > 0) {
       const url = buildPlaylistShareUrl(displayedPlaylist);
       await shareContentUniversal({
-        title: `${displayedPlaylist.name} · YOU MUSIC`,
-        text: `🎵 Escuchá mi playlist «${displayedPlaylist.name}» en YOU MUSIC`,
+        title: `${displayedPlaylist.name} · Tu señal musical`,
+        text: 'Tu señal musical',
         url,
         thumbnailUrl: displayedPlaylist.items[0]?.thumbnailUrl,
         subtitle: `${displayedPlaylist.items.length} canciones`,
-        badge: 'PLAYLIST YOU MUSIC'
+        badge: 'TU SEÑAL MUSICAL'
       });
     }
   };

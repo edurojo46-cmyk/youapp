@@ -346,8 +346,10 @@ export const GlobalShareSheet: React.FC = () => {
     (Boolean((window as unknown as { YouAppAndroidPiP?: unknown }).YouAppAndroidPiP) ||
       /;\s*wv\)/i.test(navigator.userAgent || ''));
   const richShareUrl = buildDynamicPreviewShareUrl(payload);
-  // Mensaje limpio y breve para WhatsApp (la tarjeta ya muestra foto y título)
-  const waHref = `https://wa.me/?text=${encodeURIComponent(richShareUrl)}`;
+  const isMusicShare =
+    payload.url.includes('/youmusic') || (payload.badge || '').toUpperCase().includes('MUSICAL');
+  const waMessage = isMusicShare ? `Tu señal musical\n${richShareUrl}` : richShareUrl;
+  const waHref = `https://wa.me/?text=${encodeURIComponent(waMessage)}`;
   const tgHref = `https://t.me/share/url?url=${encodeURIComponent(richShareUrl)}&text=${encodeURIComponent(payload.text)}`;
   const xHref = `https://twitter.com/intent/tweet?text=${encodeURIComponent(payload.text)}&url=${encodeURIComponent(richShareUrl)}`;
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=${encodeURIComponent(payload.url)}`;

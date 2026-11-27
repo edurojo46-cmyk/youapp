@@ -2991,11 +2991,10 @@ export default function ChannelSearch() {
                   className="ys-icon-circle"
                   onClick={() => {
                     setQuery('');
-                    setPreviewVideo(null);
                     setActiveChannelFilter(null);
                     setActiveCategory('todos');
                     setHints([]);
-                    void loadMyAlgorithmFeed();
+                    inputRef.current?.focus();
                   }}
                   aria-label="Limpiar búsqueda"
                 >

@@ -69,19 +69,26 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
           justify-content: center;
           gap: 6px;
           height: 24px;
-          min-width: 78px;
+          min-width: 82px;
           padding: 0 14px;
           border-radius: 999px;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          background: #ffffff;
-          color: #111827;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+          border: 1px solid rgba(255, 255, 255, 0.36);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.14) 100%);
+          backdrop-filter: blur(16px) saturate(180%);
+          -webkit-backdrop-filter: blur(16px) saturate(180%);
+          color: rgba(255, 255, 255, 0.95);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.48),
+            0 4px 14px rgba(0, 0, 0, 0.26);
           cursor: pointer;
-          transition: transform 0.14s ease, box-shadow 0.14s ease, opacity 0.14s ease;
+          transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
         }
         .yapp-pcd-white-btn:hover {
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.36) 0%, rgba(255, 255, 255, 0.2) 100%);
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.58),
+            0 6px 18px rgba(0, 0, 0, 0.3);
         }
         .yapp-pcd-white-btn:active {
           transform: scale(0.96);
@@ -90,8 +97,8 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
           width: 24px;
           height: 3.5px;
           border-radius: 999px;
-          background: #111827;
-          opacity: 0.78;
+          background: rgba(255, 255, 255, 0.88);
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
         }
         .is-expanded .yapp-pcd-root,
         .is-mini-floating .yapp-pcd-root {

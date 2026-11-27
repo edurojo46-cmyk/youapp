@@ -1099,6 +1099,7 @@ export default function MiSenal1() {
     () => readRedVivaState().activeTrial
   );
   const [showMediaDrawer, setShowMediaDrawer] = useState(false);
+  const [showToolsDrawer, setShowToolsDrawer] = useState(false);
   const [signalMediaBundle, setSignalMediaBundle] = useState<SignalMediaBundle>(() =>
     readSignalMediaBundle(activeSignal?.id || 'justicia-social-signal-1')
   );
@@ -2762,7 +2763,8 @@ export default function MiSenal1() {
                         onClick={() => {
                           setShowToolsMenu(false);
                           setMobileTab('schedule');
-                          setEventCoverageOpenTick((t) => t + 1);
+                          setShowToolsDrawer(true);
+            setEventCoverageOpenTick((t) => t + 1);
                         }}
                       >
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
@@ -4429,6 +4431,29 @@ export default function MiSenal1() {
               )}
             </div>
 
+            {/* Desplegable unificado de Herramientas (agrupa los 4 paneles inferiores de la grilla) */}
+            <div className="ms-media-drawer">
+              <button
+                type="button"
+                className={`ms-media-drawer-toggle ${showToolsDrawer ? 'open' : ''}`}
+                onClick={() => setShowToolsDrawer((v) => !v)}
+                aria-expanded={showToolsDrawer}
+              >
+                <span className="ms-media-drawer-title">
+                  <Sliders size={13} />
+                  <span>Herramientas</span>
+                </span>
+                <ChevronDown
+                  size={14}
+                  style={{
+                    transform: showToolsDrawer ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.18s ease'
+                  }}
+                />
+              </button>
+
+              {showToolsDrawer && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 8 }}>
             {/* Sector desplegable: Radio, Música y Noticias agregadas a esta señal */}
             {(() => {
               const totalMedia = signalMediaBundle.audio.length + signalMediaBundle.news.length;
@@ -4602,6 +4627,9 @@ export default function MiSenal1() {
               signalName={activeSignal?.name || 'Mi Señal'}
               isOwner={!curatedActiveDef && !isSharedSignalView}
             />
+                </div>
+              )}
+            </div>
 
             {/* Espacio único ATLAS Red Viva: máximo 1 repetidora invitada (7 días) */}
             {redVivaTrial && redVivaTrial.status === 'ACTIVE_7D' && (() => {

@@ -9,10 +9,12 @@ interface SignalLiveMapModalProps {
   isOpen: boolean;
   onClose: () => void;
   signalName: string;
+  currentVideoTitle?: string;
   participants: LiveParticipant[];
   isLiveVisible: boolean;
   liveCity: string;
   onJoinWithCity: (city: string) => void;
+  onJoinApproxZone: () => void;
   onGreetCity: (city: string) => void;
 }
 
@@ -96,10 +98,12 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
   isOpen,
   onClose,
   signalName,
+  currentVideoTitle,
   participants,
   isLiveVisible,
   liveCity,
   onJoinWithCity,
+  onJoinApproxZone,
   onGreetCity
 }) => {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
@@ -112,16 +116,28 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
   const markersLayerRef = useRef<any>(null);
 
   const cityClusters = useMemo(() => {
-    const map = new Map<string, { city: string; lat: number; lon: number; people: LiveParticipant[] }>();
+    const map = new Map<
+      string,
+      { city: string; lat: number; lon: number; radiusKm: number; people: LiveParticipant[] }
+    >();
     for (const p of participants) {
-      const label = p.city?.trim() || 'Buenos Aires';
-      const key = label.toLowerCase();
+      const hasApprox = typeof p.approxLat === 'number' && typeof p.approxLon === 'number';
+      const label = p.city?.trim() || (hasApprox ? 'Zona ~7 km' : 'Buenos Aires');
+      const key = hasApprox ? `z:${p.approxLat!.toFixed(2)},${p.approxLon!.toFixed(2)}` : label.toLowerCase();
       const existing = map.get(key);
       if (existing) {
         existing.people.push(p);
       } else {
-        const coords = resolveCityCoords(label);
-        map.set(key, { city: label, lat: coords.lat, lon: coords.lon, people: [p] });
+        const coords = hasApprox
+          ? { lat: p.approxLat!, lon: p.approxLon! }
+          : resolveCityCoords(label);
+        map.set(key, {
+          city: label,
+          lat: coords.lat,
+          lon: coords.lon,
+          radiusKm: p.radiusKm || 7,
+          people: [p]
+        });
       }
     }
     return Array.from(map.values()).sort((a, b) => b.people.length - a.people.length);
@@ -215,10 +231,22 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
 
     for (const cl of cityClusters) {
       bounds.push([cl.lat, cl.lon]);
+      // Círculo aproximado de 7 km a la redonda (nunca ubicación exacta)
+      L.circle([cl.lat, cl.lon], {
+        radius: (cl.radiusKm || 7) * 1000,
+        color: '#ea4335',
+        weight: 1.5,
+        fillColor: '#ea4335',
+        fillOpacity: 0.16
+      }).addTo(layer);
+
+      const watchingSnippet = cl.people[0]?.watchingTitle
+        ? ` · ${cl.people[0].watchingTitle.slice(0, 22)}`
+        : '';
       const icon = L.divIcon({
         className: 'slm-live-marker-wrap',
-        html: `<div class="slm-live-pin"><span class="slm-live-pin-dot"></span><span class="slm-live-pin-lbl">${cl.city} (${cl.people.length})</span></div>`,
-        iconSize: [130, 28],
+        html: `<div class="slm-live-pin"><span class="slm-live-pin-dot"></span><span class="slm-live-pin-lbl">${cl.city} (${cl.people.length})${watchingSnippet}</span></div>`,
+        iconSize: [180, 28],
         iconAnchor: [14, 14]
       });
       const marker = L.marker([cl.lat, cl.lon], { icon }).addTo(layer);
@@ -228,9 +256,9 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
     }
 
     if (bounds.length === 1) {
-      map.setView(bounds[0], 6, { animate: true });
+      map.setView(bounds[0], 11, { animate: true });
     } else if (bounds.length > 1) {
-      map.fitBounds(bounds, { padding: [44, 44], maxZoom: 6 });
+      map.fitBounds(bounds, { padding: [44, 44], maxZoom: 11 });
     }
   }, [isOpen, mapReady, cityClusters]);
 
@@ -294,12 +322,12 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
               <MapPin size={15} color="#34d399" />
               <div>
                 <strong>
-                  {activeCluster.city} ({activeCluster.people.length})
+                  {activeCluster.city} ({activeCluster.people.length}) · Radio ~{activeCluster.radiusKm} km
                 </strong>
                 <span>
                   {activeCluster.people
-                    .slice(0, 4)
-                    .map((p) => p.name)
+                    .slice(0, 3)
+                    .map((p) => (p.watchingTitle ? `${p.name} viendo «${p.watchingTitle.slice(0, 34)}»` : p.name))
                     .join(' · ')}
                 </span>
               </div>
@@ -321,7 +349,19 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
 
         {!isLiveVisible && (
           <div className="slm-join-row">
-            <span className="slm-join-label">Sumarme al mapa (opcional):</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+              <span className="slm-join-label">
+                Sumarme al mapa{currentVideoTitle ? ` viendo «${currentVideoTitle.slice(0, 28)}»` : ''}:
+              </span>
+              <button
+                type="button"
+                className="slm-greet-btn"
+                onClick={onJoinApproxZone}
+                title="Usa tu zona aproximada con un radio de privacidad de 7 km (nunca ubicación exacta)"
+              >
+                📍 Mi zona (~7 km)
+              </button>
+            </div>
             <div className="slm-city-chips">
               {QUICK_LIVE_CITIES.map((c) => (
                 <button

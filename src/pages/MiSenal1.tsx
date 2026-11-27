@@ -107,6 +107,7 @@ import {
   QUICK_LIVE_GREETINGS,
   SignalLivePresenceClient,
   loadSavedLiveCity,
+  requestApproxZone7Km,
   saveLiveCity,
   type LiveGreetingEvent,
   type LiveParticipant
@@ -597,6 +598,8 @@ export default function MiSenal1() {
   const [liveGreetings, setLiveGreetings] = useState<LiveGreetingEvent[]>([]);
   const liveClientRef = useRef<SignalLivePresenceClient | null>(null);
   const liveUserNameRef = useRef<string>('Espectador');
+  const liveUserIdRef = useRef<string>('');
+  const liveApproxCoordsRef = useRef<{ approxLat: number; approxLon: number } | null>(null);
 
   useEffect(() => {
     if (!activeSignal?.id || !collabConfig.liveEnabled) {
@@ -644,19 +647,24 @@ export default function MiSenal1() {
     );
   };
 
-  const handleJoinLivePresence = async (chosenCity: string) => {
+  const handleJoinLivePresence = async (
+    chosenCity: string,
+    approxCoords?: { approxLat: number; approxLon: number } | null
+  ) => {
     const { data } = await supabase.auth.getUser();
     const user = data?.user;
     if (!user || user.is_anonymous) {
       setCuratedToast('Iniciá sesión en YOUAPP para mostrarte en Señal viva.');
       return;
     }
-    const cleanCity = chosenCity.trim() || 'Argentina';
+    const cleanCity = chosenCity.trim() || 'Zona ~7 km';
     const userName =
       (user.user_metadata as any)?.full_name ||
       (user.user_metadata as any)?.name ||
       (user.email ? user.email.split('@')[0] : 'Espectador');
     liveUserNameRef.current = userName;
+    liveUserIdRef.current = user.id;
+    liveApproxCoordsRef.current = approxCoords || null;
     setLiveCity(cleanCity);
     saveLiveCity(cleanCity);
     setLiveCityPickerOpen(false);
@@ -665,10 +673,42 @@ export default function MiSenal1() {
       key: user.id,
       name: userName,
       city: cleanCity,
+      watchingTitle: currentBlock?.contentItem?.title || activeSignal?.name || undefined,
+      approxLat: approxCoords?.approxLat,
+      approxLon: approxCoords?.approxLon,
+      radiusKm: 7,
       joinedAt: new Date().toISOString()
     });
-    setCuratedToast(`👋 Estás visible desde ${cleanCity}.`);
+    setCuratedToast(`📍 Visible en el mapa (${cleanCity} · radio ~7 km).`);
   };
+
+  const handleJoinApproxZone7Km = async () => {
+    const res = await requestApproxZone7Km();
+    if (!res.ok) {
+      setCuratedToast(res.error);
+      return;
+    }
+    await handleJoinLivePresence('Mi zona (~7 km)', {
+      approxLat: res.approxLat,
+      approxLon: res.approxLon
+    });
+  };
+
+  // Si ya estás visible en Señal viva, al cambiar de video (ej. Tango, Rock) actualiza automáticamente qué estás viendo en el mapa
+  useEffect(() => {
+    if (!isLiveVisible || !liveClientRef.current || !liveUserIdRef.current) return;
+    const watchingTitle = currentBlock?.contentItem?.title || activeSignal?.name || undefined;
+    void liveClientRef.current.setVisible({
+      key: liveUserIdRef.current,
+      name: liveUserNameRef.current,
+      city: liveCity,
+      watchingTitle,
+      approxLat: liveApproxCoordsRef.current?.approxLat,
+      approxLon: liveApproxCoordsRef.current?.approxLon,
+      radiusKm: 7,
+      joinedAt: new Date().toISOString()
+    });
+  }, [isLiveVisible, currentBlock?.contentItem?.title, activeSignal?.name, liveCity]);
 
   const handleLeaveLivePresence = async () => {
     setIsLiveVisible(false);
@@ -4702,10 +4742,12 @@ export default function MiSenal1() {
         isOpen={liveMapOpen}
         onClose={() => setLiveMapOpen(false)}
         signalName={activeSignal?.name || 'Mi Señal'}
+        currentVideoTitle={currentBlock?.contentItem?.title}
         participants={liveParticipants}
         isLiveVisible={isLiveVisible}
         liveCity={liveCity}
         onJoinWithCity={(city) => void handleJoinLivePresence(city)}
+        onJoinApproxZone={() => void handleJoinApproxZone7Km()}
         onGreetCity={(city) =>
           handleSendLiveGreeting('👋', `¡Saludos para ${city} desde ${liveCity}!`)
         }

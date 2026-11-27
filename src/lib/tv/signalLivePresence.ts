@@ -12,7 +12,46 @@ export interface LiveParticipant {
   key: string;
   name: string;
   city: string;
+  watchingTitle?: string;
+  approxLat?: number;
+  approxLon?: number;
+  radiusKm?: number;
   joinedAt: string;
+}
+
+/**
+ * Privacidad estricta (~7 km a la redonda):
+ * Cuantiza lat/lon a una grilla aproximada de ~6.7 km (0.06°) y agrega un pequeño
+ * desplazamiento pseudoaleatorio de sesión para que jamás se exponga la ubicación exacta.
+ */
+export function fuzzCoordsToApprox7Km(lat: number, lon: number): { approxLat: number; approxLon: number } {
+  const grid = 0.06; // ~6.67 km por celda
+  const snappedLat = Math.round(lat / grid) * grid;
+  const snappedLon = Math.round(lon / grid) * grid;
+  const jitterLat = (Math.random() - 0.5) * 0.025; // ±1.4 km extra
+  const jitterLon = (Math.random() - 0.5) * 0.025;
+  return {
+    approxLat: Number((snappedLat + jitterLat).toFixed(3)),
+    approxLon: Number((snappedLon + jitterLon).toFixed(3))
+  };
+}
+
+export function requestApproxZone7Km(): Promise<{ ok: true; approxLat: number; approxLon: number } | { ok: false; error: string }> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    return Promise.resolve({ ok: false, error: 'Tu navegador no admite ubicación aproximada.' });
+  }
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const fuzzed = fuzzCoordsToApprox7Km(pos.coords.latitude, pos.coords.longitude);
+        resolve({ ok: true, ...fuzzed });
+      },
+      () => {
+        resolve({ ok: false, error: 'Permiso de ubicación denegado. Podés elegir tu ciudad manualmente.' });
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+    );
+  });
 }
 
 export interface LiveGreetingEvent {
@@ -120,6 +159,10 @@ export class SignalLivePresenceClient {
           key,
           name: String(first.name).slice(0, 36),
           city: String(first.city || '').slice(0, 36),
+          watchingTitle: typeof first.watchingTitle === 'string' ? first.watchingTitle.slice(0, 80) : undefined,
+          approxLat: typeof first.approxLat === 'number' && Number.isFinite(first.approxLat) ? first.approxLat : undefined,
+          approxLon: typeof first.approxLon === 'number' && Number.isFinite(first.approxLon) ? first.approxLon : undefined,
+          radiusKm: typeof first.radiusKm === 'number' ? first.radiusKm : 7,
           joinedAt: String(first.joinedAt || '')
         });
       }

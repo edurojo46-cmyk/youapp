@@ -1746,6 +1746,8 @@ export default function ChannelSearch() {
     setIsScrolledPastPlayer(false);
     setPreviewVideo(item);
     setPreviewIsPlaying(true);
+    // En celular el reproductor queda fijo arriba pegado a la barra superior, sin moverte de la lista
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) return;
     window.setTimeout(() => {
       if (previewSentinelRef.current) {
         const y = previewSentinelRef.current.getBoundingClientRect().top + window.scrollY - 70;
@@ -2944,7 +2946,11 @@ export default function ChannelSearch() {
   const ambientThumb = previewVideo?.thumbnail || results[0]?.thumbnail || '';
 
   return (
-    <div className="ys-page">
+    <div
+      className={`ys-page ${
+        previewVideo && !isFullscreen && !isYou4Mode && !isMomentsMosaic ? 'ys-has-mobile-player' : ''
+      }`}
+    >
       <div
         className="ys-ambient-bg"
         aria-hidden="true"
@@ -4516,21 +4522,31 @@ export default function ChannelSearch() {
           position: relative;
         }
         @media (max-width: 768px) {
-          .ys-preview-slot {
-            position: sticky;
+          .ys-has-mobile-player .ys-preview-slot {
+            position: fixed;
             top: calc(48px + env(safe-area-inset-top));
-            z-index: 45;
-            margin-top: -10px;
-            margin-bottom: 10px;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 75;
+            margin: 0;
+            padding: 0;
           }
-          .ys-preview-slot .ys-preview-card {
-            border-radius: 0 0 16px 16px;
-            border-top: 0;
-            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.72);
+          .ys-has-mobile-player .ys-preview-card {
+            border-radius: 0 0 14px 14px !important;
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            background: #0e1118 !important;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.78);
           }
-          .ys-preview-slot .ys-preview-video,
-          .ys-preview-slot .ys-preview-stage {
-            border-radius: 0;
+          .ys-has-mobile-player .ys-preview-video-wrap,
+          .ys-has-mobile-player .ys-preview-video,
+          .ys-has-mobile-player .ys-preview-stage {
+            border-radius: 0 !important;
+          }
+          .ys-has-mobile-player .ys-main {
+            padding-top: calc(56.25vw + 136px) !important;
           }
         }
         .ys-preview-card.is-mini-floating {

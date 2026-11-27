@@ -3270,8 +3270,8 @@ function YouMusicPageInner() {
           font-weight: 600;
         }
         .ymv1-ms-collapsible {
-          border-radius: 14px;
-          background: rgba(16, 20, 30, 0.72);
+          border-radius: 12px;
+          background: rgba(16, 20, 30, 0.62);
           border: 1px solid rgba(255, 255, 255, 0.12);
           backdrop-filter: blur(14px);
           -webkit-backdrop-filter: blur(14px);
@@ -3282,12 +3282,12 @@ function YouMusicPageInner() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 10px;
-          padding: 9px 14px;
+          gap: 8px;
+          padding: 7px 11px;
           background: transparent;
           border: 0;
-          color: rgba(245, 245, 247, 0.9);
-          font-size: 12.5px;
+          color: rgba(245, 245, 247, 0.92);
+          font-size: 12px;
           cursor: pointer;
         }
         .ymv1-ms-toggle:hover {
@@ -3296,16 +3296,76 @@ function YouMusicPageInner() {
         .ymv1-ms-toggle-left {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
+          gap: 6px;
+          min-width: 0;
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
         }
         .ymv1-ms-toggle-count {
-          font-size: 11.5px;
-          color: rgba(235, 240, 255, 0.58);
+          font-size: 11px;
+          color: rgba(235, 240, 255, 0.56);
           font-weight: 500;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .ymv1-ms-panel {
-          padding: 0 12px 12px;
+          padding: 10px 10px 12px;
           border-top: 1px solid rgba(255, 255, 255, 0.08);
+          width: 100%;
+          max-width: 540px;
+          margin: 0 auto;
+          box-sizing: border-box;
+        }
+        .ymv1-ms-panel .ymv1-add-card {
+          padding: 4px 6px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+        .ymv1-ms-panel .ymv1-add-form {
+          flex-direction: row !important;
+          align-items: center;
+          gap: 5px;
+        }
+        .ymv1-ms-panel .ymv1-add-form input {
+          padding: 5px 9px;
+          font-size: 12px;
+        }
+        .ymv1-ms-panel .ymv1-add-submit {
+          padding: 5px 10px;
+          font-size: 11.5px;
+        }
+        .ymv1-ms-panel .ymv1-run-card {
+          padding: 8px 10px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .ymv1-ms-panel .ymv1-run-info {
+          gap: 8px;
+          min-width: 0;
+        }
+        .ymv1-ms-panel .ymv1-run-icon {
+          width: 28px;
+          height: 28px;
+          flex-shrink: 0;
+        }
+        .ymv1-ms-panel .ymv1-run-text strong {
+          font-size: 12px;
+        }
+        .ymv1-ms-panel .ymv1-run-text span {
+          font-size: 10.5px;
+          line-height: 1.3;
+        }
+        .ymv1-ms-panel .ymv1-run-toggle {
+          padding: 5px 10px;
+          font-size: 11px;
+          flex-shrink: 0;
         }
         .ymv1-player-card {
           overflow: visible;
@@ -4105,62 +4165,71 @@ function YouMusicPageInner() {
         }
         .ymv1-ms-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-          gap: 12px;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 8px;
+          width: 100%;
         }
         .ymv1-ms-item {
-          border-radius: 16px;
+          border-radius: 12px;
           overflow: hidden;
-          background: rgba(255, 255, 255, 0.11);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 8px 20px rgba(0, 0, 0, 0.16);
+          background: rgba(255, 255, 255, 0.09);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px rgba(0, 0, 0, 0.16);
           display: flex;
           flex-direction: column;
         }
         .ymv1-ms-cover {
-          height: 112px;
+          height: 76px;
           background: linear-gradient(135deg, #1d1d1f 0%, #0071e3 100%);
           background-size: cover;
           background-position: center;
           position: relative;
           display: flex;
           align-items: flex-end;
-          padding: 10px;
+          padding: 7px;
           cursor: pointer;
         }
         .ymv1-ms-play-chip {
           display: inline-flex;
           align-items: center;
-          gap: 5px;
-          padding: 5px 10px;
+          gap: 4px;
+          padding: 3px 8px;
           border-radius: 999px;
           background: rgba(0, 0, 0, 0.72);
           color: #ffffff;
-          font-size: 11.5px;
+          font-size: 10.5px;
           font-weight: 650;
         }
         .ymv1-ms-body {
-          padding: 11px 12px;
+          padding: 8px 10px;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: 3px;
         }
         .ymv1-ms-body strong {
-          font-size: 14px;
+          font-size: 12.5px;
           color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .ymv1-ms-body span {
-          font-size: 11.5px;
-          color: rgba(255, 255, 255, 0.78);
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.74);
         }
         .ymv1-ms-actions {
-          margin-top: 6px;
+          margin-top: 4px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 6px;
+          gap: 5px;
+        }
+        .ymv1-ms-actions .ymv1-pill-btn {
+          padding: 4px 8px;
+          font-size: 10.5px;
+          gap: 4px;
         }
         .ymv1-radios-strip {
           display: flex;
@@ -4241,6 +4310,23 @@ function YouMusicPageInner() {
           }
           .ymv1-has-mobile-player:has(.yapp-pcd-root.is-open) .ymv1-main {
             padding-top: calc(56.25vw + 158px) !important;
+          }
+          .ymv1-playlist-card {
+            padding: 10px 11px 13px !important;
+            gap: 8px !important;
+            border-radius: 16px !important;
+          }
+          .ymv1-ms-panel .ymv1-bookmarklet-pill {
+            display: none !important;
+          }
+          .ymv1-ms-panel .ymv1-run-card {
+            flex-direction: row;
+            align-items: center;
+            text-align: left;
+          }
+          .ymv1-ms-grid {
+            grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+            gap: 8px;
           }
         }
         @media (max-width: 680px) {

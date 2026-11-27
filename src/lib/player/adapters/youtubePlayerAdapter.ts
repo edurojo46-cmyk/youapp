@@ -105,7 +105,8 @@ export class YouTubePlayerAdapter implements PlayerAdapter {
       const playerVars: any = {
         autoplay: item.autoplay ? 1 : 0,
         mute: item.muted ? 1 : 0,
-        controls: 1, // User rule: Do not hide controls to comply with YT terms
+        controls: 0,
+        iv_load_policy: 3,
         rel: 0,
         modestbranding: 1,
         playsinline: 1,

@@ -1626,182 +1626,6 @@ function YouMusicPageInner() {
           })}
         </section>
 
-        {/* 0. BARRA SUTIL DESPLEGABLE ARRIBA: MI SEÑAL MUSICAL (igual que MiTV) */}
-        <section
-          className={`ymv1-ms-collapsible ${isMusicalSignalOpen ? 'is-open' : ''}`}
-          aria-label="Mi Señal Musical"
-        >
-          <button
-            type="button"
-            className="ymv1-ms-toggle"
-            onClick={() => setIsMusicalSignalOpen((v) => !v)}
-            aria-expanded={isMusicalSignalOpen}
-          >
-            <span className="ymv1-ms-toggle-left">
-              <Radio size={13} color="#64d2ff" />
-              <strong>Mi Señal Musical</strong>
-              <span className="ymv1-ms-toggle-count">
-                · Sumar URL · Modo Correr{runModeEnabled ? ' (ON)' : ''} · {savedMusicalSignalPlaylists.length}
-              </span>
-            </span>
-            <ChevronDown
-              size={15}
-              style={{
-                transition: 'transform 0.18s ease',
-                transform: isMusicalSignalOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                opacity: 0.75
-              }}
-            />
-          </button>
-
-          {isMusicalSignalOpen && (
-            <div className="ymv1-ms-panel" style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 10 }}>
-              {/* Sumar canción por URL */}
-              <div className="ymv1-add-card" aria-label="Agregar canción desde YouTube" style={{ margin: 0 }}>
-                <form className="ymv1-add-form" onSubmit={handleAddYouTubeUrl}>
-                  <input
-                    type="text"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    placeholder="+ Pegá una URL de YouTube (Queen, Soda Stereo, León Gieco, Beatles…)"
-                    aria-label="Pegar enlace de YouTube"
-                  />
-                  <button type="submit" className="ymv1-add-submit" disabled={isAdding}>
-                    <Plus size={14} />
-                    <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
-                  </button>
-                  <a
-                    ref={musicBookmarkletRef}
-                    href="#music-bookmarklet"
-                    className="ymv1-bookmarklet-pill"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setToast(
-                        'Arrastrá «+ Music» a tu barra de marcadores para sumar canciones en 1 clic desde YouTube.'
-                      );
-                    }}
-                    title="Arrastrá este botón a tu barra de marcadores para sumar canciones desde YouTube en 1 clic"
-                  >
-                    <Plus size={12} /> Music
-                  </a>
-                </form>
-                {errorMsg && <div className="ymv1-error">{errorMsg}</div>}
-              </div>
-
-              {/* Modo Correr (Screen Wake Lock) */}
-              <div className="ymv1-run-card" aria-label="Modo Correr" style={{ margin: 0 }}>
-                <div className="ymv1-run-info">
-                  <span className={`ymv1-run-icon ${wakeLockActive ? 'active' : ''}`}>
-                    <Smartphone size={16} />
-                  </span>
-                  <div className="ymv1-run-text">
-                    <div className="ymv1-run-title-row">
-                      <strong>Modo Correr · Mantener pantalla encendida</strong>
-                      <span className="ymv1-run-tag">V1</span>
-                    </div>
-                    <span>
-                      {wakeLockNotice
-                        ? wakeLockNotice
-                        : wakeLockActive
-                          ? 'Pantalla activa mientras YOU MUSIC siga visible · Puede aumentar el consumo de batería.'
-                          : 'Evita el bloqueo automático cuando es compatible · Puede aumentar el consumo de batería.'}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className={`ymv1-run-toggle ${runModeEnabled ? 'active' : ''}`}
-                  onClick={handleToggleRunMode}
-                  aria-pressed={runModeEnabled}
-                  title={
-                    runModeEnabled
-                      ? 'Desactivar Modo Correr'
-                      : 'Activar Modo Correr para mantener la pantalla encendida'
-                  }
-                >
-                  <span className="ymv1-run-dot" />
-                  <span>{runModeEnabled ? (wakeLockActive ? 'Activado' : 'En espera') : 'Activar'}</span>
-                </button>
-              </div>
-
-              {savedMusicalSignalPlaylists.length === 0 ? (
-                <div className="ymv1-empty" style={{ padding: '14px 12px' }}>
-                  <Radio size={20} color="#0071e3" />
-                  <strong>Todavía no guardaste ninguna señal musical.</strong>
-                  <span>
-                    Armá tu playlist abajo y tocá <strong>Guardar en Mi Señal Musical</strong>.
-                  </span>
-                </div>
-              ) : (
-                <div className="ymv1-ms-grid">
-                  {savedMusicalSignalPlaylists.map((pl) => {
-                    const coverThumb = pl.items[0]?.thumbnailUrl;
-                    const signalId = `signal-mi-senal-musical-${pl.id.replace(/^pl-/, '')}`;
-                    return (
-                      <div key={pl.id} className="ymv1-ms-item">
-                        <div
-                          className="ymv1-ms-cover"
-                          style={coverThumb ? { backgroundImage: `url(${coverThumb})` } : undefined}
-                          onClick={() => {
-                            setSharedPlaylist(null);
-                            setSearchParams({}, { replace: true });
-                            updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
-                            setCurrentIndex(0);
-                            setIsMusicalSignalOpen(false);
-                          }}
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              setSharedPlaylist(null);
-                              updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
-                              setCurrentIndex(0);
-                              setIsMusicalSignalOpen(false);
-                            }
-                          }}
-                        >
-                          <span className="ymv1-ms-play-chip">
-                            <Play size={13} fill="#ffffff" color="#ffffff" /> Escuchar
-                          </span>
-                        </div>
-                        <div className="ymv1-ms-body">
-                          <strong>{pl.name}</strong>
-                          <span>
-                            {pl.items.length} {pl.items.length === 1 ? 'canción' : 'canciones'}
-                          </span>
-                          <div className="ymv1-ms-actions">
-                            <button
-                              type="button"
-                              className="ymv1-pill-btn"
-                              onClick={() => {
-                                syncPlaylistAsSignal(pl);
-                                navigate(`/misenal1?signal=${encodeURIComponent(signalId)}`);
-                              }}
-                              title="Abrir esta señal musical en Mi Señal"
-                            >
-                              <Tv size={12} /> Abrir en Mi Señal
-                            </button>
-                            <button
-                              type="button"
-                              className="ymv1-icon-btn"
-                              onClick={() => handleRemoveFromMiSenalMusical(pl.id)}
-                              title="Quitar de Mi Señal Musical"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
         {/* 1. ARRIBA DE TODO: REPRODUCTOR IDÉNTICO A MITV (1 PANTALLA / MOMENTOS 4x / YOU4 + BARRA APPLE 3 PUNTOS) */}
         {currentItem && (
           <section
@@ -2222,8 +2046,184 @@ function YouMusicPageInner() {
           </section>
         )}
 
-        {/* 3. SELECTOR DE PLAYLISTS + MI PLAYLIST */}
+        {/* 3. SELECTOR DE PLAYLISTS + MI PLAYLIST (con desplegable Mi Señal Musical arriba) */}
         <section className="ymv1-playlist-card">
+          <div
+            className={`ymv1-ms-collapsible ${isMusicalSignalOpen ? 'is-open' : ''}`}
+            aria-label="Mi Señal Musical"
+            style={{ margin: 0 }}
+          >
+            <button
+              type="button"
+              className="ymv1-ms-toggle"
+              onClick={() => setIsMusicalSignalOpen((v) => !v)}
+              aria-expanded={isMusicalSignalOpen}
+            >
+              <span className="ymv1-ms-toggle-left">
+                <Radio size={13} color="#64d2ff" />
+                <strong>Mi Señal Musical</strong>
+                <span className="ymv1-ms-toggle-count">
+                  · Sumar URL · Modo Correr{runModeEnabled ? ' (ON)' : ''} · {savedMusicalSignalPlaylists.length}
+                </span>
+              </span>
+              <ChevronDown
+                size={15}
+                style={{
+                  transition: 'transform 0.18s ease',
+                  transform: isMusicalSignalOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  opacity: 0.75
+                }}
+              />
+            </button>
+
+            {isMusicalSignalOpen && (
+              <div className="ymv1-ms-panel" style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 10 }}>
+                {/* Sumar canción por URL */}
+                <div className="ymv1-add-card" aria-label="Agregar canción desde YouTube" style={{ margin: 0 }}>
+                  <form className="ymv1-add-form" onSubmit={handleAddYouTubeUrl}>
+                    <input
+                      type="text"
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      placeholder="+ Pegá una URL de YouTube (Queen, Soda Stereo, León Gieco, Beatles…)"
+                      aria-label="Pegar enlace de YouTube"
+                    />
+                    <button type="submit" className="ymv1-add-submit" disabled={isAdding}>
+                      <Plus size={14} />
+                      <span>{isAdding ? 'Sumando…' : 'Sumar'}</span>
+                    </button>
+                    <a
+                      ref={musicBookmarkletRef}
+                      href="#music-bookmarklet"
+                      className="ymv1-bookmarklet-pill"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setToast(
+                          'Arrastrá «+ Music» a tu barra de marcadores para sumar canciones en 1 clic desde YouTube.'
+                        );
+                      }}
+                      title="Arrastrá este botón a tu barra de marcadores para sumar canciones desde YouTube en 1 clic"
+                    >
+                      <Plus size={12} /> Music
+                    </a>
+                  </form>
+                  {errorMsg && <div className="ymv1-error">{errorMsg}</div>}
+                </div>
+
+                {/* Modo Correr (Screen Wake Lock) */}
+                <div className="ymv1-run-card" aria-label="Modo Correr" style={{ margin: 0 }}>
+                  <div className="ymv1-run-info">
+                    <span className={`ymv1-run-icon ${wakeLockActive ? 'active' : ''}`}>
+                      <Smartphone size={16} />
+                    </span>
+                    <div className="ymv1-run-text">
+                      <div className="ymv1-run-title-row">
+                        <strong>Modo Correr · Mantener pantalla encendida</strong>
+                        <span className="ymv1-run-tag">V1</span>
+                      </div>
+                      <span>
+                        {wakeLockNotice
+                          ? wakeLockNotice
+                          : wakeLockActive
+                            ? 'Pantalla activa mientras YOU MUSIC siga visible · Puede aumentar el consumo de batería.'
+                            : 'Evita el bloqueo automático cuando es compatible · Puede aumentar el consumo de batería.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className={`ymv1-run-toggle ${runModeEnabled ? 'active' : ''}`}
+                    onClick={handleToggleRunMode}
+                    aria-pressed={runModeEnabled}
+                    title={
+                      runModeEnabled
+                        ? 'Desactivar Modo Correr'
+                        : 'Activar Modo Correr para mantener la pantalla encendida'
+                    }
+                  >
+                    <span className="ymv1-run-dot" />
+                    <span>{runModeEnabled ? (wakeLockActive ? 'Activado' : 'En espera') : 'Activar'}</span>
+                  </button>
+                </div>
+
+                {savedMusicalSignalPlaylists.length === 0 ? (
+                  <div className="ymv1-empty" style={{ padding: '14px 12px' }}>
+                    <Radio size={20} color="#0071e3" />
+                    <strong>Todavía no guardaste ninguna señal musical.</strong>
+                    <span>
+                      Armá tu playlist abajo y tocá <strong>Guardar en Mi Señal Musical</strong>.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="ymv1-ms-grid">
+                    {savedMusicalSignalPlaylists.map((pl) => {
+                      const coverThumb = pl.items[0]?.thumbnailUrl;
+                      const signalId = `signal-mi-senal-musical-${pl.id.replace(/^pl-/, '')}`;
+                      return (
+                        <div key={pl.id} className="ymv1-ms-item">
+                          <div
+                            className="ymv1-ms-cover"
+                            style={coverThumb ? { backgroundImage: `url(${coverThumb})` } : undefined}
+                            onClick={() => {
+                              setSharedPlaylist(null);
+                              setSearchParams({}, { replace: true });
+                              updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
+                              setCurrentIndex(0);
+                              setIsMusicalSignalOpen(false);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setSharedPlaylist(null);
+                                updateWorkspace((prev) => ({ ...prev, activePlaylistId: pl.id }));
+                                setCurrentIndex(0);
+                                setIsMusicalSignalOpen(false);
+                              }
+                            }}
+                          >
+                            <span className="ymv1-ms-play-chip">
+                              <Play size={13} fill="#ffffff" color="#ffffff" /> Escuchar
+                            </span>
+                          </div>
+                          <div className="ymv1-ms-body">
+                            <strong>{pl.name}</strong>
+                            <span>
+                              {pl.items.length} {pl.items.length === 1 ? 'canción' : 'canciones'}
+                            </span>
+                            <div className="ymv1-ms-actions">
+                              <button
+                                type="button"
+                                className="ymv1-pill-btn"
+                                onClick={() => {
+                                  syncPlaylistAsSignal(pl);
+                                  navigate(`/misenal1?signal=${encodeURIComponent(signalId)}`);
+                                }}
+                                title="Abrir esta señal musical en Mi Señal"
+                              >
+                                <Tv size={12} /> Abrir en Mi Señal
+                              </button>
+                              <button
+                                type="button"
+                                className="ymv1-icon-btn"
+                                onClick={() => handleRemoveFromMiSenalMusical(pl.id)}
+                                title="Quitar de Mi Señal Musical"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="ymv1-pl-top">
             <div className="ymv1-pl-tabs" role="tablist" aria-label="Mis playlists">
               {workspace.playlists.map((pl) => {

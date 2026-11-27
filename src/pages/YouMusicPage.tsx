@@ -77,7 +77,6 @@ import {
   type YouMusicWorkspace
 } from '../lib/tv/youMusicPlaylistStore';
 import atlasMusicCatalog from '../data/atlasMusicChannels.json';
-import { STARTER_AUDIO_PRESETS } from '../lib/tv/signalMediaSourcesStore';
 
 type AtlasMusicVideo = {
   videoId: string;
@@ -211,54 +210,6 @@ function YouMusicPageInner() {
   const [isAdding, setIsAdding] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [activeRadioUrl, setActiveRadioUrl] = useState<string | null>(null);
-  const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  const handleToggleLiveRadio = (streamUrl: string, label: string) => {
-    const audio = liveRadioAudioRef.current;
-    if (!audio) return;
-    if (activeRadioUrl === streamUrl) {
-      audio.pause();
-      setActiveRadioUrl(null);
-      if ('mediaSession' in navigator) {
-        try {
-          navigator.mediaSession.playbackState = 'paused';
-        } catch {
-          // ignore
-        }
-      }
-      return;
-    }
-    audio.src = streamUrl;
-    audio
-      .play()
-      .then(() => {
-        setActiveRadioUrl(streamUrl);
-        setToast(`📻 Escuchando en vivo: ${label} (sigue sonando con pantalla apagada)`);
-        if ('mediaSession' in navigator) {
-          try {
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: label,
-              artist: 'YOU MUSIC · Radio en vivo',
-              album: 'YOUAPP TV'
-            });
-            navigator.mediaSession.playbackState = 'playing';
-            navigator.mediaSession.setActionHandler('play', () => {
-              void audio.play();
-            });
-            navigator.mediaSession.setActionHandler('pause', () => {
-              audio.pause();
-              setActiveRadioUrl(null);
-            });
-          } catch {
-            // ignore
-          }
-        }
-      })
-      .catch(() => {
-        setToast(`No se pudo conectar el stream de ${label}.`);
-      });
-  };
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
@@ -1601,31 +1552,6 @@ function YouMusicPageInner() {
           </div>
         )}
 
-        <audio ref={liveRadioAudioRef} preload="none" style={{ display: 'none' }} />
-
-        {/* RADIOS FM/AM EN VIVO (rescatadas de YouDial · 1 fila deslizable) */}
-        <section className="ymv1-radios-strip" aria-label="Radios en vivo">
-          <span className="ymv1-radios-label">
-            <Radio size={13} color="#34d399" />
-            <span>Radios</span>
-          </span>
-          {STARTER_AUDIO_PRESETS.map((r) => {
-            const isPlayingThis = activeRadioUrl === r.streamUrl;
-            return (
-              <button
-                key={r.streamUrl}
-                type="button"
-                className={`ymv1-radio-chip ${isPlayingThis ? 'is-live' : ''}`}
-                onClick={() => handleToggleLiveRadio(r.streamUrl, r.author)}
-              >
-                <span className="ymv1-radio-dot" />
-                <span>{r.author}</span>
-                <span className="ymv1-radio-state">{isPlayingThis ? '⏹' : '▶'}</span>
-              </button>
-            );
-          })}
-        </section>
-
         {/* 1. ARRIBA DE TODO: REPRODUCTOR IDÉNTICO A MITV (1 PANTALLA / MOMENTOS 4x / YOU4 + BARRA APPLE 3 PUNTOS) */}
         {currentItem && (
           <section
@@ -2253,6 +2179,17 @@ function YouMusicPageInner() {
                 onClick={() => setIsCreatingPlaylist((v) => !v)}
               >
                 <Plus size={13} /> Nueva lista
+              </button>
+
+              <button
+                type="button"
+                className="ymv1-radios-link-btn"
+                onClick={() => navigate('/dial')}
+                title="Abrir radios FM/AM en vivo (YouDial)"
+              >
+                <span className="ymv1-radio-dot" />
+                <Radio size={12} />
+                <span>Radios</span>
               </button>
             </div>
           </div>
@@ -3963,6 +3900,30 @@ function YouMusicPageInner() {
           font-size: 12px;
           font-weight: 650;
           cursor: pointer;
+        }
+        .ymv1-radios-link-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(52, 211, 153, 0.45);
+          background: rgba(16, 185, 129, 0.16);
+          color: #a7f3d0;
+          font-size: 11.5px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+        }
+        .ymv1-radios-link-btn:hover {
+          background: rgba(16, 185, 129, 0.3);
+          border-color: rgba(52, 211, 153, 0.8);
+          color: #ffffff;
+        }
+        .ymv1-radios-link-btn .ymv1-radio-dot {
+          width: 6px;
+          height: 6px;
         }
         .ymv1-new-pl-form {
           display: flex;

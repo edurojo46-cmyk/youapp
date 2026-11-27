@@ -225,7 +225,7 @@ function App() {
         <Route path="/misenal1" element={<MiSenalPublicOrProtectedRoute />} />
         <Route path="/misenal-medios" element={<ProtectedRoute><SignalAudioNewsPage /></ProtectedRoute>} />
         <Route path="/diarios" element={<ProtectedRoute><ArgentinaNewsPage /></ProtectedRoute>} />
-        <Route path="/dial" element={<ProtectedRoute><YouDialPage /></ProtectedRoute>} />
+        <Route path="/dial" element={<YouDialPage />} />
         <Route path="/youmusic" element={<YouMusicPage />} />
         <Route path="/music" element={<YouMusicPage />} />
         <Route path="/reels" element={<YouReelsPage />} />

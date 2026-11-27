@@ -62,16 +62,16 @@ export const PlayerControlsDrawer: React.FC<PlayerControlsDrawerProps> = ({
           {isOpen ? <ChevronUp size={14} strokeWidth={2.5} /> : <ChevronDown size={14} strokeWidth={2.5} />}
         </button>
 
-        {quickSaveItem && (
+        {quickSaveItem && (!saved || atlasToast) && (
           <button
             type="button"
             className={`yapp-pcd-save-btn ${saved ? 'is-saved' : ''}`}
-            onClick={handleQuickSaveClick}
-            aria-pressed={saved}
-            aria-label={saved ? 'Guardado en Mis Listas (tocar para quitar)' : 'Guardar en Mis Listas con ATLAS'}
-            title={saved ? 'Guardado en Mis Listas' : 'Guardar en Mis Listas (ATLAS organiza solo)'}
+            onClick={saved ? undefined : handleQuickSaveClick}
+            disabled={saved}
+            aria-label="Guardar en Mis Listas con ATLAS"
+            title="Guardar en Mis Listas (ATLAS organiza solo)"
           >
-            <Bookmark size={15} fill={saved ? '#ffffff' : 'none'} strokeWidth={2.1} />
+            {!saved && <Bookmark size={15} fill="none" strokeWidth={2.1} />}
             {atlasToast && <span className="yapp-pcd-toast-txt">{atlasToast}</span>}
           </button>
         )}

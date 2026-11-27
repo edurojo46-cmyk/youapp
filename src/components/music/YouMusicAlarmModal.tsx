@@ -2,14 +2,25 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlarmClock,
   BellRing,
+  CalendarClock,
   Check,
+  CloudSun,
+  Mic,
   Moon,
   Music,
   Play,
+  Plus,
   Sun,
+  Trash2,
   Volume2,
   X
 } from 'lucide-react';
+import {
+  ARGENTINA_CITIES,
+  fetchArgentinaLiveData,
+  type ArgentinaCityKey,
+  type ArgentinaLiveData
+} from '../../lib/tv/signalStationExtrasStore';
 
 export type AlarmRepeatMode = 'once' | 'weekdays' | 'daily';
 
@@ -20,6 +31,12 @@ export interface YouMusicAlarmTrack {
   thumbnailUrl?: string;
 }
 
+export interface AlarmAgendaEntry {
+  id: string;
+  time: string; // "HH:MM" o vacío
+  text: string;
+}
+
 export interface YouMusicAlarmConfig {
   enabled: boolean;
   time: string; // "HH:MM"
@@ -28,6 +45,12 @@ export interface YouMusicAlarmConfig {
   title: string;
   author: string;
   gentleWake: boolean;
+  voiceBriefingEnabled: boolean;
+  userName: string;
+  cityKey: ArgentinaCityKey;
+  includeWeather: boolean;
+  customMessage: string;
+  agendaItems: AlarmAgendaEntry[];
   lastFiredKey?: string;
 }
 
@@ -40,7 +63,13 @@ const DEFAULT_ALARM: YouMusicAlarmConfig = {
   videoId: '',
   title: '',
   author: '',
-  gentleWake: true
+  gentleWake: true,
+  voiceBriefingEnabled: true,
+  userName: '',
+  cityKey: 'cordoba',
+  includeWeather: true,
+  customMessage: '',
+  agendaItems: []
 };
 
 export function loadYouMusicAlarm(): YouMusicAlarmConfig {
@@ -49,6 +78,18 @@ export function loadYouMusicAlarm(): YouMusicAlarmConfig {
     if (!raw) return DEFAULT_ALARM;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object') return DEFAULT_ALARM;
+    const validCity: ArgentinaCityKey =
+      parsed.cityKey && parsed.cityKey in ARGENTINA_CITIES ? parsed.cityKey : 'cordoba';
+    const rawAgenda = Array.isArray(parsed.agendaItems)
+      ? parsed.agendaItems
+          .filter((a: unknown) => a && typeof a === 'object' && typeof (a as AlarmAgendaEntry).text === 'string')
+          .map((a: AlarmAgendaEntry) => ({
+            id: typeof a.id === 'string' && a.id ? a.id : `ag_${Math.random().toString(36).slice(2, 8)}`,
+            time: typeof a.time === 'string' ? a.time : '',
+            text: a.text.trim()
+          }))
+          .filter((a: AlarmAgendaEntry) => a.text.length > 0)
+      : [];
     return {
       ...DEFAULT_ALARM,
       enabled: Boolean(parsed.enabled),
@@ -61,6 +102,12 @@ export function loadYouMusicAlarm(): YouMusicAlarmConfig {
       title: typeof parsed.title === 'string' ? parsed.title : '',
       author: typeof parsed.author === 'string' ? parsed.author : '',
       gentleWake: parsed.gentleWake !== false,
+      voiceBriefingEnabled: parsed.voiceBriefingEnabled !== false,
+      userName: typeof parsed.userName === 'string' ? parsed.userName : '',
+      cityKey: validCity,
+      includeWeather: parsed.includeWeather !== false,
+      customMessage: typeof parsed.customMessage === 'string' ? parsed.customMessage : '',
+      agendaItems: rawAgenda,
       lastFiredKey: typeof parsed.lastFiredKey === 'string' ? parsed.lastFiredKey : undefined
     };
   } catch {
@@ -92,6 +139,13 @@ function formatClockHHMM(d: Date): string {
   return `${hh}:${mm}`;
 }
 
+function formatSpokenTime(d: Date): string {
+  const h = d.getHours();
+  const m = d.getMinutes();
+  if (m === 0) return `${h} en punto`;
+  return `${h} y ${m}`;
+}
+
 function formatDateEs(d: Date): string {
   try {
     const str = d.toLocaleDateString('es-AR', {
@@ -113,6 +167,103 @@ function matchesRepeatDay(repeat: AlarmRepeatMode, d: Date): boolean {
   if (repeat === 'daily' || repeat === 'once') return true;
   const day = d.getDay(); // 0=Dom, 6=Sab
   return day >= 1 && day <= 5;
+}
+
+function getGreetingByHour(hour: number): string {
+  if (hour >= 5 && hour < 13) return 'Buenos días';
+  if (hour >= 13 && hour < 20) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function buildSmartBriefingText(
+  cfg: YouMusicAlarmConfig,
+  nowDate: Date,
+  weather: ArgentinaLiveData | null
+): string {
+  const parts: string[] = [];
+  const greeting = getGreetingByHour(nowDate.getHours());
+  const cleanName = cfg.userName.trim();
+  parts.push(cleanName ? `${greeting}, ${cleanName}.` : `${greeting}.`);
+
+  const dateText = formatDateEs(nowDate);
+  parts.push(`Son las ${formatSpokenTime(nowDate)}${dateText ? ` del ${dateText}` : ''}.`);
+
+  if (cfg.includeWeather && weather && weather.tempC !== null) {
+    const tempRounded = Math.round(weather.tempC);
+    const label = weather.weatherLabel && weather.weatherLabel !== 'Sin dato' ? `, ${weather.weatherLabel}` : '';
+    parts.push(`En ${weather.cityLabel} hace ${tempRounded} grados${label}.`);
+  }
+
+  if (cfg.agendaItems.length > 0) {
+    const agendaSpoken = cfg.agendaItems
+      .slice(0, 6)
+      .map((item) => (item.time ? `a las ${item.time}, ${item.text}` : item.text))
+      .join('. ');
+    parts.push(`Tu agenda para hoy: ${agendaSpoken}.`);
+  }
+
+  const custom = cfg.customMessage.trim();
+  if (custom) {
+    parts.push(custom.endsWith('.') ? custom : `${custom}.`);
+  } else {
+    parts.push('Que tengas un excelente día. Arrancamos con tu música.');
+  }
+
+  return parts.join(' ');
+}
+
+function pickBestSpanishVoice(): SpeechSynthesisVoice | null {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return null;
+  const voices = window.speechSynthesis.getVoices() || [];
+  if (!voices.length) return null;
+  const preferOrder = ['es-AR', 'es-419', 'es-MX', 'es-US', 'es-ES', 'es'];
+  for (const langPrefix of preferOrder) {
+    const found = voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix.toLowerCase()));
+    if (found) return found;
+  }
+  return null;
+}
+
+function speakSpanishBriefing(text: string, onDone?: () => void): boolean {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window) || !text.trim()) {
+    onDone?.();
+    return false;
+  }
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'es-AR';
+    utter.rate = 0.98;
+    utter.pitch = 1.0;
+    utter.volume = 1.0;
+    const voice = pickBestSpanishVoice();
+    if (voice) utter.voice = voice;
+    let finished = false;
+    const finishOnce = () => {
+      if (finished) return;
+      finished = true;
+      onDone?.();
+    };
+    utter.onend = finishOnce;
+    utter.onerror = finishOnce;
+    // Salvaguarda por si el navegador no dispara onend
+    window.setTimeout(finishOnce, Math.max(8000, Math.min(45000, text.length * 95)));
+    window.speechSynthesis.speak(utter);
+    return true;
+  } catch {
+    onDone?.();
+    return false;
+  }
+}
+
+function stopSpeechBriefing(): void {
+  try {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+  } catch {
+    // ignore
+  }
 }
 
 function playGentleBackupChime(ctxRef: React.MutableRefObject<AudioContext | null>): void {
@@ -180,15 +331,23 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
   const [nightstandOpen, setNightstandOpen] = useState(false);
   const [nightstandDim, setNightstandDim] = useState(true);
   const [isRinging, setIsRinging] = useState(false);
+  const [isSpeakingNow, setIsSpeakingNow] = useState(false);
   const [snoozeUntilMs, setSnoozeUntilMs] = useState<number | null>(null);
   const [now, setNow] = useState<Date>(() => new Date());
   const [testCountdown, setTestCountdown] = useState<number | null>(null);
+
+  // Clima vivo + editor rápido de agenda
+  const [liveWeather, setLiveWeather] = useState<ArgentinaLiveData | null>(null);
+  const [newAgendaTime, setNewAgendaTime] = useState('09:00');
+  const [newAgendaText, setNewAgendaText] = useState('');
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const volumeTimersRef = useRef<number[]>([]);
   const offlineChimeTimerRef = useRef<number | null>(null);
   const alarmRef = useRef(alarm);
   alarmRef.current = alarm;
+  const weatherRef = useRef<ArgentinaLiveData | null>(liveWeather);
+  weatherRef.current = liveWeather;
 
   const updateAlarm = useCallback(
     (next: YouMusicAlarmConfig) => {
@@ -198,6 +357,27 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
     },
     [onAlarmStateChange]
   );
+
+  // Precargar voces de SpeechSynthesis y clima de la ciudad elegida
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!alarm.includeWeather) return;
+    if (!isOpen && !nightstandOpen && !alarm.enabled) return;
+    let cancelled = false;
+    fetchArgentinaLiveData(alarm.cityKey)
+      .then((data) => {
+        if (!cancelled) setLiveWeather(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [alarm.cityKey, alarm.includeWeather, alarm.enabled, isOpen, nightstandOpen]);
 
   // Al abrir el modal por primera vez sin canción elegida, preseleccionar el tema actual
   useEffect(() => {
@@ -236,6 +416,28 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
     }
   }, []);
 
+  const rampMusicVolume = useCallback(
+    (gentleWake: boolean) => {
+      if (gentleWake) {
+        const steps: Array<[number, number]> = [
+          [200, 26],
+          [3500, 46],
+          [8000, 68],
+          [14000, 86],
+          [20000, 100]
+        ];
+        steps.forEach(([delayMs, vol]) => {
+          const id = window.setTimeout(() => onSetVolume(vol), delayMs);
+          volumeTimersRef.current.push(id);
+        });
+      } else {
+        const id = window.setTimeout(() => onSetVolume(100), 250);
+        volumeTimersRef.current.push(id);
+      }
+    },
+    [onSetVolume]
+  );
+
   const fireAlarmNow = useCallback(
     (sourceCfg: YouMusicAlarmConfig, isTest = false) => {
       clearRingingTimers();
@@ -251,7 +453,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           }
         : currentTrack;
 
-      // Tono suave inicial (y respaldo continuo si no hay internet)
+      // 1. Tono cálido inicial (y respaldo continuo si no hay internet)
       playGentleBackupChime(audioCtxRef);
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
         offlineChimeTimerRef.current = window.setInterval(() => {
@@ -259,25 +461,38 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
         }, 4200);
       }
 
+      // 2. Arranca la música elegida (baja a 14 % si hay mensaje de voz para que se escuche nítido)
       if (targetTrack) {
         onTriggerPlayTrack(targetTrack);
       }
 
-      if (sourceCfg.gentleWake) {
-        const steps: Array<[number, number]> = [
-          [200, 22],
-          [3500, 42],
-          [8000, 64],
-          [14000, 84],
-          [21000, 100]
-        ];
-        steps.forEach(([delayMs, vol]) => {
-          const id = window.setTimeout(() => onSetVolume(vol), delayMs);
-          volumeTimersRef.current.push(id);
-        });
+      if (sourceCfg.voiceBriefingEnabled) {
+        const duckId = window.setTimeout(() => onSetVolume(14), 250);
+        volumeTimersRef.current.push(duckId);
+        const startVoiceId = window.setTimeout(() => {
+          const runVoice = (weatherData: ArgentinaLiveData | null) => {
+            const script = buildSmartBriefingText(sourceCfg, new Date(), weatherData);
+            setIsSpeakingNow(true);
+            speakSpanishBriefing(script, () => {
+              setIsSpeakingNow(false);
+              rampMusicVolume(sourceCfg.gentleWake);
+            });
+          };
+
+          if (sourceCfg.includeWeather) {
+            fetchArgentinaLiveData(sourceCfg.cityKey, false)
+              .then((w) => {
+                setLiveWeather(w);
+                runVoice(w);
+              })
+              .catch(() => runVoice(weatherRef.current));
+          } else {
+            runVoice(null);
+          }
+        }, 1200);
+        volumeTimersRef.current.push(startVoiceId);
       } else {
-        const id = window.setTimeout(() => onSetVolume(100), 250);
-        volumeTimersRef.current.push(id);
+        rampMusicVolume(sourceCfg.gentleWake);
       }
 
       if (!isTest) {
@@ -290,7 +505,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
         updateAlarm(nextCfg);
       }
     },
-    [clearRingingTimers, currentTrack, onSetVolume, onTriggerPlayTrack, updateAlarm]
+    [clearRingingTimers, currentTrack, onSetVolume, onTriggerPlayTrack, rampMusicVolume, updateAlarm]
   );
 
   // Reloj 1s: evalúa la hora de la alarma y el snooze
@@ -327,7 +542,13 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
     return () => window.clearTimeout(t);
   }, [testCountdown, fireAlarmNow]);
 
-  useEffect(() => () => clearRingingTimers(), [clearRingingTimers]);
+  useEffect(
+    () => () => {
+      clearRingingTimers();
+      stopSpeechBriefing();
+    },
+    [clearRingingTimers]
+  );
 
   const handleEnterNightstand = () => {
     unlockAudio();
@@ -352,6 +573,8 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
 
   const handleSnooze = (minutes = 5) => {
     clearRingingTimers();
+    stopSpeechBriefing();
+    setIsSpeakingNow(false);
     setIsRinging(false);
     onPauseForSleep();
     setSnoozeUntilMs(Date.now() + minutes * 60 * 1000);
@@ -360,12 +583,55 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
 
   const handleDismiss = (keepPlaying: boolean) => {
     clearRingingTimers();
+    stopSpeechBriefing();
+    setIsSpeakingNow(false);
     setIsRinging(false);
     setSnoozeUntilMs(null);
     if (!keepPlaying) {
       onPauseForSleep();
     } else {
       onSetVolume(100);
+    }
+  };
+
+  const handleAddAgendaItem = () => {
+    const cleanText = newAgendaText.trim();
+    if (!cleanText) return;
+    const entry: AlarmAgendaEntry = {
+      id: `ag_${Date.now().toString(36)}`,
+      time: newAgendaTime.trim(),
+      text: cleanText
+    };
+    updateAlarm({
+      ...alarm,
+      agendaItems: [...alarm.agendaItems, entry].slice(0, 8)
+    });
+    setNewAgendaText('');
+  };
+
+  const handleRemoveAgendaItem = (id: string) => {
+    updateAlarm({
+      ...alarm,
+      agendaItems: alarm.agendaItems.filter((a) => a.id !== id)
+    });
+  };
+
+  const handlePreviewVoice = () => {
+    unlockAudio();
+    const speakNow = (w: ArgentinaLiveData | null) => {
+      const text = buildSmartBriefingText(alarm, new Date(), w);
+      setIsSpeakingNow(true);
+      speakSpanishBriefing(text, () => setIsSpeakingNow(false));
+    };
+    if (alarm.includeWeather) {
+      fetchArgentinaLiveData(alarm.cityKey)
+        .then((w) => {
+          setLiveWeather(w);
+          speakNow(w);
+        })
+        .catch(() => speakNow(liveWeather));
+    } else {
+      speakNow(null);
     }
   };
 
@@ -395,8 +661,8 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
               <div className="ymalarm-head-title">
                 <AlarmClock size={18} color="#f59e0b" />
                 <div>
-                  <h3>Despertador Musical</h3>
-                  <span>Elegí la hora y la canción que te levanta</span>
+                  <h3>Despertador Inteligente</h3>
+                  <span>Música + voz con clima y tu agenda</span>
                 </div>
               </div>
               <button type="button" className="ymalarm-close" onClick={onClose} aria-label="Cerrar">
@@ -459,6 +725,137 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
               </div>
             </div>
 
+            {/* BRIEFING DE VOZ INTELIGENTE (CLIMA + AGENDA) */}
+            <div className="ymalarm-voice-box">
+              <div className="ymalarm-label-row">
+                <label className="ymalarm-check-row" style={{ fontWeight: 700 }}>
+                  <input
+                    type="checkbox"
+                    checked={alarm.voiceBriefingEnabled}
+                    onChange={(e) => updateAlarm({ ...alarm, voiceBriefingEnabled: e.target.checked })}
+                  />
+                  <Mic size={15} color="#f59e0b" />
+                  <span>Mensaje de voz inteligente al despertar</span>
+                </label>
+                {alarm.voiceBriefingEnabled && (
+                  <button
+                    type="button"
+                    className="ymalarm-use-current"
+                    onClick={handlePreviewVoice}
+                    title="Escuchar cómo sonará tu mensaje de voz ahora"
+                  >
+                    <Volume2 size={12} /> {isSpeakingNow ? 'Hablando…' : 'Escuchar'}
+                  </button>
+                )}
+              </div>
+
+              {alarm.voiceBriefingEnabled && (
+                <div className="ymalarm-voice-fields">
+                  <div className="ymalarm-inline-grid">
+                    <input
+                      type="text"
+                      className="ymalarm-input"
+                      placeholder="Tu nombre (ej. Eduardo)"
+                      value={alarm.userName}
+                      onChange={(e) => updateAlarm({ ...alarm, userName: e.target.value })}
+                    />
+                    <select
+                      className="ymalarm-select"
+                      value={alarm.cityKey}
+                      onChange={(e) => updateAlarm({ ...alarm, cityKey: e.target.value as ArgentinaCityKey })}
+                      aria-label="Ciudad para el clima"
+                    >
+                      {(Object.keys(ARGENTINA_CITIES) as ArgentinaCityKey[]).map((key) => (
+                        <option key={key} value={key}>
+                          {ARGENTINA_CITIES[key].label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <label className="ymalarm-check-row">
+                    <input
+                      type="checkbox"
+                      checked={alarm.includeWeather}
+                      onChange={(e) => updateAlarm({ ...alarm, includeWeather: e.target.checked })}
+                    />
+                    <CloudSun size={15} color="#38bdf8" />
+                    <span>
+                      Decir clima actual
+                      {liveWeather && liveWeather.tempC !== null
+                        ? ` (${Math.round(liveWeather.tempC)}°C · ${liveWeather.weatherLabel})`
+                        : ''}
+                    </span>
+                  </label>
+
+                  {/* AGENDA PROGRAMADA */}
+                  <div className="ymalarm-agenda-block">
+                    <div className="ymalarm-label" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <CalendarClock size={12} /> Agenda del día (la lee en voz alta)
+                    </div>
+                    <div className="ymalarm-agenda-add">
+                      <input
+                        type="time"
+                        className="ymalarm-agenda-time"
+                        value={newAgendaTime}
+                        onChange={(e) => setNewAgendaTime(e.target.value)}
+                        aria-label="Hora de la actividad"
+                      />
+                      <input
+                        type="text"
+                        className="ymalarm-input"
+                        placeholder="Ej. Reunión, gimnasio, médico…"
+                        value={newAgendaText}
+                        onChange={(e) => setNewAgendaText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddAgendaItem();
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="ymalarm-add-btn"
+                        onClick={handleAddAgendaItem}
+                        title="Agregar a la agenda"
+                        aria-label="Agregar a la agenda"
+                      >
+                        <Plus size={15} />
+                      </button>
+                    </div>
+
+                    {alarm.agendaItems.length > 0 && (
+                      <div className="ymalarm-agenda-list">
+                        {alarm.agendaItems.map((ag) => (
+                          <div key={ag.id} className="ymalarm-agenda-row">
+                            <span className="ymalarm-agenda-chip">{ag.time || 'Hoy'}</span>
+                            <span className="ymalarm-agenda-text">{ag.text}</span>
+                            <button
+                              type="button"
+                              className="ymalarm-agenda-del"
+                              onClick={() => handleRemoveAgendaItem(ag.id)}
+                              aria-label="Quitar"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <input
+                    type="text"
+                    className="ymalarm-input"
+                    placeholder="Frase final opcional (ej. ¡Vamos con todo hoy!)"
+                    value={alarm.customMessage}
+                    onChange={(e) => updateAlarm({ ...alarm, customMessage: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="ymalarm-section">
               <div className="ymalarm-label-row">
                 <span className="ymalarm-label">Música para despertar</span>
@@ -481,7 +878,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
               </div>
 
               <div className="ymalarm-track-list">
-                {uniqueTracks.slice(0, 8).map((t) => {
+                {uniqueTracks.slice(0, 6).map((t) => {
                   const selected = alarm.videoId === t.videoId;
                   return (
                     <button
@@ -518,11 +915,6 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
               <span>Despertar suave (sube el volumen gradualmente)</span>
             </label>
 
-            <div className="ymalarm-tip">
-              En navegador web, dejá abierto el <strong>Modo Reloj Nocturno</strong> (pantalla oscura con reloj) para
-              que el celular no suspenda la pestaña durante la noche.
-            </div>
-
             <div className="ymalarm-actions">
               <button type="button" className="ymalarm-btn-primary" onClick={handleEnterNightstand}>
                 <Moon size={15} />
@@ -556,7 +948,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
                     unlockAudio();
                     setTestCountdown(5);
                     onClose();
-                    onToast?.('⏰ Probando despertador en 5 segundos…');
+                    onToast?.('⏰ Probando despertador + voz en 5 segundos…');
                   }}
                 >
                   <Play size={13} /> Probar (5 s)
@@ -594,35 +986,66 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
 
           <div className="ymalarm-ns-center">
             <div className="ymalarm-ns-clock">{formatClockHHMM(now)}</div>
-            <div className="ymalarm-ns-date">{formatDateEs(now)}</div>
+            <div className="ymalarm-ns-date">
+              {formatDateEs(now)}
+              {alarm.includeWeather && liveWeather && liveWeather.tempC !== null
+                ? ` · ${Math.round(liveWeather.tempC)}°C ${liveWeather.cityLabel}`
+                : ''}
+            </div>
             <div className="ymalarm-ns-pill">
               <AlarmClock size={15} />
               <span>
                 {snoozeUntilMs
-                  ? `Pospuesto · vuelve a sonar en breve`
-                  : `Alarma ${alarm.time} · ${alarm.title || 'YouMusic'}`}
+                  ? 'Pospuesto · vuelve a sonar en breve'
+                  : `Alarma ${alarm.time}${alarm.voiceBriefingEnabled ? ' · Voz + ' : ' · '}${alarm.title || 'YouMusic'}`}
               </span>
             </div>
           </div>
 
           <div className="ymalarm-ns-foot">
-            Conectá el cargador y dejá esta pantalla abierta para despertar con tu música.
+            Conectá el cargador y dejá esta pantalla abierta para despertar con tu música y mensaje de voz.
           </div>
         </div>
       )}
 
-      {/* 3. PANTALLA DE ALARMA SONANDO */}
+      {/* 3. PANTALLA DE ALARMA SONANDO (CON CLIMA + AGENDA EN PANTALLA) */}
       {isRinging && (
         <div className="ymalarm-ring-overlay" role="alertdialog" aria-label="Despertador sonando">
           <div className="ymalarm-ring-card">
             <div className="ymalarm-ring-icon">
-              <BellRing size={34} />
+              <BellRing size={32} />
             </div>
             <div className="ymalarm-ring-time">{formatClockHHMM(now)}</div>
             <div className="ymalarm-ring-song">
               <strong>{alarm.title || currentTrack?.title || '¡Hora de levantarse!'}</strong>
-              <span>{alarm.author || currentTrack?.author || 'YouMusic'}</span>
+              <span>
+                {isSpeakingNow ? '🎙️ Leyendo tu resumen matutino…' : alarm.author || currentTrack?.author || 'YouMusic'}
+              </span>
             </div>
+
+            {(alarm.includeWeather && liveWeather && liveWeather.tempC !== null) || alarm.agendaItems.length > 0 ? (
+              <div className="ymalarm-ring-brief">
+                {alarm.includeWeather && liveWeather && liveWeather.tempC !== null && (
+                  <div className="ymalarm-ring-weather">
+                    <CloudSun size={15} color="#38bdf8" />
+                    <span>
+                      <strong>{Math.round(liveWeather.tempC)}°C</strong> · {liveWeather.weatherLabel} en{' '}
+                      {liveWeather.cityLabel}
+                    </span>
+                  </div>
+                )}
+                {alarm.agendaItems.length > 0 && (
+                  <div className="ymalarm-ring-agenda">
+                    {alarm.agendaItems.slice(0, 4).map((ag) => (
+                      <div key={ag.id} className="ymalarm-ring-ag-item">
+                        <span className="ymalarm-agenda-chip">{ag.time || 'Hoy'}</span>
+                        <span>{ag.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             <div className="ymalarm-ring-actions">
               <button type="button" className="ymalarm-ring-snooze" onClick={() => handleSnooze(5)}>
@@ -650,12 +1073,12 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 16px;
+          padding: 14px;
         }
         .ymalarm-card {
           width: 100%;
-          max-width: 430px;
-          max-height: 90dvh;
+          max-width: 440px;
+          max-height: 92dvh;
           overflow-y: auto;
           border-radius: 22px;
           background: linear-gradient(160deg, rgba(20, 26, 40, 0.96), rgba(10, 14, 24, 0.98));
@@ -665,7 +1088,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           color: #f8fafc;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 13px;
         }
         .ymalarm-head {
           display: flex;
@@ -704,7 +1127,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          padding: 12px 14px;
+          padding: 10px 14px;
           border-radius: 16px;
           background: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.1);
@@ -751,7 +1174,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
         .ymalarm-section {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 7px;
         }
         .ymalarm-label-row {
           display: flex;
@@ -760,7 +1183,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           gap: 8px;
         }
         .ymalarm-label {
-          font-size: 12px;
+          font-size: 11.5px;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -778,6 +1201,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           border-radius: 999px;
           padding: 4px 9px;
           cursor: pointer;
+          white-space: nowrap;
         }
         .ymalarm-pills {
           display: flex;
@@ -799,11 +1223,106 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           border-color: rgba(56, 189, 248, 0.55);
           color: #e0f2fe;
         }
+        .ymalarm-voice-box {
+          padding: 12px;
+          border-radius: 16px;
+          background: rgba(245, 158, 11, 0.06);
+          border: 1px solid rgba(245, 158, 11, 0.22);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .ymalarm-voice-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
+        }
+        .ymalarm-inline-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+        .ymalarm-input,
+        .ymalarm-select,
+        .ymalarm-agenda-time {
+          width: 100%;
+          min-width: 0;
+          padding: 8px 10px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: rgba(8, 12, 22, 0.75);
+          color: #f8fafc;
+          font-size: 12.5px;
+          outline: none;
+          color-scheme: dark;
+        }
+        .ymalarm-agenda-block {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .ymalarm-agenda-add {
+          display: grid;
+          grid-template-columns: 88px 1fr 34px;
+          gap: 6px;
+        }
+        .ymalarm-add-btn {
+          border-radius: 10px;
+          border: 1px solid rgba(245, 158, 11, 0.45);
+          background: rgba(245, 158, 11, 0.2);
+          color: #fcd34d;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+        .ymalarm-agenda-list {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          max-height: 110px;
+          overflow-y: auto;
+        }
+        .ymalarm-agenda-row {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 6px 8px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.05);
+          font-size: 12px;
+        }
+        .ymalarm-agenda-chip {
+          padding: 2px 7px;
+          border-radius: 999px;
+          background: rgba(56, 189, 248, 0.16);
+          color: #7dd3fc;
+          font-size: 11px;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+          flex-shrink: 0;
+        }
+        .ymalarm-agenda-text {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          color: #e2e8f0;
+        }
+        .ymalarm-agenda-del {
+          background: transparent;
+          border: none;
+          color: #94a3b8;
+          cursor: pointer;
+          display: inline-flex;
+          padding: 2px;
+        }
         .ymalarm-track-list {
           display: flex;
           flex-direction: column;
           gap: 6px;
-          max-height: 170px;
+          max-height: 145px;
           overflow-y: auto;
           padding-right: 2px;
         }
@@ -812,7 +1331,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           align-items: center;
           justify-content: space-between;
           gap: 10px;
-          padding: 9px 11px;
+          padding: 8px 10px;
           border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.08);
           background: rgba(255, 255, 255, 0.03);
@@ -831,7 +1350,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           gap: 2px;
         }
         .ymalarm-track-info strong {
-          font-size: 13px;
+          font-size: 12.5px;
           font-weight: 600;
           white-space: nowrap;
           overflow: hidden;
@@ -845,17 +1364,9 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           display: flex;
           align-items: center;
           gap: 8px;
-          font-size: 13px;
+          font-size: 12.5px;
           color: #e2e8f0;
           cursor: pointer;
-        }
-        .ymalarm-tip {
-          font-size: 11.5px;
-          line-height: 1.45;
-          color: #94a3b8;
-          background: rgba(255, 255, 255, 0.04);
-          border-radius: 12px;
-          padding: 9px 11px;
         }
         .ymalarm-actions {
           display: flex;
@@ -1023,9 +1534,9 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
         }
         .ymalarm-ring-card {
           width: 100%;
-          max-width: 390px;
+          max-width: 400px;
           border-radius: 26px;
-          padding: 28px 22px;
+          padding: 24px 20px;
           background: rgba(14, 19, 32, 0.92);
           border: 1px solid rgba(245, 158, 11, 0.45);
           box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75);
@@ -1033,12 +1544,12 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           flex-direction: column;
           align-items: center;
           text-align: center;
-          gap: 16px;
+          gap: 14px;
           color: #f8fafc;
         }
         .ymalarm-ring-icon {
-          width: 68px;
-          height: 68px;
+          width: 62px;
+          height: 62px;
           border-radius: 999px;
           background: rgba(245, 158, 11, 0.18);
           color: #fbbf24;
@@ -1052,7 +1563,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           50% { transform: scale(1.06); box-shadow: 0 0 0 18px rgba(245, 158, 11, 0); }
         }
         .ymalarm-ring-time {
-          font-size: 48px;
+          font-size: 46px;
           font-weight: 800;
           letter-spacing: -0.03em;
           font-variant-numeric: tabular-nums;
@@ -1072,16 +1583,46 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
           font-size: 13px;
           color: #94a3b8;
         }
+        .ymalarm-ring-brief {
+          width: 100%;
+          padding: 11px 12px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          text-align: left;
+        }
+        .ymalarm-ring-weather {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 13px;
+          color: #e2e8f0;
+        }
+        .ymalarm-ring-agenda {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .ymalarm-ring-ag-item {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 12.5px;
+          color: #cbd5e1;
+        }
         .ymalarm-ring-actions {
           width: 100%;
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          margin-top: 6px;
+          gap: 9px;
+          margin-top: 4px;
         }
         .ymalarm-ring-snooze {
           width: 100%;
-          padding: 14px;
+          padding: 13px;
           border-radius: 16px;
           border: 1px solid rgba(56, 189, 248, 0.45);
           background: rgba(56, 189, 248, 0.16);
@@ -1092,7 +1633,7 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
         }
         .ymalarm-ring-stop {
           width: 100%;
-          padding: 14px;
+          padding: 13px;
           border-radius: 16px;
           border: none;
           background: linear-gradient(135deg, #f59e0b, #ea580c);
@@ -1103,12 +1644,12 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
         }
         .ymalarm-ring-mute {
           width: 100%;
-          padding: 11px;
+          padding: 10px;
           border-radius: 14px;
           border: 1px solid rgba(255, 255, 255, 0.14);
           background: rgba(255, 255, 255, 0.06);
           color: #cbd5e1;
-          font-size: 13.5px;
+          font-size: 13px;
           font-weight: 600;
           cursor: pointer;
         }

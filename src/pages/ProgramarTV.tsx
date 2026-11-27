@@ -4087,21 +4087,36 @@ export default function ProgramarTV() {
           flex: 1;
         }
         .mitv-grid-filters {
-          display: inline-flex;
-          gap: 6px;
+          display: flex;
+          flex-wrap: nowrap;
+          align-items: center;
+          gap: 5px;
+          width: 100%;
+          overflow-x: auto;
+          overflow-y: hidden;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding: 1px 0 2px;
+        }
+        .mitv-grid-filters::-webkit-scrollbar {
+          display: none;
         }
         .mitv-filter-btn {
-          padding: 5px 11px;
+          padding: 4px 9px;
           border-radius: 999px;
-          border: 1px solid rgba(255, 255, 255, 0.22);
+          border: 1px solid rgba(255, 255, 255, 0.2);
           background: rgba(255, 255, 255, 0.08);
-          color: rgba(245, 245, 247, 0.8);
-          font-size: 12px;
+          color: rgba(245, 245, 247, 0.82);
+          font-size: 11px;
           font-weight: 600;
+          line-height: 1.2;
+          white-space: nowrap;
+          flex-shrink: 0;
           cursor: pointer;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
         }
         .mitv-filter-btn.active {
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(255, 255, 255, 0.92);
           color: #1d1d1f;
           border-color: #ffffff;
         }

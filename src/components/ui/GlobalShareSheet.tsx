@@ -4,7 +4,6 @@ import {
   Copy,
   Download,
   ExternalLink,
-  Film,
   MessageCircle,
   QrCode,
   Send,
@@ -279,63 +278,11 @@ async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob |
   return new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
 }
 
-async function generateAnimatedStoryVideoBlob(
-  payload: ShareSheetPayload
-): Promise<{ blob: Blob; ext: string; mime: string } | null> {
-  if (typeof MediaRecorder === 'undefined') return null;
-  const canvas = document.createElement('canvas');
-  canvas.width = 720;
-  canvas.height = 900;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  ctx.scale(720 / 1080, 900 / 1350);
-
-  const img = await loadThumbImage(payload.thumbnailUrl);
-  const candidates = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
-  const mime = candidates.find((m) => MediaRecorder.isTypeSupported(m)) || 'video/webm';
-  const ext = mime.includes('mp4') ? 'mp4' : 'webm';
-
-  const stream = canvas.captureStream(24);
-  const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 2_200_000 });
-  const baseMime = mime.split(';')[0];
-  const chunks: BlobPart[] = [];
-  recorder.ondataavailable = (ev) => {
-    if (ev.data && ev.data.size > 0) chunks.push(ev.data);
-  };
-
-  const donePromise = new Promise<Blob>((resolve) => {
-    recorder.onstop = () => resolve(new Blob(chunks, { type: baseMime }));
-  });
-
-  recorder.start();
-  const durationMs = 2400;
-  const startedAt = performance.now();
-  await new Promise<void>((resolve) => {
-    const step = (ts: number) => {
-      const p = Math.min(1, (ts - startedAt) / durationMs);
-      void drawStoryCardFrame(ctx, payload, img, p);
-      if (p < 1) {
-        window.requestAnimationFrame(step);
-      } else {
-        resolve();
-      }
-    };
-    window.requestAnimationFrame(step);
-  });
-
-  recorder.stop();
-  stream.getTracks().forEach((t) => t.stop());
-  const blob = await donePromise;
-  return { blob, ext, mime: baseMime };
-}
-
 export const GlobalShareSheet: React.FC = () => {
   const [payload, setPayload] = useState<ShareSheetPayload | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [savingCard, setSavingCard] = useState(false);
-  const [savingVideo, setSavingVideo] = useState(false);
-  const [readyVideoFile, setReadyVideoFile] = useState<File | null>(null);
   const [cardNotice, setCardNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -343,7 +290,6 @@ export const GlobalShareSheet: React.FC = () => {
       setPayload(pendingPayload);
       setCopied(false);
       setShowQr(false);
-      setReadyVideoFile(null);
       setCardNotice(null);
     };
     window.addEventListener(SHARE_SHEET_EVENT, onOpen);
@@ -444,65 +390,6 @@ export const GlobalShareSheet: React.FC = () => {
       setCardNotice('No se pudo generar la imagen en este dispositivo.');
     } finally {
       setSavingCard(false);
-    }
-  };
-
-  const sharePreparedVideoFile = async (file: File) => {
-    try {
-      if (
-        typeof navigator !== 'undefined' &&
-        typeof navigator.canShare === 'function' &&
-        navigator.canShare({ files: [file] }) &&
-        typeof navigator.share === 'function'
-      ) {
-        await navigator.share({
-          files: [file],
-          title: payload.title,
-          text: richShareUrl
-        });
-        setReadyVideoFile(null);
-        return true;
-      }
-    } catch (err: unknown) {
-      if ((err as { name?: string })?.name === 'AbortError') return true;
-    }
-    return false;
-  };
-
-  const handleDownloadAnimatedVideo = async () => {
-    // Si el video ya está listo, este toque fresco abre directo WhatsApp/IG sin expirar el gesto
-    if (readyVideoFile) {
-      const shared = await sharePreparedVideoFile(readyVideoFile);
-      if (!shared) {
-        const blobUrl = URL.createObjectURL(readyVideoFile);
-        const a = document.createElement('a');
-        a.href = blobUrl;
-        a.download = readyVideoFile.name;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
-        setCardNotice('✓ Video guardado en Descargas para adjuntarlo en WhatsApp.');
-        setReadyVideoFile(null);
-      }
-      return;
-    }
-
-    setSavingVideo(true);
-    setCardNotice(null);
-    try {
-      const result = await generateAnimatedStoryVideoBlob(payload);
-      if (!result) throw new Error('mediarecorder');
-      const file = new File([result.blob], `youapp-tarjeta.${result.ext}`, { type: result.mime });
-      const sharedNow = await sharePreparedVideoFile(file);
-      if (!sharedNow) {
-        setReadyVideoFile(file);
-        setCardNotice('✓ Video listo: tocá «Enviar video ahora» para elegir WhatsApp.');
-      }
-    } catch {
-      setCardNotice('Tu navegador no admite grabar video; usá «Imagen PNG».');
-    } finally {
-      setSavingVideo(false);
     }
   };
 
@@ -650,7 +537,7 @@ export const GlobalShareSheet: React.FC = () => {
           </button>
         </div>
 
-        {/* BOTONES DE EXPORTACIÓN: en APK Android WebView los blob: no descargan, usar compartir nativo */}
+        {/* BOTÓN PRINCIPAL: en APK abre el compartir nativo; en Web permite generar Tarjeta PNG 100% compatible con WhatsApp/IG */}
         {isAndroidWebView ? (
           <button
             type="button"
@@ -661,32 +548,15 @@ export const GlobalShareSheet: React.FC = () => {
             <span>Compartir ahora (WhatsApp / otras apps)</span>
           </button>
         ) : (
-          <div className="ya-share-export-row">
-            <button
-              type="button"
-              className={`ya-share-story-btn ${readyVideoFile ? 'is-ready' : ''}`}
-              onClick={() => void handleDownloadAnimatedVideo()}
-              disabled={savingVideo || savingCard}
-            >
-              <Film size={15} />
-              <span>
-                {savingVideo
-                  ? 'Animando…'
-                  : readyVideoFile
-                  ? 'Enviar video ahora'
-                  : 'Tarjeta animada'}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="ya-share-story-btn"
-              onClick={() => void handleDownloadStoryCard()}
-              disabled={savingCard || savingVideo}
-            >
-              <Download size={15} />
-              <span>{savingCard ? 'Generando…' : 'Imagen PNG'}</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            className="ya-share-story-btn"
+            onClick={() => void handleDownloadStoryCard()}
+            disabled={savingCard}
+          >
+            <Download size={15} />
+            <span>{savingCard ? 'Generando tarjeta…' : 'Tarjeta PNG para WhatsApp / Historias'}</span>
+          </button>
         )}
 
         {cardNotice && <div className="ya-share-notice">{cardNotice}</div>}

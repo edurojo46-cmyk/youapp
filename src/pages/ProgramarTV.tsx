@@ -1587,7 +1587,11 @@ export default function ProgramarTV() {
   const pendingCount = items.filter((i) => !i.watched).length;
 
   return (
-    <div className="mitv-page">
+    <div
+      className={`mitv-page ${
+        currentItem && !isFullscreen && !isYou4Mode && !isMomentsMosaic ? 'mitv-has-mobile-player' : ''
+      }`}
+    >
       {/* Fondo atmosférico difuminado estilo Apple Glass */}
       <div
         className="mitv-ambient-bg"
@@ -4370,6 +4374,31 @@ export default function ProgramarTV() {
           .mitv-main {
             padding: 6px 8px 20px;
             gap: 8px;
+          }
+          .mitv-has-mobile-player .mitv-player-card:not(.is-expanded) {
+            position: fixed;
+            top: calc(48px + env(safe-area-inset-top));
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 75;
+            margin: 0;
+            border-radius: 0 0 14px 14px !important;
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            background: #0e1118 !important;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.78);
+          }
+          .mitv-has-mobile-player .mitv-player-card:not(.is-expanded) .mitv-video-wrap {
+            border-radius: 0 !important;
+          }
+          .mitv-has-mobile-player .mitv-main {
+            padding-top: calc(56.25vw + 44px) !important;
+            transition: padding-top 0.18s ease;
+          }
+          .mitv-has-mobile-player:has(.yapp-pcd-root.is-open) .mitv-main {
+            padding-top: calc(56.25vw + 158px) !important;
           }
           .mitv-card {
             border-radius: 14px;

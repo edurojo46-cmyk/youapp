@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  AlarmClock,
   ArrowDown,
   ArrowUp,
   BookmarkCheck,
@@ -36,6 +37,11 @@ import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { SmartBar } from '../components/smartbar/SmartBar';
 import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
+import {
+  YouMusicAlarmController,
+  loadYouMusicAlarm,
+  type YouMusicAlarmConfig
+} from '../components/music/YouMusicAlarmModal';
 import { usePlayerStore } from '../store/usePlayerStore';
 import {
   SOCIAL_GRAPH_CHANGED_EVENT,
@@ -907,6 +913,8 @@ export default function YouMusicPage() {
   const [isYou4Mode, setIsYou4Mode] = useState(false);
   const [you4AudioSlot, setYou4AudioSlot] = useState(0);
   const [isCastOpen, setIsCastOpen] = useState(false);
+  const [isAlarmOpen, setIsAlarmOpen] = useState(false);
+  const [alarmState, setAlarmState] = useState<YouMusicAlarmConfig>(() => loadYouMusicAlarm());
   const [castCodeInput, setCastCodeInput] = useState('');
   const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
   const [currentVideoMeta, setCurrentVideoMeta] = useState<VideoPublicMeta | null>(null);
@@ -1838,6 +1846,36 @@ export default function YouMusicPage() {
                       <div className="ymv1-top-right-icons">
                         <button
                           type="button"
+                          className={`ymv1-top-icon-btn ${alarmState.enabled ? 'is-subbed' : ''}`}
+                          onClick={() => setIsAlarmOpen(true)}
+                          title={
+                            alarmState.enabled
+                              ? `Despertador activo (${alarmState.time})`
+                              : 'Despertador musical'
+                          }
+                          aria-label="Despertador musical"
+                          style={
+                            alarmState.enabled
+                              ? {
+                                  width: 'auto',
+                                  padding: '0 8px',
+                                  gap: 4,
+                                  color: '#fcd34d',
+                                  borderColor: 'rgba(245, 158, 11, 0.55)',
+                                  background: 'rgba(245, 158, 11, 0.16)'
+                                }
+                              : undefined
+                          }
+                        >
+                          <AlarmClock size={14} />
+                          {alarmState.enabled && (
+                            <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                              {alarmState.time}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
                           className="ymv1-top-icon-btn"
                           onClick={() => void handleShare('song')}
                           title="Compartir esta canción"
@@ -2382,6 +2420,66 @@ export default function YouMusicPage() {
           </section>
         )}
       </main>
+
+      <YouMusicAlarmController
+        isOpen={isAlarmOpen}
+        onClose={() => setIsAlarmOpen(false)}
+        currentTrack={
+          currentItem
+            ? {
+                videoId: currentItem.videoId,
+                title: currentItem.title,
+                author: currentItem.author,
+                thumbnailUrl: currentItem.thumbnailUrl
+              }
+            : null
+        }
+        queueTracks={items.map((it) => ({
+          videoId: it.videoId,
+          title: it.title,
+          author: it.author,
+          thumbnailUrl: it.thumbnailUrl
+        }))}
+        wakeLockActive={wakeLockActive}
+        onRequestWakeLock={requestWakeLock}
+        onReleaseWakeLock={releaseWakeLock}
+        onPauseForSleep={() => {
+          setIsPlaying(false);
+          postYouTubeCommand('pauseVideo');
+        }}
+        onTriggerPlayTrack={(track) => {
+          const idx = items.findIndex((it) => it.videoId === track.videoId);
+          if (idx >= 0) {
+            setCurrentIndex(idx);
+          } else {
+            setSharedPlaylist({
+              id: `alarm-${track.videoId}`,
+              name: 'Despertador YouMusic',
+              items: [
+                {
+                  id: `alarm-item-${track.videoId}`,
+                  videoId: track.videoId,
+                  title: track.title,
+                  author: track.author,
+                  thumbnailUrl: `https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg`,
+                  sourceUrl: `https://www.youtube.com/watch?v=${track.videoId}`,
+                  addedAt: new Date().toISOString()
+                }
+              ],
+              updatedAt: new Date().toISOString()
+            });
+            setCurrentIndex(0);
+          }
+          setIsPlaying(true);
+          window.setTimeout(() => {
+            postYouTubeCommand('unMute');
+            postYouTubeCommand('playVideo');
+          }, 350);
+        }}
+        onSetVolume={handleVolumeChange}
+        onAlarmStateChange={setAlarmState}
+        onToast={setToast}
+      />
 
       <style>{`
         .ymv1-page {

@@ -2409,6 +2409,11 @@ export default function ChannelSearch() {
 
     const checkScroll = () => {
       ticking = false;
+      // En celular (<= 768px) usamos experiencia YouTube: el reproductor queda fijo (sticky) arriba mientras scrolleás la lista abajo
+      if (window.innerWidth <= 768) {
+        setIsScrolledPastPlayer(false);
+        return;
+      }
       const slot = previewSentinelRef.current;
       if (!slot) return;
       const rect = slot.getBoundingClientRect();
@@ -4509,6 +4514,17 @@ export default function ChannelSearch() {
         .ys-preview-slot {
           width: 100%;
           position: relative;
+        }
+        @media (max-width: 768px) {
+          .ys-preview-slot {
+            position: sticky;
+            top: 52px;
+            z-index: 45;
+            margin-bottom: 10px;
+          }
+          .ys-preview-slot .ys-preview-card {
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.72);
+          }
         }
         .ys-preview-card.is-mini-floating {
           position: fixed !important;

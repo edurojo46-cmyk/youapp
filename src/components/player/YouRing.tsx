@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, SkipForward, SkipBack, Sparkles, Mic } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, LayoutGrid, Mic } from 'lucide-react';
 
 interface YouRingProps {
   playing: boolean;
@@ -69,9 +69,9 @@ export function YouRing({
         </div>
         <div className="you-ring-btn-group bottom" onClick={isMosaic ? () => {} : onSurprise}>
           <div className="you-ring-btn">
-            {isMosaic ? <Pause size={16} color="white" /> : <Sparkles size={16} color="white" />}
+            {isMosaic ? <Pause size={16} color="white" /> : <LayoutGrid size={16} color="white" />}
           </div>
-          <span className="you-ring-text">{isMosaic ? "Pausar pre-vistas" : "Sorpréndeme"}</span>
+          <span className="you-ring-text">{isMosaic ? "Pausar pre-vistas" : "YOU4"}</span>
         </div>
         <div className="you-ring-btn-group left" onClick={onPrevious}>
           <div className="you-ring-btn">

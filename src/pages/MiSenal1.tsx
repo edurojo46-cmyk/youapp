@@ -3127,7 +3127,16 @@ export default function MiSenal1() {
                       onPlayPause={handlePlayPause}
                       onNext={handleNext}
                       onPrevious={handlePrevious}
-                      onSurprise={handleSurprise}
+                      onSurprise={() => {
+                        setViewMode((prev) => {
+                          const nextMode = prev === 'you4' ? 'single' : 'you4';
+                          if (nextMode === 'you4') {
+                            setYou4AudioSlot(0);
+                            setYou4Offset(0);
+                          }
+                          return nextMode;
+                        });
+                      }}
                       onDirector={handleDirector}
                       isMosaic={false}
                     />

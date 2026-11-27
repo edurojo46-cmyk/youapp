@@ -3569,75 +3569,11 @@ export default function MiSenal1() {
               </button>
             </div>
 
-            {/* BARRA SEÑAL ABIERTA / CERRADA + APORTAR VIDEO + ATLAS ORDENAR MI SEÑAL */}
+            {/* PANELES ACTIVOS DE SEÑAL VIVA / APORTES COLABORATIVOS */}
+            {(collabConfig.liveEnabled ||
+              (collabFormOpen && collabConfig.mode === 'open') ||
+              (collabPendingOpen && collabConfig.pending.length > 0)) && (
             <div className="ms-collab-bar">
-              <div className="ms-collab-chips">
-                <button
-                  type="button"
-                  className={`ms-collab-chip ${collabConfig.mode === 'open' ? 'is-open' : ''}`}
-                  onClick={handleToggleCollabMode}
-                  title="Cambiar entre Señal Abierta (comunidad aporta videos) y Señal Cerrada (solo propietario)"
-                >
-                  <span>{collabConfig.mode === 'open' ? '🟢 Señal abierta' : '🔒 Señal cerrada'}</span>
-                </button>
-
-                {collabConfig.mode === 'open' && (
-                  <button
-                    type="button"
-                    className="ms-collab-chip"
-                    onClick={handleToggleCollabModeration}
-                    title="Regla de publicación para aportes de la comunidad"
-                  >
-                    <span>
-                      {collabConfig.moderation === 'direct' ? '⚡ Directa' : '🛡️ Revisión previa'}
-                    </span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="ms-collab-chip is-atlas"
-                  onClick={handleAtlasOrderSignal}
-                  title="ATLAS ordena tu señal alternando canales, quitando duplicados y priorizando aportes valorados"
-                >
-                  <Sparkles size={11} />
-                  <span>Ordenar mi señal</span>
-                </button>
-
-                {collabConfig.mode === 'open' && (
-                  <button
-                    type="button"
-                    className="ms-collab-chip is-add"
-                    onClick={() => {
-                      setCollabFormOpen((v) => !v);
-                      setCollabError(null);
-                    }}
-                  >
-                    <Plus size={11} />
-                    <span>Agregar video</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className={`ms-collab-chip ${collabConfig.liveEnabled ? 'is-live-on' : ''}`}
-                  onClick={handleToggleLiveEnabled}
-                  title="Activar o desactivar encuentros en vivo (presencia voluntaria y saludos)"
-                >
-                  <span>{collabConfig.liveEnabled ? '👋 Señal viva' : 'Señal viva: off'}</span>
-                </button>
-
-                {collabConfig.pending.length > 0 && (
-                  <button
-                    type="button"
-                    className="ms-collab-chip is-pending"
-                    onClick={() => setCollabPendingOpen((v) => !v)}
-                  >
-                    <span>Pendientes ({collabConfig.pending.length})</span>
-                  </button>
-                )}
-              </div>
-
               {collabConfig.liveEnabled && (
                 <div className="ms-live-presence-strip" aria-label="Personas sintonizando ahora">
                   <div className="ms-live-presence-top">
@@ -3777,63 +3713,75 @@ export default function MiSenal1() {
                 </div>
               )}
             </div>
+            )}
 
-            {/* Pulso diario: Filtro Todos · En vivo · Nuevos */}
-            {(() => {
-              const watchedSet = new Set(watchedVideoIds);
-              let liveChCount = 0;
-              let newVidCount = 0;
-              for (const g of channelGroups) {
-                const snap = channelSnapshots[g.key];
-                if (g.blocks.some((b) => Boolean(b.contentItem.isLive)) || Boolean(snap?.liveVideo)) {
-                  liveChCount += 1;
-                }
-                const gVids = new Set<string>();
-                for (const b of g.blocks.slice(0, 2)) {
-                  const id = b.contentItem.providerId || b.contentItem.id;
-                  if (id && !watchedSet.has(id)) gVids.add(id);
-                }
-                if (snap?.latestVideos) {
-                  for (const sv of snap.latestVideos.slice(0, 2)) {
-                    if (sv.videoId && !watchedSet.has(sv.videoId)) gVids.add(sv.videoId);
-                  }
-                }
-                newVidCount += gVids.size;
-              }
-              return (
-                <div className="ms-pulse-filter" role="tablist" aria-label="Filtrar canales de la señal">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={channelFilter === 'all'}
-                    className={`ms-pulse-tab ${channelFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setChannelFilter('all')}
-                  >
-                    Todos
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={channelFilter === 'live'}
-                    className={`ms-pulse-tab ${channelFilter === 'live' ? 'active' : ''}`}
-                    onClick={() => setChannelFilter('live')}
-                  >
-                    {liveChCount > 0 && <span className="ms-channel-live-dot" />}
-                    <span>En vivo ({liveChCount})</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={channelFilter === 'new'}
-                    className={`ms-pulse-tab ${channelFilter === 'new' ? 'active' : ''}`}
-                    onClick={() => setChannelFilter('new')}
-                  >
-                    {newVidCount > 0 && <span className="ms-new-blue-dot" />}
-                    <span>Nuevos ({newVidCount})</span>
-                  </button>
-                </div>
-              );
-            })()}
+            {/* Barra de controles de grilla: Ordenar mi señal · Señal viva · Señal cerrada/abierta */}
+            <div className="ms-collab-chips" style={{ marginBottom: 10 }}>
+              <button
+                type="button"
+                className="ms-collab-chip is-atlas"
+                onClick={handleAtlasOrderSignal}
+                title="ATLAS ordena tu señal alternando canales, quitando duplicados y priorizando aportes valorados"
+              >
+                <Sparkles size={11} />
+                <span>Ordenar mi señal</span>
+              </button>
+
+              <button
+                type="button"
+                className={`ms-collab-chip ${collabConfig.liveEnabled ? 'is-live-on' : ''}`}
+                onClick={handleToggleLiveEnabled}
+                title="Activar o desactivar encuentros en vivo (presencia voluntaria y saludos)"
+              >
+                <span>{collabConfig.liveEnabled ? '👋 Señal viva' : 'Señal viva: off'}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`ms-collab-chip ${collabConfig.mode === 'open' ? 'is-open' : ''}`}
+                onClick={handleToggleCollabMode}
+                title="Cambiar entre Señal Abierta (comunidad aporta videos) y Señal Cerrada (solo propietario)"
+              >
+                <span>{collabConfig.mode === 'open' ? '🟢 Señal abierta' : '🔒 Señal cerrada'}</span>
+              </button>
+
+              {collabConfig.mode === 'open' && (
+                <button
+                  type="button"
+                  className="ms-collab-chip"
+                  onClick={handleToggleCollabModeration}
+                  title="Regla de publicación para aportes de la comunidad"
+                >
+                  <span>
+                    {collabConfig.moderation === 'direct' ? '⚡ Directa' : '🛡️ Revisión previa'}
+                  </span>
+                </button>
+              )}
+
+              {collabConfig.mode === 'open' && (
+                <button
+                  type="button"
+                  className="ms-collab-chip is-add"
+                  onClick={() => {
+                    setCollabFormOpen((v) => !v);
+                    setCollabError(null);
+                  }}
+                >
+                  <Plus size={11} />
+                  <span>Agregar video</span>
+                </button>
+              )}
+
+              {collabConfig.pending.length > 0 && (
+                <button
+                  type="button"
+                  className="ms-collab-chip is-pending"
+                  onClick={() => setCollabPendingOpen((v) => !v)}
+                >
+                  <span>Pendientes ({collabConfig.pending.length})</span>
+                </button>
+              )}
+            </div>
 
             {/* Sector rápido Apple minimalista: Agregar URL de video o canal (solo en señales propias) */}
             {!curatedActiveDef && (

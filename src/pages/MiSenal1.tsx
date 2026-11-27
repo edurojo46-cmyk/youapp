@@ -52,6 +52,7 @@ import {
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { YouRing } from '../components/player/YouRing';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import { EpistemicBadge } from '../components/epistemic/EpistemicBadge';
 import { evaluateEpistemicNature } from '../lib/field/epistemicGuard';
 import {
@@ -974,6 +975,7 @@ export default function MiSenal1() {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
   const [isStageExpanded, setIsStageExpanded] = useState(false);
+  useLandscapeAutoFullscreen(true, setIsStageExpanded);
   const [isCastOpen, setIsCastOpen] = useState(false);
   const [castTargetCodeInput, setCastTargetCodeInput] = useState('');
   const [connectedCastCode, setConnectedCastCode] = useState<string | null>(null);
@@ -7263,6 +7265,7 @@ export default function MiSenal1() {
           aspect-ratio: auto;
           border-radius: 0;
         }
+        .ms-player-card.is-expanded .ms-mitv-info-bar,
         .ms-player-card.is-expanded .ms-smartbar-slot {
           display: none;
         }

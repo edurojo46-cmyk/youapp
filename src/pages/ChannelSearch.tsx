@@ -68,6 +68,7 @@ import {
 } from '../lib/tv/youappSocialStore';
 import { passesCategoryGate } from '../lib/search/categoryGate';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { DailymotionOfficialPlayer } from '../components/player/DailymotionOfficialPlayer';
 import { setGlobalMiniVideo } from '../components/player/GlobalMiniPlayer';
@@ -1647,6 +1648,7 @@ export default function ChannelSearch() {
   const [isCastOpen, setIsCastOpen] = useState(false);
   const [castCodeInput, setCastCodeInput] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  useLandscapeAutoFullscreen(Boolean(previewVideo), setIsFullscreen);
   const [likedVideoIds, setLikedVideoIds] = useState<string[]>(() => {
     try {
       const raw = localStorage.getItem('youapp_search_likes_v1');

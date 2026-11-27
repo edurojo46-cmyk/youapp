@@ -140,6 +140,9 @@ export function MobileTopBar() {
         .ymtb-drawer-backdrop {
           display: none;
         }
+        body.youapp-landscape-fs .ymtb-bar {
+          display: none !important;
+        }
 
         @media (max-width: 768px) {
           /* Reemplaza las barras de escritorio en móvil para evitar doble header y cortes */

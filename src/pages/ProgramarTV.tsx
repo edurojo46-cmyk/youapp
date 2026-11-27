@@ -38,6 +38,7 @@ import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { XOfficialTweetEmbed } from '../components/player/XOfficialTweetEmbed';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import RemoteConnectModal from '../components/RemoteConnectModal';
 import { RemoteBridge, resolveAccountTvPin } from '../utils/remoteBridge';
 import { usePlayerStore } from '../store/usePlayerStore';
@@ -114,6 +115,7 @@ export default function ProgramarTV() {
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const [isCastOpen, setIsCastOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  useLandscapeAutoFullscreen(true, setIsFullscreen);
   // YOUAPP Cast propio (vinculación automática por cuenta YOUAPP estilo YouTube/Spotify + fallback PIN)
   const [myTvCode, setMyTvCode] = useState<string>(() => {
     try {

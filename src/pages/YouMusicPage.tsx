@@ -34,6 +34,7 @@ import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { SmartBar } from '../components/smartbar/SmartBar';
+import { useLandscapeAutoFullscreen } from '../hooks/useLandscapeAutoFullscreen';
 import { MosaicPlayerGrid } from '../components/player/MosaicPlayerGrid';
 import { usePlayerStore } from '../store/usePlayerStore';
 import {
@@ -899,6 +900,7 @@ export default function YouMusicPage() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMusicalSignalOpen, setIsMusicalSignalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  useLandscapeAutoFullscreen(true, setIsFullscreen);
   const [isMomentsMosaic, setIsMomentsMosaic] = useState(false);
   const [isYou4Mode, setIsYou4Mode] = useState(false);
   const [you4AudioSlot, setYou4AudioSlot] = useState(0);

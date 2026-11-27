@@ -281,25 +281,40 @@ async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob |
 }
 
 async function generateAnimatedGifBlob(payload: ShareSheetPayload): Promise<Blob | null> {
-  const gw = 360;
-  const gh = 450;
+  const gw = 480;
+  const gh = 270;
   const canvas = document.createElement('canvas');
   canvas.width = gw;
   canvas.height = gh;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) return null;
-  ctx.scale(gw / 1080, gh / 1350);
 
   const img = await loadThumbImage(payload.thumbnailUrl);
   const frames: Uint8ClampedArray[] = [];
-  // 14 cuadros ida y vuelta suaves (bucle infinito perfecto, ~1.7 s)
-  const totalFrames = 14;
+  // Solo la foto a pantalla completa con zoom cinematográfico suave de lejos (1.00x) a cerca (1.26x)
+  const totalFrames = 16;
   for (let i = 0; i < totalFrames; i += 1) {
-    const phase = i < totalFrames / 2 ? i / (totalFrames / 2) : (totalFrames - i) / (totalFrames / 2);
-    await drawStoryCardFrame(ctx, payload, img, phase);
+    const t = i / (totalFrames - 1);
+    const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    ctx.fillStyle = '#05070c';
+    ctx.fillRect(0, 0, gw, gh);
+
+    if (img) {
+      const zoom = 1.0 + eased * 0.26;
+      const scale = Math.max(gw / img.width, gh / img.height) * zoom;
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      ctx.drawImage(img, (gw - dw) / 2, (gh - dh) / 2, dw, dh);
+    } else {
+      const grad = ctx.createLinearGradient(0, 0, gw, gh);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(1, '#1e293b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, gw, gh);
+    }
     frames.push(ctx.getImageData(0, 0, gw, gh).data);
   }
-  return encodeAnimatedGif(gw, gh, frames, 12);
+  return encodeAnimatedGif(gw, gh, frames, 11);
 }
 
 export const GlobalShareSheet: React.FC = () => {

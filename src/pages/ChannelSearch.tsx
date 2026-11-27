@@ -4518,12 +4518,19 @@ export default function ChannelSearch() {
         @media (max-width: 768px) {
           .ys-preview-slot {
             position: sticky;
-            top: 52px;
+            top: calc(48px + env(safe-area-inset-top));
             z-index: 45;
+            margin-top: -10px;
             margin-bottom: 10px;
           }
           .ys-preview-slot .ys-preview-card {
+            border-radius: 0 0 16px 16px;
+            border-top: 0;
             box-shadow: 0 14px 32px rgba(0, 0, 0, 0.72);
+          }
+          .ys-preview-slot .ys-preview-video,
+          .ys-preview-slot .ys-preview-stage {
+            border-radius: 0;
           }
         }
         .ys-preview-card.is-mini-floating {

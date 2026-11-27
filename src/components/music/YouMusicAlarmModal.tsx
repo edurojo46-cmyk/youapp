@@ -317,18 +317,28 @@ function isHighQualityVoice(v: SpeechSynthesisVoice): boolean {
 }
 
 function getSpanishDeviceVoices(): SpeechSynthesisVoice[] {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
-  const voices = window.speechSynthesis.getVoices() || [];
-  return voices
-    .filter((v) => v.lang.toLowerCase().startsWith('es'))
-    .sort((a, b) => {
-      const qa = isHighQualityVoice(a) ? 1 : 0;
-      const qb = isHighQualityVoice(b) ? 1 : 0;
-      if (qb !== qa) return qb - qa;
-      const aAr = a.lang.toLowerCase().startsWith('es-ar') ? 1 : 0;
-      const bAr = b.lang.toLowerCase().startsWith('es-ar') ? 1 : 0;
-      return bAr - aAr;
-    });
+  try {
+    if (
+      typeof window === 'undefined' ||
+      !window.speechSynthesis ||
+      typeof window.speechSynthesis.getVoices !== 'function'
+    ) {
+      return [];
+    }
+    const voices = window.speechSynthesis.getVoices() || [];
+    return voices
+      .filter((v) => v && typeof v.lang === 'string' && v.lang.toLowerCase().startsWith('es'))
+      .sort((a, b) => {
+        const qa = isHighQualityVoice(a) ? 1 : 0;
+        const qb = isHighQualityVoice(b) ? 1 : 0;
+        if (qb !== qa) return qb - qa;
+        const aAr = a.lang.toLowerCase().startsWith('es-ar') ? 1 : 0;
+        const bAr = b.lang.toLowerCase().startsWith('es-ar') ? 1 : 0;
+        return bAr - aAr;
+      });
+  } catch {
+    return [];
+  }
 }
 
 function pickVoiceForProfile(
@@ -568,17 +578,35 @@ export const YouMusicAlarmController: React.FC<YouMusicAlarmControllerProps> = (
     [onAlarmStateChange]
   );
 
-  // Precargar voces de SpeechSynthesis y clima de la ciudad elegida
+  // Precargar voces de SpeechSynthesis (defensivo para Android WebView / APK)
   useEffect(() => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-    const syncVoices = () => setSpanishVoices(getSpanishDeviceVoices());
-    syncVoices();
-    window.speechSynthesis.onvoiceschanged = syncVoices;
-    return () => {
-      if (window.speechSynthesis.onvoiceschanged === syncVoices) {
-        window.speechSynthesis.onvoiceschanged = null;
+    try {
+      if (
+        typeof window === 'undefined' ||
+        !window.speechSynthesis ||
+        typeof window.speechSynthesis.getVoices !== 'function'
+      ) {
+        return;
       }
-    };
+      const syncVoices = () => setSpanishVoices(getSpanishDeviceVoices());
+      syncVoices();
+      try {
+        window.speechSynthesis.onvoiceschanged = syncVoices;
+      } catch {
+        // Algunos WebView de Android no permiten asignar onvoiceschanged
+      }
+      return () => {
+        try {
+          if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged === syncVoices) {
+            window.speechSynthesis.onvoiceschanged = null;
+          }
+        } catch {
+          // ignore
+        }
+      };
+    } catch {
+      return undefined;
+    }
   }, []);
 
   useEffect(() => {

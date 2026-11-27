@@ -9,9 +9,11 @@ import {
   Send,
   Share2,
   Smartphone,
+  Sparkles,
   X
 } from 'lucide-react';
 import { YouAppOfficialLogo } from './YouAppOfficialLogo';
+import { encodeAnimatedGif } from '../../lib/share/gifEncoder';
 
 export interface ShareSheetPayload {
   title: string;
@@ -278,11 +280,35 @@ async function generateStoryCardBlob(payload: ShareSheetPayload): Promise<Blob |
   return new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), 'image/png'));
 }
 
+async function generateAnimatedGifBlob(payload: ShareSheetPayload): Promise<Blob | null> {
+  const gw = 360;
+  const gh = 450;
+  const canvas = document.createElement('canvas');
+  canvas.width = gw;
+  canvas.height = gh;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.scale(gw / 1080, gh / 1350);
+
+  const img = await loadThumbImage(payload.thumbnailUrl);
+  const frames: Uint8ClampedArray[] = [];
+  // 14 cuadros ida y vuelta suaves (bucle infinito perfecto, ~1.7 s)
+  const totalFrames = 14;
+  for (let i = 0; i < totalFrames; i += 1) {
+    const phase = i < totalFrames / 2 ? i / (totalFrames / 2) : (totalFrames - i) / (totalFrames / 2);
+    await drawStoryCardFrame(ctx, payload, img, phase);
+    frames.push(ctx.getImageData(0, 0, gw, gh).data);
+  }
+  return encodeAnimatedGif(gw, gh, frames, 12);
+}
+
 export const GlobalShareSheet: React.FC = () => {
   const [payload, setPayload] = useState<ShareSheetPayload | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [savingCard, setSavingCard] = useState(false);
+  const [savingGif, setSavingGif] = useState(false);
+  const [readyGifFile, setReadyGifFile] = useState<File | null>(null);
   const [cardNotice, setCardNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -290,6 +316,7 @@ export const GlobalShareSheet: React.FC = () => {
       setPayload(pendingPayload);
       setCopied(false);
       setShowQr(false);
+      setReadyGifFile(null);
       setCardNotice(null);
     };
     window.addEventListener(SHARE_SHEET_EVENT, onOpen);
@@ -390,6 +417,64 @@ export const GlobalShareSheet: React.FC = () => {
       setCardNotice('No se pudo generar la imagen en este dispositivo.');
     } finally {
       setSavingCard(false);
+    }
+  };
+
+  const sharePreparedGifFile = async (file: File) => {
+    try {
+      if (
+        typeof navigator !== 'undefined' &&
+        typeof navigator.canShare === 'function' &&
+        navigator.canShare({ files: [file] }) &&
+        typeof navigator.share === 'function'
+      ) {
+        await navigator.share({
+          files: [file],
+          title: payload.title,
+          text: richShareUrl
+        });
+        setReadyGifFile(null);
+        return true;
+      }
+    } catch (err: unknown) {
+      if ((err as { name?: string })?.name === 'AbortError') return true;
+    }
+    return false;
+  };
+
+  const handleShareAnimatedGif = async () => {
+    if (readyGifFile) {
+      const sent = await sharePreparedGifFile(readyGifFile);
+      if (!sent) {
+        const blobUrl = URL.createObjectURL(readyGifFile);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = readyGifFile.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(blobUrl), 3000);
+        setCardNotice('✓ GIF animado guardado en Descargas para adjuntar en WhatsApp.');
+        setReadyGifFile(null);
+      }
+      return;
+    }
+
+    setSavingGif(true);
+    setCardNotice(null);
+    try {
+      const blob = await generateAnimatedGifBlob(payload);
+      if (!blob) throw new Error('gif');
+      const file = new File([blob], 'youapp-tarjeta.gif', { type: 'image/gif' });
+      const sentNow = await sharePreparedGifFile(file);
+      if (!sentNow) {
+        setReadyGifFile(file);
+        setCardNotice('✓ GIF listo: tocá «Enviar GIF ahora» para elegir WhatsApp.');
+      }
+    } catch {
+      setCardNotice('No se pudo generar el GIF en este dispositivo.');
+    } finally {
+      setSavingGif(false);
     }
   };
 
@@ -537,7 +622,7 @@ export const GlobalShareSheet: React.FC = () => {
           </button>
         </div>
 
-        {/* BOTÓN PRINCIPAL: en APK abre el compartir nativo; en Web permite generar Tarjeta PNG 100% compatible con WhatsApp/IG */}
+        {/* BOTÓN PRINCIPAL: en APK abre el compartir nativo; en Web permite GIF animado real + Tarjeta PNG */}
         {isAndroidWebView ? (
           <button
             type="button"
@@ -548,15 +633,32 @@ export const GlobalShareSheet: React.FC = () => {
             <span>Compartir ahora (WhatsApp / otras apps)</span>
           </button>
         ) : (
-          <button
-            type="button"
-            className="ya-share-story-btn"
-            onClick={() => void handleDownloadStoryCard()}
-            disabled={savingCard}
-          >
-            <Download size={15} />
-            <span>{savingCard ? 'Generando tarjeta…' : 'Tarjeta PNG para WhatsApp / Historias'}</span>
-          </button>
+          <div className="ya-share-export-row">
+            <button
+              type="button"
+              className={`ya-share-story-btn ${readyGifFile ? 'is-ready' : ''}`}
+              onClick={() => void handleShareAnimatedGif()}
+              disabled={savingGif || savingCard}
+            >
+              <Sparkles size={15} />
+              <span>
+                {savingGif
+                  ? 'Creando GIF…'
+                  : readyGifFile
+                  ? 'Enviar GIF ahora'
+                  : 'GIF animado'}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="ya-share-story-btn"
+              onClick={() => void handleDownloadStoryCard()}
+              disabled={savingCard || savingGif}
+            >
+              <Download size={15} />
+              <span>{savingCard ? 'Generando…' : 'Imagen PNG'}</span>
+            </button>
+          </div>
         )}
 
         {cardNotice && <div className="ya-share-notice">{cardNotice}</div>}

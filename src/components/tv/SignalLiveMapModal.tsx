@@ -103,10 +103,12 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
   onGreetCity
 }) => {
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [mapStyle, setMapStyle] = useState<'street' | 'satellite'>('street');
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const mapHostRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
+  const tileLayerRef = useRef<any>(null);
   const markersLayerRef = useRef<any>(null);
 
   const cityClusters = useMemo(() => {
@@ -147,7 +149,7 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           attributionControl: true
         });
 
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        tileLayerRef.current = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap contributors',
           maxZoom: 18
         }).addTo(map);
@@ -171,10 +173,35 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           // ignore
         }
         mapInstanceRef.current = null;
+        tileLayerRef.current = null;
         markersLayerRef.current = null;
       }
     };
   }, [isOpen]);
+
+  // Cambia entre estilo Mapa (parecido a Google Maps) y Satélite real sin recargar el modal
+  useEffect(() => {
+    const L = (window as any).L;
+    const map = mapInstanceRef.current;
+    if (!isOpen || !mapReady || !L || !map) return;
+    if (tileLayerRef.current) {
+      try {
+        map.removeLayer(tileLayerRef.current);
+      } catch {
+        // ignore
+      }
+    }
+    tileLayerRef.current =
+      mapStyle === 'satellite'
+        ? L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { attribution: '&copy; Esri World Imagery', maxZoom: 18 }
+          ).addTo(map)
+        : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 18
+          }).addTo(map);
+  }, [isOpen, mapReady, mapStyle]);
 
   // Actualiza los marcadores reales en vivo cuando cambian las ciudades sintonizando
   useEffect(() => {
@@ -229,9 +256,27 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
               </span>
             </div>
           </div>
-          <button type="button" className="slm-close" onClick={onClose} aria-label="Cerrar mapa">
-            <X size={16} />
-          </button>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <div className="slm-style-toggle" role="group" aria-label="Tipo de mapa">
+              <button
+                type="button"
+                className={mapStyle === 'street' ? 'active' : ''}
+                onClick={() => setMapStyle('street')}
+              >
+                Mapa
+              </button>
+              <button
+                type="button"
+                className={mapStyle === 'satellite' ? 'active' : ''}
+                onClick={() => setMapStyle('satellite')}
+              >
+                Satélite
+              </button>
+            </div>
+            <button type="button" className="slm-close" onClick={onClose} aria-label="Cerrar mapa">
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* MAPA REAL INTERACTIVO (OpenStreetMap / CARTO Dark Matter · zoom y arrastre real) */}
@@ -360,22 +405,40 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           cursor: pointer;
           flex-shrink: 0;
         }
+        .slm-style-toggle {
+          display: inline-flex;
+          padding: 2px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+        }
+        .slm-style-toggle button {
+          padding: 4px 9px;
+          border-radius: 999px;
+          border: 0;
+          background: transparent;
+          color: rgba(245, 245, 247, 0.78);
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .slm-style-toggle button.active {
+          background: #0071e3;
+          color: #ffffff;
+        }
         .slm-map-wrap {
           width: 100%;
           height: 320px;
           border-radius: 16px;
           overflow: hidden;
           border: 1px solid rgba(100, 210, 255, 0.24);
-          background: #0b111c;
+          background: #aad3df;
         }
         .slm-leaflet-host {
           width: 100%;
           height: 100%;
           z-index: 1;
-          background: #0b111c;
-        }
-        .slm-leaflet-host .leaflet-tile-pane {
-          filter: invert(100%) hue-rotate(180deg) brightness(92%) contrast(92%) saturate(85%);
+          background: #aad3df;
         }
         .slm-map-loading {
           width: 100%;
@@ -396,25 +459,24 @@ export const SignalLiveMapModal: React.FC<SignalLiveMapModalProps> = ({
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 4px 9px;
+          padding: 4px 10px;
           border-radius: 999px;
-          background: rgba(10, 16, 26, 0.9);
-          border: 1px solid rgba(52, 211, 153, 0.75);
-          box-shadow: 0 0 14px rgba(52, 211, 153, 0.5);
+          background: #ffffff;
+          border: 2px solid #ea4335;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
           white-space: nowrap;
         }
         .slm-live-pin-dot {
           width: 8px;
           height: 8px;
           border-radius: 999px;
-          background: #34d399;
-          box-shadow: 0 0 8px #34d399;
+          background: #ea4335;
           flex-shrink: 0;
         }
         .slm-live-pin-lbl {
-          color: #ffffff;
+          color: #1f2937;
           font-size: 11px;
-          font-weight: 750;
+          font-weight: 800;
         }
         .slm-region-box {
           display: flex;

@@ -353,6 +353,10 @@ export const GlobalShareSheet: React.FC = () => {
   if (!payload) return null;
 
   const cleanTitle = payload.title.replace(/\s*·\s*(YOUAPP TV|YOUAPP|YOU MUSIC)\s*$/i, '').trim();
+  const isAndroidWebView =
+    typeof window !== 'undefined' &&
+    (Boolean((window as unknown as { YouAppAndroidPiP?: unknown }).YouAppAndroidPiP) ||
+      /;\s*wv\)/i.test(navigator.userAgent || ''));
   const richShareUrl = buildDynamicPreviewShareUrl(payload);
   // Mensaje limpio y breve para WhatsApp (la tarjeta ya muestra foto y título)
   const waHref = `https://wa.me/?text=${encodeURIComponent(richShareUrl)}`;
@@ -646,33 +650,44 @@ export const GlobalShareSheet: React.FC = () => {
           </button>
         </div>
 
-        {/* BOTONES TARJETA ANIMADA (4 s) + IMAGEN PNG */}
-        <div className="ya-share-export-row">
+        {/* BOTONES DE EXPORTACIÓN: en APK Android WebView los blob: no descargan, usar compartir nativo */}
+        {isAndroidWebView ? (
           <button
             type="button"
-            className={`ya-share-story-btn ${readyVideoFile ? 'is-ready' : ''}`}
-            onClick={() => void handleDownloadAnimatedVideo()}
-            disabled={savingVideo || savingCard}
+            className="ya-share-story-btn is-ready"
+            onClick={() => void handleNativeMore()}
           >
-            <Film size={15} />
-            <span>
-              {savingVideo
-                ? 'Animando…'
-                : readyVideoFile
-                ? 'Enviar video ahora'
-                : 'Tarjeta animada'}
-            </span>
+            <Share2 size={15} />
+            <span>Compartir ahora (WhatsApp / otras apps)</span>
           </button>
-          <button
-            type="button"
-            className="ya-share-story-btn"
-            onClick={() => void handleDownloadStoryCard()}
-            disabled={savingCard || savingVideo}
-          >
-            <Download size={15} />
-            <span>{savingCard ? 'Generando…' : 'Imagen PNG'}</span>
-          </button>
-        </div>
+        ) : (
+          <div className="ya-share-export-row">
+            <button
+              type="button"
+              className={`ya-share-story-btn ${readyVideoFile ? 'is-ready' : ''}`}
+              onClick={() => void handleDownloadAnimatedVideo()}
+              disabled={savingVideo || savingCard}
+            >
+              <Film size={15} />
+              <span>
+                {savingVideo
+                  ? 'Animando…'
+                  : readyVideoFile
+                  ? 'Enviar video ahora'
+                  : 'Tarjeta animada'}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="ya-share-story-btn"
+              onClick={() => void handleDownloadStoryCard()}
+              disabled={savingCard || savingVideo}
+            >
+              <Download size={15} />
+              <span>{savingCard ? 'Generando…' : 'Imagen PNG'}</span>
+            </button>
+          </div>
+        )}
 
         {cardNotice && <div className="ya-share-notice">{cardNotice}</div>}
       </div>

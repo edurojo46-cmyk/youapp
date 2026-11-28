@@ -292,11 +292,17 @@ export default function ChannelProfile() {
       .map((p) => p[0]?.toUpperCase() || '')
       .join('') || 'TV';
   const resolvedAvatar = profileAvatarUrl || user?.avatarUrl || '';
+  const ambientBackdropUrl = profileCoverUrl || profileSignals[0]?.thumb || '';
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
 
   return (
     <div className="fbp-page">
-      <div className="fbp-bg" aria-hidden="true" />
+      <div
+        className="fbp-bg"
+        aria-hidden="true"
+        style={ambientBackdropUrl ? { backgroundImage: `url(${ambientBackdropUrl})` } : undefined}
+      />
+      <div className="fbp-bg-veil" aria-hidden="true" />
 
       {/* BARRA SUPERIOR ESCRITORIO */}
       <header className="fbp-topbar">
@@ -426,16 +432,16 @@ export default function ChannelProfile() {
                 )}
 
                 <div className="fbp-stats">
-                  <span>
+                  <span className="fbp-stat-chip">
+                    <Radio size={11} color="#64d2ff" />
                     <strong>{profileSignals.length}</strong>{' '}
                     {profileSignals.length === 1 ? 'señal' : 'señales'}
                   </span>
-                  <em>·</em>
-                  <span>
+                  <span className="fbp-stat-chip">
+                    <Star size={11} fill="#fbbf24" color="#fbbf24" />
                     <strong>{favoriteIds.length}</strong> favoritas
                   </span>
-                  <em>·</em>
-                  <span>
+                  <span className="fbp-stat-chip">
                     <strong>{followedCount}</strong> seguidos
                   </span>
                 </div>
@@ -571,7 +577,7 @@ export default function ChannelProfile() {
                         <img src={sig.thumb} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
                       ) : (
                         <div className="fbp-sig-fallback">
-                          <Radio size={24} color="#7dd3fc" />
+                          <Radio size={26} color="#7dd3fc" />
                         </div>
                       )}
                       <div className="fbp-sig-scrim" />
@@ -602,15 +608,13 @@ export default function ChannelProfile() {
                       >
                         <Share2 size={12} color="#ffffff" />
                       </button>
-                      <div className="fbp-sig-footer">
-                        <div className="fbp-sig-info">
-                          <strong>{sig.name}</strong>
-                          <span>{sig.subtitle}</span>
-                        </div>
-                        <span className="fbp-sig-play">
-                          <Play size={13} fill="#fff" color="#fff" />
-                        </span>
-                      </div>
+                      <span className="fbp-sig-play-float">
+                        <Play size={13} fill="#fff" color="#fff" />
+                      </span>
+                    </div>
+                    <div className="fbp-sig-body">
+                      <strong>{sig.name}</strong>
+                      <span>{sig.subtitle}</span>
                     </div>
                   </div>
                 ))}
@@ -782,11 +786,22 @@ export default function ChannelProfile() {
         }
         .fbp-bg {
           position: fixed;
-          inset: 0;
+          inset: -24px;
           z-index: 0;
-          background: radial-gradient(circle at 20% 0%, rgba(0, 113, 227, 0.24), transparent 46%),
-            radial-gradient(circle at 85% 20%, rgba(16, 185, 129, 0.12), transparent 40%),
+          background: radial-gradient(circle at 20% 0%, rgba(0, 113, 227, 0.34), transparent 46%),
+            radial-gradient(circle at 85% 20%, rgba(16, 185, 129, 0.16), transparent 40%),
             #0b0f18;
+          background-size: cover;
+          background-position: center;
+          filter: blur(42px) saturate(165%) brightness(0.42);
+          transform: scale(1.08);
+          pointer-events: none;
+        }
+        .fbp-bg-veil {
+          position: fixed;
+          inset: 0;
+          z-index: 1;
+          background: linear-gradient(180deg, rgba(10, 14, 24, 0.35) 0%, rgba(10, 14, 24, 0.86) 100%);
           pointer-events: none;
         }
         .fbp-topbar,
@@ -862,13 +877,18 @@ export default function ChannelProfile() {
           gap: 16px;
         }
         .fbp-hero-card {
-          border-radius: 22px;
+          border-radius: 24px;
           overflow: hidden;
-          background: rgba(20, 25, 38, 0.78);
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          box-shadow: 0 16px 42px rgba(0, 0, 0, 0.36);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
+          background: linear-gradient(
+            155deg,
+            rgba(255, 255, 255, 0.14) 0%,
+            rgba(18, 24, 38, 0.72) 55%,
+            rgba(255, 255, 255, 0.08) 100%
+          );
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 18px 46px rgba(0, 0, 0, 0.42);
+          backdrop-filter: blur(24px) saturate(160%);
+          -webkit-backdrop-filter: blur(24px) saturate(160%);
         }
         .fbp-cover {
           position: relative;
@@ -1039,17 +1059,24 @@ export default function ChannelProfile() {
         .fbp-stats {
           display: flex;
           align-items: center;
-          gap: 7px;
-          font-size: 12.5px;
-          color: rgba(245, 245, 247, 0.72);
-          margin-top: 2px;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 4px;
         }
-        .fbp-stats strong {
+        .fbp-stat-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.09);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.84);
+        }
+        .fbp-stat-chip strong {
           color: #ffffff;
-        }
-        .fbp-stats em {
-          font-style: normal;
-          opacity: 0.45;
+          font-weight: 760;
         }
         .fbp-cta-bar {
           display: flex;
@@ -1101,7 +1128,8 @@ export default function ChannelProfile() {
         .fbp-tabs {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 6px;
+          padding: 10px 0 12px;
           overflow-x: auto;
           scrollbar-width: none;
           -webkit-overflow-scrolling: touch;
@@ -1110,45 +1138,50 @@ export default function ChannelProfile() {
           display: none;
         }
         .fbp-tab {
-          position: relative;
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          padding: 12px 14px;
-          border: 0;
-          background: transparent;
-          color: rgba(245, 245, 247, 0.72);
-          font-size: 13px;
+          padding: 7px 13px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: rgba(255, 255, 255, 0.07);
+          color: rgba(245, 245, 247, 0.82);
+          font-size: 12px;
           font-weight: 700;
           cursor: pointer;
           white-space: nowrap;
           flex-shrink: 0;
+          transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
         }
         .fbp-tab em {
           font-style: normal;
-          font-size: 11px;
+          font-size: 10.5px;
           padding: 1px 6px;
           border-radius: 999px;
-          background: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.14);
         }
         .fbp-tab.active {
-          color: #64d2ff;
+          background: rgba(255, 255, 255, 0.94);
+          border-color: #ffffff;
+          color: #0f172a;
+          box-shadow: 0 4px 14px rgba(255, 255, 255, 0.18);
         }
-        .fbp-tab.active::after {
-          content: '';
-          position: absolute;
-          left: 10px;
-          right: 10px;
-          bottom: 0;
-          height: 3px;
-          border-radius: 3px 3px 0 0;
-          background: #0a84ff;
+        .fbp-tab.active em {
+          background: rgba(15, 23, 42, 0.12);
+          color: #0f172a;
         }
         .fbp-panel {
-          border-radius: 20px;
+          border-radius: 22px;
           padding: 16px 18px;
-          background: rgba(20, 25, 38, 0.72);
-          border: 1px solid rgba(255, 255, 255, 0.14);
+          background: linear-gradient(
+            155deg,
+            rgba(255, 255, 255, 0.12) 0%,
+            rgba(18, 24, 38, 0.68) 100%
+          );
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 12px 32px rgba(0, 0, 0, 0.28);
+          backdrop-filter: blur(20px) saturate(150%);
+          -webkit-backdrop-filter: blur(20px) saturate(150%);
           display: flex;
           flex-direction: column;
           gap: 14px;
@@ -1206,27 +1239,73 @@ export default function ChannelProfile() {
           gap: 12px;
         }
         .fbp-sig-card {
-          border-radius: 16px;
+          border-radius: 18px;
           overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          background: #0b101b;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          background: rgba(14, 19, 30, 0.72);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 26px rgba(0, 0, 0, 0.28);
           cursor: pointer;
-          transition: transform 0.18s ease, border-color 0.18s ease;
+          display: flex;
+          flex-direction: column;
+          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .fbp-sig-card:hover {
           transform: translateY(-2px);
-          border-color: rgba(100, 210, 255, 0.55);
+          border-color: rgba(100, 210, 255, 0.58);
+          box-shadow: 0 14px 32px rgba(0, 113, 227, 0.24);
         }
         .fbp-sig-cover {
           position: relative;
           width: 100%;
           aspect-ratio: 16 / 9;
+          overflow: hidden;
         }
         .fbp-sig-cover img {
           width: 100%;
           height: 100%;
           object-fit: cover;
           display: block;
+          transition: transform 0.35s ease;
+        }
+        .fbp-sig-card:hover .fbp-sig-cover img {
+          transform: scale(1.04);
+        }
+        .fbp-sig-play-float {
+          position: absolute;
+          right: 9px;
+          bottom: 9px;
+          width: 32px;
+          height: 32px;
+          border-radius: 999px;
+          background: rgba(0, 113, 227, 0.92);
+          border: 1.5px solid rgba(255, 255, 255, 0.55);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        }
+        .fbp-sig-body {
+          padding: 11px 13px 13px;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .fbp-sig-body strong {
+          font-size: 13.5px;
+          font-weight: 740;
+          color: #ffffff;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .fbp-sig-body span {
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.7);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .fbp-sig-fallback {
           position: absolute;

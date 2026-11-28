@@ -4,22 +4,30 @@ import {
   Bell,
   BellRing,
   Bookmark,
+  BookOpen,
   Camera,
   Check,
   ChevronRight,
   Clock,
+  Film,
   Link2,
+  Lock,
   LogIn,
   LogOut,
+  MessageSquare,
+  Music,
   Pencil,
   Play,
   Radio,
   Search,
+  Send,
   Share2,
   SlidersHorizontal,
   Smartphone,
   Sparkles,
   Star,
+  Trash2,
+  Tv,
   Wand2
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -36,6 +44,10 @@ import {
 import { findCuratedSignalById } from '../lib/tv/curatedSignalsCatalog';
 import { buildShareableSignalUrl } from '../lib/tv/atlasSignalBuilder';
 import { SOCIAL_GRAPH_CHANGED_EVENT, loadSocialGraph } from '../lib/tv/youappSocialStore';
+import { loadYouMusicWorkspace } from '../lib/tv/youMusicPlaylistStore';
+import { loadLecturasWorkspace } from '../lib/tv/youLecturasStore';
+import { loadYouReelsWorkspace } from '../lib/tv/youReelsStore';
+import { loadMiTvWorkspace, OFFICIAL_LIVE_TV_CHANNEL_ID } from '../lib/tv/miTvStore';
 import {
   COUNTRY_CHANGED_EVENT,
   getActiveCountryProfile,
@@ -48,6 +60,36 @@ import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
 
 type ProfileTab = 'senales' | 'armar' | 'seguir' | 'actividad';
+type ProfileCardCategory = 'tv' | 'musica' | 'lecturas' | 'reels';
+
+interface OwnerProfileNote {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
+const OWNER_NOTES_KEY = 'youapp_profile_owner_notes_v1';
+
+function loadOwnerNotes(): OwnerProfileNote[] {
+  try {
+    const raw = localStorage.getItem(OWNER_NOTES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((n) => n && typeof n.id === 'string' && typeof n.text === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOwnerNotes(notes: OwnerProfileNote[]): void {
+  try {
+    localStorage.setItem(OWNER_NOTES_KEY, JSON.stringify(notes.slice(0, 40)));
+  } catch {
+    // ignore
+  }
+}
 
 function formatTime(sec: number): string {
   const s = Math.max(0, Math.floor(sec || 0));
@@ -89,6 +131,32 @@ export default function ChannelProfile() {
   const [profileBio, setProfileBio] = useState<string>(() => readStorage('youapp_profile_bio_v1'));
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState('');
+  const [ownerNotes, setOwnerNotes] = useState<OwnerProfileNote[]>(() => loadOwnerNotes());
+  const [ownerNoteDraft, setOwnerNoteDraft] = useState('');
+
+  // En /perfil el usuario actual es el dueño (si llega con ?view=public queda en modo solo lectura)
+  const isOwner = new URLSearchParams(location.search).get('view') !== 'public';
+
+  const handlePublishOwnerNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isOwner) return;
+    const cleaned = ownerNoteDraft.trim();
+    if (!cleaned) return;
+    const next: OwnerProfileNote[] = [
+      { id: `note-${Date.now().toString(36)}`, text: cleaned.slice(0, 500), createdAt: new Date().toISOString() },
+      ...ownerNotes
+    ].slice(0, 40);
+    setOwnerNotes(next);
+    saveOwnerNotes(next);
+    setOwnerNoteDraft('');
+  };
+
+  const handleDeleteOwnerNote = (noteId: string) => {
+    if (!isOwner) return;
+    const next = ownerNotes.filter((n) => n.id !== noteId);
+    setOwnerNotes(next);
+    saveOwnerNotes(next);
+  };
 
   const [notifItems, setNotifItems] = useState<
     Array<{ id: string; title: string; creator: string; thumb: string; publishedAt?: string | null }>
@@ -210,10 +278,12 @@ export default function ChannelProfile() {
   const profileSignals = useMemo(() => {
     const out: Array<{
       id: string;
+      category: ProfileCardCategory;
       name: string;
       subtitle: string;
       thumb: string;
       isFav: boolean;
+      route: string;
       shareUrl: string;
     }> = [];
     const seen = new Set<string>();
@@ -227,6 +297,16 @@ export default function ChannelProfile() {
       }
     })();
 
+    const detectCategory = (name: string, id: string): ProfileCardCategory => {
+      const cat100 = findSignal100ById(id) || findSignal100ById(name);
+      if (cat100?.theme === 'musica') return 'musica';
+      if (/m[uú]sica|musical|rock|jazz|tango|folklore|pop|radio|concierto|recital/i.test(name)) return 'musica';
+      if (/lectura|diario|noticia|libro|art[ií]culo/i.test(name)) return 'lecturas';
+      if (/reel|short/i.test(name)) return 'reels';
+      return 'tv';
+    };
+
+    // 1. Señales propias
     for (const sig of userSignals) {
       if (!sig?.id || seen.has(sig.id)) continue;
       seen.add(sig.id);
@@ -254,14 +334,17 @@ export default function ChannelProfile() {
         : `${window.location.origin}/misenal1?signal=${encodeURIComponent(sig.id)}&sharedSignal=1`;
       out.push({
         id: sig.id,
+        category: detectCategory(sig.name, sig.id),
         name: sig.name,
         subtitle: sig.mainTopic || 'Mi Señal',
         thumb,
         isFav: favoriteIds.includes(sig.id),
+        route: `/misenal1?signal=${encodeURIComponent(sig.id)}`,
         shareUrl
       });
     }
 
+    // 2. Señales favoritas de las 100 temáticas
     for (const favId of favoriteIds) {
       if (seen.has(favId)) continue;
       const cat = SIGNALS_100_CATALOG.find((s) => s.id === favId);
@@ -269,16 +352,102 @@ export default function ChannelProfile() {
       seen.add(favId);
       out.push({
         id: cat.id,
+        category: cat.theme === 'musica' ? 'musica' : 'tv',
         name: cat.title,
         subtitle: cat.subtitle,
         thumb: cat.coverVideoId ? `https://i.ytimg.com/vi/${cat.coverVideoId}/hqdefault.jpg` : '',
         isFav: true,
+        route: `/misenal1?signal=${encodeURIComponent(cat.id)}`,
         shareUrl: `${window.location.origin}/misenal1?signal=${encodeURIComponent(cat.id)}&sharedSignal=1`
+      });
+    }
+
+    // 3. Canales de MiTV
+    const mitvWs = loadMiTvWorkspace();
+    for (const ch of mitvWs.channels || []) {
+      if (!ch || ch.id === OFFICIAL_LIVE_TV_CHANNEL_ID || ch.items.length === 0) continue;
+      const key = `mitv-${ch.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        id: key,
+        category: 'tv',
+        name: ch.name || 'MiTV',
+        subtitle: `${ch.items.length} ${ch.items.length === 1 ? 'video' : 'videos'} en MiTV`,
+        thumb: ch.items[0]?.thumbnailUrl || '',
+        isFav: false,
+        route: '/mitv',
+        shareUrl: `${window.location.origin}/mitv`
+      });
+    }
+
+    // 4. Playlists de YouMusic
+    const musicWs = loadYouMusicWorkspace();
+    for (const pl of musicWs.playlists || []) {
+      if (!pl || pl.items.length === 0) continue;
+      const key = `ym-${pl.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        id: key,
+        category: 'musica',
+        name: pl.name || 'Mi playlist musical',
+        subtitle: `${pl.items.length} ${pl.items.length === 1 ? 'canción' : 'canciones'} en YouMusic`,
+        thumb: pl.items[0]?.thumbnailUrl || '',
+        isFav: Boolean(pl.savedInMusicalSignal),
+        route: '/youmusic',
+        shareUrl: `${window.location.origin}/youmusic`
+      });
+    }
+
+    // 5. Lecturas guardadas
+    const lectWs = loadLecturasWorkspace();
+    for (const it of (lectWs.items || []).slice(0, 6)) {
+      const key = `lec-${it.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        id: key,
+        category: 'lecturas',
+        name: it.title || it.sourceName || 'Lectura guardada',
+        subtitle: it.sourceName || it.domain || 'Lecturas',
+        thumb: it.thumbnailUrl || it.faviconUrl || '',
+        isFav: false,
+        route: '/lecturas',
+        shareUrl: it.url || `${window.location.origin}/lecturas`
+      });
+    }
+
+    // 6. Reels guardados
+    const reelsWs = loadYouReelsWorkspace();
+    for (const r of (reelsWs.items || []).slice(0, 6)) {
+      const key = `reel-${r.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({
+        id: key,
+        category: 'reels',
+        name: r.title || 'Reel guardado',
+        subtitle: r.author || 'YouReels',
+        thumb: r.thumbnailUrl || '',
+        isFav: false,
+        route: '/reels',
+        shareUrl: r.sourceUrl || `${window.location.origin}/reels`
       });
     }
 
     return out;
   }, [userSignals, savedSignalsById, activeSignal, favoriteIds]);
+
+  const groupedByCategory = useMemo(
+    () => [
+      { id: 'tv' as const, label: 'TV y Señales', icon: Tv, items: profileSignals.filter((s) => s.category === 'tv') },
+      { id: 'musica' as const, label: 'Música', icon: Music, items: profileSignals.filter((s) => s.category === 'musica') },
+      { id: 'lecturas' as const, label: 'Lecturas', icon: BookOpen, items: profileSignals.filter((s) => s.category === 'lecturas') },
+      { id: 'reels' as const, label: 'Reels', icon: Film, items: profileSignals.filter((s) => s.category === 'reels') }
+    ],
+    [profileSignals]
+  );
 
   const isGuest = !user || Boolean(user.isAnonymous || !user.email);
   const displayName = isGuest
@@ -557,71 +726,167 @@ export default function ChannelProfile() {
                 </div>
               </div>
             ) : (
-              <div className="fbp-signals-grid">
-                {profileSignals.map((sig) => (
-                  <div
-                    key={sig.id}
-                    className="fbp-sig-card"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`);
-                      }
-                    }}
-                  >
-                    <div className="fbp-sig-cover">
-                      {sig.thumb ? (
-                        <img src={sig.thumb} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
-                      ) : (
-                        <div className="fbp-sig-fallback">
-                          <Radio size={26} color="#7dd3fc" />
+              <div className="fbp-cat-groups">
+                {groupedByCategory
+                  .filter((grp) => grp.items.length > 0)
+                  .map((grp) => {
+                    const GroupIcon = grp.icon;
+                    return (
+                      <div key={grp.id} className="fbp-cat-block">
+                        <div className="fbp-cat-head">
+                          <GroupIcon size={14} color="#64d2ff" />
+                          <h3>{grp.label}</h3>
+                          <span>{grp.items.length}</span>
                         </div>
-                      )}
-                      <div className="fbp-sig-scrim" />
-                      <span className="fbp-sig-badge">
-                        {sig.isFav ? (
-                          <Star size={10} fill="#fbbf24" color="#fbbf24" />
-                        ) : (
-                          <Radio size={10} color="#64d2ff" />
-                        )}
-                        <span>{sig.isFav ? 'Favorita' : 'Mi Señal'}</span>
-                      </span>
-                      <button
-                        type="button"
-                        className="fbp-sig-share"
-                        title="Compartir señal"
-                        aria-label={`Compartir ${sig.name}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void shareContentUniversal({
-                            title: `${sig.name} · Mi señal en YOUAPP`,
-                            text: sig.subtitle,
-                            url: sig.shareUrl,
-                            thumbnailUrl: sig.thumb,
-                            subtitle: 'YOUAPP TV',
-                            badge: 'MI SEÑAL EN YOUAPP'
-                          });
-                        }}
-                      >
-                        <Share2 size={12} color="#ffffff" />
-                      </button>
-                      <div className="fbp-sig-footer">
-                        <div className="fbp-sig-info">
-                          <strong>{sig.name}</strong>
-                          <span>{sig.subtitle}</span>
+                        <div className="fbp-signals-grid">
+                          {grp.items.map((sig) => (
+                            <div
+                              key={sig.id}
+                              className="fbp-sig-card"
+                              role="button"
+                              tabIndex={0}
+                              onClick={() => navigate(sig.route)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  navigate(sig.route);
+                                }
+                              }}
+                            >
+                              <div className="fbp-sig-cover">
+                                {sig.thumb ? (
+                                  <img src={sig.thumb} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="fbp-sig-fallback">
+                                    <GroupIcon size={24} color="#7dd3fc" />
+                                  </div>
+                                )}
+                                <div className="fbp-sig-scrim" />
+                                <span className="fbp-sig-badge">
+                                  {sig.isFav ? (
+                                    <Star size={10} fill="#fbbf24" color="#fbbf24" />
+                                  ) : (
+                                    <Radio size={10} color="#64d2ff" />
+                                  )}
+                                  <span>{grp.label}</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  className="fbp-sig-share"
+                                  title="Compartir"
+                                  aria-label={`Compartir ${sig.name}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    void shareContentUniversal({
+                                      title: `${sig.name} · YOUAPP`,
+                                      text: sig.subtitle,
+                                      url: sig.shareUrl,
+                                      thumbnailUrl: sig.thumb,
+                                      subtitle: grp.label,
+                                      badge: 'MI SEÑAL EN YOUAPP'
+                                    });
+                                  }}
+                                >
+                                  <Share2 size={12} color="#ffffff" />
+                                </button>
+                                <div className="fbp-sig-footer">
+                                  <div className="fbp-sig-info">
+                                    <strong>{sig.name}</strong>
+                                    <span>{sig.subtitle}</span>
+                                  </div>
+                                  <span className="fbp-sig-play">
+                                    <Play size={13} fill="#fff" color="#fff" />
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <span className="fbp-sig-play">
-                          <Play size={13} fill="#fff" color="#fff" />
-                        </span>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  })}
               </div>
             )}
+
+            {/* MURO / COMENTARIOS EXCLUSIVOS DEL DUEÑO DEL PERFIL */}
+            <div className="fbp-owner-notes">
+              <div className="fbp-owner-notes-head">
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                  <MessageSquare size={15} color="#64d2ff" />
+                  <h3>Publicaciones del creador</h3>
+                </div>
+                <span className="fbp-owner-only-pill">
+                  <Lock size={10} /> Solo el dueño puede comentar
+                </span>
+              </div>
+
+              {isOwner && (
+                <form className="fbp-owner-note-form" onSubmit={handlePublishOwnerNote}>
+                  <input
+                    type="text"
+                    value={ownerNoteDraft}
+                    onChange={(e) => setOwnerNoteDraft(e.target.value)}
+                    placeholder="Escribí un aviso, recomendación o comentario para tu audiencia…"
+                    maxLength={500}
+                    aria-label="Escribir comentario del dueño"
+                  />
+                  <button
+                    type="submit"
+                    className="fbp-btn-primary"
+                    disabled={!ownerNoteDraft.trim()}
+                    style={{ padding: '7px 14px', borderRadius: 999 }}
+                  >
+                    <Send size={13} />
+                    <span>Publicar</span>
+                  </button>
+                </form>
+              )}
+
+              {ownerNotes.length === 0 ? (
+                <p className="fbp-owner-empty">
+                  Todavía no publicaste comentarios. Todo lo que escribas acá lo ven tus visitantes como voz oficial del dueño del perfil.
+                </p>
+              ) : (
+                <div className="fbp-notes-list">
+                  {ownerNotes.map((note) => (
+                    <article key={note.id} className="fbp-note-card">
+                      <div className="fbp-note-top">
+                        <div className="fbp-note-author">
+                          {resolvedAvatar ? (
+                            <img src={resolvedAvatar} alt={displayName} />
+                          ) : (
+                            <span className="fbp-note-init">{initials}</span>
+                          )}
+                          <div>
+                            <strong>{displayName}</strong>
+                            <span>
+                              {new Date(note.createdAt).toLocaleDateString('es-AR', {
+                                day: '2-digit',
+                                month: 'short',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                        {isOwner && (
+                          <button
+                            type="button"
+                            className="fbp-note-del"
+                            onClick={() => handleDeleteOwnerNote(note.id)}
+                            title="Eliminar comentario"
+                            aria-label="Eliminar comentario"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                      <p className="fbp-note-text">{note.text}</p>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         )}
 
@@ -1234,6 +1499,165 @@ export default function ChannelProfile() {
           font-size: 12.5px;
           color: rgba(245, 245, 247, 0.72);
           max-width: 380px;
+        }
+        .fbp-cat-groups {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .fbp-cat-block {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .fbp-cat-head {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+        .fbp-cat-head h3 {
+          margin: 0;
+          font-size: 13.5px;
+          font-weight: 760;
+          color: #ffffff;
+        }
+        .fbp-cat-head span {
+          font-size: 10.5px;
+          font-weight: 750;
+          padding: 1px 7px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.12);
+          color: rgba(245, 245, 247, 0.85);
+        }
+        .fbp-owner-notes {
+          margin-top: 8px;
+          padding-top: 14px;
+          border-top: 1px solid rgba(255, 255, 255, 0.12);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .fbp-owner-notes-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .fbp-owner-notes-head h3 {
+          margin: 0;
+          font-size: 14px;
+          font-weight: 760;
+          color: #ffffff;
+        }
+        .fbp-owner-only-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: rgba(100, 210, 255, 0.14);
+          border: 1px solid rgba(100, 210, 255, 0.36);
+          color: #bae6fd;
+          font-size: 10.5px;
+          font-weight: 700;
+        }
+        .fbp-owner-note-form {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          padding: 5px 6px 5px 12px;
+          border-radius: 999px;
+          background: rgba(10, 14, 24, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .fbp-owner-note-form input {
+          flex: 1;
+          min-width: 0;
+          border: 0;
+          background: transparent;
+          color: #ffffff;
+          font-size: 12.5px;
+          outline: none;
+        }
+        .fbp-owner-note-form input::placeholder {
+          color: rgba(245, 245, 247, 0.52);
+        }
+        .fbp-owner-empty {
+          margin: 0;
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.65);
+        }
+        .fbp-notes-list {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .fbp-note-card {
+          padding: 11px 13px;
+          border-radius: 14px;
+          background: rgba(10, 14, 24, 0.54);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+        }
+        .fbp-note-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .fbp-note-author {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .fbp-note-author img,
+        .fbp-note-init {
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          object-fit: cover;
+          background: linear-gradient(135deg, #0071e3, #38bdf8);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 11px;
+          font-weight: 800;
+          color: #ffffff;
+          flex-shrink: 0;
+        }
+        .fbp-note-author div {
+          display: flex;
+          flex-direction: column;
+        }
+        .fbp-note-author strong {
+          font-size: 12px;
+          color: #ffffff;
+        }
+        .fbp-note-author span {
+          font-size: 10.5px;
+          color: rgba(245, 245, 247, 0.58);
+        }
+        .fbp-note-del {
+          border: 0;
+          background: transparent;
+          color: rgba(245, 245, 247, 0.55);
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 999px;
+        }
+        .fbp-note-del:hover {
+          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.18);
+        }
+        .fbp-note-text {
+          margin: 0;
+          font-size: 13px;
+          line-height: 1.45;
+          color: rgba(245, 245, 247, 0.92);
+          white-space: pre-wrap;
         }
         .fbp-signals-grid {
           display: grid;

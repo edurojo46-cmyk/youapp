@@ -101,6 +101,7 @@ const MiSenalPublicOrProtectedRoute = () => {
   const isPublicInvite =
     Boolean(searchParams.get('add')) ||
     sigParam.startsWith('sig-100-') ||
+    sigParam.startsWith('atlas-custom-') ||
     sigParam.startsWith('curated-') ||
     (Boolean(sigParam) &&
       (searchParams.get('sharedSignal') === '1' || searchParams.get('follow') === '1'));
@@ -215,7 +216,7 @@ function App() {
         <Route path="/favorites" element={<MyLists />} />
         <Route path="/search" element={<ChannelSearch />} />
         <Route path="/my-algorithm" element={<MyAlgorithm />} />
-        <Route path="/create-signal" element={<ProtectedRoute><CreateSignal /></ProtectedRoute>} />
+        <Route path="/create-signal" element={<CreateSignal />} />
         {/* Nueva Capa Multiplataforma (Streaming MVP V1) */}
         <Route path="/mi-plataforma" element={<ProtectedRoute><MiPlataforma /></ProtectedRoute>} />
         <Route path="/explorar" element={<ProtectedRoute><ExplorarStreaming /></ProtectedRoute>} />

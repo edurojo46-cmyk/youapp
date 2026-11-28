@@ -64,6 +64,7 @@ import {
   CompleteSignalShareCard,
   type CompleteSignalVisualData
 } from '../components/tv/CompleteSignalShareCard';
+import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
 import {
   SIGNALS_100_CATALOG,
   SIGNALS_100_THEMES,
@@ -663,6 +664,10 @@ export default function MyLists() {
         {/* 3. CONTENIDO UNIFICADO */}
         {filter === 'senales' ? (
           <section className="ml-vault-section">
+            <div style={{ marginBottom: 14 }}>
+              <AtlasBuildSignalBox compact />
+            </div>
+
             {(userSignals.length > 0 || savedChannels.length > 0) && (
               <div className="ml-feed-block" style={{ marginBottom: 16 }}>
                 <div className="ml-section-subhead">

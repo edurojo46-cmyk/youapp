@@ -26,6 +26,7 @@ import {
 import { useSignalStore } from '../lib/tv/signalStore';
 import { useStore } from '../store/useStore';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
+import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
 import type { ScheduleBlock } from '../lib/tv/signalTypes';
 
 const SIGNAL_BRANDING_KEY = 'youapp_signal_branding_v1';
@@ -385,8 +386,10 @@ export default function CreateSignal() {
 
         <div className="cs-intro">
           <h1>Creá tu propia señal</h1>
-          <p>Elegí un nombre, sumá tus canales favoritos y empezá a emitir en segundos.</p>
+          <p>Escribí un tema para que ATLAS la arme al instante, o personalizala paso a paso abajo.</p>
         </div>
+
+        <AtlasBuildSignalBox />
 
         {/* PASO 1: IDENTIDAD DE LA SEÑAL CON VISTA PREVIA VIVA */}
         <section className="cs-card">

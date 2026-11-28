@@ -37,7 +37,7 @@ const INSPIRATION_CHIPS = [
 
 const STYLE_OPTIONS: Array<{ id: AtlasSignalStyle; label: string }> = [
   { id: 'documental', label: 'Documental' },
-  { id: 'dinamico', label: 'Dinámico' },
+  { id: 'tutorial', label: 'Tutorial' },
   { id: 'musica', label: 'Música / Vivo' }
 ];
 

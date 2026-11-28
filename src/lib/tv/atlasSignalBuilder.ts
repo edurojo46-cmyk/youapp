@@ -12,7 +12,7 @@ import { supabase } from '../supabase';
 import { searchYouTubeVideos } from '../youtubeChannelSearch';
 import type { CustomSignal, ScheduleBlock } from './signalTypes';
 
-export type AtlasSignalStyle = 'documental' | 'dinamico' | 'musica';
+export type AtlasSignalStyle = 'documental' | 'tutorial' | 'musica';
 
 export interface AtlasDraftVideo {
   videoId: string;
@@ -266,6 +266,9 @@ const NEWS_NOTE_NOISE_RE =
 const MUSIC_POSITIVE_RE =
   /\b(official video|official audio|musica|música|concierto|recital|unplugged|acoustic|acustico|acústico|live session|album|álbum|full album|song|cancion|canción|symphony|sinfonia|sinfonía)\b/i;
 
+const TUTORIAL_POSITIVE_RE =
+  /\b(tutorial|curso|paso a paso|como hacer|cómo hacer|guia|guía|aprender|explicado|clase|clases|tips|trucos|desde cero|principiantes|receta|manual|taller|leccion|lección)\b/i;
+
 function scoreStyleFit(video: AtlasDraftVideo, style: AtlasSignalStyle): number {
   const hay = `${video.title} ${video.channelName}`;
   if (style === 'documental') {
@@ -277,14 +280,20 @@ function scoreStyleFit(video: AtlasDraftVideo, style: AtlasSignalStyle): number 
     if (NEWS_NOTE_NOISE_RE.test(hay)) bonus -= 110; // Penalizar notas periodísticas / noticieros
     return bonus;
   }
+  if (style === 'tutorial') {
+    let bonus = 0;
+    if (TUTORIAL_POSITIVE_RE.test(hay)) bonus += 90;
+    if (video.durationSec >= 240 && video.durationSec <= 1800) bonus += 25;
+    if (NEWS_NOTE_NOISE_RE.test(hay)) bonus -= 80;
+    return bonus;
+  }
   if (style === 'musica') {
     let bonus = 0;
     if (MUSIC_POSITIVE_RE.test(hay)) bonus += 75;
     if (NEWS_NOTE_NOISE_RE.test(hay)) bonus -= 70;
     return bonus;
   }
-  // dinamico: preferir piezas claras de 4 a 18 min
-  return video.durationSec >= 240 && video.durationSec <= 1080 ? 25 : 0;
+  return 0;
 }
 
 export async function buildAtlasDraftSignal(opts: {
@@ -315,34 +324,40 @@ export async function buildAtlasDraftSignal(opts: {
   };
 
   // 1. Consulta semántica estricta en `youapp_index` (US$ 0)
-  // Si el usuario eligió "Documental", buscar primero combinando con "documental" para evitar notas cortas
-  const [docIndexRows, baseIndexRows] = await Promise.all([
+  // Si el usuario eligió "Documental" o "Tutorial", buscar primero combinando con ese formato
+  const [styleIndexRows, baseIndexRows] = await Promise.all([
     opts.style === 'documental'
       ? queryYouAppIndexStrict(`${cleanTopic} documental`, [...keywords, 'documental'], 35)
-      : Promise.resolve([]),
+      : opts.style === 'tutorial'
+        ? queryYouAppIndexStrict(`${cleanTopic} tutorial`, [...keywords, 'tutorial'], 35)
+        : Promise.resolve([]),
     queryYouAppIndexStrict(cleanTopic, keywords, 45)
   ]);
-  pushSemanticUnique(docIndexRows);
+  pushSemanticUnique(styleIndexRows);
   pushSemanticUnique(baseIndexRows);
 
-  // Contar cuántos candidatos realmente encajan con el estilo (en Documental, excluir notas periodísticas)
+  // Contar cuántos candidatos realmente encajan con el estilo (en Documental/Tutorial, excluir notas periodísticas)
   const strongStyleCount = scoredPool.filter((x) =>
-    opts.style === 'documental' ? x.styleScore >= 0 : true
+    opts.style === 'documental' || opts.style === 'tutorial' ? x.styleScore >= 0 : true
   ).length;
 
   // 2. Si faltan videos del estilo elegido para llegar a 10 + reserva, completar con búsqueda pública YouTube (0 cuota)
   const styleQuerySuffix =
     opts.style === 'documental'
       ? 'documental'
-      : opts.style === 'musica'
-        ? 'musica oficial'
-        : '';
+      : opts.style === 'tutorial'
+        ? 'tutorial paso a paso'
+        : opts.style === 'musica'
+          ? 'musica oficial'
+          : '';
   if (strongStyleCount < targetCount + 2) {
     opts.onProgress?.(
       1,
       opts.style === 'documental'
         ? 'Buscando documentales verificados (filtrando notas cortas)…'
-        : 'Ampliando fuentes verificadas para completar tu programación…'
+        : opts.style === 'tutorial'
+          ? 'Buscando tutoriales y guías paso a paso verificadas…'
+          : 'Ampliando fuentes verificadas para completar tu programación…'
     );
     try {
       const ytQuery = styleQuerySuffix ? `${cleanTopic} ${styleQuerySuffix}` : cleanTopic;
@@ -391,13 +406,13 @@ export async function buildAtlasDraftSignal(opts: {
       : scoredPool;
   const effectivePool = nonNoiseDocPool.length >= Math.min(targetCount, 6) ? nonNoiseDocPool : scoredPool;
 
-  // 3. Ordenar por (relevancia semántica + ajuste de estilo documental/música/dinámico)
+  // 3. Ordenar por (relevancia semántica + ajuste de estilo documental/tutorial/música)
   const sorted = [...effectivePool]
     .sort((a, b) => {
       const totalA = a.score + a.styleScore;
       const totalB = b.score + b.styleScore;
       if (totalB !== totalA) return totalB - totalA;
-      if (opts.style === 'dinamico') return a.video.durationSec - b.video.durationSec;
+      if (opts.style === 'tutorial') return a.video.durationSec - b.video.durationSec;
       if (opts.style === 'documental') return b.video.durationSec - a.video.durationSec;
       return 0;
     })
@@ -414,8 +429,8 @@ export async function buildAtlasDraftSignal(opts: {
   const styleSubtitle =
     opts.style === 'musica'
       ? `Sesión musical y escenas en vivo de ${formattedTopic}, curada por ATLAS.`
-      : opts.style === 'dinamico'
-        ? `Programación ágil y directa sobre ${formattedTopic}, armada al instante por ATLAS.`
+      : opts.style === 'tutorial'
+        ? `Tutoriales, guías paso a paso y clases prácticas sobre ${formattedTopic}, curada por ATLAS.`
         : `Documentales, análisis y miradas en profundidad sobre ${formattedTopic}, curada por ATLAS.`;
 
   const slug = cleanTopic

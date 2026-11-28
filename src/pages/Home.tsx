@@ -13,8 +13,7 @@ import {
   Music,
   BookOpen,
   Compass,
-  Bookmark,
-  User
+  Bookmark
 } from 'lucide-react';
 import { YOUTUBE_VIDEO_POOLS } from '../lib/youtube';
 import { UNIVERSAL_CATALOG } from '../lib/universalChannels';
@@ -130,9 +129,6 @@ export default function Home() {
           </button>
           <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/my-lists')} title="MIS LISTAS" aria-label="MIS LISTAS">
             <Bookmark size={17} />
-          </button>
-          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/perfil')} title="MI PERFIL" aria-label="MI PERFIL">
-            <User size={17} />
           </button>
           <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/search')} title="BUSCAR" aria-label="BUSCAR">
             <Search size={17} />

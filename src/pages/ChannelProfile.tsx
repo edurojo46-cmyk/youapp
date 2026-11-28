@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   BellRing,
   Bookmark,
+  Camera,
   Check,
   ChevronRight,
   Clock,
@@ -13,12 +14,27 @@ import {
   Play,
   Radio,
   Search,
+  Share2,
   SlidersHorizontal,
-  Smartphone
+  Smartphone,
+  Sparkles,
+  Star
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAtlasAuthStore } from '../store/atlas/atlasAuthStore';
 import { useWatchContinuityStore } from '../lib/tv/watchContinuityStore';
+import { useSignalStore } from '../lib/tv/signalStore';
+import { listSwitchableSignals, type UserSignalSummary } from '../lib/tv/associationsService';
+import {
+  FAVORITE_SIGNALS_CHANGED_EVENT,
+  SIGNALS_100_CATALOG,
+  findSignal100ById,
+  loadFavoriteSignalIds
+} from '../lib/tv/signals100Catalog';
+import { findCuratedSignalById } from '../lib/tv/curatedSignalsCatalog';
+import { buildShareableSignalUrl } from '../lib/tv/atlasSignalBuilder';
+import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
+import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
 import {
   COUNTRY_CHANGED_EVENT,
   getActiveCountryProfile,
@@ -50,6 +66,123 @@ export default function ChannelProfile() {
   const [browserPerm, setBrowserPerm] = useState<NotificationPermission | 'unsupported'>(() =>
     typeof window !== 'undefined' && 'Notification' in window ? window.Notification.permission : 'unsupported'
   );
+  const activeSignal = useSignalStore((s) => s.activeSignal);
+  const savedSignalsById = useSignalStore((s) => s.savedSignalsById);
+  const [userSignals, setUserSignals] = useState<UserSignalSummary[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => loadFavoriteSignalIds());
+  const [profileCoverUrl, setProfileCoverUrl] = useState<string>(() => {
+    try {
+      return localStorage.getItem('youapp_profile_cover_v1') || '';
+    } catch {
+      return '';
+    }
+  });
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void listSwitchableSignals()
+      .then((list) => {
+        if (alive && Array.isArray(list)) setUserSignals(list);
+      })
+      .catch(() => {});
+    const syncFavs = () => setFavoriteIds(loadFavoriteSignalIds());
+    window.addEventListener(FAVORITE_SIGNALS_CHANGED_EVENT, syncFavs);
+    return () => {
+      alive = false;
+      window.removeEventListener(FAVORITE_SIGNALS_CHANGED_EVENT, syncFavs);
+    };
+  }, []);
+
+  const handleUploadProfileCover = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '');
+      if (!dataUrl) return;
+      setProfileCoverUrl(dataUrl);
+      try {
+        localStorage.setItem('youapp_profile_cover_v1', dataUrl);
+      } catch {
+        // ignore quota
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const profileSignals = useMemo(() => {
+    const out: Array<{
+      id: string;
+      name: string;
+      subtitle: string;
+      thumb: string;
+      isFav: boolean;
+      shareUrl: string;
+    }> = [];
+    const seen = new Set<string>();
+
+    const localBranding = (() => {
+      try {
+        const raw = localStorage.getItem('youapp_signal_branding_v1');
+        return raw ? JSON.parse(raw) : {};
+      } catch {
+        return {};
+      }
+    })();
+
+    for (const sig of userSignals) {
+      if (!sig?.id || seen.has(sig.id)) continue;
+      seen.add(sig.id);
+      const b = localBranding[sig.id] || localBranding[sig.clientSignalId] || {};
+      const stored =
+        savedSignalsById?.[sig.id] ||
+        savedSignalsById?.[sig.clientSignalId] ||
+        (activeSignal?.id === sig.id ? activeSignal : null);
+      const firstItem = stored?.schedule?.[0]?.contentItem as
+        | { thumbnailUrl?: string; thumbnail?: string; providerId?: string; id?: string }
+        | undefined;
+      const ytId = firstItem?.providerId || firstItem?.id || '';
+      const curated = findCuratedSignalById(sig.id) || findCuratedSignalById(sig.name);
+      const cat100 = findSignal100ById(sig.id) || findSignal100ById(sig.name);
+      const thumb =
+        b.coverDataUrl ||
+        b.avatarDataUrl ||
+        firstItem?.thumbnailUrl ||
+        firstItem?.thumbnail ||
+        (/^[A-Za-z0-9_-]{11}$/.test(ytId) ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : '') ||
+        (curated?.coverVideoId ? `https://i.ytimg.com/vi/${curated.coverVideoId}/hqdefault.jpg` : '') ||
+        (cat100?.coverVideoId ? `https://i.ytimg.com/vi/${cat100.coverVideoId}/hqdefault.jpg` : '');
+      const shareUrl = stored
+        ? buildShareableSignalUrl({ id: stored.id, name: stored.name, schedule: stored.schedule })
+        : `${window.location.origin}/misenal1?signal=${encodeURIComponent(sig.id)}&sharedSignal=1`;
+      out.push({
+        id: sig.id,
+        name: sig.name,
+        subtitle: sig.mainTopic || 'Mi Señal',
+        thumb,
+        isFav: favoriteIds.includes(sig.id),
+        shareUrl
+      });
+    }
+
+    for (const favId of favoriteIds) {
+      if (seen.has(favId)) continue;
+      const cat = SIGNALS_100_CATALOG.find((s) => s.id === favId);
+      if (!cat) continue;
+      seen.add(favId);
+      out.push({
+        id: cat.id,
+        name: cat.title,
+        subtitle: cat.subtitle,
+        thumb: cat.coverVideoId ? `https://i.ytimg.com/vi/${cat.coverVideoId}/hqdefault.jpg` : '',
+        isFav: true,
+        shareUrl: `${window.location.origin}/misenal1?signal=${encodeURIComponent(cat.id)}&sharedSignal=1`
+      });
+    }
+
+    return out;
+  }, [userSignals, savedSignalsById, activeSignal, favoriteIds]);
 
   useEffect(() => {
     const onCountryChange = () => setActiveCountry(getActiveCountryProfile());
@@ -152,9 +285,35 @@ export default function ChannelProfile() {
 
       {/* UNA SOLA COLUMNA LIMPIA Y SERENA */}
       <main className="mp-main">
-        {/* TARJETA DE IDENTIDAD */}
-        <section className="mp-glass-card mp-identity-card">
-          <div className="mp-identity-row">
+        {/* TARJETA DE IDENTIDAD CON PORTADA EDITABLE */}
+        <section className="mp-glass-card mp-identity-card mp-identity-with-cover">
+          <div
+            className="mp-profile-cover"
+            style={profileCoverUrl ? { backgroundImage: `url(${profileCoverUrl})` } : undefined}
+          >
+            <div className="mp-profile-cover-scrim" />
+            <span className="mp-profile-air-pill">
+              <Radio size={11} color="#64d2ff" />
+              <span>PERFIL DE SEÑALES</span>
+            </span>
+            <button
+              type="button"
+              className="mp-cover-btn"
+              onClick={() => coverInputRef.current?.click()}
+            >
+              <Camera size={12} />
+              <span>{profileCoverUrl ? 'Cambiar portada' : 'Subir portada'}</span>
+            </button>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleUploadProfileCover}
+            />
+          </div>
+
+          <div className="mp-identity-row mp-identity-row-padded">
             {user?.avatarUrl ? (
               <img src={user.avatarUrl} alt={displayName} className="mp-avatar" />
             ) : (
@@ -197,6 +356,89 @@ export default function ChannelProfile() {
             </div>
           </div>
         </section>
+
+        {/* TODAS TUS SEÑALES ADENTRO DE MI PERFIL */}
+        <section className="mp-glass-card">
+          <div className="mp-sec-head">
+            <h2>
+              <Radio size={14} color="#64d2ff" /> Mis Señales ({profileSignals.length})
+            </h2>
+            <button type="button" className="mp-link-btn" onClick={() => navigate('/senales')}>
+              <Sparkles size={12} style={{ verticalAlign: '-1px', marginRight: 4 }} />
+              Ver las 100 señales
+            </button>
+          </div>
+
+          {profileSignals.length === 0 ? (
+            <div className="mp-empty-signals">
+              <span>Todavía no fijaste ni creaste señales. Armá una en 3 segundos abajo o explorá las 100 señales temáticas.</span>
+            </div>
+          ) : (
+            <div className="mp-signals-grid">
+              {profileSignals.map((sig) => (
+                <div
+                  key={sig.id}
+                  className="mp-sig-card"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`);
+                    }
+                  }}
+                >
+                  <div className="mp-sig-cover">
+                    {sig.thumb ? (
+                      <img src={sig.thumb} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="mp-sig-fallback">
+                        <Radio size={22} color="#64d2ff" />
+                      </div>
+                    )}
+                    <div className="mp-sig-scrim" />
+                    <span className="mp-sig-badge">
+                      {sig.isFav ? <Star size={10} fill="#fbbf24" color="#fbbf24" /> : <Radio size={10} color="#64d2ff" />}
+                      <span>{sig.isFav ? 'Favorita' : 'Señal'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      className="mp-sig-share"
+                      title="Compartir esta señal"
+                      aria-label={`Compartir ${sig.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void shareContentUniversal({
+                          title: `${sig.name} · Mi señal en YOUAPP`,
+                          text: sig.subtitle,
+                          url: sig.shareUrl,
+                          thumbnailUrl: sig.thumb,
+                          subtitle: 'YOUAPP TV',
+                          badge: 'MI SEÑAL EN YOUAPP'
+                        });
+                      }}
+                    >
+                      <Share2 size={12} color="#ffffff" />
+                    </button>
+                    <div className="mp-sig-footer">
+                      <div className="mp-sig-info">
+                        <strong>{sig.name}</strong>
+                        <span>{sig.subtitle}</span>
+                      </div>
+                      <span className="mp-sig-play">
+                        <Play size={12} fill="#fff" color="#fff" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* ARMÁ TU SEÑAL CON ATLAS DESDE TU PERFIL */}
+        <AtlasBuildSignalBox compact />
 
         {/* SEGUIR VIENDO (SOLO SI HAY HISTORIAL REAL EN CURSO) */}
         {recentCheckpoints.length > 0 && (
@@ -853,6 +1095,179 @@ export default function ChannelProfile() {
           background: rgba(255, 69, 58, 0.16);
           border-color: rgba(255, 69, 58, 0.45);
           color: #ff9a94;
+        }
+
+        .mp-identity-with-cover {
+          padding: 0 !important;
+          overflow: hidden;
+        }
+        .mp-profile-cover {
+          position: relative;
+          height: 118px;
+          background: linear-gradient(135deg, #0f172a 0%, #0071e3 55%, #0ea5e9 100%);
+          background-size: cover;
+          background-position: center;
+        }
+        .mp-profile-cover-scrim {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(10, 14, 24, 0.72) 100%);
+        }
+        .mp-profile-air-pill {
+          position: absolute;
+          top: 10px;
+          left: 12px;
+          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: rgba(10, 14, 22, 0.74);
+          border: 1px solid rgba(100, 210, 255, 0.45);
+          color: #e0f2fe;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+        }
+        .mp-cover-btn {
+          position: absolute;
+          top: 10px;
+          right: 12px;
+          z-index: 2;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          background: rgba(10, 14, 22, 0.68);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 650;
+          cursor: pointer;
+          backdrop-filter: blur(8px);
+        }
+        .mp-identity-row-padded {
+          padding: 14px 18px 18px;
+        }
+        .mp-empty-signals {
+          font-size: 12.5px;
+          color: rgba(245, 245, 247, 0.72);
+          padding: 6px 0;
+        }
+        .mp-signals-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          gap: 10px;
+        }
+        .mp-sig-card {
+          border-radius: 15px;
+          overflow: hidden;
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          background: #0b101b;
+          cursor: pointer;
+          transition: transform 0.18s ease, border-color 0.18s ease;
+        }
+        .mp-sig-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(100, 210, 255, 0.5);
+        }
+        .mp-sig-cover {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+        }
+        .mp-sig-cover img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .mp-sig-fallback {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #111827 0%, #1d4ed8 100%);
+        }
+        .mp-sig-scrim {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.1) 42%, rgba(0, 0, 0, 0.84) 100%);
+        }
+        .mp-sig-badge {
+          position: absolute;
+          top: 7px;
+          left: 7px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 7px;
+          border-radius: 999px;
+          background: rgba(10, 14, 22, 0.76);
+          border: 1px solid rgba(100, 210, 255, 0.45);
+          color: #ffffff;
+          font-size: 10px;
+          font-weight: 700;
+        }
+        .mp-sig-share {
+          position: absolute;
+          top: 7px;
+          right: 7px;
+          width: 26px;
+          height: 26px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          background: rgba(10, 14, 22, 0.74);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          z-index: 3;
+        }
+        .mp-sig-footer {
+          position: absolute;
+          left: 9px;
+          right: 9px;
+          bottom: 8px;
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .mp-sig-info {
+          min-width: 0;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .mp-sig-info strong {
+          font-size: 12.5px;
+          font-weight: 750;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .mp-sig-info span {
+          font-size: 10.5px;
+          color: rgba(245, 245, 247, 0.78);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .mp-sig-play {
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          background: rgba(0, 113, 227, 0.92);
+          border: 1.5px solid rgba(255, 255, 255, 0.5);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
         }
 
         @media (max-width: 680px) {

@@ -3590,6 +3590,33 @@ export default function MiSenal1() {
           </PlayerControlsDrawer>
           </section>
 
+          {/* BARRA COMPACTA DE SEÑAL ACTIVA (portada completa vive en /perfil) */}
+          <div className="ms-compact-bar" aria-label="Señal en pantalla">
+            <div className="ms-compact-left">
+              <span className="ms-live-air-dot" />
+              <strong>{activeSignal?.name || 'Mi Señal'}</strong>
+            </div>
+            <div className="ms-compact-actions">
+              <button
+                type="button"
+                className="ms-compact-btn"
+                onClick={() => navigate('/senales')}
+                title="Explorar las 100 señales o armar una nueva con ATLAS"
+              >
+                <Sparkles size={11} />
+                <span>+ Señales</span>
+              </button>
+              <button
+                type="button"
+                className="ms-compact-btn ghost"
+                onClick={() => navigate('/perfil')}
+                title="Ir a Mi Perfil y mis señales"
+              >
+                <span>Mi Perfil</span>
+              </button>
+            </div>
+          </div>
+
           {/* SELECTOR TÁCTIL SOLO EN CELULAR / TABLET (< 1024px) */}
           <div className="ms-mobile-tabs" role="tablist" aria-label="Secciones de Mi Señal">
             <button
@@ -7400,34 +7427,88 @@ export default function MiSenal1() {
             0 0 0 2.5px rgba(100, 210, 255, 0.82),
             0 6px 18px rgba(0, 113, 227, 0.42) !important;
         }
+        /* Portada movida a Mi Perfil (/perfil): Mi Señal queda 100% enfocada en ver TV + programación + repetidoras */
+        .ms-hero-shell {
+          display: none !important;
+        }
+        .ms-compact-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 14px;
+          background: rgba(16, 20, 30, 0.72);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          margin-bottom: 10px;
+        }
+        .ms-compact-left {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 0;
+          flex: 1;
+        }
+        .ms-compact-left strong {
+          font-size: 13.5px;
+          font-weight: 760;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .ms-compact-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+        .ms-compact-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 210, 255, 0.42);
+          background: rgba(0, 113, 227, 0.24);
+          color: #e0f2fe;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .ms-compact-btn.ghost {
+          border-color: rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.08);
+          color: rgba(245, 245, 247, 0.9);
+        }
         @media (max-width: 768px) {
           .ms-player-card:not(.is-expanded) {
-            position: fixed;
-            top: calc(48px + env(safe-area-inset-top));
-            left: 0;
-            right: 0;
-            width: 100%;
-            z-index: 75;
-            margin: 0;
+            position: fixed !important;
+            top: calc(48px + env(safe-area-inset-top)) !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            z-index: 250 !important;
+            margin: 0 !important;
             border-radius: 0 0 14px 14px !important;
             border-top: 0 !important;
             border-left: 0 !important;
             border-right: 0 !important;
             background: #0e1118 !important;
-            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.78);
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.82) !important;
           }
           .ms-player-card:not(.is-expanded) .ms-stage-box {
             border-radius: 0 !important;
           }
-          .ms-hero-shell {
-            padding-top: calc(56.25vw + 50px) !important;
+          .ms-main {
+            padding-top: calc(56.25vw + 52px) !important;
             transition: padding-top 0.18s ease;
           }
-          .ms-page:has(.yapp-pcd-root.is-open) .ms-hero-shell {
-            padding-top: calc(56.25vw + 168px) !important;
-          }
-          .ms-main {
-            padding-top: 10px !important;
+          .ms-page:has(.yapp-pcd-root.is-open) .ms-main {
+            padding-top: calc(56.25vw + 172px) !important;
           }
         }
         @media (max-width: 640px) {

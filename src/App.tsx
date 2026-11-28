@@ -97,9 +97,12 @@ const HomeOrSharedRoute = () => {
 // Permite abrir Mi Señal sin login cuando un visitante llega desde un enlace compartido (?signal=...&sharedSignal=1 o &follow=1)
 const MiSenalPublicOrProtectedRoute = () => {
   const [searchParams] = useSearchParams();
+  const sigParam = searchParams.get('signal') || '';
   const isPublicInvite =
     Boolean(searchParams.get('add')) ||
-    (Boolean(searchParams.get('signal')) &&
+    sigParam.startsWith('sig-100-') ||
+    sigParam.startsWith('curated-') ||
+    (Boolean(sigParam) &&
       (searchParams.get('sharedSignal') === '1' || searchParams.get('follow') === '1'));
   if (isPublicInvite) {
     return <MiSenal1 />;

@@ -153,6 +153,10 @@ import {
   toggleFollowCuratedSignal
 } from '../lib/tv/curatedSignalsCatalog';
 import {
+  findSignal100ById,
+  buildCustomSignalFrom100
+} from '../lib/tv/signals100Catalog';
+import {
   listMyOwnSignals,
   listSignalMemberships,
   listSwitchableSignals,
@@ -238,6 +242,10 @@ function buildSignalScheduleByProfile(
   const curatedMatch = findCuratedSignalById(id) || findCuratedSignalById(name.replace(/^✦\s*/, ''));
   if (curatedMatch) {
     return buildCustomSignalFromCurated(curatedMatch, options);
+  }
+  const catalog100Match = findSignal100ById(id) || findSignal100ById(name);
+  if (catalog100Match) {
+    return buildCustomSignalFrom100(catalog100Match);
   }
 
   const isTelefe = /telefe/i.test(name);
@@ -1407,6 +1415,19 @@ export default function MiSenal1() {
       : undefined;
 
     if (requestedSignalParam) {
+      const direct100 = findSignal100ById(requestedSignalParam);
+      if (direct100) {
+        if (activeSignal?.id !== direct100.id) {
+          const saved100 = getSavedSignal(direct100.id);
+          if (saved100 && saved100.schedule.length > 0) {
+            setSignal(saved100, { saveToOwn: false });
+          } else {
+            setSignal(buildCustomSignalFrom100(direct100) as any, { saveToOwn: false });
+          }
+        }
+        return;
+      }
+
       const directCurated = findCuratedSignalById(requestedSignalParam);
       if (directCurated) {
         if (

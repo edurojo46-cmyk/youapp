@@ -64,6 +64,11 @@ import {
   CompleteSignalShareCard,
   type CompleteSignalVisualData
 } from '../components/tv/CompleteSignalShareCard';
+import {
+  SIGNALS_100_CATALOG,
+  SIGNALS_100_THEMES,
+  type Signal100ThemeId
+} from '../lib/tv/signals100Catalog';
 
 type SignalBrandingEntry = {
   avatarDataUrl?: string;
@@ -130,6 +135,21 @@ export default function MyLists() {
   const [followedFeedNonce, setFollowedFeedNonce] = useState(0);
   const [editingPlatformsKey, setEditingPlatformsKey] = useState<string | null>(null);
   const [platformsDraft, setPlatformsDraft] = useState<CreatorPlatformLinks>({});
+  const [signal100Theme, setSignal100Theme] = useState<'all' | Signal100ThemeId>('all');
+  const [signal100Query, setSignal100Query] = useState('');
+
+  const filtered100Signals = useMemo(() => {
+    const q = signal100Query.trim().toLowerCase();
+    return SIGNALS_100_CATALOG.filter((s) => {
+      if (signal100Theme !== 'all' && s.theme !== signal100Theme) return false;
+      if (!q) return true;
+      return (
+        s.title.toLowerCase().includes(q) ||
+        s.subtitle.toLowerCase().includes(q) ||
+        s.videos.some((v) => v.title.toLowerCase().includes(q) || v.channel.toLowerCase().includes(q))
+      );
+    });
+  }, [signal100Theme, signal100Query]);
 
   useEffect(() => {
     if (filter !== 'siguiendo' || followedCreators.length === 0) {
@@ -451,7 +471,7 @@ export default function MyLists() {
     { id: 'music', label: 'Música', count: counts.music },
     { id: 'reels', label: 'Reels', count: counts.reels },
     { id: 'lecturas', label: 'Lecturas', count: counts.lecturas },
-    { id: 'senales', label: 'Señales', count: counts.senales },
+    { id: 'senales', label: 'Señales', count: counts.senales + SIGNALS_100_CATALOG.length },
     { id: 'siguiendo', label: 'Siguiendo', count: counts.siguiendo }
   ];
 
@@ -559,32 +579,42 @@ export default function MyLists() {
         {/* 3. CONTENIDO UNIFICADO */}
         {filter === 'senales' ? (
           <section className="ml-vault-section">
-            {userSignals.length === 0 && savedChannels.length === 0 ? (
-              <div className="ml-empty-card">
-                <Radio size={28} color="#64d2ff" />
-                <strong>Todavía no creaste señales</strong>
-                <p>Armá tu propia señal en vivo con videos, música y noticias.</p>
-                <button type="button" className="ml-cta-btn" onClick={() => navigate('/create-signal')}>
-                  <Plus size={14} /> Nueva señal
-                </button>
-              </div>
-            ) : (
-              <div className="ml-signals-grid">
-                {userSignals.map((sig) => {
-                  const branding = signalBranding[sig.id] || {};
-                  const coverSrc = branding.coverDataUrl || branding.avatarDataUrl || '';
-                  return (
-                    <button
-                      key={sig.id}
-                      type="button"
-                      className={`ml-signal-card ${coverSrc ? 'has-cover' : ''}`}
-                      onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
-                    >
-                      {coverSrc ? (
-                        <div className="ml-signal-cover">
-                          <img src={coverSrc} alt={sig.name} loading="lazy" />
-                          <div className="ml-signal-scrim" />
-                          <div className="ml-signal-footer">
+            {(userSignals.length > 0 || savedChannels.length > 0) && (
+              <div className="ml-feed-block" style={{ marginBottom: 16 }}>
+                <div className="ml-section-subhead">
+                  <div>
+                    <strong>Tus señales propias ({userSignals.length + savedChannels.length})</strong>
+                    <span>Señales creadas o guardadas en tu cuenta</span>
+                  </div>
+                </div>
+                <div className="ml-signals-grid">
+                  {userSignals.map((sig) => {
+                    const branding = signalBranding[sig.id] || {};
+                    const coverSrc = branding.coverDataUrl || branding.avatarDataUrl || '';
+                    return (
+                      <button
+                        key={sig.id}
+                        type="button"
+                        className={`ml-signal-card ${coverSrc ? 'has-cover' : ''}`}
+                        onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                      >
+                        {coverSrc ? (
+                          <div className="ml-signal-cover">
+                            <img src={coverSrc} alt={sig.name} loading="lazy" />
+                            <div className="ml-signal-scrim" />
+                            <div className="ml-signal-footer">
+                              <div className="ml-row-info">
+                                <strong>{sig.name}</strong>
+                                <span>Mi Señal</span>
+                              </div>
+                              <span className="ml-play-circle">
+                                <Play size={13} fill="#fff" color="#fff" />
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="ml-signal-plain">
+                            <div className="ml-icon-box blue"><Radio size={18} /></div>
                             <div className="ml-row-info">
                               <strong>{sig.name}</strong>
                               <span>Mi Señal</span>
@@ -593,44 +623,44 @@ export default function MyLists() {
                               <Play size={13} fill="#fff" color="#fff" />
                             </span>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="ml-signal-plain">
-                          <div className="ml-icon-box blue"><Radio size={18} /></div>
-                          <div className="ml-row-info">
-                            <strong>{sig.name}</strong>
-                            <span>Mi Señal</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {savedChannels.map((channel) => {
+                    const chAny = channel as any;
+                    const branding = signalBranding[channel.id] || {};
+                    const coverSrc =
+                      branding.coverDataUrl ||
+                      branding.avatarDataUrl ||
+                      chAny.coverUrl ||
+                      chAny.thumbnail ||
+                      channel.logo ||
+                      '';
+                    return (
+                      <button
+                        key={channel.id}
+                        type="button"
+                        className={`ml-signal-card ${coverSrc ? 'has-cover' : ''}`}
+                        onClick={() => handlePlayChannel(channel)}
+                      >
+                        {coverSrc ? (
+                          <div className="ml-signal-cover">
+                            <img src={coverSrc} alt={channel.name} loading="lazy" />
+                            <div className="ml-signal-scrim" />
+                            <div className="ml-signal-footer">
+                              <div className="ml-row-info">
+                                <strong>{channel.name}</strong>
+                                <span>Señal personalizada</span>
+                              </div>
+                              <span className="ml-play-circle">
+                                <Play size={13} fill="#fff" color="#fff" />
+                              </span>
+                            </div>
                           </div>
-                          <span className="ml-play-circle">
-                            <Play size={13} fill="#fff" color="#fff" />
-                          </span>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-                {savedChannels.map((channel) => {
-                  const chAny = channel as any;
-                  const branding = signalBranding[channel.id] || {};
-                  const coverSrc =
-                    branding.coverDataUrl ||
-                    branding.avatarDataUrl ||
-                    chAny.coverUrl ||
-                    chAny.thumbnail ||
-                    channel.logo ||
-                    '';
-                  return (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      className={`ml-signal-card ${coverSrc ? 'has-cover' : ''}`}
-                      onClick={() => handlePlayChannel(channel)}
-                    >
-                      {coverSrc ? (
-                        <div className="ml-signal-cover">
-                          <img src={coverSrc} alt={channel.name} loading="lazy" />
-                          <div className="ml-signal-scrim" />
-                          <div className="ml-signal-footer">
+                        ) : (
+                          <div className="ml-signal-plain">
+                            <div className="ml-icon-box purple"><Tv size={18} /></div>
                             <div className="ml-row-info">
                               <strong>{channel.name}</strong>
                               <span>Señal personalizada</span>
@@ -639,24 +669,131 @@ export default function MyLists() {
                               <Play size={13} fill="#fff" color="#fff" />
                             </span>
                           </div>
-                        </div>
-                      ) : (
-                        <div className="ml-signal-plain">
-                          <div className="ml-icon-box purple"><Tv size={18} /></div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* CATÁLOGO DE 100 SEÑALES TEMÁTICAS (3 TEMÁTICAS COMPLEMENTARIAS · 10 VIDEOS CADA UNA) */}
+            <div className="ml-feed-block">
+              <div className="ml-section-subhead">
+                <div>
+                  <strong>100 Señales Temáticas ({filtered100Signals.length})</strong>
+                  <span>3 temáticas complementarias · 10 videos reales en cada señal · tocá para sintonizar</span>
+                </div>
+              </div>
+
+              <div className="ml-filter-carousel" role="tablist" aria-label="Temáticas de señales">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={signal100Theme === 'all'}
+                  className={`ml-filter-chip ${signal100Theme === 'all' ? 'active' : ''}`}
+                  onClick={() => setSignal100Theme('all')}
+                >
+                  <span>Todas</span>
+                  <span className="ml-chip-count">{SIGNALS_100_CATALOG.length}</span>
+                </button>
+                {SIGNALS_100_THEMES.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={signal100Theme === t.id}
+                    className={`ml-filter-chip ${signal100Theme === t.id ? 'active' : ''}`}
+                    onClick={() => setSignal100Theme(t.id)}
+                  >
+                    <span>{t.shortLabel}</span>
+                    <span className="ml-chip-count">{t.count}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="ml-search-box" style={{ marginBottom: 4 }}>
+                <Search size={14} color="rgba(245,245,247,0.58)" />
+                <input
+                  type="text"
+                  value={signal100Query}
+                  onChange={(e) => setSignal100Query(e.target.value)}
+                  placeholder="Buscar entre las 100 señales (ej. Roma, Rock Nacional, Fútbol, Cocina…)"
+                  aria-label="Buscar señales temáticas"
+                />
+              </div>
+
+              <div className="ml-signals-grid">
+                {filtered100Signals.map((sig) => {
+                  const coverSrc = sig.coverVideoId
+                    ? `https://i.ytimg.com/vi/${sig.coverVideoId}/hqdefault.jpg`
+                    : '';
+                  const themeLabel =
+                    sig.theme === 'cultura'
+                      ? 'Cultura & Saber'
+                      : sig.theme === 'musica'
+                        ? 'Música & Escena'
+                        : 'Deportes & Mundo';
+                  return (
+                    <button
+                      key={sig.id}
+                      type="button"
+                      className="ml-signal-card has-cover"
+                      onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                      title={`${sig.title} · ${sig.subtitle}`}
+                    >
+                      <div className="ml-signal-cover">
+                        {coverSrc && (
+                          <img src={coverSrc} alt={sig.title} loading="lazy" referrerPolicy="no-referrer" />
+                        )}
+                        <div className="ml-signal-scrim" />
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 8,
+                            left: 8,
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            background: 'rgba(10, 14, 22, 0.74)',
+                            border: `1px solid ${sig.accent}`,
+                            color: '#ffffff',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            backdropFilter: 'blur(6px)'
+                          }}
+                        >
+                          {themeLabel}
+                        </span>
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            padding: '2px 7px',
+                            borderRadius: 999,
+                            background: 'rgba(0, 113, 227, 0.85)',
+                            color: '#ffffff',
+                            fontSize: 10,
+                            fontWeight: 750
+                          }}
+                        >
+                          {sig.videos.length} videos
+                        </span>
+                        <div className="ml-signal-footer">
                           <div className="ml-row-info">
-                            <strong>{channel.name}</strong>
-                            <span>Señal personalizada</span>
+                            <strong>{sig.title}</strong>
+                            <span>{sig.subtitle}</span>
                           </div>
                           <span className="ml-play-circle">
                             <Play size={13} fill="#fff" color="#fff" />
                           </span>
                         </div>
-                      )}
+                      </div>
                     </button>
                   );
                 })}
               </div>
-            )}
+            </div>
           </section>
         ) : filter === 'siguiendo' ? (
           <section className="ml-vault-section">

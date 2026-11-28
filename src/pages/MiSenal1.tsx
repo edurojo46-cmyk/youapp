@@ -2191,6 +2191,10 @@ export default function MiSenal1() {
             }
           >
             <div className="ms-signal-cover-scrim" />
+            <span className="ms-live-air-pill" aria-label="Señal al aire">
+              <span className="ms-live-air-dot" />
+              <span>AL AIRE</span>
+            </span>
             {isViewingOtherSignal ? (
               <div className="ms-recommended-cover-bar">
                 <span className="ms-recommended-pill">
@@ -7358,6 +7362,44 @@ export default function MiSenal1() {
             0 8px 24px rgba(0, 0, 0, 0.18) !important;
           color: #f5f5f7 !important;
         }
+        .ms-live-air-pill {
+          position: absolute;
+          top: 10px;
+          left: 12px;
+          z-index: 3;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: rgba(10, 14, 22, 0.72);
+          border: 1px solid rgba(100, 210, 255, 0.5);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          color: #e0f2fe;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          pointer-events: none;
+        }
+        .ms-live-air-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 999px;
+          background: #38bdf8;
+          box-shadow: 0 0 8px #38bdf8;
+        }
+        .ms-hero-card {
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.28),
+            0 14px 36px rgba(0, 0, 0, 0.34) !important;
+        }
+        .ms-hero-avatar-btn,
+        .ms-hero-avatar-readonly {
+          box-shadow:
+            0 0 0 2.5px rgba(100, 210, 255, 0.82),
+            0 6px 18px rgba(0, 113, 227, 0.42) !important;
+        }
         @media (max-width: 768px) {
           .ms-player-card:not(.is-expanded) {
             position: fixed;
@@ -7377,12 +7419,15 @@ export default function MiSenal1() {
           .ms-player-card:not(.is-expanded) .ms-stage-box {
             border-radius: 0 !important;
           }
-          .ms-main {
-            padding-top: calc(56.25vw + 48px) !important;
+          .ms-hero-shell {
+            padding-top: calc(56.25vw + 50px) !important;
             transition: padding-top 0.18s ease;
           }
-          .ms-page:has(.yapp-pcd-root.is-open) .ms-main {
+          .ms-page:has(.yapp-pcd-root.is-open) .ms-hero-shell {
             padding-top: calc(56.25vw + 168px) !important;
+          }
+          .ms-main {
+            padding-top: 10px !important;
           }
         }
         @media (max-width: 640px) {
@@ -7518,7 +7563,9 @@ export default function MiSenal1() {
         }
         @media (max-width: 640px) {
           .ms-hero-shell {
-            padding: 8px 10px 0 !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
+            padding-bottom: 0 !important;
           }
           .ms-hero-card {
             border-radius: 18px !important;

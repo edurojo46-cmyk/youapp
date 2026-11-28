@@ -245,6 +245,36 @@ async function queryYouAppIndexStrict(
   }
 }
 
+const DOCUMENTARY_POSITIVE_RE =
+  /\b(documental|documentary|biografia|biografía|historia completa|especial|pelicula|película|archivo|dw documental|national geographic|natgeo|history|bbc|rtve|canal encuentro|encuentro|vida y obra|retrato)\b/i;
+
+const NEWS_NOTE_NOISE_RE =
+  /\b(nota|entrevista|noticiero|ultimo momento|último momento|urgente|movil|móvil|en vivo|live|debate|panel|opinion|opinión|reaccion|reacción|resumen del dia|resumen del día|telenoche|telefe noticias|tn en vivo|c5n|a24|ln\+|canal 26|cronica tv|crónica tv|america tv|américa tv|diario|editorial|columnista|hablo|habló|dijo|respondio|respondió|cruzo|cruzó|polemica|polémica)\b/i;
+
+const MUSIC_POSITIVE_RE =
+  /\b(official video|official audio|musica|música|concierto|recital|unplugged|acoustic|acustico|acústico|live session|album|álbum|full album|song|cancion|canción|symphony|sinfonia|sinfonía)\b/i;
+
+function scoreStyleFit(video: AtlasDraftVideo, style: AtlasSignalStyle): number {
+  const hay = `${video.title} ${video.channelName}`;
+  if (style === 'documental') {
+    let bonus = 0;
+    if (DOCUMENTARY_POSITIVE_RE.test(hay)) bonus += 95;
+    if (video.durationSec >= 1200) bonus += 55; // >= 20 min: formato documental real
+    else if (video.durationSec >= 720) bonus += 30; // >= 12 min
+    else if (video.durationSec < 360) bonus -= 45; // < 6 min: suele ser nota o clip corto
+    if (NEWS_NOTE_NOISE_RE.test(hay)) bonus -= 110; // Penalizar notas periodísticas / noticieros
+    return bonus;
+  }
+  if (style === 'musica') {
+    let bonus = 0;
+    if (MUSIC_POSITIVE_RE.test(hay)) bonus += 75;
+    if (NEWS_NOTE_NOISE_RE.test(hay)) bonus -= 70;
+    return bonus;
+  }
+  // dinamico: preferir piezas claras de 4 a 18 min
+  return video.durationSec >= 240 && video.durationSec <= 1080 ? 25 : 0;
+}
+
 export async function buildAtlasDraftSignal(opts: {
   topic: string;
   style: AtlasSignalStyle;
@@ -259,30 +289,52 @@ export async function buildAtlasDraftSignal(opts: {
 
   opts.onProgress?.(0, `Buscando videos reales sobre «${cleanTopic}» en ATLAS…`);
 
-  const scoredPool: Array<{ video: AtlasDraftVideo; score: number }> = [];
+  const scoredPool: Array<{ video: AtlasDraftVideo; score: number; styleScore: number }> = [];
   const seen = new Set<string>();
   const pushSemanticUnique = (items: AtlasDraftVideo[]) => {
     for (const it of items) {
       if (seen.has(it.videoId)) continue;
       const rel = scoreTopicMatch(it.title, it.channelName, cleanTopic);
       if (rel <= 0) continue; // Compuerta semántica estricta: descarta falsos positivos
+      const styleScore = scoreStyleFit(it, opts.style);
       seen.add(it.videoId);
-      scoredPool.push({ video: it, score: rel });
+      scoredPool.push({ video: it, score: rel, styleScore });
     }
   };
 
   // 1. Consulta semántica estricta en `youapp_index` (US$ 0)
-  const indexRows = await queryYouAppIndexStrict(cleanTopic, keywords, 45);
-  pushSemanticUnique(indexRows);
+  // Si el usuario eligió "Documental", buscar primero combinando con "documental" para evitar notas cortas
+  const [docIndexRows, baseIndexRows] = await Promise.all([
+    opts.style === 'documental'
+      ? queryYouAppIndexStrict(`${cleanTopic} documental`, [...keywords, 'documental'], 35)
+      : Promise.resolve([]),
+    queryYouAppIndexStrict(cleanTopic, keywords, 45)
+  ]);
+  pushSemanticUnique(docIndexRows);
+  pushSemanticUnique(baseIndexRows);
 
-  // 2. Si faltan videos semánticamente exactos para llegar a 10 + reserva, completar con búsqueda pública YouTube (0 cuota)
-  const styleSuffix =
-    opts.style === 'musica' ? 'musica' : opts.style === 'documental' ? 'documental' : '';
-  if (scoredPool.length < targetCount + 4) {
-    opts.onProgress?.(1, 'Ampliando fuentes verificadas para completar tu programación…');
+  // Contar cuántos candidatos realmente encajan con el estilo (en Documental, excluir notas periodísticas)
+  const strongStyleCount = scoredPool.filter((x) =>
+    opts.style === 'documental' ? x.styleScore >= 0 : true
+  ).length;
+
+  // 2. Si faltan videos del estilo elegido para llegar a 10 + reserva, completar con búsqueda pública YouTube (0 cuota)
+  const styleQuerySuffix =
+    opts.style === 'documental'
+      ? 'documental completo'
+      : opts.style === 'musica'
+        ? 'musica oficial'
+        : '';
+  if (strongStyleCount < targetCount + 2) {
+    opts.onProgress?.(
+      1,
+      opts.style === 'documental'
+        ? 'Buscando documentales completos verificados (filtrando notas cortas)…'
+        : 'Ampliando fuentes verificadas para completar tu programación…'
+    );
     try {
-      const ytQuery = styleSuffix ? `${cleanTopic} ${styleSuffix}` : cleanTopic;
-      const webItems = await searchYouTubeVideos(ytQuery, 24);
+      const ytQuery = styleQuerySuffix ? `${cleanTopic} ${styleQuerySuffix}` : cleanTopic;
+      const webItems = await searchYouTubeVideos(ytQuery, 26);
       pushSemanticUnique(
         webItems
           .filter((v) => isCleanCandidate(v.videoId, v.title))
@@ -304,10 +356,19 @@ export async function buildAtlasDraftSignal(opts: {
 
   opts.onProgress?.(2, 'Ordenando grilla editorial (Apertura → Desarrollo → Cierre)…');
 
-  // 3. Priorizar relevancia semántica exacta primero, y usar estilo como desempate
-  const sorted = [...scoredPool]
+  // En modo Documental: si tenemos suficientes candidatos sin ruido de noticiero, descartar notas cortas
+  const nonNoiseDocPool =
+    opts.style === 'documental'
+      ? scoredPool.filter((e) => !NEWS_NOTE_NOISE_RE.test(`${e.video.title} ${e.video.channelName}`))
+      : scoredPool;
+  const effectivePool = nonNoiseDocPool.length >= Math.min(targetCount, 6) ? nonNoiseDocPool : scoredPool;
+
+  // 3. Ordenar por (relevancia semántica + ajuste de estilo documental/música/dinámico)
+  const sorted = [...effectivePool]
     .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
+      const totalA = a.score + a.styleScore;
+      const totalB = b.score + b.styleScore;
+      if (totalB !== totalA) return totalB - totalA;
       if (opts.style === 'dinamico') return a.video.durationSec - b.video.durationSec;
       if (opts.style === 'documental') return b.video.durationSec - a.video.durationSec;
       return 0;

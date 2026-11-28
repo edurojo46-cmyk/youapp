@@ -141,9 +141,6 @@ export default function SignalsDirectoryPage() {
         </div>
 
         <nav className="sd-nav" aria-label="Navegación principal">
-          <button type="button" className="sd-nav-btn" onClick={() => navigate('/misenal1')}>
-            MI SEÑAL
-          </button>
           <button type="button" className="sd-nav-btn active" onClick={() => navigate('/senales')}>
             SEÑALES
           </button>
@@ -177,7 +174,151 @@ export default function SignalsDirectoryPage() {
       </header>
 
       <main className="sd-main">
-        {/* 1. PROTAGONISTA ARRIBA DE TODO: ARMÁ TU SEÑAL CON ATLAS */}
+        {/* 1. APARTADO GRANDE Y PROTAGONISTA: MIS SEÑALES */}
+        <section className="sd-my-signals-hero" aria-label="Mis Señales">
+          <div className="sd-my-hero-head">
+            <div className="sd-my-hero-title">
+              <div className="sd-my-hero-ico">
+                <Radio size={20} color="#7dd3fc" />
+              </div>
+              <div>
+                <div className="sd-my-hero-row">
+                  <h1>Mis Señales</h1>
+                  <span className="sd-my-count">{Math.max(1, userSignals.length)}</span>
+                </div>
+                <p>Tus canales propios al aire — tocá cualquiera para entrar directo a emitir y ver tus repetidoras.</p>
+              </div>
+            </div>
+
+            <div className="sd-my-hero-actions">
+              <button
+                type="button"
+                className="sd-my-primary-btn"
+                onClick={() => navigate('/misenal1')}
+              >
+                <Play size={14} fill="#ffffff" color="#ffffff" />
+                <span>Abrir Mi Señal</span>
+              </button>
+              <button
+                type="button"
+                className="sd-my-secondary-btn"
+                onClick={() => navigate('/create-signal')}
+              >
+                <span>+ Nueva señal</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="sd-my-grid">
+            {userSignals.length > 0 ? (
+              userSignals.map((sig) => {
+                const coverSrc = getOwnSignalThumb(sig);
+                return (
+                  <div
+                    key={sig.id}
+                    role="button"
+                    tabIndex={0}
+                    className="sd-my-card"
+                    onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`);
+                      }
+                    }}
+                  >
+                    <div className="sd-my-card-cover">
+                      {coverSrc ? (
+                        <img src={coverSrc} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
+                      ) : (
+                        <div className="sd-my-card-fallback">
+                          <Tv size={28} color="#7dd3fc" />
+                        </div>
+                      )}
+                      <div className="sd-card-scrim" />
+                      <span className="sd-badge-left">
+                        <Radio size={11} color="#64d2ff" />
+                        <span>MI SEÑAL · AL AIRE</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="sd-fav-btn"
+                        aria-label={`Compartir ${sig.name}`}
+                        title="Compartir esta señal"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const url = `${window.location.origin}/misenal1?signal=${encodeURIComponent(sig.id)}&sharedSignal=1`;
+                          void shareContentUniversal({
+                            title: `${sig.name} · Mi señal en YOUAPP`,
+                            text: sig.mainTopic || 'Mirá mi señal en YOUAPP TV',
+                            url,
+                            thumbnailUrl: coverSrc,
+                            subtitle: 'YOUAPP TV',
+                            badge: 'MI SEÑAL EN YOUAPP'
+                          });
+                        }}
+                      >
+                        <Share2 size={12} color="#ffffff" />
+                      </button>
+                      <div className="sd-card-footer">
+                        <div className="sd-card-info">
+                          <strong style={{ fontSize: 15 }}>{sig.name}</strong>
+                          <span>{sig.mainTopic || 'Tu señal personal en vivo'}</span>
+                        </div>
+                        <span className="sd-play-circle" style={{ width: 34, height: 34 }}>
+                          <Play size={15} fill="#fff" color="#fff" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div
+                role="button"
+                tabIndex={0}
+                className="sd-my-card"
+                onClick={() => navigate('/misenal1')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    navigate('/misenal1');
+                  }
+                }}
+              >
+                <div className="sd-my-card-cover">
+                  {activeSignal?.schedule?.[0]?.contentItem?.thumbnailUrl ? (
+                    <img
+                      src={activeSignal.schedule[0].contentItem.thumbnailUrl}
+                      alt={activeSignal.name || 'Mi Señal'}
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="sd-my-card-fallback">
+                      <Radio size={30} color="#7dd3fc" />
+                    </div>
+                  )}
+                  <div className="sd-card-scrim" />
+                  <span className="sd-badge-left">
+                    <Radio size={11} color="#64d2ff" />
+                    <span>MI SEÑAL PRINCIPAL</span>
+                  </span>
+                  <div className="sd-card-footer">
+                    <div className="sd-card-info">
+                      <strong style={{ fontSize: 15 }}>{activeSignal?.name || 'Mi Señal en YOUAPP'}</strong>
+                      <span>Tocá para entrar a tu señal en vivo y gestionar repetidoras</span>
+                    </div>
+                    <span className="sd-play-circle" style={{ width: 34, height: 34 }}>
+                      <Play size={15} fill="#fff" color="#fff" />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 2. ARMÁ TU SEÑAL CON ATLAS */}
         <AtlasBuildSignalBox />
 
         {/* 1B. SEÑALES FAVORITAS FIJADAS */}
@@ -238,62 +379,6 @@ export default function SignalsDirectoryPage() {
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* 2. TUS SEÑALES PROPIAS (si tiene) */}
-        {userSignals.length > 0 && (
-          <section className="sd-section" aria-label="Tus señales propias">
-            <div className="sd-sec-head">
-              <h2>Tus señales ({userSignals.length})</h2>
-              <span>Tocá para volver a tu señal en vivo</span>
-            </div>
-            <div className="sd-grid">
-              {userSignals.map((sig) => {
-                const coverSrc = getOwnSignalThumb(sig);
-                return (
-                  <button
-                    key={sig.id}
-                    type="button"
-                    className={`sd-card ${coverSrc ? 'has-cover' : ''}`}
-                    onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
-                  >
-                    {coverSrc ? (
-                      <div className="sd-card-cover">
-                        <img src={coverSrc} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
-                        <div className="sd-card-scrim" />
-                        <span className="sd-badge-left">
-                          <Radio size={11} color="#64d2ff" />
-                          <span>Mi Señal</span>
-                        </span>
-                        <div className="sd-card-footer">
-                          <div className="sd-card-info">
-                            <strong>{sig.name}</strong>
-                            <span>{sig.mainTopic || 'Tu señal personal'}</span>
-                          </div>
-                          <span className="sd-play-circle">
-                            <Play size={13} fill="#fff" color="#fff" />
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="sd-card-plain">
-                        <div className="sd-plain-ico">
-                          <Tv size={18} />
-                        </div>
-                        <div className="sd-card-info">
-                          <strong>{sig.name}</strong>
-                          <span>Mi Señal</span>
-                        </div>
-                        <span className="sd-play-circle">
-                          <Play size={13} fill="#fff" color="#fff" />
-                        </span>
-                      </div>
-                    )}
-                  </button>
                 );
               })}
             </div>
@@ -543,6 +628,142 @@ export default function SignalsDirectoryPage() {
           display: flex;
           flex-direction: column;
           gap: 20px;
+        }
+        .sd-my-signals-hero {
+          border-radius: 22px;
+          padding: 18px 18px 20px;
+          background: linear-gradient(
+            145deg,
+            rgba(0, 113, 227, 0.24) 0%,
+            rgba(18, 24, 38, 0.82) 55%,
+            rgba(16, 185, 129, 0.14) 100%
+          );
+          border: 1px solid rgba(100, 210, 255, 0.36);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 14px 36px rgba(0, 0, 0, 0.34);
+          backdrop-filter: blur(18px);
+          -webkit-backdrop-filter: blur(18px);
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .sd-my-hero-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .sd-my-hero-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+          flex: 1;
+        }
+        .sd-my-hero-ico {
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, rgba(0, 113, 227, 0.45), rgba(56, 189, 248, 0.2));
+          border: 1px solid rgba(100, 210, 255, 0.48);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .sd-my-hero-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .sd-my-hero-row h1 {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 800;
+          color: #ffffff;
+          line-height: 1.15;
+        }
+        .sd-my-count {
+          padding: 2px 9px;
+          border-radius: 999px;
+          background: rgba(100, 210, 255, 0.22);
+          border: 1px solid rgba(100, 210, 255, 0.45);
+          color: #e0f2fe;
+          font-size: 11.5px;
+          font-weight: 800;
+        }
+        .sd-my-hero-title p {
+          margin: 3px 0 0;
+          font-size: 12.5px;
+          color: rgba(245, 245, 247, 0.78);
+          line-height: 1.35;
+        }
+        .sd-my-hero-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .sd-my-primary-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 9px 16px;
+          border-radius: 999px;
+          border: 0;
+          background: linear-gradient(135deg, #0071e3 0%, #0a84ff 100%);
+          color: #ffffff;
+          font-size: 12.5px;
+          font-weight: 750;
+          cursor: pointer;
+          box-shadow: 0 6px 18px rgba(0, 113, 227, 0.36);
+        }
+        .sd-my-secondary-btn {
+          padding: 8px 14px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.24);
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .sd-my-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+          gap: 14px;
+        }
+        .sd-my-card {
+          border-radius: 18px;
+          overflow: hidden;
+          border: 1px solid rgba(100, 210, 255, 0.34);
+          background: #0b101b;
+          cursor: pointer;
+          box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+          transition: transform 0.18s ease, border-color 0.18s ease;
+        }
+        .sd-my-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(100, 210, 255, 0.72);
+        }
+        .sd-my-card-cover {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+        }
+        .sd-my-card-cover img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .sd-my-card-fallback {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 60%, #0ea5e9 100%);
         }
         .sd-section {
           display: flex;

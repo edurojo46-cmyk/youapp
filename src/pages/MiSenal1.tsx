@@ -2097,14 +2097,14 @@ export default function MiSenal1() {
             className="ms-nav-btn active"
             onClick={() => {
               if (isViewingOtherSignal) {
-                handleReturnToMyOwnSignal();
+                navigate('/senales');
               } else {
-                navigate('/misenal1');
+                navigate('/senales');
               }
             }}
-            title="Volver a tu propia señal"
+            title="Ir a Señales (Mis Señales + 100 Señales Temáticas)"
           >
-            MI SEÑAL
+            SEÑALES
           </button>
           <button type="button" className="ms-nav-pill" onClick={() => navigate('/mitv')}>
             <SlidersHorizontal size={13} /> MITV

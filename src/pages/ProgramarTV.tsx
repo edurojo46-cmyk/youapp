@@ -1615,8 +1615,8 @@ export default function ProgramarTV() {
         </div>
 
         <nav className="mitv-nav">
-          <button type="button" className="mitv-nav-btn" onClick={() => navigate('/misenal1')}>
-            MI SEÑAL
+          <button type="button" className="mitv-nav-btn" onClick={() => navigate('/senales')}>
+            SEÑALES
           </button>
           <button type="button" className="mitv-nav-btn" onClick={() => navigate('/youmusic')}>
             YOU MUSIC

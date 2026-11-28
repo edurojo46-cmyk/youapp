@@ -586,7 +586,7 @@ export default function MyLists() {
         </div>
 
         <nav className="ml-nav">
-          <button type="button" className="ml-nav-btn" onClick={() => navigate('/misenal1')}>MI SEÑAL</button>
+          <button type="button" className="ml-nav-btn" onClick={() => navigate('/senales')}>SEÑALES</button>
           <button type="button" className="ml-nav-btn" onClick={() => navigate('/mitv')}>MITV</button>
           <button type="button" className="ml-nav-btn" onClick={() => navigate('/youmusic')}>YOU MUSIC</button>
           <button type="button" className="ml-nav-btn" onClick={() => navigate('/reels')}>REELS</button>

@@ -113,7 +113,7 @@ export default function Home() {
         <YouAppOfficialLogo theme="dark" />
         
         <div className="nav-links">
-          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/misenal1')} title="MI SEÑAL" aria-label="MI SEÑAL">
+          <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/senales')} title="SEÑALES" aria-label="SEÑALES">
             <Radio size={17} />
           </button>
           <button type="button" className="nav-link nav-icon-only" onClick={() => navigate('/mitv')} title="MITV" aria-label="MITV">

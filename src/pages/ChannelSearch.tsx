@@ -2995,7 +2995,7 @@ export default function ChannelSearch() {
         </div>
 
         <nav className="ys-nav">
-          <button type="button" className="ys-nav-btn" onClick={() => navigate('/misenal1')}>MI SEÑAL</button>
+          <button type="button" className="ys-nav-btn" onClick={() => navigate('/senales')}>SEÑALES</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/mitv')}>MITV</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/youmusic')}>YOU MUSIC</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/reels')}>REELS</button>

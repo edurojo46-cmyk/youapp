@@ -1617,8 +1617,8 @@ function YouMusicPageInner() {
         </div>
 
         <nav className="ymv1-nav">
-          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/misenal1')}>
-            MI SEÑAL
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/senales')}>
+            SEÑALES
           </button>
           <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/mitv')}>
             MITV

@@ -67,8 +67,11 @@ import {
 import {
   SIGNALS_100_CATALOG,
   SIGNALS_100_THEMES,
+  findSignal100ById,
   type Signal100ThemeId
 } from '../lib/tv/signals100Catalog';
+import { findCuratedSignalById } from '../lib/tv/curatedSignalsCatalog';
+import { supabase } from '../lib/supabase';
 
 type SignalBrandingEntry = {
   avatarDataUrl?: string;
@@ -112,6 +115,8 @@ export default function MyLists() {
 
   const { savedContent, unsaveContent } = useStore();
   const activeSignal = useSignalStore((s) => s.activeSignal);
+  const savedSignalsById = useSignalStore((s) => s.savedSignalsById);
+  const [autoSignalThumbs, setAutoSignalThumbs] = useState<Record<string, string>>({});
 
   const [reelsWorkspace, setReelsWorkspace] = useState<YouReelsWorkspace>(() => loadYouReelsWorkspace());
   const [musicWorkspace, setMusicWorkspace] = useState<YouMusicWorkspace>(() => loadYouMusicWorkspace());
@@ -202,6 +207,85 @@ export default function MyLists() {
       active = false;
     };
   }, []);
+
+  // Resolver miniaturas reales (US$ 0) para señales propias que no tienen portada subida manualmente
+  const getLocalSignalThumb = (sig: UserSignalSummary): string => {
+    const branding = signalBranding[sig.id] || signalBranding[sig.clientSignalId] || {};
+    if (branding.coverDataUrl) return branding.coverDataUrl;
+    if (branding.avatarDataUrl) return branding.avatarDataUrl;
+
+    const stored =
+      savedSignalsById?.[sig.id] ||
+      savedSignalsById?.[sig.clientSignalId] ||
+      (activeSignal && (activeSignal.id === sig.id || activeSignal.id === sig.clientSignalId)
+        ? activeSignal
+        : null);
+    const firstItem = stored?.schedule?.[0]?.contentItem as
+      | { thumbnailUrl?: string; thumbnail?: string; providerId?: string; id?: string }
+      | undefined;
+    if (firstItem?.thumbnailUrl) return firstItem.thumbnailUrl;
+    if (firstItem?.thumbnail) return firstItem.thumbnail;
+    const ytId = firstItem?.providerId || firstItem?.id || '';
+    if (/^[A-Za-z0-9_-]{11}$/.test(ytId)) {
+      return `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg`;
+    }
+
+    const curated = findCuratedSignalById(sig.id) || findCuratedSignalById(sig.name);
+    if (curated?.coverVideoId) {
+      return `https://i.ytimg.com/vi/${curated.coverVideoId}/hqdefault.jpg`;
+    }
+    const cat100 = findSignal100ById(sig.id) || findSignal100ById(sig.name);
+    if (cat100?.coverVideoId) {
+      return `https://i.ytimg.com/vi/${cat100.coverVideoId}/hqdefault.jpg`;
+    }
+    return '';
+  };
+
+  useEffect(() => {
+    if (userSignals.length === 0) return;
+    const missing = userSignals.filter((s) => !getLocalSignalThumb(s) && !autoSignalThumbs[s.id]);
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    const fetchThumbs = async () => {
+      const next: Record<string, string> = {};
+      await Promise.all(
+        missing.slice(0, 20).map(async (sig) => {
+          const rawSeed = `${sig.name || ''} ${sig.mainTopic || ''} ${sig.prompt || ''}`
+            .replace(/[,%()✦·•]/g, ' ')
+            .replace(/\b(mi|senal|señal|canal|tv|youapp|de|la|el|los|las|y|en|para)\b/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const keyword = rawSeed.split(' ').filter((w) => w.length >= 3).slice(0, 2).join(' ') || sig.name;
+          if (!keyword || keyword.length < 2) return;
+          try {
+            const { data } = await supabase
+              .from('youapp_index')
+              .select('video_id,thumbnail_url')
+              .eq('provider', 'youtube')
+              .or(`title.ilike.%${keyword}%,creator_name.ilike.%${keyword}%`)
+              .limit(3);
+            const first = Array.isArray(data) ? data.find((r) => r?.video_id) : null;
+            if (first?.video_id) {
+              const vid = String(first.video_id).trim();
+              next[sig.id] =
+                String(first.thumbnail_url || '') || `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+            }
+          } catch {
+            // silent
+          }
+        })
+      );
+      if (!cancelled && Object.keys(next).length > 0) {
+        setAutoSignalThumbs((prev) => ({ ...prev, ...next }));
+      }
+    };
+    void fetchThumbs();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userSignals, savedSignalsById, signalBranding]);
 
   const handlePlayChannel = (channel: UniversalChannel) => {
     localStorage.setItem('youapp_tune_channel_payload', JSON.stringify(channel));
@@ -589,8 +673,7 @@ export default function MyLists() {
                 </div>
                 <div className="ml-signals-grid">
                   {userSignals.map((sig) => {
-                    const branding = signalBranding[sig.id] || {};
-                    const coverSrc = branding.coverDataUrl || branding.avatarDataUrl || '';
+                    const coverSrc = getLocalSignalThumb(sig) || autoSignalThumbs[sig.id] || '';
                     return (
                       <button
                         key={sig.id}
@@ -669,6 +752,27 @@ export default function MyLists() {
                           <div className="ml-signal-cover">
                             <img src={coverSrc} alt={channel.name} loading="lazy" />
                             <div className="ml-signal-scrim" />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                top: 8,
+                                left: 8,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '3px 8px',
+                                borderRadius: 999,
+                                background: 'rgba(10, 14, 22, 0.76)',
+                                border: '1px solid rgba(100, 210, 255, 0.48)',
+                                color: '#ffffff',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                backdropFilter: 'blur(6px)'
+                              }}
+                            >
+                              <Radio size={11} color="#64d2ff" />
+                              <span>Señal</span>
+                            </span>
                             <div className="ml-signal-footer">
                               <div className="ml-row-info">
                                 <strong>{channel.name}</strong>

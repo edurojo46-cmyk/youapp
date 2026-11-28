@@ -616,8 +616,15 @@ function scoreSemanticMatch(item: { title: string; channelName: string }, queryN
   const hay = normText(`${item.title} ${item.channelName}`);
   if (!hay || !queryNorm) return 0;
 
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const hasWord = (w: string) => new RegExp(`(?:^|\\s)${esc(w)}(?:\\s|$)`).test(hay);
+
   let score = 0;
-  if (hay.includes(queryNorm)) score += 100;
+  if (new RegExp(`(?:^|\\s)${esc(queryNorm)}(?:\\s|$)`).test(hay)) {
+    score += 120;
+  } else if (hay.includes(queryNorm)) {
+    score += 90;
+  }
 
   const allTokens = queryNorm
     .split(/\s+/)
@@ -629,25 +636,28 @@ function scoreSemanticMatch(item: { title: string; channelName: string }, queryN
 
   let coreHits = 0;
   for (const tok of coreTokens) {
-    if (hay.includes(tok)) {
+    if (hasWord(tok)) {
       coreHits += 1;
-      score += 35;
-    } else if (tok.length >= 4 && hay.includes(tok.slice(0, tok.length - 1))) {
-      // Tolerancia leve a 1 letra (ej. phill -> phil, albun -> album)
+      score += 38;
+    } else if (tok.length >= 6 && hay.includes(tok)) {
+      coreHits += 1;
+      score += 30;
+    } else if (tok.length >= 6 && hay.includes(tok.slice(0, tok.length - 1))) {
+      // Tolerancia leve a 1 letra solo en palabras largas (>= 6 letras, nunca en "papa" -> "pap")
       coreHits += 0.75;
-      score += 22;
+      score += 20;
     }
   }
 
-  // Compuerta semántica: si hay palabras de entidad (ej. "phil", "collins"),
-  // exigir que coincidan casi todas las palabras clave (nunca traer otro artista solo por "album")
-  const requiredCoreRatio = coreTokens.length >= 2 ? 0.75 : 1;
+  // Compuerta semántica estricta:
+  // Para entidades de 2 palabras (ej. "papa francisco", "phil collins"), exigir ambas palabras completas.
+  const requiredCoreRatio = coreTokens.length <= 2 ? 1 : 0.75;
   if (coreHits / coreTokens.length < requiredCoreRatio) {
     return 0;
   }
 
   for (const tok of allTokens) {
-    if (MODIFIER_WORDS.has(tok) && hay.includes(tok)) {
+    if (MODIFIER_WORDS.has(tok) && hasWord(tok)) {
       score += 15;
     }
   }

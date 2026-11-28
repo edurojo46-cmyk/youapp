@@ -617,7 +617,17 @@ function scoreSemanticMatch(item: { title: string; channelName: string }, queryN
   if (!hay || !queryNorm) return 0;
 
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const hasWord = (w: string) => new RegExp(`(?:^|\\s)${esc(w)}(?:\\s|$)`).test(hay);
+  const hasWord = (w: string) => {
+    if (new RegExp(`(?:^|\\s)${esc(w)}(?:\\s|$)`).test(hay)) return true;
+    if (w.length >= 5) {
+      if (new RegExp(`(?:^|\\s)${esc(w)}e?s(?:\\s|$)`).test(hay)) return true;
+      if (w.endsWith('s') && w.length >= 6) {
+        const sing = w.replace(/es$|s$/, '');
+        if (sing.length >= 4 && new RegExp(`(?:^|\\s)${esc(sing)}(?:\\s|$)`).test(hay)) return true;
+      }
+    }
+    return false;
+  };
 
   let score = 0;
   if (new RegExp(`(?:^|\\s)${esc(queryNorm)}(?:\\s|$)`).test(hay)) {

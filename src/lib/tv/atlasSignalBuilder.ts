@@ -158,7 +158,19 @@ function escapeRegExp(s: string): string {
 
 function hasWholeWord(hayNorm: string, word: string): boolean {
   if (!word) return false;
-  return new RegExp(`(?:^|\\s)${escapeRegExp(word)}(?:\\s|$)`).test(hayNorm);
+  if (new RegExp(`(?:^|\\s)${escapeRegExp(word)}(?:\\s|$)`).test(hayNorm)) return true;
+  // Tolerancia de plural/singular natural para palabras >= 5 letras (ej. "stone" <-> "stones", "beatle" <-> "beatles")
+  // sin afectar palabras cortas ambiguas de 4 letras como "papa" vs "papas".
+  if (word.length >= 5) {
+    if (new RegExp(`(?:^|\\s)${escapeRegExp(word)}e?s(?:\\s|$)`).test(hayNorm)) return true;
+    if (word.endsWith('s') && word.length >= 6) {
+      const singular = word.replace(/es$|s$/, '');
+      if (singular.length >= 4 && new RegExp(`(?:^|\\s)${escapeRegExp(singular)}(?:\\s|$)`).test(hayNorm)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -321,7 +333,7 @@ export async function buildAtlasDraftSignal(opts: {
   // 2. Si faltan videos del estilo elegido para llegar a 10 + reserva, completar con búsqueda pública YouTube (0 cuota)
   const styleQuerySuffix =
     opts.style === 'documental'
-      ? 'documental completo'
+      ? 'documental'
       : opts.style === 'musica'
         ? 'musica oficial'
         : '';
@@ -329,7 +341,7 @@ export async function buildAtlasDraftSignal(opts: {
     opts.onProgress?.(
       1,
       opts.style === 'documental'
-        ? 'Buscando documentales completos verificados (filtrando notas cortas)…'
+        ? 'Buscando documentales verificados (filtrando notas cortas)…'
         : 'Ampliando fuentes verificadas para completar tu programación…'
     );
     try {
@@ -347,6 +359,22 @@ export async function buildAtlasDraftSignal(opts: {
             role: 'explainer' as const
           }))
       );
+      // Si con sufijo de estilo todavía faltan videos, ampliar con el tema limpio
+      if (scoredPool.length < targetCount && styleQuerySuffix) {
+        const plainItems = await searchYouTubeVideos(cleanTopic, 22);
+        pushSemanticUnique(
+          plainItems
+            .filter((v) => isCleanCandidate(v.videoId, v.title))
+            .map((v) => ({
+              videoId: v.videoId,
+              title: String(v.title || 'Video').trim().slice(0, 115),
+              channelName: String(v.channelName || 'YouTube').trim().slice(0, 60),
+              thumbnailUrl: v.thumbnail || `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`,
+              durationSec: parseDurationString(v.duration),
+              role: 'explainer' as const
+            }))
+        );
+      }
     } catch {
       // silent fallback
     }

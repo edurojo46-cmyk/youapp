@@ -608,13 +608,15 @@ export default function ChannelProfile() {
                       >
                         <Share2 size={12} color="#ffffff" />
                       </button>
-                      <span className="fbp-sig-play-float">
-                        <Play size={13} fill="#fff" color="#fff" />
-                      </span>
-                    </div>
-                    <div className="fbp-sig-body">
-                      <strong>{sig.name}</strong>
-                      <span>{sig.subtitle}</span>
+                      <div className="fbp-sig-footer">
+                        <div className="fbp-sig-info">
+                          <strong>{sig.name}</strong>
+                          <span>{sig.subtitle}</span>
+                        </div>
+                        <span className="fbp-sig-play">
+                          <Play size={13} fill="#fff" color="#fff" />
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1235,77 +1237,59 @@ export default function ChannelProfile() {
         }
         .fbp-signals-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
-          gap: 12px;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 10px;
         }
         .fbp-sig-card {
-          border-radius: 18px;
+          border-radius: 16px;
           overflow: hidden;
-          border: 1px solid rgba(255, 255, 255, 0.18);
-          background: rgba(14, 19, 30, 0.72);
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 10px 26px rgba(0, 0, 0, 0.28);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.09);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+          color: #ffffff;
+          padding: 0;
           cursor: pointer;
-          display: flex;
-          flex-direction: column;
-          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+          text-align: left;
+          transition: transform 0.18s ease, border-color 0.18s ease;
         }
         .fbp-sig-card:hover {
           transform: translateY(-2px);
           border-color: rgba(100, 210, 255, 0.58);
-          box-shadow: 0 14px 32px rgba(0, 113, 227, 0.24);
         }
         .fbp-sig-cover {
           position: relative;
           width: 100%;
-          aspect-ratio: 16 / 9;
+          height: 112px;
+          display: flex;
+          align-items: flex-end;
           overflow: hidden;
         }
-        .fbp-sig-cover img {
+        .fbp-sig-cover > img {
+          position: absolute;
+          inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
           display: block;
-          transition: transform 0.35s ease;
+          transition: transform 0.3s ease;
         }
-        .fbp-sig-card:hover .fbp-sig-cover img {
-          transform: scale(1.04);
+        .fbp-sig-card:hover .fbp-sig-cover > img {
+          transform: scale(1.03);
         }
-        .fbp-sig-play-float {
+        .fbp-sig-scrim {
           position: absolute;
-          right: 9px;
-          bottom: 9px;
-          width: 32px;
-          height: 32px;
-          border-radius: 999px;
-          background: rgba(0, 113, 227, 0.92);
-          border: 1.5px solid rgba(255, 255, 255, 0.55);
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+          inset: 0;
+          background: linear-gradient(180deg, rgba(8, 10, 14, 0.12) 0%, rgba(8, 10, 14, 0.86) 100%);
         }
-        .fbp-sig-body {
-          padding: 11px 13px 13px;
+        .fbp-sig-footer {
+          position: relative;
+          z-index: 1;
+          width: 100%;
           display: flex;
-          flex-direction: column;
-          gap: 3px;
-        }
-        .fbp-sig-body strong {
-          font-size: 13.5px;
-          font-weight: 740;
-          color: #ffffff;
-          line-height: 1.3;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        .fbp-sig-body span {
-          font-size: 11.5px;
-          color: rgba(245, 245, 247, 0.7);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 14px;
         }
         .fbp-sig-fallback {
           position: absolute;

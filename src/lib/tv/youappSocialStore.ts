@@ -10,11 +10,19 @@ import { supabase } from '../supabase';
 const STORAGE_KEY = 'youapp_social_graph_v1';
 export const SOCIAL_GRAPH_CHANGED_EVENT = 'youapp:social-graph-changed';
 
+export interface CreatorPlatformLinks {
+  youtube?: string;
+  peertube?: string;
+  radioUrl?: string;
+  website?: string;
+}
+
 export interface FollowedCreatorMeta {
   key: string;
   name: string;
   provider?: string;
   sourceUrl?: string;
+  linkedPlatforms?: CreatorPlatformLinks;
   followedAt: string;
 }
 
@@ -180,6 +188,31 @@ export function toggleFollowCreatorWithMeta(
     followedCreatorsMeta: nextMeta
   });
   return { graph: saved, active: !exists };
+}
+
+/**
+ * Actualiza los enlaces multiplataforma (YouTube, PeerTube, Radio, Web) de un creador seguido
+ * para unificar su identidad en YOUAPP sin perder su historial.
+ */
+export function updateFollowedCreatorPlatforms(
+  prev: YouAppSocialGraph,
+  creatorKey: string,
+  links: CreatorPlatformLinks
+): YouAppSocialGraph {
+  const clean = (v?: string) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+  const sanitized: CreatorPlatformLinks = {
+    youtube: clean(links.youtube),
+    peertube: clean(links.peertube),
+    radioUrl: clean(links.radioUrl),
+    website: clean(links.website)
+  };
+  const nextMeta = (prev.followedCreatorsMeta || []).map((c) =>
+    c.key === creatorKey ? { ...c, linkedPlatforms: sanitized } : c
+  );
+  return saveSocialGraph({
+    ...prev,
+    followedCreatorsMeta: nextMeta
+  });
 }
 
 async function syncSocialGraphToCloud(graph: YouAppSocialGraph): Promise<void> {

@@ -89,6 +89,30 @@ import type { VideoMoment } from '../lib/moments/momentTypes';
 import atlasMusicCatalog from '../data/atlasMusicChannels.json';
 
 const HIST_KEY = 'youapp_chsearch_v4';
+const ENABLED_SOURCES_KEY = 'youapp_enabled_sources_v1';
+const ALL_SEARCH_SOURCES = [
+  { id: 'youtube', label: 'YouTube' },
+  { id: 'peertube', label: 'PeerTube' },
+  { id: 'archive', label: 'Archive' },
+  { id: 'vimeo', label: 'Vimeo' },
+  { id: 'dailymotion', label: 'Dailymotion' }
+] as const;
+type SearchSourceId = (typeof ALL_SEARCH_SOURCES)[number]['id'];
+
+const loadEnabledSources = (): SearchSourceId[] => {
+  try {
+    const raw = localStorage.getItem(ENABLED_SOURCES_KEY);
+    if (!raw) return ALL_SEARCH_SOURCES.map((s) => s.id);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return ALL_SEARCH_SOURCES.map((s) => s.id);
+    const valid = parsed.filter((id): id is SearchSourceId =>
+      ALL_SEARCH_SOURCES.some((s) => s.id === id)
+    );
+    return valid.length > 0 ? valid : ALL_SEARCH_SOURCES.map((s) => s.id);
+  } catch {
+    return ALL_SEARCH_SOURCES.map((s) => s.id);
+  }
+};
 const LEARNED_POINTERS_KEY = 'youapp_atlas_learned_pointers_v1';
 const SEARCH_RAM_CACHE = new Map<string, { items: SearchVideoItem[]; hasMore: boolean; expires: number }>();
 const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -1732,6 +1756,20 @@ export default function ChannelSearch() {
   const [results, setResults] = useState<SearchVideoItem[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'done'>('idle');
   const [sortMode, setSortMode] = useState<'relevance' | 'views' | 'recent'>('relevance');
+  const [enabledSources, setEnabledSources] = useState<SearchSourceId[]>(() => loadEnabledSources());
+  const toggleSearchSource = useCallback((sourceId: SearchSourceId) => {
+    setEnabledSources((prev) => {
+      const exists = prev.includes(sourceId);
+      if (exists && prev.length <= 1) return prev; // Siempre dejar al menos 1 fuente activa
+      const next = exists ? prev.filter((s) => s !== sourceId) : [...prev, sourceId];
+      try {
+        localStorage.setItem(ENABLED_SOURCES_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
   const [isAlgoPanelOpen, setIsAlgoPanelOpen] = useState(false);
   const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
   const [previewVideoMeta, setPreviewVideoMeta] = useState<VideoPublicMeta | null>(null);
@@ -2306,12 +2344,14 @@ export default function ChannelSearch() {
   }, [loadingMore, hasMore, activeCategory, activeChannelFilter, committed, pageOffset, userRegion]);
 
   const filteredResults = useMemo(() => {
-    // Excluir videos Shorts / verticales y canales ocultados por el usuario
+    // Excluir videos Shorts / verticales, canales ocultados y proveedores desactivados por el usuario
+    const sourceSet = new Set<string>(enabledSources);
     let list = results.filter(
       (item) =>
         !isShortOrVerticalVideo(item) &&
         !detectedVerticalIds.has(item.videoId) &&
-        !isChannelHiddenInGraph(socialGraph, item.channelName, item.channelId)
+        !isChannelHiddenInGraph(socialGraph, item.channelName, item.channelId) &&
+        sourceSet.has(item.provider || 'youtube')
     );
     if (durationFilter !== 'all') {
       list = list.filter((item) => {
@@ -2334,7 +2374,7 @@ export default function ChannelSearch() {
       });
     }
     return list;
-  }, [results, durationFilter, sortMode, detectedVerticalIds, socialGraph]);
+  }, [results, durationFilter, sortMode, detectedVerticalIds, socialGraph, enabledSources]);
 
   // Sincroniza el video activo con el Mini-reproductor Global para que te acompañe al ir a /lecturas u otras secciones
   useEffect(() => {
@@ -3171,6 +3211,26 @@ export default function ChannelSearch() {
                   >
                     <Settings2 size={13} /> Ajustar
                   </button>
+                </div>
+
+                {/* FUENTES CONFIGURABLES (encender / apagar plataformas tipo Grayjay) */}
+                <div className="ys-algo-bar-row" role="group" aria-label="Fuentes activas">
+                  <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.72, marginRight: 2 }}>Fuentes:</span>
+                  {ALL_SEARCH_SOURCES.map((src) => {
+                    const isOn = enabledSources.includes(src.id);
+                    return (
+                      <button
+                        key={src.id}
+                        type="button"
+                        className={`ys-filter-pill ${isOn ? 'active' : ''}`}
+                        aria-pressed={isOn}
+                        onClick={() => toggleSearchSource(src.id)}
+                        title={isOn ? `Ocultar resultados de ${src.label}` : `Activar resultados de ${src.label}`}
+                      >
+                        {src.label}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {/* LAS 3 BARRAS ORDENADAS (1 barra limpia por fila) */}

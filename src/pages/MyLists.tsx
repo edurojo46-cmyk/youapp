@@ -13,7 +13,11 @@ import {
   Trash2,
   Share2,
   ChevronDown,
-  Users
+  Users,
+  Link2,
+  RefreshCw,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import { type UniversalChannel } from '../lib/universalChannels';
 import { useStore } from '../store/useStore';
@@ -29,8 +33,14 @@ import {
   SOCIAL_GRAPH_CHANGED_EVENT,
   loadSocialGraph,
   toggleFollowCreatorWithMeta,
+  updateFollowedCreatorPlatforms,
+  type CreatorPlatformLinks,
   type YouAppSocialGraph
 } from '../lib/tv/youappSocialStore';
+import {
+  fetchFollowedCreatorsFeed,
+  type FollowedFeedItem
+} from '../lib/tv/subscriptionsFeedService';
 import {
   loadYouMusicWorkspace,
   saveYouMusicWorkspace,
@@ -110,7 +120,38 @@ export default function MyLists() {
     return () => window.removeEventListener(SOCIAL_GRAPH_CHANGED_EVENT, onSocialChange);
   }, []);
 
-  const followedCreators = socialGraph.followedCreatorsMeta || [];
+  const followedCreators = useMemo(
+    () => socialGraph.followedCreatorsMeta || [],
+    [socialGraph.followedCreatorsMeta]
+  );
+
+  const [followedFeed, setFollowedFeed] = useState<FollowedFeedItem[]>([]);
+  const [followedFeedLoading, setFollowedFeedLoading] = useState(false);
+  const [followedFeedNonce, setFollowedFeedNonce] = useState(0);
+  const [editingPlatformsKey, setEditingPlatformsKey] = useState<string | null>(null);
+  const [platformsDraft, setPlatformsDraft] = useState<CreatorPlatformLinks>({});
+
+  useEffect(() => {
+    if (filter !== 'siguiendo' || followedCreators.length === 0) {
+      if (followedCreators.length === 0) setFollowedFeed([]);
+      return;
+    }
+    let cancelled = false;
+    setFollowedFeedLoading(true);
+    fetchFollowedCreatorsFeed(followedCreators, 28)
+      .then((items) => {
+        if (!cancelled) setFollowedFeed(items);
+      })
+      .catch(() => {
+        if (!cancelled) setFollowedFeed([]);
+      })
+      .finally(() => {
+        if (!cancelled) setFollowedFeedLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filter, followedCreators, followedFeedNonce]);
 
   useEffect(() => {
     try {
@@ -623,36 +664,254 @@ export default function MyLists() {
               <div className="ml-empty-card">
                 <Users size={28} color="#64d2ff" />
                 <strong>Todavía no seguís creadores</strong>
-                <p>Cuando sigas un canal en Buscar, va a aparecer acá para abrir sus videos en 1 toque.</p>
+                <p>Cuando sigas un canal en Buscar, sus novedades y enlaces multiplataforma van a aparecer acá.</p>
                 <button type="button" className="ml-cta-btn" onClick={() => navigate('/search')}>
                   <Search size={14} /> Explorar en Buscar
                 </button>
               </div>
             ) : (
-              <div className="ml-vault-list">
-                {followedCreators.map((creator) => (
-                  <div key={creator.key} className="ml-vault-row">
-                    <div className="ml-icon-box blue"><Radio size={18} /></div>
+              <div className="ml-following-wrap">
+                {/* 1. FEED UNIFICADO "NOVEDADES DE LOS QUE SIGO" (US$ 0) */}
+                <div className="ml-feed-block">
+                  <div className="ml-section-subhead">
+                    <div>
+                      <strong>Novedades de los que sigo</strong>
+                      <span>
+                        {followedFeedLoading
+                          ? 'Buscando últimos videos…'
+                          : `${followedFeed.length} ${followedFeed.length === 1 ? 'video' : 'videos'} recientes (US$ 0)`}
+                      </span>
+                    </div>
                     <button
                       type="button"
-                      className="ml-row-click"
-                      onClick={() => navigate(`/search?q=${encodeURIComponent(creator.name)}`)}
+                      className="ml-mini-pill"
+                      onClick={() => setFollowedFeedNonce((n) => n + 1)}
+                      disabled={followedFeedLoading}
+                      title="Actualizar novedades"
                     >
-                      <strong>{creator.name}</strong>
-                      <span>Ver videos y novedades en Buscar</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="ml-icon-action danger"
-                      title="Dejar de seguir"
-                      onClick={() =>
-                        setSocialGraph((prev) => toggleFollowCreatorWithMeta(prev, creator).graph)
-                      }
-                    >
-                      <Trash2 size={14} />
+                      <RefreshCw size={12} className={followedFeedLoading ? 'ml-spin' : ''} />
+                      <span>Actualizar</span>
                     </button>
                   </div>
-                ))}
+
+                  {followedFeed.length === 0 && !followedFeedLoading ? (
+                    <div className="ml-empty-card" style={{ padding: '18px 14px' }}>
+                      <strong>Sin novedades indexadas todavía</strong>
+                      <p>Tocá un creador abajo para buscar sus videos en vivo o vinculá su canal de PeerTube.</p>
+                    </div>
+                  ) : (
+                    <div className="ml-vault-list">
+                      {followedFeed.map((item) => (
+                        <article key={item.id} className="ml-vault-row">
+                          <button
+                            type="button"
+                            className="ml-thumb-wrap"
+                            onClick={() => navigate(`/mitv?add=${encodeURIComponent(item.sourceUrl)}`)}
+                            aria-label={`Ver ${item.title}`}
+                          >
+                            {item.thumbnailUrl ? (
+                              <img
+                                src={item.thumbnailUrl}
+                                alt={item.title}
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                              />
+                            ) : (
+                              <span className="ml-thumb-fallback">
+                                <Tv size={16} />
+                              </span>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            className="ml-row-click"
+                            onClick={() => navigate(`/mitv?add=${encodeURIComponent(item.sourceUrl)}`)}
+                          >
+                            <div className="ml-meta-line">
+                              <span className="ml-kind-badge is-video">
+                                {item.provider === 'peertube' ? 'PeerTube' : 'YouTube'}
+                              </span>
+                              <span className="ml-subtitle-inline">{item.creatorName}</span>
+                            </div>
+                            <strong>{item.title}</strong>
+                          </button>
+
+                          <div className="ml-row-actions">
+                            <button
+                              type="button"
+                              className="ml-icon-action play"
+                              title="Reproducir en MiTV"
+                              onClick={() => navigate(`/mitv?add=${encodeURIComponent(item.sourceUrl)}`)}
+                            >
+                              <Play size={14} fill="currentColor" />
+                            </button>
+                            <button
+                              type="button"
+                              className="ml-icon-action"
+                              title="Compartir"
+                              onClick={() =>
+                                void shareContentUniversal({
+                                  title: item.title,
+                                  text: `${item.title} · ${item.creatorName}`,
+                                  url: item.sourceUrl,
+                                  thumbnailUrl: item.thumbnailUrl
+                                })
+                              }
+                            >
+                              <Share2 size={14} />
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. CREADORES SEGUIDOS + IDENTIDAD MULTIPLATAFORMA */}
+                <div className="ml-feed-block">
+                  <div className="ml-section-subhead">
+                    <div>
+                      <strong>Creadores seguidos ({followedCreators.length})</strong>
+                      <span>Unificá YouTube, PeerTube, Radio y Web en una sola ficha por creador</span>
+                    </div>
+                  </div>
+                  <div className="ml-vault-list">
+                    {followedCreators.map((creator) => {
+                      const links = creator.linkedPlatforms || {};
+                      const isEditing = editingPlatformsKey === creator.key;
+                      const linkedCount = [links.youtube, links.peertube, links.radioUrl, links.website].filter(Boolean).length;
+                      return (
+                        <div key={creator.key} className="ml-creator-card">
+                          <div className="ml-vault-row" style={{ border: 0, background: 'transparent', padding: '8px 10px' }}>
+                            <div className="ml-icon-box blue"><Radio size={18} /></div>
+                            <button
+                              type="button"
+                              className="ml-row-click"
+                              onClick={() => navigate(`/search?q=${encodeURIComponent(creator.name)}`)}
+                            >
+                              <strong>{creator.name}</strong>
+                              <span>
+                                {linkedCount > 0
+                                  ? `${linkedCount} ${linkedCount === 1 ? 'fuente vinculada' : 'fuentes vinculadas'} · Tocar para ver videos`
+                                  : 'Ver videos y novedades en Buscar'}
+                              </span>
+                            </button>
+                            <div className="ml-row-actions">
+                              <button
+                                type="button"
+                                className="ml-icon-action"
+                                title="Vincular plataformas del creador (YouTube, PeerTube, Radio, Web)"
+                                onClick={() => {
+                                  if (isEditing) {
+                                    setEditingPlatformsKey(null);
+                                  } else {
+                                    setEditingPlatformsKey(creator.key);
+                                    setPlatformsDraft({
+                                      youtube: links.youtube || creator.sourceUrl || '',
+                                      peertube: links.peertube || '',
+                                      radioUrl: links.radioUrl || '',
+                                      website: links.website || ''
+                                    });
+                                  }
+                                }}
+                              >
+                                <Link2 size={14} />
+                              </button>
+                              <button
+                                type="button"
+                                className="ml-icon-action danger"
+                                title="Dejar de seguir"
+                                onClick={() =>
+                                  setSocialGraph((prev) => toggleFollowCreatorWithMeta(prev, creator).graph)
+                                }
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {linkedCount > 0 && !isEditing && (
+                            <div className="ml-creator-links-bar">
+                              {links.youtube && (
+                                <a href={links.youtube} target="_blank" rel="noopener noreferrer" className="ml-platform-pill">
+                                  <Tv size={11} /> YouTube <ExternalLink size={10} />
+                                </a>
+                              )}
+                              {links.peertube && (
+                                <a href={links.peertube} target="_blank" rel="noopener noreferrer" className="ml-platform-pill">
+                                  <Film size={11} /> PeerTube <ExternalLink size={10} />
+                                </a>
+                              )}
+                              {links.radioUrl && (
+                                <a href={links.radioUrl} target="_blank" rel="noopener noreferrer" className="ml-platform-pill">
+                                  <Radio size={11} /> Radio <ExternalLink size={10} />
+                                </a>
+                              )}
+                              {links.website && (
+                                <a href={links.website} target="_blank" rel="noopener noreferrer" className="ml-platform-pill">
+                                  <Globe size={11} /> Web <ExternalLink size={10} />
+                                </a>
+                              )}
+                            </div>
+                          )}
+
+                          {isEditing && (
+                            <form
+                              className="ml-creator-links-form"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                setSocialGraph((prev) =>
+                                  updateFollowedCreatorPlatforms(prev, creator.key, platformsDraft)
+                                );
+                                setEditingPlatformsKey(null);
+                                setFollowedFeedNonce((n) => n + 1);
+                              }}
+                            >
+                              <input
+                                type="url"
+                                value={platformsDraft.youtube || ''}
+                                onChange={(e) => setPlatformsDraft((p) => ({ ...p, youtube: e.target.value }))}
+                                placeholder="YouTube (https://youtube.com/@canal)"
+                              />
+                              <input
+                                type="url"
+                                value={platformsDraft.peertube || ''}
+                                onChange={(e) => setPlatformsDraft((p) => ({ ...p, peertube: e.target.value }))}
+                                placeholder="PeerTube (https://instancia/c/canal — trae novedades automáticas)"
+                              />
+                              <input
+                                type="url"
+                                value={platformsDraft.radioUrl || ''}
+                                onChange={(e) => setPlatformsDraft((p) => ({ ...p, radioUrl: e.target.value }))}
+                                placeholder="Radio / Stream en vivo (https://...)"
+                              />
+                              <input
+                                type="url"
+                                value={platformsDraft.website || ''}
+                                onChange={(e) => setPlatformsDraft((p) => ({ ...p, website: e.target.value }))}
+                                placeholder="Sitio oficial (https://...)"
+                              />
+                              <div className="ml-creator-form-actions">
+                                <button type="submit" className="ml-cta-btn" style={{ padding: '6px 14px', fontSize: 12 }}>
+                                  Guardar identidad
+                                </button>
+                                <button
+                                  type="button"
+                                  className="ml-ghost-btn"
+                                  style={{ padding: '6px 12px', fontSize: 12 }}
+                                  onClick={() => setEditingPlatformsKey(null)}
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </form>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             )}
           </section>
@@ -1316,6 +1575,106 @@ export default function MyLists() {
           flex-wrap: wrap;
           justify-content: center;
           margin-top: 4px;
+        }
+
+        .ml-following-wrap {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .ml-feed-block {
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
+        }
+        .ml-section-subhead {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 0 2px;
+        }
+        .ml-section-subhead strong {
+          display: block;
+          font-size: 14px;
+          font-weight: 750;
+          color: #ffffff;
+        }
+        .ml-section-subhead span {
+          font-size: 11.5px;
+          color: rgba(245, 245, 247, 0.7);
+        }
+        .ml-mini-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+          font-size: 11.5px;
+          font-weight: 650;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .ml-spin {
+          animation: mlSpin 0.9s linear infinite;
+        }
+        @keyframes mlSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .ml-creator-card {
+          border-radius: 14px;
+          background: rgba(24, 28, 38, 0.52);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          overflow: hidden;
+        }
+        .ml-creator-links-bar {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 0 10px 9px;
+        }
+        .ml-platform-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 9px;
+          border-radius: 999px;
+          background: rgba(100, 210, 255, 0.14);
+          border: 1px solid rgba(100, 210, 255, 0.35);
+          color: #d8f3ff;
+          font-size: 11px;
+          font-weight: 650;
+          text-decoration: none;
+        }
+        .ml-creator-links-form {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          padding: 8px 10px 10px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .ml-creator-links-form input {
+          width: 100%;
+          box-sizing: border-box;
+          padding: 7px 11px;
+          border-radius: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          background: rgba(10, 14, 22, 0.55);
+          color: #ffffff;
+          font-size: 12px;
+          outline: none;
+        }
+        .ml-creator-links-form input:focus {
+          border-color: #64d2ff;
+        }
+        .ml-creator-form-actions {
+          display: flex;
+          gap: 8px;
+          justify-content: flex-end;
         }
 
         @media (max-width: 960px) {

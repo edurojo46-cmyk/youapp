@@ -79,6 +79,13 @@ import {
 import atlasMusicCatalog from '../data/atlasMusicChannels.json';
 import { STARTER_AUDIO_PRESETS } from '../lib/tv/signalMediaSourcesStore';
 import { searchRadioBrowserStations, type YouMusicTrack } from '../lib/tv/youMusicStore';
+import {
+  canAutoSkip,
+  isUnplayableYouTubeError,
+  isVideoMarkedUnplayable,
+  reportUnplayableYouTubeVideo,
+  resetAutoSkip
+} from '../lib/player/videoResilience';
 
 const RADIO_CATEGORIES = [
   'Argentina',
@@ -233,6 +240,7 @@ function YouMusicPageInner() {
   const liveRadioAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [, setUnavailableTick] = useState(0);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [isRenamingPlaylist, setIsRenamingPlaylist] = useState(false);
@@ -1284,8 +1292,25 @@ function YouMusicPageInner() {
           }
           if (typeof payload.info.playerState === 'number') {
             const playingNow = payload.info.playerState === 1;
+            if (playingNow) resetAutoSkip('youmusic');
             setIsPlaying(playingNow);
             usePlayerStore.getState().setIsPlaying(playingNow);
+          }
+        }
+        const ytErrCode =
+          payload?.event === 'onError'
+            ? payload.info
+            : typeof payload?.info?.errorCode === 'number'
+              ? payload.info.errorCode
+              : null;
+        if (ytErrCode !== null && isUnplayableYouTubeError(ytErrCode)) {
+          void reportUnplayableYouTubeVideo(currentItem.videoId, ytErrCode, 'YouMusicPage');
+          setUnavailableTick((t) => t + 1);
+          if (items.length > 1 && canAutoSkip('youmusic', 4)) {
+            setToast('Video no disponible en YouTube — pasando al siguiente…');
+            setCurrentIndex((prev) => (prev + 1) % items.length);
+          } else {
+            setToast('Este video ya no permite reproducción embebida.');
           }
         }
       } catch {
@@ -1312,7 +1337,7 @@ function YouMusicPageInner() {
       window.removeEventListener('message', onYtMsg);
       window.clearInterval(ping);
     };
-  }, [currentItem, isMuted, postYouTubeCommand, handleSeekMusic]);
+  }, [currentItem, isMuted, items.length, postYouTubeCommand, handleSeekMusic]);
 
   const handleToggleMusicPiP = useCallback(async () => {
     if (!currentItem) return;
@@ -2657,6 +2682,11 @@ function YouMusicPageInner() {
                         <strong>{item.title}</strong>
                         <span>
                           {item.author} · {isPlayingRow ? 'Reproduciendo ahora' : `#${idx + 1}`}
+                          {isVideoMarkedUnplayable(item.videoId) && (
+                            <em style={{ fontStyle: 'normal', color: '#ff8a80', fontWeight: 700 }}>
+                              {' '}· No disponible
+                            </em>
+                          )}
                         </span>
                       </div>
                     )}

@@ -34,6 +34,7 @@ const HIDDEN_PREFIXES = [
 
 const DRAWER_LINKS = [
   { label: 'Inicio', path: '/', icon: Home },
+  { label: 'Señales · Armá la tuya', path: '/senales', icon: Sparkles },
   { label: 'Mi Señal', path: '/misenal1', icon: Radio },
   { label: 'MiTV', path: '/mitv', icon: Tv },
   { label: 'Buscar', path: '/search', icon: Search },

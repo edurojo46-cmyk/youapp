@@ -20,6 +20,7 @@ import EmbedChannel from './pages/EmbedChannel';
 import MobileRemote from './pages/MobileRemote';
 import MyAlgorithm from './pages/MyAlgorithm';
 import CreateSignal from './pages/CreateSignal';
+import SignalsDirectoryPage from './pages/SignalsDirectoryPage';
 import ProgramarTV from './pages/ProgramarTV';
 import MiSenal1 from './pages/MiSenal1';
 import YouAppChannelPage from './pages/YouAppChannelPage';
@@ -227,6 +228,7 @@ function App() {
         <Route path="/tv" element={<MiTvPublicOrProtectedRoute />} />
         <Route path="/programartv" element={<Navigate to="/mitv" replace />} />
         <Route path="/misenal1" element={<MiSenalPublicOrProtectedRoute />} />
+        <Route path="/senales" element={<SignalsDirectoryPage />} />
         <Route path="/misenal-medios" element={<ProtectedRoute><SignalAudioNewsPage /></ProtectedRoute>} />
         <Route path="/diarios" element={<ProtectedRoute><ArgentinaNewsPage /></ProtectedRoute>} />
         <Route path="/dial" element={<YouDialPage />} />

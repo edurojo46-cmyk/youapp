@@ -21,6 +21,14 @@ import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { CuratedSignalsDiscoverSection } from '../components/tv/CuratedSignalsDiscoverSection';
 import { AtlasForYouPlanner } from '../components/tv/AtlasForYouPlanner';
+import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
+import { SIGNALS_100_CATALOG } from '../lib/tv/signals100Catalog';
+
+const HOME_FEATURED_SIGNALS = [
+  ...SIGNALS_100_CATALOG.filter((s) => s.theme === 'cultura').slice(0, 4),
+  ...SIGNALS_100_CATALOG.filter((s) => s.theme === 'musica').slice(0, 4),
+  ...SIGNALS_100_CATALOG.filter((s) => s.theme === 'mundo').slice(0, 4)
+];
 
 const HUD_ITEMS = [
   { id: 'buscar', icon: Search, label: 'BUSCAR', route: '/search', angleDeg: -90 },
@@ -222,6 +230,53 @@ export default function Home() {
 
       {/* ── MI SEÑAL VIVA: 3 SEÑALES CURADAS POR PERSONAS ── */}
       <AtlasForYouPlanner />
+      {/* ── VITRINA PROTAGONISTA: ARMÁ TU SEÑAL CON ATLAS + 100 SEÑALES TEMÁTICAS ── */}
+      <section className="home-signals-showcase" aria-label="Armá tu señal y explorá 100 señales">
+        <AtlasBuildSignalBox compact />
+
+        <div className="home-sig-strip-head">
+          <div>
+            <h3>100 Señales Temáticas listas para ver</h3>
+            <span>Cultura & Saber · Música & Escena · Deportes & Mundo</span>
+          </div>
+          <button
+            type="button"
+            className="home-sig-all-btn"
+            onClick={() => navigate('/senales')}
+          >
+            <span>Ver las 100 señales</span>
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        <div className="home-sig-carousel">
+          {HOME_FEATURED_SIGNALS.map((sig) => (
+            <button
+              key={sig.id}
+              type="button"
+              className="home-sig-card"
+              onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+            >
+              <img
+                src={`https://i.ytimg.com/vi/${sig.coverVideoId}/hqdefault.jpg`}
+                alt={sig.title}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+              />
+              <div className="home-sig-scrim" />
+              <span className="home-sig-pill" style={{ borderColor: sig.accent }}>
+                <Radio size={10} color="#64d2ff" />
+                <span>{sig.videos.length} videos</span>
+              </span>
+              <div className="home-sig-info">
+                <strong>{sig.title}</strong>
+                <span>{sig.subtitle}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
       <CuratedSignalsDiscoverSection />
 
       {/* ── BOTTOM GRID SECTION ── */}
@@ -343,6 +398,141 @@ export default function Home() {
       </div>
 
       <style>{`
+        .home-signals-showcase {
+          position: relative;
+          z-index: 4;
+          width: 100%;
+          max-width: 1120px;
+          margin: 10px auto 18px;
+          padding: 0 18px;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .home-sig-strip-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .home-sig-strip-head h3 {
+          margin: 0;
+          font-size: 15.5px;
+          font-weight: 760;
+          color: #ffffff;
+        }
+        .home-sig-strip-head span {
+          font-size: 12px;
+          color: rgba(245, 245, 247, 0.72);
+        }
+        .home-sig-all-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 7px 13px;
+          border-radius: 999px;
+          border: 1px solid rgba(100, 210, 255, 0.45);
+          background: rgba(0, 113, 227, 0.28);
+          color: #e0f2fe;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .home-sig-all-btn:hover {
+          background: #0071e3;
+          color: #ffffff;
+        }
+        .home-sig-carousel {
+          display: flex;
+          flex-wrap: nowrap;
+          gap: 10px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+          padding-bottom: 4px;
+        }
+        .home-sig-carousel::-webkit-scrollbar {
+          display: none;
+        }
+        .home-sig-card {
+          position: relative;
+          width: 224px;
+          aspect-ratio: 16 / 9;
+          flex-shrink: 0;
+          padding: 0;
+          border-radius: 15px;
+          border: 1px solid rgba(255, 255, 255, 0.18);
+          overflow: hidden;
+          background: #0b101b;
+          cursor: pointer;
+          text-align: left;
+          transition: transform 0.18s ease, border-color 0.18s ease;
+        }
+        .home-sig-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(100, 210, 255, 0.55);
+        }
+        .home-sig-card img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .home-sig-scrim {
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.08) 42%, rgba(0,0,0,0.85) 100%);
+        }
+        .home-sig-pill {
+          position: absolute;
+          top: 7px;
+          left: 7px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 7px;
+          border-radius: 999px;
+          background: rgba(10, 14, 22, 0.78);
+          border: 1px solid rgba(100, 210, 255, 0.48);
+          color: #ffffff;
+          font-size: 10px;
+          font-weight: 700;
+        }
+        .home-sig-info {
+          position: absolute;
+          left: 9px;
+          right: 9px;
+          bottom: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+        .home-sig-info strong {
+          font-size: 12.5px;
+          font-weight: 750;
+          color: #ffffff;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .home-sig-info span {
+          font-size: 10.5px;
+          color: rgba(245, 245, 247, 0.76);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        @media (max-width: 640px) {
+          .home-signals-showcase {
+            padding: 0 12px;
+          }
+          .home-sig-card {
+            width: 196px;
+          }
+        }
         /* APPLE GLASS DARK FROSTED SKIN (Unificado con Mi Señal / MiTV / YOU MUSIC / Reels / Lecturas) */
         .home-layout {
           position: relative;

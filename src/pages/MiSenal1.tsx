@@ -2465,6 +2465,22 @@ export default function MiSenal1() {
                 </>
               )}
 
+              {/* 0. Explorar las 100 señales + Armá tu señal con ATLAS */}
+              <button
+                type="button"
+                className="ms-hero-pill-btn ms-hero-icon-reveal"
+                onClick={() => navigate('/senales')}
+                title="Explorar las 100 señales temáticas o armar tu señal con ATLAS"
+                aria-label="Explorar señales"
+                style={{
+                  background: 'rgba(0, 113, 227, 0.28)',
+                  borderColor: 'rgba(100, 210, 255, 0.5)'
+                }}
+              >
+                <Sparkles size={14} color="#7dd3fc" />
+                <span className="ms-hero-reveal-label">+ Señales</span>
+              </button>
+
               {/* 1. Cambiar señal + Nueva señal */}
               <div style={{ position: 'relative', zIndex: 80 }}>
                 <button

@@ -1,17 +1,27 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sparkles,
-  ExternalLink,
   ArrowLeftRight,
   MousePointerClick,
   PlusCircle,
   Play,
-  Tv
+  Tv,
+  UserPlus,
+  UserCheck
 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { useSignalStore } from '../../lib/tv/signalStore';
+import { CURATED_SIGNALS_PILOT } from '../../lib/tv/curatedSignalsCatalog';
+import {
+  SOCIAL_GRAPH_CHANGED_EVENT,
+  loadSocialGraph,
+  toggleFollowCreatorWithMeta,
+  type YouAppSocialGraph
+} from '../../lib/tv/youappSocialStore';
 import {
   listSignalMemberships,
-  recordAndOpenOriginalChannel,
+  recordRepeaterReferralOnly,
   slotToExposureLevel,
   EXPOSURE_LEVELS,
   type SignalMembershipItem
@@ -22,6 +32,13 @@ interface Props {
   memberships?: SignalMembershipItem[];
   onRefreshRequested?: () => void;
   variant?: 'light' | 'glass';
+}
+
+interface ResolvedPromoVisual {
+  thumbUrl: string | null;
+  headline: string | null;
+  videoUrl: string | null;
+  youappSignalId: string | null;
 }
 
 function extractPromoThumbnail(featuredUrl?: string | null, originUrl?: string | null): string | null {
@@ -43,6 +60,58 @@ function extractPromoThumbnail(featuredUrl?: string | null, originUrl?: string |
   return null;
 }
 
+function normalizeNameKey(raw?: string | null): string {
+  return String(raw || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function readLocalBrandingCover(signalId: string): string | null {
+  try {
+    const raw = localStorage.getItem('youapp_signal_branding_v1');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const entry = parsed?.[signalId];
+    return entry?.coverDataUrl || entry?.avatarDataUrl || null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveLocalSignalMatch(m: SignalMembershipItem): ResolvedPromoVisual | null {
+  const targetName = normalizeNameKey(m.channelName);
+  const savedMap = useSignalStore.getState().savedSignalsById || {};
+  const allSignals = [...Object.values(savedMap), ...CURATED_SIGNALS_PILOT];
+
+  const found = allSignals.find((s) => {
+    if (!s) return false;
+    if (m.channelId && s.id === m.channelId) return true;
+    const sName = normalizeNameKey(s.name);
+    return Boolean(targetName && sName && (sName === targetName || sName.includes(targetName) || targetName.includes(sName)));
+  });
+
+  if (!found) return null;
+  const firstBlock = found.schedule?.[0]?.contentItem;
+  const brandingCover = readLocalBrandingCover(found.id);
+  const ytId = firstBlock?.providerId || firstBlock?.id || '';
+  const blockThumb =
+    firstBlock?.thumbnailUrl ||
+    (firstBlock as { thumbnail?: string } | undefined)?.thumbnail ||
+    (/^[A-Za-z0-9_-]{11}$/.test(ytId) ? `https://i.ytimg.com/vi/${ytId}/hqdefault.jpg` : null);
+
+  return {
+    thumbUrl: brandingCover || blockThumb || null,
+    headline: firstBlock?.title || found.name || null,
+    videoUrl:
+      (firstBlock as { videoUrl?: string } | undefined)?.videoUrl ||
+      (/^[A-Za-z0-9_-]{11}$/.test(ytId) ? `https://www.youtube.com/watch?v=${ytId}` : null),
+    youappSignalId: found.id
+  };
+}
+
 const FALLBACK_GRADIENTS = [
   'linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #0ea5e9 100%)',
   'linear-gradient(135deg, #1e1b4b 0%, #6d28d9 55%, #ec4899 100%)',
@@ -60,8 +129,9 @@ function pickFallbackGradient(seed: string): string {
 
 /**
  * Vitrina de Publicidad Colaborativa — Repetidoras y Señales Aliadas.
- * Presenta con miniatura visual de alto impacto los contenidos destacados
- * de cada repetidora asociada, derivando siempre audiencia real al canal original.
+ * - Muestra siempre miniatura y título reales (vía video destacado, señal YOUAPP o `youapp_index` US$0).
+ * - Mantiene al espectador DENTRO de YOUAPP (nunca lo expulsa a la app de YouTube).
+ * - Permite seguir al canal aliado en 1 toque y registra la derivación colaborativa.
  */
 export function SignalAssociatedRepeatersRail({
   signalId = '',
@@ -73,6 +143,14 @@ export function SignalAssociatedRepeatersRail({
   const navigate = useNavigate();
   const [internalItems, setInternalItems] = useState<SignalMembershipItem[]>([]);
   const [loaded, setLoaded] = useState(Boolean(memberships));
+  const [resolvedMap, setResolvedMap] = useState<Record<string, ResolvedPromoVisual>>({});
+  const [socialGraph, setSocialGraph] = useState<YouAppSocialGraph>(() => loadSocialGraph());
+
+  useEffect(() => {
+    const syncGraph = () => setSocialGraph(loadSocialGraph());
+    window.addEventListener(SOCIAL_GRAPH_CHANGED_EVENT, syncGraph);
+    return () => window.removeEventListener(SOCIAL_GRAPH_CHANGED_EVENT, syncGraph);
+  }, []);
 
   const refresh = useCallback(async () => {
     if (onRefreshRequested) {
@@ -99,9 +177,85 @@ export function SignalAssociatedRepeatersRail({
   }, [memberships, refresh]);
 
   const items = memberships ?? internalItems;
-  const repeaters = items.filter(
-    (i) => i.membershipRole === 'repeater' || i.membershipRole === 'reciprocal_repeater'
+  const repeaters = useMemo(
+    () =>
+      items.filter(
+        (i) => i.membershipRole === 'repeater' || i.membershipRole === 'reciprocal_repeater'
+      ),
+    [items]
   );
+
+  // Enriquecimiento automático US$0: busca miniatura y título real en señales locales o `youapp_index`
+  useEffect(() => {
+    if (repeaters.length === 0) return;
+    let cancelled = false;
+
+    const resolveAll = async () => {
+      const next: Record<string, ResolvedPromoVisual> = {};
+      const needIndexLookup: SignalMembershipItem[] = [];
+
+      for (const m of repeaters) {
+        const directThumb = extractPromoThumbnail(m.featuredVideoUrl, m.originUrl);
+        const localMatch = resolveLocalSignalMatch(m);
+        if (directThumb || localMatch?.thumbUrl) {
+          next[m.id] = {
+            thumbUrl: directThumb || localMatch?.thumbUrl || null,
+            headline: m.featuredVideoTitle || localMatch?.headline || null,
+            videoUrl: m.featuredVideoUrl || localMatch?.videoUrl || null,
+            youappSignalId: localMatch?.youappSignalId || null
+          };
+        } else {
+          if (localMatch) {
+            next[m.id] = localMatch;
+          }
+          needIndexLookup.push(m);
+        }
+      }
+
+      if (needIndexLookup.length > 0) {
+        await Promise.all(
+          needIndexLookup.slice(0, 8).map(async (m) => {
+            const cleanName = String(m.channelName || '')
+              .trim()
+              .replace(/[,%()]/g, ' ')
+              .trim();
+            if (cleanName.length < 2) return;
+            try {
+              const { data } = await supabase
+                .from('youapp_index')
+                .select('video_id,title,thumbnail_url')
+                .eq('provider', 'youtube')
+                .ilike('creator_name', `%${cleanName}%`)
+                .limit(3);
+              const first = Array.isArray(data) ? data.find((r) => r?.video_id) : null;
+              if (first?.video_id) {
+                const vid = String(first.video_id).trim();
+                next[m.id] = {
+                  thumbUrl:
+                    String(first.thumbnail_url || '') ||
+                    `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+                  headline: m.featuredVideoTitle || String(first.title || '') || null,
+                  videoUrl: m.featuredVideoUrl || `https://www.youtube.com/watch?v=${vid}`,
+                  youappSignalId: next[m.id]?.youappSignalId || null
+                };
+              }
+            } catch {
+              // ignore lookup errors
+            }
+          })
+        );
+      }
+
+      if (!cancelled && Object.keys(next).length > 0) {
+        setResolvedMap((prev) => ({ ...prev, ...next }));
+      }
+    };
+
+    void resolveAll();
+    return () => {
+      cancelled = true;
+    };
+  }, [repeaters]);
 
   return (
     <section
@@ -117,10 +271,10 @@ export function SignalAssociatedRepeatersRail({
             <div className="yrep-title-row">
               <h3>Destacados de repetidoras</h3>
               <span className="yrep-count-pill">{repeaters.length}</span>
-              <span className="yrep-collab-tag">Red colaborativa</span>
+              <span className="yrep-collab-tag">Publicidad colaborativa</span>
             </div>
             <p>
-              Promoción cruzada entre señales aliadas — cada clic suma audiencia real al canal original.
+              Señales aliadas recomendadas hoy — tocá para ver directo dentro de YOUAPP y sumar audiencia real.
             </p>
           </div>
         </div>
@@ -137,7 +291,7 @@ export function SignalAssociatedRepeatersRail({
 
       {loaded && repeaters.length === 0 && (
         <div className="yrep-empty">
-          Esta señal aún no tiene repetidoras activas. Desde <strong>Sumar repetidora</strong> podés asociar canales aliados para intercambiar visibilidad y audiencia real.
+          Esta señal aún no tiene repetidoras activas. Desde <strong>Sumar repetidora</strong> podés asociar canales aliados para intercambiar visibilidad y audiencia real dentro de YOUAPP.
         </div>
       )}
 
@@ -145,16 +299,43 @@ export function SignalAssociatedRepeatersRail({
         <div className="yrep-grid">
           {repeaters.map((m) => {
             const exp = EXPOSURE_LEVELS[slotToExposureLevel(m.placementSlot)];
+            const resolved = resolvedMap[m.id];
+            const thumbUrl =
+              resolved?.thumbUrl || extractPromoThumbnail(m.featuredVideoUrl, m.originUrl);
             const headline =
               m.featuredVideoTitle ||
-              `Selección recomendada de ${m.channelCategory || m.channelName || 'canal aliado'}`;
-            const thumbUrl = extractPromoThumbnail(m.featuredVideoUrl, m.originUrl);
+              resolved?.headline ||
+              `Programación recomendada de ${m.channelName || m.channelCategory || 'esta señal aliada'}`;
             const fallbackBg = pickFallbackGradient(m.channelName || m.id);
             const isReciprocal = m.membershipRole === 'reciprocal_repeater';
 
-            const handleOpenPromo = async () => {
-              await recordAndOpenOriginalChannel(m, true);
-              await refresh();
+            const followKey = `ch:${m.channelName || m.channelId || m.id}`;
+            const isFollowed = socialGraph.followedSignalIds.includes(followKey);
+
+            // Abrir SIEMPRE dentro de YOUAPP (nunca expulsar al usuario a la app de YouTube)
+            const handleOpenInsideYouApp = async () => {
+              void recordRepeaterReferralOnly(m.id);
+              if (resolved?.youappSignalId) {
+                navigate(`/misenal1?signal=${encodeURIComponent(resolved.youappSignalId)}`);
+                return;
+              }
+              const playableUrl = resolved?.videoUrl || m.featuredVideoUrl;
+              if (playableUrl && /^https?:\/\//i.test(playableUrl)) {
+                navigate(`/mitv?add=${encodeURIComponent(playableUrl)}`);
+                return;
+              }
+              navigate(`/search?q=${encodeURIComponent(m.channelName || headline)}`);
+            };
+
+            const handleToggleFollow = () => {
+              setSocialGraph((prev) =>
+                toggleFollowCreatorWithMeta(prev, {
+                  key: followKey,
+                  name: m.channelName || 'Señal aliada',
+                  provider: (m.originPlatform || 'youtube').toLowerCase(),
+                  sourceUrl: m.originUrl || resolved?.videoUrl || undefined
+                }).graph
+              );
             };
 
             return (
@@ -162,8 +343,8 @@ export function SignalAssociatedRepeatersRail({
                 <button
                   type="button"
                   className="yrep-thumb-btn"
-                  onClick={() => void handleOpenPromo()}
-                  aria-label={`Ver ${headline} en ${m.channelName || 'canal original'}`}
+                  onClick={() => void handleOpenInsideYouApp()}
+                  aria-label={`Ver ${headline} dentro de YOUAPP`}
                   style={thumbUrl ? undefined : { background: fallbackBg }}
                 >
                   {thumbUrl ? (
@@ -175,8 +356,9 @@ export function SignalAssociatedRepeatersRail({
                     />
                   ) : (
                     <div className="yrep-thumb-fallback">
-                      <Tv size={26} />
-                      <span>{m.channelName || 'Señal aliada'}</span>
+                      <Tv size={24} />
+                      <strong>{m.channelName || 'Señal aliada'}</strong>
+                      <span>{m.channelCategory || 'Recomendado hoy en YOUAPP'}</span>
                     </div>
                   )}
 
@@ -187,7 +369,7 @@ export function SignalAssociatedRepeatersRail({
                       {isReciprocal ? <ArrowLeftRight size={11} /> : <Sparkles size={11} />}
                       <span>{isReciprocal ? 'Alianza recíproca' : exp.badge}</span>
                     </span>
-                    <span className="yrep-platform-pill">{m.originPlatform || 'YouTube'}</span>
+                    <span className="yrep-platform-pill">En YOUAPP</span>
                   </div>
 
                   <div className="yrep-thumb-bottom">
@@ -204,27 +386,39 @@ export function SignalAssociatedRepeatersRail({
                   <button
                     type="button"
                     className="yrep-headline-btn"
-                    onClick={() => void handleOpenPromo()}
+                    onClick={() => void handleOpenInsideYouApp()}
                   >
                     {headline}
                   </button>
 
                   <div className="yrep-card-footer">
                     <span className="yrep-meta">
-                      {m.channelCategory || m.originPlatform} ·{' '}
+                      {m.channelCategory || 'Señal aliada'} ·{' '}
                       <MousePointerClick size={11} style={{ verticalAlign: '-1px' }} />{' '}
                       {m.referralClicks || 0}{' '}
                       {m.referralClicks === 1 ? 'visita' : 'visitas'}
                     </span>
 
-                    <button
-                      type="button"
-                      className="yrep-cta-btn"
-                      onClick={() => void handleOpenPromo()}
-                    >
-                      <span>Ver canal</span>
-                      <ExternalLink size={11} />
-                    </button>
+                    <div className="yrep-card-actions">
+                      <button
+                        type="button"
+                        className={`yrep-follow-btn ${isFollowed ? 'is-followed' : ''}`}
+                        onClick={handleToggleFollow}
+                        title={isFollowed ? 'Siguiendo a este canal' : 'Seguir en YOUAPP'}
+                      >
+                        {isFollowed ? <UserCheck size={12} /> : <UserPlus size={12} />}
+                        <span>{isFollowed ? 'Siguiendo' : 'Seguir'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="yrep-cta-btn"
+                        onClick={() => void handleOpenInsideYouApp()}
+                      >
+                        <Play size={11} fill="#ffffff" color="#ffffff" />
+                        <span>Ver aquí</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </article>
@@ -446,12 +640,18 @@ export function SignalAssociatedRepeatersRail({
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 6px;
-          color: rgba(255, 255, 255, 0.9);
-          font-size: 13px;
-          font-weight: 700;
-          padding: 12px;
+          gap: 4px;
+          color: rgba(255, 255, 255, 0.94);
+          padding: 16px;
           text-align: center;
+        }
+        .yrep-thumb-fallback strong {
+          font-size: 14px;
+          font-weight: 760;
+        }
+        .yrep-thumb-fallback span {
+          font-size: 11px;
+          color: rgba(255, 255, 255, 0.78);
         }
         .yrep-thumb-scrim {
           position: absolute;
@@ -566,6 +766,7 @@ export function SignalAssociatedRepeatersRail({
           align-items: center;
           justify-content: space-between;
           gap: 8px;
+          flex-wrap: wrap;
         }
         .yrep-meta {
           font-size: 11px;
@@ -579,6 +780,43 @@ export function SignalAssociatedRepeatersRail({
         }
         .yrep-rail.is-light .yrep-meta {
           color: #64748b;
+        }
+        .yrep-card-actions {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
+        .yrep-follow-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 10px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 680;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .yrep-rail.is-glass .yrep-follow-btn {
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          color: #f5f5f7;
+        }
+        .yrep-rail.is-glass .yrep-follow-btn.is-followed {
+          background: rgba(16, 185, 129, 0.22);
+          border-color: rgba(52, 211, 153, 0.55);
+          color: #a7f3d0;
+        }
+        .yrep-rail.is-light .yrep-follow-btn {
+          background: #ffffff;
+          border: 1px solid #cbd5e1;
+          color: #334155;
+        }
+        .yrep-rail.is-light .yrep-follow-btn.is-followed {
+          background: #ecfdf5;
+          border-color: #6ee7b7;
+          color: #047857;
         }
         .yrep-cta-btn {
           display: inline-flex;

@@ -332,6 +332,17 @@ export async function listSignalMemberships(signalId: string): Promise<SignalMem
     }));
 }
 
+export async function recordRepeaterReferralOnly(membershipId: string): Promise<void> {
+  if (!membershipId) return;
+  try {
+    await supabase.rpc('record_repeater_referral', {
+      p_membership_id: membershipId
+    });
+  } catch {
+    // Silencioso si está offline o sin sesión
+  }
+}
+
 export async function recordAndOpenOriginalChannel(
   membership: SignalMembershipItem,
   preferFeatured = false

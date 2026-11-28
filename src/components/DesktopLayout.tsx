@@ -68,7 +68,6 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
         <nav className="dl-nav-menu">
           <button className={`dl-nav-item ${isActive("/redes") ? "active" : ""}`} onClick={() => navigate("/redes")}><Users size={20} /> Mis redes</button>
           <button className={`dl-nav-item ${isActive("/repetidoras") || isActive("/asociaciones") ? "active" : ""}`} onClick={() => navigate("/repetidoras")}><Radio size={20} /> Repetidoras</button>
-          <button className={`dl-nav-item ${isActive("/publicador") ? "active" : ""}`} onClick={() => navigate("/publicador")}><PlayCircle size={20} /> Publicador</button>
           <button className={`dl-nav-item ${isActive('/') ? 'active' : ''}`} onClick={() => navigate('/')}>
             <Home size={20} /> Inicio
           </button>

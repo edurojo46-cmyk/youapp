@@ -9,7 +9,7 @@ export default function Login({ social = false }: { social?: boolean } = {}) {
   const location = useLocation();
   const rawReturnTo = new URLSearchParams(location.search).get('returnTo');
   const safeReturnTo = rawReturnTo && rawReturnTo.startsWith('/') && !rawReturnTo.startsWith('//') ? rawReturnTo : null;
-  const destination = social ? (safeReturnTo === '/publicador' ? '/publicador' : '/redes') : (safeReturnTo || '/perfil');
+  const destination = social ? '/redes' : (safeReturnTo || '/perfil');
   const navigate = useNavigate();
   const { user } = useStore();
 

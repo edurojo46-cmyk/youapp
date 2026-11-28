@@ -63,7 +63,6 @@ export function ProgramarTVLayout({
           <button onClick={() => navigate('/you4')} style={{ background: 'none', border: 'none', fontSize: '13.5px', fontWeight: 500, color: 'var(--you-text-secondary)', cursor: 'pointer' }}>You4 (4 Canales)</button>
           <button onClick={() => navigate('/repetidoras')} style={{ background: 'none', border: 'none', fontSize: '13.5px', fontWeight: 500, color: 'var(--you-text-secondary)', cursor: 'pointer' }}>Repetidoras</button>
           <button onClick={() => navigate('/redes')} style={{ background: 'none', border: 'none', fontSize: '13.5px', fontWeight: 500, color: 'var(--you-text-secondary)', cursor: 'pointer' }}>Mis Redes</button>
-          <button onClick={() => navigate('/publicador')} style={{ background: 'var(--you-blue-vivid)', border: 'none', borderRadius: '999px', padding: '6px 14px', fontSize: '13px', fontWeight: 600, color: '#fff', cursor: 'pointer' }}>Publicador</button>
           
           <div style={{ marginLeft: '4px' }}>
             <TvUserSessionMenu />

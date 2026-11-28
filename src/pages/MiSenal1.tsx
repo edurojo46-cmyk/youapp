@@ -2860,19 +2860,6 @@ export default function MiSenal1() {
                           <span>Repetidoras</span>
                         </span>
                       </button>
-                      <button
-                        type="button"
-                        className="ms-hero-switcher-item"
-                        onClick={() => {
-                          setShowToolsMenu(false);
-                          navigate('/publicador');
-                        }}
-                      >
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                          <Sparkles size={13} color="#64d2ff" />
-                          <span>Studio</span>
-                        </span>
-                      </button>
                     </div>
                   </>
                 )}

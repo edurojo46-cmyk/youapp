@@ -1,4 +1,3 @@
-import YouAppPublisherPage from '../apps/youapp/pages/YouAppPublisherPage.tsx';
 import YouAppAssociationsPage from '../apps/youapp/pages/YouAppAssociationsPage.tsx';
 import { Routes, Route, Navigate, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
@@ -194,8 +193,8 @@ function App() {
         <Route path="/redes" element={<YouAppSocialPresence />} />
         <Route path="/repetidoras" element={<YouAppAssociationsPage />} />
         <Route path="/asociaciones" element={<YouAppAssociationsPage />} />
-    <Route path="/publicador" element={<YouAppPublisherPage />} />
-    <Route path="/redes/acceso" element={<Login social />} />
+        <Route path="/publicador" element={<Navigate to="/" replace />} />
+        <Route path="/redes/acceso" element={<Login social />} />
         <Route path="/login" element={<Login />} />
         {/* Rutas públicas para espectadores, control remoto y sitios web incrustados */}
         <Route path="/c/:idOrSlug" element={<PublicChannel />} />

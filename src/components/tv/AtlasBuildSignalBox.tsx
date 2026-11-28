@@ -7,15 +7,18 @@ import {
   RefreshCw,
   X,
   Loader2,
-  Wand2
+  Wand2,
+  Share2
 } from 'lucide-react';
 import {
   buildAtlasDraftSignal,
+  buildShareableSignalUrl,
   convertAtlasDraftToCustomSignal,
   EDITORIAL_ROLE_LABELS,
   type AtlasDraftSignal,
   type AtlasSignalStyle
 } from '../../lib/tv/atlasSignalBuilder';
+import { shareContentUniversal } from '../ui/GlobalShareSheet';
 import { useSignalStore } from '../../lib/tv/signalStore';
 import { persistSignal } from '../../lib/tv/signalPersistence';
 
@@ -247,9 +250,29 @@ export function AtlasBuildSignalBox({ compact = false, onSignalLaunched }: Props
                 <button
                   type="button"
                   className="abx-ghost-btn"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                  onClick={() => {
+                    const builtSignal = convertAtlasDraftToCustomSignal(draft, customTitle);
+                    const url = buildShareableSignalUrl(builtSignal);
+                    void shareContentUniversal({
+                      title: `${builtSignal.name} · Mi señal en YOUAPP`,
+                      text: `Mirá esta señal de ${draft.videos.length} videos armada con ATLAS en YOUAPP`,
+                      url,
+                      thumbnailUrl: `https://i.ytimg.com/vi/${draft.coverVideoId}/hqdefault.jpg`,
+                      subtitle: `${draft.videos.length} videos · YOUAPP TV`,
+                      badge: 'MI SEÑAL EN YOUAPP'
+                    });
+                  }}
+                >
+                  <Share2 size={12} />
+                  <span>Compartir</span>
+                </button>
+                <button
+                  type="button"
+                  className="abx-ghost-btn"
                   onClick={() => setDraft(null)}
                 >
-                  Cerrar vista previa
+                  Cerrar
                 </button>
               </div>
             </div>

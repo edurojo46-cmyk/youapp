@@ -122,3 +122,41 @@ export function buildCustomSignalFrom100(sig: Signal100Definition): CustomSignal
     schedule
   } as unknown as CustomSignal;
 }
+
+// ============================================================================
+// SEÑALES FAVORITAS (fijar en 1 toque arriba de todo · localStorage US$ 0)
+// ============================================================================
+
+const FAVORITE_SIGNALS_KEY = 'youapp_favorite_signals_v1';
+export const FAVORITE_SIGNALS_CHANGED_EVENT = 'youapp:favorite-signals-changed';
+
+export function loadFavoriteSignalIds(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(FAVORITE_SIGNALS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+export function toggleFavoriteSignalId(signalId: string): { ids: string[]; active: boolean } {
+  const cleanId = String(signalId || '').trim();
+  if (!cleanId) return { ids: loadFavoriteSignalIds(), active: false };
+  const prev = loadFavoriteSignalIds();
+  const exists = prev.includes(cleanId);
+  const next = exists ? prev.filter((id) => id !== cleanId) : [cleanId, ...prev].slice(0, 60);
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(FAVORITE_SIGNALS_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event(FAVORITE_SIGNALS_CHANGED_EVENT));
+    } catch {
+      // ignore quota
+    }
+  }
+  return { ids: next, active: !exists };
+}

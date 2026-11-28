@@ -502,3 +502,93 @@ export function convertAtlasDraftToCustomSignal(
     schedule
   } as unknown as CustomSignal;
 }
+
+/**
+ * Genera una URL pública autocontenida (?sharedSignal=1&t=...&ids=...)
+ * para que cualquier amigo que reciba la señal por WhatsApp pueda abrir
+ * los 10 videos al instante sin necesitar login ni el localStorage del creador.
+ */
+export function buildShareableSignalUrl(signal: {
+  id: string;
+  name: string;
+  schedule?: ScheduleBlock[];
+}): string {
+  const origin =
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'https://youapptv.com';
+  const ids = (signal.schedule || [])
+    .map((b) => String(b?.contentItem?.providerId || b?.contentItem?.id || '').trim())
+    .filter((id) => /^[A-Za-z0-9_-]{11}$/.test(id))
+    .slice(0, 12);
+  const params = new URLSearchParams();
+  params.set('signal', signal.id);
+  params.set('sharedSignal', '1');
+  if (signal.name) params.set('t', signal.name.slice(0, 80));
+  if (ids.length > 0) params.set('ids', ids.join(','));
+  return `${origin}/misenal1?${params.toString().replace(/%2C/gi, ',')}`;
+}
+
+/**
+ * Reconstruye una señal compartida desde los parámetros ?ids=...&t=... de la URL
+ * cuando el receptor no la tiene en su dispositivo.
+ */
+export function hydrateSharedSignalFromParams(
+  searchParams: URLSearchParams
+): CustomSignal | null {
+  const idsRaw = searchParams.get('ids')?.trim();
+  if (!idsRaw) return null;
+  const ids = idsRaw
+    .split(',')
+    .map((x) => x.trim())
+    .filter((x) => /^[A-Za-z0-9_-]{11}$/.test(x))
+    .slice(0, 15);
+  if (ids.length === 0) return null;
+
+  const sigId = searchParams.get('signal')?.trim() || `shared-sig-${ids[0]}`;
+  const sigName = searchParams.get('t')?.trim() || 'Señal compartida en YOUAPP';
+  const nowIso = new Date().toISOString();
+  let offset = 0;
+
+  const schedule: ScheduleBlock[] = ids.map((vid, idx) => {
+    const dur = 480;
+    const thumb = `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+    const block: ScheduleBlock = {
+      id: `${sigId}-sh-${idx + 1}`,
+      position: idx,
+      startOffsetSec: offset,
+      durationSec: dur,
+      topic: `${sigName} · #${idx + 1}`,
+      role: EDITORIAL_ROLES[idx % EDITORIAL_ROLES.length],
+      contentItem: {
+        id: vid,
+        providerId: vid,
+        type: 'video',
+        provider: 'youtube',
+        title: `${sigName} · Video ${idx + 1}`,
+        thumbnailUrl: thumb,
+        thumbnail: thumb,
+        videoUrl: `https://www.youtube.com/watch?v=${vid}`,
+        channelName: sigName,
+        channelTitle: sigName,
+        channelId: `yt-${vid}`,
+        durationSec: dur,
+        isLive: false,
+        isVerified: true
+      } as any
+    };
+    offset += dur;
+    return block;
+  });
+
+  return {
+    id: sigId,
+    name: sigName,
+    seedVersion: 5,
+    prompt: `Señal compartida en YOUAPP · ${sigName}`,
+    visibility: 'public',
+    created_at: nowIso,
+    updated_at: nowIso,
+    schedule
+  } as unknown as CustomSignal;
+}

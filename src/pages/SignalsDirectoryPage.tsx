@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Radio, Search, Tv } from 'lucide-react';
+import { Play, Radio, Search, Star, Tv } from 'lucide-react';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
 import {
+  FAVORITE_SIGNALS_CHANGED_EVENT,
   SIGNALS_100_CATALOG,
   SIGNALS_100_THEMES,
   findSignal100ById,
+  loadFavoriteSignalIds,
+  toggleFavoriteSignalId,
   type Signal100ThemeId
 } from '../lib/tv/signals100Catalog';
 import { findCuratedSignalById } from '../lib/tv/curatedSignalsCatalog';
@@ -38,8 +41,23 @@ export default function SignalsDirectoryPage() {
   const [signalBranding, setSignalBranding] = useState<Record<string, SignalBrandingEntry>>(() =>
     readLocalSignalBranding()
   );
-  const [themeFilter, setThemeFilter] = useState<'all' | Signal100ThemeId>('all');
+  const [themeFilter, setThemeFilter] = useState<'all' | 'favorites' | Signal100ThemeId>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => loadFavoriteSignalIds());
+
+  useEffect(() => {
+    const syncFavs = () => setFavoriteIds(loadFavoriteSignalIds());
+    window.addEventListener(FAVORITE_SIGNALS_CHANGED_EVENT, syncFavs);
+    return () => window.removeEventListener(FAVORITE_SIGNALS_CHANGED_EVENT, syncFavs);
+  }, []);
+
+  const favoriteSignals = useMemo(
+    () =>
+      favoriteIds
+        .map((id) => SIGNALS_100_CATALOG.find((s) => s.id === id))
+        .filter((s): s is (typeof SIGNALS_100_CATALOG)[number] => Boolean(s)),
+    [favoriteIds]
+  );
 
   useEffect(() => {
     let active = true;
@@ -90,7 +108,8 @@ export default function SignalsDirectoryPage() {
   const filteredSignals = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return SIGNALS_100_CATALOG.filter((s) => {
-      if (themeFilter !== 'all' && s.theme !== themeFilter) return false;
+      if (themeFilter === 'favorites' && !favoriteIds.includes(s.id)) return false;
+      if (themeFilter !== 'all' && themeFilter !== 'favorites' && s.theme !== themeFilter) return false;
       if (!q) return true;
       return (
         s.title.toLowerCase().includes(q) ||
@@ -100,7 +119,7 @@ export default function SignalsDirectoryPage() {
         )
       );
     });
-  }, [themeFilter, searchQuery]);
+  }, [themeFilter, searchQuery, favoriteIds]);
 
   return (
     <div className="sd-page">
@@ -156,6 +175,70 @@ export default function SignalsDirectoryPage() {
       <main className="sd-main">
         {/* 1. PROTAGONISTA ARRIBA DE TODO: ARMÁ TU SEÑAL CON ATLAS */}
         <AtlasBuildSignalBox />
+
+        {/* 1B. SEÑALES FAVORITAS FIJADAS */}
+        {favoriteSignals.length > 0 && (
+          <section className="sd-section" aria-label="Tus señales favoritas">
+            <div className="sd-sec-head">
+              <h2>⭐ Tus señales favoritas ({favoriteSignals.length})</h2>
+              <span>Fijadas arriba para entrar en 1 toque</span>
+            </div>
+            <div className="sd-grid">
+              {favoriteSignals.map((sig) => {
+                const coverSrc = sig.coverVideoId
+                  ? `https://i.ytimg.com/vi/${sig.coverVideoId}/hqdefault.jpg`
+                  : '';
+                return (
+                  <div
+                    key={`fav-${sig.id}`}
+                    className="sd-card has-cover"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`);
+                      }
+                    }}
+                  >
+                    <div className="sd-card-cover">
+                      {coverSrc && (
+                        <img src={coverSrc} alt={sig.title} loading="lazy" referrerPolicy="no-referrer" />
+                      )}
+                      <div className="sd-card-scrim" />
+                      <span className="sd-badge-left" style={{ borderColor: sig.accent }}>
+                        <Radio size={11} color="#64d2ff" />
+                        <span>Favorita</span>
+                      </span>
+                      <button
+                        type="button"
+                        className="sd-fav-btn is-fav"
+                        aria-label={`Quitar ${sig.title} de favoritas`}
+                        title="Quitar de favoritas"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFavoriteIds(toggleFavoriteSignalId(sig.id).ids);
+                        }}
+                      >
+                        <Star size={12} fill="#fbbf24" color="#fbbf24" />
+                      </button>
+                      <div className="sd-card-footer">
+                        <div className="sd-card-info">
+                          <strong>{sig.title}</strong>
+                          <span>{sig.subtitle}</span>
+                        </div>
+                        <span className="sd-play-circle">
+                          <Play size={13} fill="#fff" color="#fff" />
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* 2. TUS SEÑALES PROPIAS (si tiene) */}
         {userSignals.length > 0 && (
@@ -231,6 +314,19 @@ export default function SignalsDirectoryPage() {
               <span>Todas</span>
               <em>{SIGNALS_100_CATALOG.length}</em>
             </button>
+            {favoriteIds.length > 0 && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={themeFilter === 'favorites'}
+                className={`sd-chip ${themeFilter === 'favorites' ? 'active' : ''}`}
+                onClick={() => setThemeFilter('favorites')}
+              >
+                <Star size={11} fill="#fbbf24" color="#fbbf24" />
+                <span>Favoritas</span>
+                <em>{favoriteSignals.length}</em>
+              </button>
+            )}
             {SIGNALS_100_THEMES.map((t) => (
               <button
                 key={t.id}
@@ -268,12 +364,20 @@ export default function SignalsDirectoryPage() {
                   : sig.theme === 'musica'
                     ? 'Música & Escena'
                     : 'Deportes & Mundo';
+              const isFav = favoriteIds.includes(sig.id);
               return (
-                <button
+                <div
                   key={sig.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   className="sd-card has-cover"
                   onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`);
+                    }
+                  }}
                   title={`${sig.title} · ${sig.subtitle}`}
                 >
                   <div className="sd-card-cover">
@@ -285,7 +389,18 @@ export default function SignalsDirectoryPage() {
                       <Radio size={11} color="#64d2ff" />
                       <span>{themeLabel}</span>
                     </span>
-                    <span className="sd-badge-right">{sig.videos.length} videos</span>
+                    <button
+                      type="button"
+                      className={`sd-fav-btn ${isFav ? 'is-fav' : ''}`}
+                      aria-label={isFav ? `Quitar ${sig.title} de favoritas` : `Fijar ${sig.title} en favoritas`}
+                      title={isFav ? 'Quitar de favoritas' : 'Fijar en favoritas'}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFavoriteIds(toggleFavoriteSignalId(sig.id).ids);
+                      }}
+                    >
+                      <Star size={12} fill={isFav ? '#fbbf24' : 'none'} color={isFav ? '#fbbf24' : '#ffffff'} />
+                    </button>
                     <div className="sd-card-footer">
                       <div className="sd-card-info">
                         <strong>{sig.title}</strong>
@@ -296,7 +411,7 @@ export default function SignalsDirectoryPage() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -540,6 +655,31 @@ export default function SignalsDirectoryPage() {
           color: #ffffff;
           font-size: 10px;
           font-weight: 750;
+        }
+        .sd-fav-btn {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 28px;
+          height: 28px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.28);
+          background: rgba(10, 14, 22, 0.72);
+          backdrop-filter: blur(8px);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          z-index: 3;
+          transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease;
+        }
+        .sd-fav-btn:hover {
+          transform: scale(1.08);
+          background: rgba(10, 14, 22, 0.9);
+        }
+        .sd-fav-btn.is-fav {
+          border-color: rgba(251, 191, 36, 0.7);
+          background: rgba(251, 191, 36, 0.22);
         }
         .sd-card-footer {
           position: absolute;

@@ -17,7 +17,8 @@ import {
   Link2,
   RefreshCw,
   Globe,
-  ExternalLink
+  ExternalLink,
+  Star
 } from 'lucide-react';
 import { type UniversalChannel } from '../lib/universalChannels';
 import { useStore } from '../store/useStore';
@@ -66,9 +67,12 @@ import {
 } from '../components/tv/CompleteSignalShareCard';
 import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
 import {
+  FAVORITE_SIGNALS_CHANGED_EVENT,
   SIGNALS_100_CATALOG,
   SIGNALS_100_THEMES,
   findSignal100ById,
+  loadFavoriteSignalIds,
+  toggleFavoriteSignalId,
   type Signal100ThemeId
 } from '../lib/tv/signals100Catalog';
 import { findCuratedSignalById } from '../lib/tv/curatedSignalsCatalog';
@@ -141,13 +145,21 @@ export default function MyLists() {
   const [followedFeedNonce, setFollowedFeedNonce] = useState(0);
   const [editingPlatformsKey, setEditingPlatformsKey] = useState<string | null>(null);
   const [platformsDraft, setPlatformsDraft] = useState<CreatorPlatformLinks>({});
-  const [signal100Theme, setSignal100Theme] = useState<'all' | Signal100ThemeId>('all');
+  const [signal100Theme, setSignal100Theme] = useState<'all' | 'favorites' | Signal100ThemeId>('all');
   const [signal100Query, setSignal100Query] = useState('');
+  const [favoriteSignalIds, setFavoriteSignalIds] = useState<string[]>(() => loadFavoriteSignalIds());
+
+  useEffect(() => {
+    const syncFavs = () => setFavoriteSignalIds(loadFavoriteSignalIds());
+    window.addEventListener(FAVORITE_SIGNALS_CHANGED_EVENT, syncFavs);
+    return () => window.removeEventListener(FAVORITE_SIGNALS_CHANGED_EVENT, syncFavs);
+  }, []);
 
   const filtered100Signals = useMemo(() => {
     const q = signal100Query.trim().toLowerCase();
     return SIGNALS_100_CATALOG.filter((s) => {
-      if (signal100Theme !== 'all' && s.theme !== signal100Theme) return false;
+      if (signal100Theme === 'favorites' && !favoriteSignalIds.includes(s.id)) return false;
+      if (signal100Theme !== 'all' && signal100Theme !== 'favorites' && s.theme !== signal100Theme) return false;
       if (!q) return true;
       return (
         s.title.toLowerCase().includes(q) ||
@@ -155,7 +167,7 @@ export default function MyLists() {
         s.videos.some((v) => v.title.toLowerCase().includes(q) || v.channel.toLowerCase().includes(q))
       );
     });
-  }, [signal100Theme, signal100Query]);
+  }, [signal100Theme, signal100Query, favoriteSignalIds]);
 
   useEffect(() => {
     if (filter !== 'siguiendo' || followedCreators.length === 0) {
@@ -827,6 +839,19 @@ export default function MyLists() {
                   <span>Todas</span>
                   <span className="ml-chip-count">{SIGNALS_100_CATALOG.length}</span>
                 </button>
+                {favoriteSignalIds.length > 0 && (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={signal100Theme === 'favorites'}
+                    className={`ml-filter-chip ${signal100Theme === 'favorites' ? 'active' : ''}`}
+                    onClick={() => setSignal100Theme('favorites')}
+                  >
+                    <Star size={11} fill="#fbbf24" color="#fbbf24" />
+                    <span>Favoritas</span>
+                    <span className="ml-chip-count">{favoriteSignalIds.length}</span>
+                  </button>
+                )}
                 {SIGNALS_100_THEMES.map((t) => (
                   <button
                     key={t.id}
@@ -864,12 +889,20 @@ export default function MyLists() {
                       : sig.theme === 'musica'
                         ? 'Música & Escena'
                         : 'Deportes & Mundo';
+                  const isFav = favoriteSignalIds.includes(sig.id);
                   return (
-                    <button
+                    <div
                       key={sig.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       className="ml-signal-card has-cover"
                       onClick={() => navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate(`/misenal1?signal=${encodeURIComponent(sig.id)}`);
+                        }
+                      }}
                       title={`${sig.title} · ${sig.subtitle}`}
                     >
                       <div className="ml-signal-cover">
@@ -898,21 +931,34 @@ export default function MyLists() {
                           <Radio size={11} color="#64d2ff" />
                           <span>{themeLabel}</span>
                         </span>
-                        <span
+                        <button
+                          type="button"
+                          aria-label={isFav ? `Quitar ${sig.title} de favoritas` : `Fijar ${sig.title} en favoritas`}
+                          title={isFav ? 'Quitar de favoritas' : 'Fijar en favoritas'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFavoriteSignalIds(toggleFavoriteSignalId(sig.id).ids);
+                          }}
                           style={{
                             position: 'absolute',
                             top: 8,
                             right: 8,
-                            padding: '2px 7px',
+                            width: 28,
+                            height: 28,
                             borderRadius: 999,
-                            background: 'rgba(0, 113, 227, 0.85)',
-                            color: '#ffffff',
-                            fontSize: 10,
-                            fontWeight: 750
+                            border: isFav
+                              ? '1px solid rgba(251, 191, 36, 0.7)'
+                              : '1px solid rgba(255, 255, 255, 0.28)',
+                            background: isFav ? 'rgba(251, 191, 36, 0.24)' : 'rgba(10, 14, 22, 0.74)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            zIndex: 3
                           }}
                         >
-                          {sig.videos.length} videos
-                        </span>
+                          <Star size={12} fill={isFav ? '#fbbf24' : 'none'} color={isFav ? '#fbbf24' : '#ffffff'} />
+                        </button>
                         <div className="ml-signal-footer">
                           <div className="ml-row-info">
                             <strong>{sig.title}</strong>
@@ -923,7 +969,7 @@ export default function MyLists() {
                           </span>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>

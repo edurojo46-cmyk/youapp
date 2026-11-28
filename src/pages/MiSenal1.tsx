@@ -156,6 +156,7 @@ import {
   findSignal100ById,
   buildCustomSignalFrom100
 } from '../lib/tv/signals100Catalog';
+import { hydrateSharedSignalFromParams } from '../lib/tv/atlasSignalBuilder';
 import {
   listMyOwnSignals,
   listSignalMemberships,
@@ -1456,6 +1457,11 @@ export default function MiSenal1() {
         const savedDirect = getSavedSignal(requestedSignalParam);
         if (savedDirect && savedDirect.schedule.length > 0) {
           setSignal(savedDirect);
+          return;
+        }
+        const sharedFromUrl = hydrateSharedSignalFromParams(searchParams);
+        if (sharedFromUrl) {
+          setSignal(sharedFromUrl as any, { saveToOwn: false });
           return;
         }
         listSwitchableSignals()
@@ -7313,6 +7319,33 @@ export default function MiSenal1() {
             inset 0 1px 0 rgba(255, 255, 255, 0.22),
             0 8px 24px rgba(0, 0, 0, 0.18) !important;
           color: #f5f5f7 !important;
+        }
+        @media (max-width: 768px) {
+          .ms-player-card:not(.is-expanded) {
+            position: fixed;
+            top: calc(48px + env(safe-area-inset-top));
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 75;
+            margin: 0;
+            border-radius: 0 0 14px 14px !important;
+            border-top: 0 !important;
+            border-left: 0 !important;
+            border-right: 0 !important;
+            background: #0e1118 !important;
+            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.78);
+          }
+          .ms-player-card:not(.is-expanded) .ms-stage-box {
+            border-radius: 0 !important;
+          }
+          .ms-main {
+            padding-top: calc(56.25vw + 48px) !important;
+            transition: padding-top 0.18s ease;
+          }
+          .ms-page:has(.yapp-pcd-root.is-open) .ms-main {
+            padding-top: calc(56.25vw + 168px) !important;
+          }
         }
         @media (max-width: 640px) {
           .ms-player-card .ms-smartbar-slot {

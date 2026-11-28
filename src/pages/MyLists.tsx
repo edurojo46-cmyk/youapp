@@ -602,6 +602,27 @@ export default function MyLists() {
                           <div className="ml-signal-cover">
                             <img src={coverSrc} alt={sig.name} loading="lazy" />
                             <div className="ml-signal-scrim" />
+                            <span
+                              style={{
+                                position: 'absolute',
+                                top: 8,
+                                left: 8,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                padding: '3px 8px',
+                                borderRadius: 999,
+                                background: 'rgba(10, 14, 22, 0.76)',
+                                border: '1px solid rgba(100, 210, 255, 0.48)',
+                                color: '#ffffff',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                backdropFilter: 'blur(6px)'
+                              }}
+                            >
+                              <Radio size={11} color="#64d2ff" />
+                              <span>Señal</span>
+                            </span>
                             <div className="ml-signal-footer">
                               <div className="ml-row-info">
                                 <strong>{sig.name}</strong>
@@ -752,9 +773,12 @@ export default function MyLists() {
                             position: 'absolute',
                             top: 8,
                             left: 8,
-                            padding: '2px 8px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
                             borderRadius: 999,
-                            background: 'rgba(10, 14, 22, 0.74)',
+                            background: 'rgba(10, 14, 22, 0.76)',
                             border: `1px solid ${sig.accent}`,
                             color: '#ffffff',
                             fontSize: 10,
@@ -762,7 +786,8 @@ export default function MyLists() {
                             backdropFilter: 'blur(6px)'
                           }}
                         >
-                          {themeLabel}
+                          <Radio size={11} color="#64d2ff" />
+                          <span>{themeLabel}</span>
                         </span>
                         <span
                           style={{

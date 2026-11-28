@@ -159,6 +159,9 @@ export default function SignalsDirectoryPage() {
           <button type="button" className="sd-nav-btn" onClick={() => navigate('/my-lists')}>
             MIS LISTAS
           </button>
+          <button type="button" className="sd-nav-btn" onClick={() => navigate('/perfil')}>
+            MI PERFIL
+          </button>
           <button
             type="button"
             className="sd-nav-btn"

@@ -80,7 +80,25 @@ export function MobileTopBar() {
           <YouAppOfficialLogo size="sm" theme="dark" to="/" />
         </div>
 
-        <div className="ymtb-right">
+        <div className="ymtb-right" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button
+            type="button"
+            className="ymtb-hamburger"
+            onClick={() => navigate('/perfil')}
+            aria-label="Mi Perfil"
+            title="Mi Perfil"
+            style={
+              pathname === '/perfil'
+                ? {
+                    background: 'rgba(0, 113, 227, 0.35)',
+                    border: '1px solid rgba(100, 210, 255, 0.55)',
+                    color: '#e0f2fe'
+                  }
+                : undefined
+            }
+          >
+            <User size={18} strokeWidth={2.1} />
+          </button>
           <TvUserSessionMenu compact variant="glass" />
         </div>
       </header>

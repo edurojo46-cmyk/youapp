@@ -1632,6 +1632,9 @@ function YouMusicPageInner() {
           <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/my-lists')}>
             MIS LISTAS
           </button>
+          <button type="button" className="ymv1-nav-btn" onClick={() => navigate('/perfil')}>
+            MI PERFIL
+          </button>
           <button
             type="button"
             className="ymv1-nav-btn"

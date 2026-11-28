@@ -1630,6 +1630,9 @@ export default function ProgramarTV() {
           <button type="button" className="mitv-nav-btn" onClick={() => navigate('/my-lists')}>
             MIS LISTAS
           </button>
+          <button type="button" className="mitv-nav-btn" onClick={() => navigate('/perfil')}>
+            MI PERFIL
+          </button>
           <button
             type="button"
             className="mitv-nav-btn"

@@ -3001,6 +3001,7 @@ export default function ChannelSearch() {
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/reels')}>REELS</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/lecturas')}>LECTURAS</button>
           <button type="button" className="ys-nav-btn" onClick={() => navigate('/my-lists')}>MIS LISTAS</button>
+          <button type="button" className="ys-nav-btn" onClick={() => navigate('/perfil')}>MI PERFIL</button>
         </nav>
 
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>

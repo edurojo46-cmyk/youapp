@@ -156,7 +156,10 @@ import {
   findSignal100ById,
   buildCustomSignalFrom100
 } from '../lib/tv/signals100Catalog';
-import { hydrateSharedSignalFromParams } from '../lib/tv/atlasSignalBuilder';
+import {
+  buildShareableSignalUrl,
+  hydrateSharedSignalFromParams
+} from '../lib/tv/atlasSignalBuilder';
 import {
   listMyOwnSignals,
   listSignalMemberships,
@@ -3614,30 +3617,65 @@ export default function MiSenal1() {
           <section className="ms-schedule-panel">
             <div className="ms-rail-head">
               <h3>Canales en esta señal</h3>
-              <button
-                type="button"
-                className={`ms-continuous-pill ${continuousChannelMode ? 'on' : ''}`}
-                onClick={() => {
-                  setContinuousChannelMode((prev) => {
-                    const nextVal = !prev;
-                    try {
-                      localStorage.setItem('youapp_continuous_channel_mode_v1', nextVal ? '1' : '0');
-                    } catch {
-                      // ignore
-                    }
-                    setCuratedToast(
-                      nextVal
-                        ? 'Emisión continua activada: al terminar un video pasa al siguiente canal.'
-                        : 'Emisión continua desactivada.'
-                    );
-                    return nextVal;
-                  });
-                }}
-                title="Al terminar un video, salta automáticamente al siguiente canal de tu señal"
-              >
-                <Repeat size={11} />
-                <span>{continuousChannelMode ? 'Emisión continua' : 'Manual'}</span>
-              </button>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="ms-continuous-pill on"
+                  style={{
+                    background: 'rgba(0, 113, 227, 0.28)',
+                    borderColor: 'rgba(100, 210, 255, 0.55)',
+                    color: '#e0f2fe'
+                  }}
+                  onClick={() => {
+                    const sigObj = {
+                      id: activeSignal?.id || 'justicia-social-signal-1',
+                      name: activeSignal?.name || 'Mi Señal en YOUAPP',
+                      schedule: effectiveSchedule
+                    };
+                    const shareUrl = buildShareableSignalUrl(sigObj);
+                    const coverThumb =
+                      currentBlock?.contentItem?.thumbnailUrl ||
+                      effectiveSchedule[0]?.contentItem?.thumbnailUrl ||
+                      '';
+                    void shareContentUniversal({
+                      title: `${sigObj.name} · Mi señal en YOUAPP`,
+                      text: `Mirá mi señal «${sigObj.name}» (${effectiveSchedule.length} videos) en YOUAPP`,
+                      url: shareUrl,
+                      thumbnailUrl: coverThumb,
+                      subtitle: `${effectiveSchedule.length} videos · YOUAPP TV`,
+                      badge: 'MI SEÑAL EN YOUAPP'
+                    });
+                  }}
+                  title="Compartir esta señal completa por WhatsApp o enlace"
+                >
+                  <Share2 size={11} />
+                  <span>Compartir señal</span>
+                </button>
+                <button
+                  type="button"
+                  className={`ms-continuous-pill ${continuousChannelMode ? 'on' : ''}`}
+                  onClick={() => {
+                    setContinuousChannelMode((prev) => {
+                      const nextVal = !prev;
+                      try {
+                        localStorage.setItem('youapp_continuous_channel_mode_v1', nextVal ? '1' : '0');
+                      } catch {
+                        // ignore
+                      }
+                      setCuratedToast(
+                        nextVal
+                          ? 'Emisión continua activada: al terminar un video pasa al siguiente canal.'
+                          : 'Emisión continua desactivada.'
+                      );
+                      return nextVal;
+                    });
+                  }}
+                  title="Al terminar un video, salta automáticamente al siguiente canal de tu señal"
+                >
+                  <Repeat size={11} />
+                  <span>{continuousChannelMode ? 'Continua' : 'Manual'}</span>
+                </button>
+              </div>
             </div>
 
             {/* PANELES ACTIVOS DE SEÑAL VIVA / APORTES COLABORATIVOS */}

@@ -931,34 +931,72 @@ export default function MyLists() {
                           <Radio size={11} color="#64d2ff" />
                           <span>{themeLabel}</span>
                         </span>
-                        <button
-                          type="button"
-                          aria-label={isFav ? `Quitar ${sig.title} de favoritas` : `Fijar ${sig.title} en favoritas`}
-                          title={isFav ? 'Quitar de favoritas' : 'Fijar en favoritas'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFavoriteSignalIds(toggleFavoriteSignalId(sig.id).ids);
-                          }}
+                        <div
                           style={{
                             position: 'absolute',
                             top: 8,
                             right: 8,
-                            width: 28,
-                            height: 28,
-                            borderRadius: 999,
-                            border: isFav
-                              ? '1px solid rgba(251, 191, 36, 0.7)'
-                              : '1px solid rgba(255, 255, 255, 0.28)',
-                            background: isFav ? 'rgba(251, 191, 36, 0.24)' : 'rgba(10, 14, 22, 0.74)',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
+                            gap: 5,
                             zIndex: 3
                           }}
                         >
-                          <Star size={12} fill={isFav ? '#fbbf24' : 'none'} color={isFav ? '#fbbf24' : '#ffffff'} />
-                        </button>
+                          <button
+                            type="button"
+                            aria-label={`Compartir señal ${sig.title}`}
+                            title="Compartir esta señal"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = `${window.location.origin}/misenal1?signal=${encodeURIComponent(sig.id)}&sharedSignal=1`;
+                              void shareContentUniversal({
+                                title: `${sig.title} · Señal en YOUAPP`,
+                                text: sig.subtitle,
+                                url,
+                                thumbnailUrl: coverSrc,
+                                subtitle: `${sig.videos.length} videos · YOUAPP TV`,
+                                badge: 'MI SEÑAL EN YOUAPP'
+                              });
+                            }}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 999,
+                              border: '1px solid rgba(255, 255, 255, 0.28)',
+                              background: 'rgba(10, 14, 22, 0.74)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Share2 size={12} color="#ffffff" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={isFav ? `Quitar ${sig.title} de favoritas` : `Fijar ${sig.title} en favoritas`}
+                            title={isFav ? 'Quitar de favoritas' : 'Fijar en favoritas'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFavoriteSignalIds(toggleFavoriteSignalId(sig.id).ids);
+                            }}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 999,
+                              border: isFav
+                                ? '1px solid rgba(251, 191, 36, 0.7)'
+                                : '1px solid rgba(255, 255, 255, 0.28)',
+                              background: isFav ? 'rgba(251, 191, 36, 0.24)' : 'rgba(10, 14, 22, 0.74)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Star size={12} fill={isFav ? '#fbbf24' : 'none'} color={isFav ? '#fbbf24' : '#ffffff'} />
+                          </button>
+                        </div>
                         <div className="ml-signal-footer">
                           <div className="ml-row-info">
                             <strong>{sig.title}</strong>

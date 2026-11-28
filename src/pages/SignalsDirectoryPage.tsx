@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Radio, Search, Star, Tv } from 'lucide-react';
+import { Play, Radio, Search, Share2, Star, Tv } from 'lucide-react';
 import { YouAppOfficialLogo } from '../components/ui/YouAppOfficialLogo';
 import { TvUserSessionMenu } from '../components/tv/TvUserSessionMenu';
 import { AtlasBuildSignalBox } from '../components/tv/AtlasBuildSignalBox';
+import { shareContentUniversal } from '../components/ui/GlobalShareSheet';
 import {
   FAVORITE_SIGNALS_CHANGED_EVENT,
   SIGNALS_100_CATALOG,
@@ -389,18 +390,40 @@ export default function SignalsDirectoryPage() {
                       <Radio size={11} color="#64d2ff" />
                       <span>{themeLabel}</span>
                     </span>
-                    <button
-                      type="button"
-                      className={`sd-fav-btn ${isFav ? 'is-fav' : ''}`}
-                      aria-label={isFav ? `Quitar ${sig.title} de favoritas` : `Fijar ${sig.title} en favoritas`}
-                      title={isFav ? 'Quitar de favoritas' : 'Fijar en favoritas'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFavoriteIds(toggleFavoriteSignalId(sig.id).ids);
-                      }}
-                    >
-                      <Star size={12} fill={isFav ? '#fbbf24' : 'none'} color={isFav ? '#fbbf24' : '#ffffff'} />
-                    </button>
+                    <div className="sd-top-actions">
+                      <button
+                        type="button"
+                        className="sd-fav-btn"
+                        aria-label={`Compartir señal ${sig.title}`}
+                        title="Compartir esta señal"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const url = `${window.location.origin}/misenal1?signal=${encodeURIComponent(sig.id)}&sharedSignal=1`;
+                          void shareContentUniversal({
+                            title: `${sig.title} · Señal en YOUAPP`,
+                            text: sig.subtitle,
+                            url,
+                            thumbnailUrl: coverSrc,
+                            subtitle: `${sig.videos.length} videos · YOUAPP TV`,
+                            badge: 'MI SEÑAL EN YOUAPP'
+                          });
+                        }}
+                      >
+                        <Share2 size={12} color="#ffffff" />
+                      </button>
+                      <button
+                        type="button"
+                        className={`sd-fav-btn ${isFav ? 'is-fav' : ''}`}
+                        aria-label={isFav ? `Quitar ${sig.title} de favoritas` : `Fijar ${sig.title} en favoritas`}
+                        title={isFav ? 'Quitar de favoritas' : 'Fijar en favoritas'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFavoriteIds(toggleFavoriteSignalId(sig.id).ids);
+                        }}
+                      >
+                        <Star size={12} fill={isFav ? '#fbbf24' : 'none'} color={isFav ? '#fbbf24' : '#ffffff'} />
+                      </button>
+                    </div>
                     <div className="sd-card-footer">
                       <div className="sd-card-info">
                         <strong>{sig.title}</strong>
@@ -655,6 +678,18 @@ export default function SignalsDirectoryPage() {
           color: #ffffff;
           font-size: 10px;
           font-weight: 750;
+        }
+        .sd-top-actions {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          z-index: 3;
+        }
+        .sd-top-actions .sd-fav-btn {
+          position: static;
         }
         .sd-fav-btn {
           position: absolute;

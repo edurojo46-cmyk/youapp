@@ -26,6 +26,7 @@ import {
   Smartphone,
   Sparkles,
   Star,
+  ThumbsUp,
   Trash2,
   Tv,
   Wand2
@@ -68,7 +69,34 @@ interface OwnerProfileNote {
   createdAt: string;
 }
 
+interface SignalPostInteraction {
+  liked: boolean;
+  likes: number;
+  comments: OwnerProfileNote[];
+}
+
 const OWNER_NOTES_KEY = 'youapp_profile_owner_notes_v1';
+const SIGNAL_POSTS_KEY = 'youapp_profile_signal_posts_v1';
+
+function loadSignalPosts(): Record<string, SignalPostInteraction> {
+  try {
+    const raw = localStorage.getItem(SIGNAL_POSTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed as Record<string, SignalPostInteraction>;
+  } catch {
+    return {};
+  }
+}
+
+function saveSignalPosts(data: Record<string, SignalPostInteraction>): void {
+  try {
+    localStorage.setItem(SIGNAL_POSTS_KEY, JSON.stringify(data));
+  } catch {
+    // ignore
+  }
+}
 
 function loadOwnerNotes(): OwnerProfileNote[] {
   try {
@@ -133,9 +161,64 @@ export default function ChannelProfile() {
   const [bioDraft, setBioDraft] = useState('');
   const [ownerNotes, setOwnerNotes] = useState<OwnerProfileNote[]>(() => loadOwnerNotes());
   const [ownerNoteDraft, setOwnerNoteDraft] = useState('');
+  const [signalPosts, setSignalPosts] = useState<Record<string, SignalPostInteraction>>(() => loadSignalPosts());
+  const [openCommentsBySig, setOpenCommentsBySig] = useState<Record<string, boolean>>({});
+  const [commentDraftBySig, setCommentDraftBySig] = useState<Record<string, string>>({});
 
   // En /perfil el usuario actual es el dueño (si llega con ?view=public queda en modo solo lectura)
   const isOwner = new URLSearchParams(location.search).get('view') !== 'public';
+
+  const handleToggleSignalLike = (sigId: string) => {
+    setSignalPosts((prev) => {
+      const curr = prev[sigId] || { liked: false, likes: 0, comments: [] };
+      const nextLiked = !curr.liked;
+      const nextLikes = Math.max(0, curr.likes + (nextLiked ? 1 : -1));
+      const updated = { ...prev, [sigId]: { ...curr, liked: nextLiked, likes: nextLikes } };
+      saveSignalPosts(updated);
+      return updated;
+    });
+  };
+
+  const handleToggleSignalComments = (sigId: string) => {
+    setOpenCommentsBySig((prev) => ({ ...prev, [sigId]: !prev[sigId] }));
+  };
+
+  const handleAddSignalComment = (sigId: string, e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isOwner) return;
+    const cleaned = (commentDraftBySig[sigId] || '').trim();
+    if (!cleaned) return;
+    const newComment: OwnerProfileNote = {
+      id: `sc-${Date.now().toString(36)}`,
+      text: cleaned.slice(0, 320),
+      createdAt: new Date().toISOString()
+    };
+    setSignalPosts((prev) => {
+      const curr = prev[sigId] || { liked: false, likes: 0, comments: [] };
+      const updated = {
+        ...prev,
+        [sigId]: { ...curr, comments: [newComment, ...curr.comments].slice(0, 20) }
+      };
+      saveSignalPosts(updated);
+      return updated;
+    });
+    setCommentDraftBySig((prev) => ({ ...prev, [sigId]: '' }));
+    setOpenCommentsBySig((prev) => ({ ...prev, [sigId]: true }));
+  };
+
+  const handleDeleteSignalComment = (sigId: string, commentId: string) => {
+    if (!isOwner) return;
+    setSignalPosts((prev) => {
+      const curr = prev[sigId];
+      if (!curr) return prev;
+      const updated = {
+        ...prev,
+        [sigId]: { ...curr, comments: curr.comments.filter((c) => c.id !== commentId) }
+      };
+      saveSignalPosts(updated);
+      return updated;
+    });
+  };
 
   const handlePublishOwnerNote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -739,68 +822,179 @@ export default function ChannelProfile() {
                           <span>{grp.items.length}</span>
                         </div>
                         <div className="fbp-signals-grid">
-                          {grp.items.map((sig) => (
-                            <div
-                              key={sig.id}
-                              className="fbp-sig-card"
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => navigate(sig.route)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault();
-                                  navigate(sig.route);
-                                }
-                              }}
-                            >
-                              <div className="fbp-sig-cover">
-                                {sig.thumb ? (
-                                  <img src={sig.thumb} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
-                                ) : (
-                                  <div className="fbp-sig-fallback">
-                                    <GroupIcon size={24} color="#7dd3fc" />
-                                  </div>
-                                )}
-                                <div className="fbp-sig-scrim" />
-                                <span className="fbp-sig-badge">
-                                  {sig.isFav ? (
-                                    <Star size={10} fill="#fbbf24" color="#fbbf24" />
-                                  ) : (
-                                    <Radio size={10} color="#64d2ff" />
-                                  )}
-                                  <span>{grp.label}</span>
-                                </span>
-                                <button
-                                  type="button"
-                                  className="fbp-sig-share"
-                                  title="Compartir"
-                                  aria-label={`Compartir ${sig.name}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    void shareContentUniversal({
-                                      title: `${sig.name} · YOUAPP`,
-                                      text: sig.subtitle,
-                                      url: sig.shareUrl,
-                                      thumbnailUrl: sig.thumb,
-                                      subtitle: grp.label,
-                                      badge: 'MI SEÑAL EN YOUAPP'
-                                    });
+                          {grp.items.map((sig) => {
+                            const post = signalPosts[sig.id] || { liked: false, likes: 0, comments: [] };
+                            const commentsOpen = Boolean(openCommentsBySig[sig.id]);
+                            const commentDraft = commentDraftBySig[sig.id] || '';
+                            return (
+                              <article key={sig.id} className="fbp-sig-card">
+                                <div
+                                  className="fbp-sig-cover"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => navigate(sig.route)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      navigate(sig.route);
+                                    }
                                   }}
                                 >
-                                  <Share2 size={12} color="#ffffff" />
-                                </button>
-                                <div className="fbp-sig-footer">
-                                  <div className="fbp-sig-info">
-                                    <strong>{sig.name}</strong>
-                                    <span>{sig.subtitle}</span>
-                                  </div>
-                                  <span className="fbp-sig-play">
-                                    <Play size={13} fill="#fff" color="#fff" />
+                                  {sig.thumb ? (
+                                    <img src={sig.thumb} alt={sig.name} loading="lazy" referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <div className="fbp-sig-fallback">
+                                      <GroupIcon size={24} color="#7dd3fc" />
+                                    </div>
+                                  )}
+                                  <div className="fbp-sig-scrim" />
+                                  <span className="fbp-sig-badge">
+                                    {sig.isFav ? (
+                                      <Star size={10} fill="#fbbf24" color="#fbbf24" />
+                                    ) : (
+                                      <Radio size={10} color="#64d2ff" />
+                                    )}
+                                    <span>{grp.label}</span>
                                   </span>
+                                  <div className="fbp-sig-footer">
+                                    <div className="fbp-sig-info">
+                                      <strong>{sig.name}</strong>
+                                      <span>{sig.subtitle}</span>
+                                    </div>
+                                    <span className="fbp-sig-play">
+                                      <Play size={13} fill="#fff" color="#fff" />
+                                    </span>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          ))}
+
+                                {/* BARRA TIPO PUBLICACIÓN DE FACEBOOK: ME GUSTA · COMENTAR (SOLO DUEÑO) · COMPARTIR */}
+                                <div className="fbp-post-bar">
+                                  <button
+                                    type="button"
+                                    className={`fbp-post-btn ${post.liked ? 'is-liked' : ''}`}
+                                    onClick={() => handleToggleSignalLike(sig.id)}
+                                    aria-pressed={post.liked}
+                                  >
+                                    <ThumbsUp
+                                      size={13}
+                                      fill={post.liked ? '#38bdf8' : 'none'}
+                                      color={post.liked ? '#38bdf8' : 'currentColor'}
+                                    />
+                                    <span>Me gusta{post.likes > 0 ? ` (${post.likes})` : ''}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className={`fbp-post-btn ${commentsOpen || post.comments.length > 0 ? 'is-active' : ''}`}
+                                    onClick={() => handleToggleSignalComments(sig.id)}
+                                    aria-expanded={commentsOpen}
+                                  >
+                                    <MessageSquare size={13} />
+                                    <span>
+                                      Comentar{post.comments.length > 0 ? ` (${post.comments.length})` : ''}
+                                    </span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="fbp-post-btn"
+                                    onClick={() => {
+                                      void shareContentUniversal({
+                                        title: `${sig.name} · YOUAPP`,
+                                        text: sig.subtitle,
+                                        url: sig.shareUrl,
+                                        thumbnailUrl: sig.thumb,
+                                        subtitle: grp.label,
+                                        badge: 'MI SEÑAL EN YOUAPP'
+                                      });
+                                    }}
+                                  >
+                                    <Share2 size={13} />
+                                    <span>Compartir</span>
+                                  </button>
+                                </div>
+
+                                {(commentsOpen || post.comments.length > 0) && (
+                                  <div className="fbp-post-comments">
+                                    {post.comments.length > 0 && (
+                                      <div className="fbp-post-comments-list">
+                                        {post.comments.map((c) => (
+                                          <div key={c.id} className="fbp-post-comment-item">
+                                            {resolvedAvatar ? (
+                                              <img src={resolvedAvatar} alt={displayName} className="fbp-post-c-av" />
+                                            ) : (
+                                              <span className="fbp-post-c-av fbp-post-c-init">{initials}</span>
+                                            )}
+                                            <div className="fbp-post-c-bubble">
+                                              <div className="fbp-post-c-head">
+                                                <strong>{displayName}</strong>
+                                                <span>
+                                                  {new Date(c.createdAt).toLocaleDateString('es-AR', {
+                                                    day: '2-digit',
+                                                    month: 'short',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                  })}
+                                                </span>
+                                              </div>
+                                              <p>{c.text}</p>
+                                            </div>
+                                            {isOwner && (
+                                              <button
+                                                type="button"
+                                                className="fbp-note-del"
+                                                onClick={() => handleDeleteSignalComment(sig.id, c.id)}
+                                                title="Eliminar comentario"
+                                                aria-label="Eliminar comentario"
+                                              >
+                                                <Trash2 size={12} />
+                                              </button>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {commentsOpen && (
+                                      isOwner ? (
+                                        <form
+                                          className="fbp-post-c-form"
+                                          onSubmit={(e) => handleAddSignalComment(sig.id, e)}
+                                        >
+                                          <input
+                                            type="text"
+                                            value={commentDraft}
+                                            onChange={(e) =>
+                                              setCommentDraftBySig((prev) => ({
+                                                ...prev,
+                                                [sig.id]: e.target.value
+                                              }))
+                                            }
+                                            placeholder="Escribí un comentario sobre esta señal…"
+                                            maxLength={320}
+                                            aria-label={`Comentar en ${sig.name}`}
+                                          />
+                                          <button
+                                            type="submit"
+                                            className="fbp-post-c-send"
+                                            disabled={!commentDraft.trim()}
+                                            aria-label="Publicar comentario"
+                                          >
+                                            <Send size={12} />
+                                          </button>
+                                        </form>
+                                      ) : (
+                                        <div className="fbp-post-owner-lock">
+                                          <Lock size={10} />
+                                          <span>Solo el dueño puede comentar en esta señal</span>
+                                        </div>
+                                      )
+                                    )}
+                                  </div>
+                                )}
+                              </article>
+                            );
+                          })}
                         </div>
                       </div>
                     );
@@ -1672,7 +1866,6 @@ export default function ChannelProfile() {
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
           color: #ffffff;
           padding: 0;
-          cursor: pointer;
           text-align: left;
           transition: transform 0.18s ease, border-color 0.18s ease;
         }
@@ -1687,6 +1880,7 @@ export default function ChannelProfile() {
           display: flex;
           align-items: flex-end;
           overflow: hidden;
+          cursor: pointer;
         }
         .fbp-sig-cover > img {
           position: absolute;
@@ -1799,6 +1993,151 @@ export default function ChannelProfile() {
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+        }
+        .fbp-post-bar {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 2px;
+          padding: 4px 6px;
+          border-top: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(8, 12, 20, 0.48);
+        }
+        .fbp-post-btn {
+          border: 0;
+          background: transparent;
+          color: rgba(245, 245, 247, 0.78);
+          padding: 6px 4px;
+          border-radius: 9px;
+          font-size: 11px;
+          font-weight: 680;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.14s ease, color 0.14s ease;
+        }
+        .fbp-post-btn:hover {
+          background: rgba(255, 255, 255, 0.1);
+          color: #ffffff;
+        }
+        .fbp-post-btn.is-liked {
+          color: #38bdf8;
+        }
+        .fbp-post-btn.is-active {
+          color: #bae6fd;
+        }
+        .fbp-post-comments {
+          padding: 8px 10px 10px;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          background: rgba(6, 10, 18, 0.52);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .fbp-post-comments-list {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .fbp-post-comment-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 7px;
+        }
+        .fbp-post-c-av {
+          width: 24px;
+          height: 24px;
+          border-radius: 999px;
+          object-fit: cover;
+          flex-shrink: 0;
+        }
+        .fbp-post-c-init {
+          background: linear-gradient(135deg, #0071e3, #38bdf8);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9.5px;
+          font-weight: 800;
+          color: #ffffff;
+        }
+        .fbp-post-c-bubble {
+          flex: 1;
+          min-width: 0;
+          padding: 6px 9px;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.09);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .fbp-post-c-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          margin-bottom: 2px;
+        }
+        .fbp-post-c-head strong {
+          font-size: 11px;
+          color: #ffffff;
+        }
+        .fbp-post-c-head span {
+          font-size: 9.5px;
+          color: rgba(245, 245, 247, 0.55);
+        }
+        .fbp-post-c-bubble p {
+          margin: 0;
+          font-size: 12px;
+          line-height: 1.38;
+          color: rgba(245, 245, 247, 0.92);
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .fbp-post-c-form {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 5px 4px 10px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .fbp-post-c-form input {
+          flex: 1;
+          min-width: 0;
+          border: 0;
+          background: transparent;
+          color: #ffffff;
+          font-size: 11.5px;
+          outline: none;
+        }
+        .fbp-post-c-form input::placeholder {
+          color: rgba(245, 245, 247, 0.5);
+        }
+        .fbp-post-c-send {
+          width: 26px;
+          height: 26px;
+          border-radius: 999px;
+          border: 0;
+          background: #0071e3;
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .fbp-post-c-send:disabled {
+          opacity: 0.4;
+          cursor: default;
+        }
+        .fbp-post-owner-lock {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          font-size: 10.5px;
+          color: rgba(186, 230, 253, 0.85);
+          padding: 2px 4px;
         }
         .fbp-continue-grid {
           display: grid;
